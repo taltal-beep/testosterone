@@ -1,0 +1,10 @@
+streamlit>=1.36.0
+
+# Phase 3: runners + Allure + Locust hooks
+pytest>=9.0.0
+allure-pytest>=2.15.0
+allure-behave>=2.15.0
+allure-python-commons>=2.15.0
+locust>=2.43.0
+matplotlib>=3.10.0
+
