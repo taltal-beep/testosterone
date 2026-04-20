@@ -4,8 +4,22 @@ __pycache__/
 .venv/
 venv/
 
+# Local secrets (copy from .env.example)
+.env
+
 # Mirrored report HTML for Streamlit static serving
 static/allure_report.html
+static/allure_report/
+static/allure-reports/
 static/locust_report.html
 static/behave/
+
+# Persisted run history (SQLite + per-run HTML snapshots)
+artifacts/uqo_run_history.sqlite
+artifacts/history/
+
+# Local/generated artifacts
+.coverage
+artifacts/allure-report/
+artifacts/allure-results-archive/
 

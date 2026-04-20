@@ -129,10 +129,8 @@ def _build_behavex(cfg: RunConfig, shared_dir: Path) -> list[str]:
     """
     BehaveX runs in parallel and writes native HTML under ``-o`` (see ``report.html``).
 
-    For Allure JSON, BehaveX 4.x requires a formatter implementing ``launch_json_formatter``.
-    The stock ``allure_behave`` formatter is incompatible with BehaveX's no-arg formatter
-    contract, so we default to ``drop_in_hooks.behavex_allure:BehavexAllureExporter`` unless
-    the user supplies their own ``-f`` / ``--formatter``.
+    For Allure JSON, run with the Allure formatter and direct its output to the shared Allure
+    results directory (the orchestrator controls the actual path).
     """
     artifacts_root = (cfg.artifacts_root or Path("artifacts")).expanduser().resolve()
     behavex_out = artifacts_root / "behave_reports"
@@ -153,7 +151,7 @@ def _build_behavex(cfg: RunConfig, shared_dir: Path) -> list[str]:
         argv.extend(
             [
                 "-f",
-                "drop_in_hooks.behavex_allure:BehavexAllureExporter",
+                "allure_behave.formatter:AllureFormatter",
                 "-fo",
                 rel_allure,
             ]

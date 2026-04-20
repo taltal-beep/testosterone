@@ -7,15 +7,26 @@ import shutil
 import socket
 import subprocess
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
-ORCHESTRATOR_ROOT = Path(__file__).resolve().parents[1]
-STATIC_DIR = ORCHESTRATOR_ROOT / "static"
-STATIC_ALLURE_HTML = STATIC_DIR / "allure_report.html"
-STATIC_LOCUST_HTML = STATIC_DIR / "locust_report.html"
-STATIC_BEHAVE_DIR = STATIC_DIR / "behave"
-STATIC_BEHAVE_INDEX = STATIC_BEHAVE_DIR / "index.html"
+from .paths import (
+    ORCHESTRATOR_ROOT,
+    STATIC_ALLURE_HTML,
+    STATIC_ALLURE_INDEX,
+    STATIC_ALLURE_REPORT_DIR,
+    STATIC_ALLURE_REPORTS_DIR,
+    STATIC_ALLURE_UNIFIED_DIR,
+    STATIC_ALLURE_UNIFIED_INDEX,
+    STATIC_BEHAVE_DIR,
+    STATIC_BEHAVE_INDEX,
+    STATIC_DIR,
+    STATIC_LOCUST_HTML,
+    allure_report_dir,
+    allure_cli_input_directories,
+)
 
 
 @dataclass(frozen=True)
@@ -25,10 +36,48 @@ class ReportPaths:
     zip_path: Path
 
 
-def generate_allure_html(*, results_dir: Path, report_dir: Path) -> tuple[bool, str]:
+def _invoke_allure_generate(
+    cmd: list[str],
+    *,
+    subprocess_run: Callable[..., Any] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Thin wrapper so tests can inject ``subprocess_run`` without patching ``subprocess``."""
+    runner = subprocess_run or subprocess.run
+    return runner(cmd, capture_output=True, text=True, check=False)
+
+
+def compute_system_health_pct(results_dir: Path) -> float | None:
+    """
+    Overall pass rate from Allure ``*-result.json`` files under ``results_dir``:
+    ``100.0 * passed / total`` (tests with status ``passed`` vs all result files).
+    """
+    from .metrics import parse_allure_results_dir
+
+    results_dir = results_dir.expanduser().resolve()
+    if not results_dir.is_dir():
+        return None
+    m = parse_allure_results_dir(results_dir)
+    if m.total_tests <= 0:
+        return None
+    return (m.passed / m.total_tests) * 100.0
+
+
+def generate_allure_html(
+    *,
+    results_dir: Path,
+    report_dir: Path,
+    input_dirs: list[Path] | None = None,
+    subprocess_run: Callable[..., Any] | None = None,
+) -> tuple[bool, str, float | None]:
     """
     Generate Allure HTML by calling the Allure CLI:
-      allure generate <results_dir> --clean --single-file -o <report_dir>
+      allure generate <input_dirs...> --clean --single-file -o <report_dir>
+
+    When ``results_dir`` contains ``pytest/``, ``behave/``, and/or ``locust/``, those
+    directories are passed explicitly so the CLI merges them (some versions skip nested JSON
+    under a single parent path).
+
+    Returns ``(ok, message, health_pct)`` where ``health_pct`` is passed/total from result JSON files.
 
     NOTE: Allure CLI is NOT the python package. Install separately:
       - macOS: `brew install allure`
@@ -38,22 +87,97 @@ def generate_allure_html(*, results_dir: Path, report_dir: Path) -> tuple[bool, 
     report_dir = report_dir.expanduser().resolve()
 
     if not results_dir.exists():
-        return False, f"Results dir does not exist: {results_dir}"
+        return False, f"Results dir does not exist: {results_dir}", None
+
+    # Individual reports pass a single directory; unified reports pass multiple.
+    use_inputs = [results_dir] if input_dirs is None else [p.expanduser().resolve() for p in input_dirs]
+    for d in use_inputs:
+        d.mkdir(parents=True, exist_ok=True)
+
+    def _count_results(p: Path) -> int:
+        try:
+            return len(list(p.rglob("*-result.json")))
+        except OSError:
+            return 0
+
+    counts = {p.name: _count_results(p) for p in use_inputs}
+    print("[allure] input counts: " + " ".join(f"{k}={v}" for k, v in counts.items()))
+    if "behave" in counts and counts["behave"] == 0:
+        print(f"[allure] WARNING: no BehaveX Allure result files found under {results_dir / 'behave'}")
 
     report_dir.mkdir(parents=True, exist_ok=True)
 
-    cmd = ["allure", "generate", str(results_dir), "--clean", "--single-file", "-o", str(report_dir)]
+    cmd = [
+        "allure",
+        "generate",
+        *[str(p) for p in use_inputs],
+        "--clean",
+        "--single-file",
+        "-o",
+        str(report_dir),
+    ]
     try:
-        p = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        p = _invoke_allure_generate(cmd, subprocess_run=subprocess_run)
     except FileNotFoundError:
-        return False, "Allure CLI not found. Install it (e.g. `brew install allure`)."
+        return False, "Allure CLI not found. Install it (e.g. `brew install allure`).", None
 
     if p.returncode != 0:
         err = (p.stderr or p.stdout or "").strip()
-        return False, f"Allure generation failed (exit {p.returncode}). {err[:2000]}"
+        return False, f"Allure generation failed (exit {p.returncode}). {err[:2000]}", None
 
     publish_allure_index_to_static(report_dir=report_dir)
-    return True, f"Allure report generated at {report_dir}"
+    health = compute_system_health_pct(results_dir)
+    return True, f"Allure report generated at {report_dir}", health
+
+
+def generate_allure_reports(
+    *,
+    results_dir: Path,
+    mode: str = "unified",
+    frameworks: list[str] | None = None,
+    subprocess_run: Callable[..., Any] | None = None,
+) -> dict[str, tuple[bool, str, float | None]]:
+    """
+    Generate Allure HTML reports.
+
+    - mode="unified": merges all framework subdirs into ``static/allure-reports/unified/``
+    - mode="individual": generates one report per requested framework into ``static/allure-reports/<framework>/``
+
+    Returns: mapping of ``framework_name`` → ``(ok, message, health_pct)``.
+    """
+    results_dir = results_dir.expanduser().resolve()
+    out: dict[str, tuple[bool, str, float | None]] = {}
+
+    if mode not in {"unified", "individual"}:
+        raise ValueError(f"Unsupported mode: {mode}")
+
+    if mode == "unified":
+        STATIC_ALLURE_UNIFIED_DIR.mkdir(parents=True, exist_ok=True)
+        unified_inputs = [results_dir / fw for fw in ("pytest", "behave", "locust", "behave_native")]
+        ok, msg, hp = generate_allure_html(
+            results_dir=results_dir,
+            report_dir=STATIC_ALLURE_UNIFIED_DIR,
+            input_dirs=unified_inputs,
+            subprocess_run=subprocess_run,
+        )
+        out["unified"] = (ok, msg, hp)
+        return out
+
+    # individual
+    if not frameworks:
+        frameworks = ["pytest", "behave", "locust", "behave_native"]
+    for fw in frameworks:
+        fw_results = results_dir / fw
+        fw_results.mkdir(parents=True, exist_ok=True)
+        fw_out_dir = allure_report_dir(fw)
+        fw_out_dir.mkdir(parents=True, exist_ok=True)
+        ok, msg, hp = generate_allure_html(
+            results_dir=fw_results,
+            report_dir=fw_out_dir,
+            subprocess_run=subprocess_run,
+        )
+        out[str(fw)] = (ok, msg, hp)
+    return out
 
 
 def read_single_file_html(*, report_dir: Path) -> tuple[bool, str, bytes | None]:
@@ -125,7 +249,7 @@ def start_report_server(*, report_dir: Path, port: int | None = None) -> ReportS
 def start_static_server(*, root_dir: Path, port: int | None = None) -> ReportServer:
     """
     Serve a broader directory tree (e.g. orchestrator root), so we can open:
-      - artifacts/allure-report/index.html
+      - static/allure_report/index.html
       - artifacts/locust_report.html
       - static_reports/behavex/*.html
     """
@@ -209,13 +333,24 @@ def _mirror_file_readable(src: Path, dst: Path) -> None:
 
 def publish_allure_index_to_static(*, report_dir: Path) -> Path | None:
     """
-    Mirror Allure single-file output to static/allure_report.html for Streamlit static serving.
+    When ``report_dir`` is ``static/allure_report``, Allure already wrote ``index.html`` there;
+    chmod the tree for Streamlit. Otherwise mirror ``index.html`` to legacy ``static/allure_report.html``.
     """
     report_dir = report_dir.expanduser().resolve()
     src = report_dir / "index.html"
-    if not src.exists():
+    if not src.is_file():
         return None
     _ensure_static_dirs()
+    # If report is already under the new static tree, just chmod.
+    try:
+        if STATIC_ALLURE_REPORTS_DIR.resolve() in report_dir.resolve().parents:
+            _chmod_tree(report_dir)
+            return src
+    except Exception:
+        pass
+    if report_dir.resolve() == STATIC_ALLURE_REPORT_DIR.resolve():
+        _chmod_tree(report_dir)
+        return STATIC_ALLURE_INDEX if STATIC_ALLURE_INDEX.is_file() else src
     _mirror_file_readable(src, STATIC_ALLURE_HTML)
     return STATIC_ALLURE_HTML
 
@@ -276,7 +411,7 @@ def sync_all_reports_to_static(*, artifacts_root: Path, run_id: str | None = Non
     """
     Copy the latest known report HTML artifacts into ``./static/`` for Streamlit static serving.
 
-    - Allure: ``<artifacts>/allure-report/index.html`` → ``static/allure_report.html``
+    - Allure: ``static/allure_report/index.html`` (preferred), else ``<artifacts>/allure-report/index.html`` → ``static/allure_report.html``
     - Locust: ``<artifacts>/locust_report.html``
     - BehaveX: full ``<artifacts>/behave_reports/`` tree (legacy: ``behavex-output/``) → ``static/behave/``,
       with ``report.html`` copied to ``static/behave/index.html``
@@ -285,11 +420,20 @@ def sync_all_reports_to_static(*, artifacts_root: Path, run_id: str | None = Non
     artifacts_root = artifacts_root.expanduser().resolve()
     out: dict[str, Path | None] = {"allure": None, "locust": None, "behavex": None}
 
-    allure_index = artifacts_root / "allure-report" / "index.html"
-    if allure_index.is_file():
+    if STATIC_ALLURE_UNIFIED_INDEX.is_file():
         _ensure_static_dirs()
-        _mirror_file_readable(allure_index, STATIC_ALLURE_HTML)
-        out["allure"] = STATIC_ALLURE_HTML
+        _chmod_tree(STATIC_ALLURE_UNIFIED_DIR)
+        out["allure"] = STATIC_ALLURE_UNIFIED_INDEX
+    elif STATIC_ALLURE_INDEX.is_file():
+        _ensure_static_dirs()
+        _chmod_tree(STATIC_ALLURE_REPORT_DIR)
+        out["allure"] = STATIC_ALLURE_INDEX
+    else:
+        allure_index = artifacts_root / "allure-report" / "index.html"
+        if allure_index.is_file():
+            _ensure_static_dirs()
+            _mirror_file_readable(allure_index, STATIC_ALLURE_HTML)
+            out["allure"] = STATIC_ALLURE_HTML
 
     loc = artifacts_root / "locust_report.html"
     if loc.is_file():
@@ -330,7 +474,7 @@ def _make_handler(root_dir: Path):
 def default_report_paths(*, artifacts_root: Path) -> ReportPaths:
     artifacts_root = artifacts_root.expanduser().resolve()
     results_dir = artifacts_root / "allure-results"
-    report_dir = artifacts_root / "allure-report"
+    report_dir = STATIC_ALLURE_UNIFIED_DIR
     zip_path = artifacts_root / "allure-report.zip"
     return ReportPaths(results_dir=results_dir, report_dir=report_dir, zip_path=zip_path)
 
