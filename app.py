@@ -7,12 +7,22 @@ import time
 from pathlib import Path
 from typing import Optional
 
+# Load `.env` before other imports read ``os.environ`` (integrations, secrets).
+_APP_ROOT = Path(__file__).resolve().parent
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(_APP_ROOT / ".env")
+except Exception:
+    pass
+
 import streamlit as st
 
 from engine.command_builders import RunConfig, TestType, coerce_path
 from engine.runners import (
+    UQO_AUDIT_HEALTH,
+    UQO_AUDIT_PHASE,
     UQO_DONE_MARKER,
-    LogEvent,
     RunResult,
     default_artifacts_root,
     run_streaming,
@@ -25,20 +35,51 @@ from engine.sandbox_api import (
     start_sandbox_if_needed,
     stop_sandbox_if_managed,
 )
-from engine.metrics import list_run_history, parse_allure_results_dir, push_influxdb, write_metrics_json
-from engine.report_generator import (
-    STATIC_ALLURE_HTML,
-    STATIC_BEHAVE_INDEX,
-    STATIC_LOCUST_HTML,
-    default_report_paths,
-    generate_allure_html,
-    make_report_zip,
-    read_single_file_html,
-    start_static_server,
-    url_for,
+from engine.integrations import (
+    auto_push_metrics_if_enabled,
+    integration_status_from_env,
+    push_to_influxdb,
+    push_to_prometheus,
+    test_influxdb_connection,
+    test_prometheus_pushgateway,
 )
+from engine.metrics import list_run_history, write_metrics_json
+from engine.metrics_extractor import to_run_metrics
+from engine.run_history import (
+    compare_latest_two,
+    list_recent_runs,
+    list_run_sessions,
+    record_completed_run,
+    snapshot_files_for_download,
+)
+from engine.paths import STATIC_BEHAVE_INDEX
+from engine.report_generator import STATIC_ALLURE_HTML, STATIC_ALLURE_INDEX
+from engine.services import AuditService, MetricsService, ReportService, RunLogLine, iter_drained_queue_items
 
-def _init_state() -> None:
+
+def _section_label(text: str) -> None:
+    st.markdown(
+        f'<p style="font-size:0.7rem;font-weight:600;letter-spacing:0.08em;color:rgba(248,249,251,0.45);margin:0 0 0.5rem 0;">{text}</p>',
+        unsafe_allow_html=True,
+    )
+
+
+def init_state() -> None:
+    """
+    Initialize all ``st.session_state`` keys before any widgets mount.
+
+    Widget-bound keys (e.g. toggles) use ``if key not in session_state`` so defaults are
+    set exactly once; the rest use ``setdefault``.
+    """
+    if "auto_push_influx" not in st.session_state:
+        st.session_state["auto_push_influx"] = False
+    if "auto_push_prometheus" not in st.session_state:
+        st.session_state["auto_push_prometheus"] = False
+    if "run_completed" not in st.session_state:
+        st.session_state.run_completed = False
+    if "last_test_type" not in st.session_state:
+        st.session_state.last_test_type = None
+
     st.session_state.setdefault("running", False)
     st.session_state.setdefault("log_lines", [])
     st.session_state.setdefault("log_max_lines", 2000)
@@ -47,9 +88,19 @@ def _init_state() -> None:
     st.session_state.setdefault("last_result", None)  # type: ignore[assignment]
     st.session_state.setdefault("sandbox_mode", False)
     st.session_state.setdefault("report_server", None)  # type: ignore[assignment]
-    st.session_state.setdefault("static_server", None)  # type: ignore[assignment]
     st.session_state.setdefault("last_run_id", None)  # type: ignore[assignment]
     st.session_state.setdefault("target_repo", str(Path(".").resolve()))
+    st.session_state.setdefault("is_audit_mode", False)
+    st.session_state.setdefault("audit_phase_display", "")
+    st.session_state.setdefault("audit_health_pct", None)
+    st.session_state.setdefault("audit_partial_success", False)
+    st.session_state.setdefault("influx_url", os.getenv("INFLUXDB_URL", ""))
+    st.session_state.setdefault("influx_org", os.getenv("INFLUXDB_ORG", ""))
+    st.session_state.setdefault("influx_bucket", os.getenv("INFLUXDB_BUCKET", ""))
+    st.session_state.setdefault("influx_token", os.getenv("INFLUXDB_TOKEN", ""))
+    st.session_state.setdefault("prometheus_pushgateway_url", os.getenv("PROMETHEUS_PUSHGATEWAY_URL", ""))
+    st.session_state.setdefault("influx_test_ok", None)
+    st.session_state.setdefault("prometheus_test_ok", None)
 
 
 def _append_line(line: str) -> None:
@@ -92,40 +143,144 @@ def _start_worker(cfg: RunConfig) -> None:
     st.session_state.last_result = None
     st.session_state.run_completed = False
     st.session_state.last_run_id = None
+    st.session_state.is_audit_mode = False
+    st.session_state.audit_phase_display = ""
     t.start()
 
 
+def _start_worker_audit(
+    *,
+    target_repo: Path,
+    pytest_args: tuple[str, ...],
+    behavex_args: tuple[str, ...],
+    locust_args: tuple[str, ...],
+    locust_users: int,
+    locust_spawn_rate: int,
+    locust_run_time: str,
+    locust_only_summary: bool,
+) -> None:
+    events_q: queue.Queue[LogEvent | RunResult] = queue.Queue()
+
+    def worker() -> None:
+        try:
+            gen = AuditService.stream_audit(
+                target_repo=target_repo,
+                artifacts_root=default_artifacts_root(),
+                parent_env=os.environ,
+                pytest_args=pytest_args,
+                behavex_args=behavex_args,
+                locust_args=locust_args,
+                locust_users=locust_users,
+                locust_spawn_rate=locust_spawn_rate,
+                locust_run_time=locust_run_time,
+                locust_only_summary=locust_only_summary,
+            )
+            while True:
+                try:
+                    ev = next(gen)
+                    events_q.put(ev)
+                except StopIteration as e:
+                    if e.value is not None:
+                        events_q.put(e.value)
+                    break
+        except Exception as exc:
+            import traceback
+
+            events_q.put(
+                LogEvent(
+                    ts=time.time(),
+                    stream="meta",
+                    line=f"[orchestrator worker error] {exc}\n{traceback.format_exc()}\n",
+                )
+            )
+            events_q.put(LogEvent(ts=time.time(), stream="meta", line=f"{UQO_DONE_MARKER} returncode=-1\n"))
+
+    t = threading.Thread(target=worker, daemon=True)
+    st.session_state.events_q = events_q
+    st.session_state.worker = t
+    st.session_state.running = True
+    st.session_state.last_result = None
+    st.session_state.run_completed = False
+    st.session_state.last_run_id = None
+    st.session_state.is_audit_mode = True
+    st.session_state.audit_phase_display = ""
+    st.session_state.audit_health_pct = None
+    t.start()
+
+
+def _apply_run_result_to_session(item: RunResult) -> None:
+    st.session_state.last_result = item
+    st.session_state.running = False
+    st.session_state.run_completed = True
+    env = item.command.env
+    st.session_state.last_run_id = env.get("UQO_AUDIT_RUN_ID") or env.get("UQO_RUN_ID")
+    if item.audit_mode:
+        if item.audit_health_pct is not None:
+            st.session_state["audit_health_pct"] = item.audit_health_pct
+        st.session_state["audit_partial_success"] = item.audit_partial_success
+    try:
+        record_completed_run(
+            rr=item,
+            artifacts_root=default_artifacts_root().expanduser().resolve(),
+            test_kind=str(st.session_state.get("last_test_type") or "unknown"),
+            audit_health_pct=st.session_state.get("audit_health_pct"),
+        )
+    except Exception:
+        pass
+    try:
+        if st.session_state.get("auto_push_influx") or st.session_state.get("auto_push_prometheus"):
+            rid = st.session_state.get("last_run_id")
+            logs = auto_push_metrics_if_enabled(
+                artifacts_root=default_artifacts_root().expanduser().resolve(),
+                run_id=str(rid) if rid else None,
+                auto_influx=bool(st.session_state.get("auto_push_influx")),
+                auto_prometheus=bool(st.session_state.get("auto_push_prometheus")),
+                influx_url=st.session_state.get("influx_url") or None,
+                influx_token=st.session_state.get("influx_token") or None,
+                influx_org=st.session_state.get("influx_org") or None,
+                influx_bucket=st.session_state.get("influx_bucket") or None,
+                prometheus_pushgateway_url=st.session_state.get("prometheus_pushgateway_url") or None,
+            )
+            for _name, ok, msg in logs:
+                _append_line(f"[auto-push] {'OK' if ok else 'FAIL'} {_name}: {msg}")
+    except Exception as exc:
+        _append_line(f"[auto-push] skipped: {exc}")
+
+
+def _apply_run_log_line_to_session(stream: str, line: str) -> None:
+    done_sentinel = UQO_DONE_MARKER in line
+    if done_sentinel:
+        st.session_state.running = False
+
+    prefix = ""
+    if stream == "stderr":
+        prefix = "[stderr] "
+    elif stream == "meta":
+        prefix = ""
+    if UQO_AUDIT_PHASE in line:
+        st.session_state["audit_phase_display"] = line.strip()
+    if UQO_AUDIT_HEALTH in line:
+        try:
+            rest = line.split(UQO_AUDIT_HEALTH, 1)[1].strip()
+            st.session_state["audit_health_pct"] = float(rest)
+        except (ValueError, IndexError):
+            pass
+    _append_line(prefix + line.rstrip("\n"))
+
+    if done_sentinel:
+        st.session_state.run_completed = True
+
+
 def _drain_events() -> None:
-    q: Optional[queue.Queue] = st.session_state.events_q
+    q: Optional[queue.Queue[object]] = st.session_state.events_q
     if not q:
         return
 
-    while True:
-        try:
-            item = q.get_nowait()
-        except queue.Empty:
-            break
-
+    for item in iter_drained_queue_items(q):
         if isinstance(item, RunResult):
-            st.session_state.last_result = item
-            st.session_state.running = False
-            st.session_state.run_completed = True
-            st.session_state.last_run_id = item.command.env.get("UQO_RUN_ID")
-            continue
-
-        done_sentinel = isinstance(item, LogEvent) and UQO_DONE_MARKER in item.line
-        if done_sentinel:
-            st.session_state.running = False
-
-        prefix = ""
-        if item.stream == "stderr":
-            prefix = "[stderr] "
-        elif item.stream == "meta":
-            prefix = ""
-        _append_line(prefix + item.line.rstrip("\n"))
-
-        if done_sentinel:
-            st.session_state.run_completed = True
+            _apply_run_result_to_session(item)
+        elif isinstance(item, RunLogLine):
+            _apply_run_log_line_to_session(item.stream, item.line)
 
 
 def _on_sandbox_toggle() -> None:
@@ -158,21 +313,25 @@ def _streamlit_static_url(relative_under_static: str) -> str:
 
 
 def _static_paths_exist() -> tuple[bool, bool]:
-    # Deterministic paths under ./static (orchestrator root)
-    return (
-        os.path.exists(STATIC_ALLURE_HTML),
-        os.path.exists(STATIC_LOCUST_HTML),
-    )
+    return ReportService.static_reports_ready()
+
+
+def _execution_status_title() -> str:
+    if st.session_state.get("is_audit_mode"):
+        raw = str(st.session_state.get("audit_phase_display") or "")
+        if UQO_AUDIT_PHASE in raw:
+            raw = raw.split(UQO_AUDIT_PHASE, 1)[-1].strip()
+        if raw:
+            return f"Full System Audit — {raw}"
+        return "Full System Audit — starting…"
+    return "Running tests…"
 
 
 st.set_page_config(page_title="Unified Quality Orchestration", layout="wide")
 
-if "run_completed" not in st.session_state:
-    st.session_state.run_completed = False
-if "last_test_type" not in st.session_state:
-    st.session_state.last_test_type = None
+init_state()
 
-_init_state()
+_drain_events()
 
 st.title("Unified Quality Orchestration & Reporting Dashboard")
 st.caption("Streamlit orchestrator — zero-touch wrapper; runs tools via subprocess in the target repo.")
@@ -182,7 +341,7 @@ sandbox_path = str(sample_target_repo().resolve())
 with st.sidebar:
     st.subheader("Sandbox")
     st.checkbox(
-        "🧪 Load Sandbox Mode",
+        "Load sandbox mode",
         key="sandbox_mode",
         on_change=_on_sandbox_toggle,
         disabled=bool(st.session_state.running),
@@ -199,19 +358,57 @@ with st.sidebar:
         with col_stop:
             if st.button("Stop Sandbox API", disabled=bool(st.session_state.running)):
                 stop_sandbox_if_managed()
-                st.toast("Sandbox API stopped.", icon="🛑")
+                st.toast("Sandbox API stopped.")
                 st.rerun()
         if is_managed_process_alive():
             st.caption("Orchestrator is managing the uvicorn process for this session.")
 
-_drain_events()
+    st.divider()
+    st.subheader("History")
+    try:
+        recent = list_recent_runs(limit=20)
+    except Exception:
+        recent = []
+    cmp = None
+    try:
+        cmp = compare_latest_two()
+    except Exception:
+        cmp = None
+    if cmp and cmp.get("summary_markdown"):
+        st.markdown(cmp["summary_markdown"])
+    elif cmp and len(recent) >= 2:
+        st.caption("Comparison needs Allure timing fields from at least two runs with results.")
+
+    if recent:
+        labels = [f"{r.run_id[:8]}… · {r.test_kind} · rc={r.returncode}" for r in recent]
+        pick = st.selectbox("Recorded runs", options=range(len(recent)), format_func=lambda i: labels[i])
+        sel = recent[int(pick)]
+        st.caption(f"**Run ID:** `{sel.run_id}`")
+        if sel.metrics_duration_ms is not None:
+            st.caption(f"Allure aggregate span: **{sel.metrics_duration_ms} ms** · cases: **{sel.total_tests or 0}**")
+        if sel.avg_case_ms is not None:
+            st.caption(f"Approx. per-case span: **{sel.avg_case_ms:.2f} ms**")
+        files = snapshot_files_for_download(record=sel)
+        for i, (label, fpath) in enumerate(files):
+            if fpath.is_file():
+                st.download_button(
+                    f"Download {label}",
+                    data=fpath.read_bytes(),
+                    file_name=f"{sel.run_id[:8]}_{label.replace('/', '_')}",
+                    key=f"hist_dl_{sel.run_id}_{i}",
+                )
+        if not files:
+            st.caption("No snapshot files (reports were not mirrored when this run finished).")
+    else:
+        st.caption("No runs in the database yet. Finish a run to record metadata and snapshots.")
 
 tab_exec, tab_analytics, tab_history, tab_integrations = st.tabs(
-    ["🚀 Execution", "📊 Analytics", "📜 History", "⚙️ Integrations"]
+    ["Execution", "Analytics", "History", "Integrations"]
 )
 
-artifacts_root = default_artifacts_root().expanduser().resolve()
-paths = default_report_paths(artifacts_root=artifacts_root)
+_report_svc = ReportService()
+artifacts_root = _report_svc.artifacts_root
+paths = _report_svc.report_paths()
 
 with tab_exec:
     st.subheader("Run configuration")
@@ -286,11 +483,17 @@ with tab_exec:
         disabled=bool(st.session_state.running),
     )
 
-    col_a, col_b = st.columns(2)
+    col_a, col_b, col_c = st.columns(3)
     with col_a:
-        run_clicked = st.button("Run", type="primary", disabled=bool(st.session_state.running))
+        run_clicked = st.button("Run", type="secondary", disabled=bool(st.session_state.running))
     with col_b:
-        clear_clicked = st.button("Clear console", disabled=bool(st.session_state.running))
+        audit_clicked = st.button(
+            "Run full system audit",
+            type="secondary",
+            disabled=bool(st.session_state.running),
+        )
+    with col_c:
+        clear_clicked = st.button("Clear console", type="secondary", disabled=bool(st.session_state.running))
 
     if clear_clicked:
         st.session_state.log_lines = []
@@ -321,8 +524,31 @@ with tab_exec:
                 last_test_type=test_type,
             )
             st.session_state["last_test_type"] = test_type
+            st.session_state["is_audit_mode"] = False
             _append_line(f"Starting run: {cfg.test_type.value} in {cfg.target_repo}")
             _start_worker(cfg)
+
+    if audit_clicked:
+        if not ok:
+            st.error(f"Cannot run audit: {msg}")
+        else:
+            argv_extra = [a for a in extra_args.split() if a.strip()]
+            st.session_state["last_test_type"] = "audit"
+            st.session_state["is_audit_mode"] = True
+            st.session_state["audit_phase_display"] = ""
+            st.session_state["audit_health_pct"] = None
+            st.session_state["audit_partial_success"] = False
+            _append_line(f"Starting Full System Audit in {target_repo}")
+            _start_worker_audit(
+                target_repo=target_repo,
+                pytest_args=tuple(argv_extra),
+                behavex_args=tuple(argv_extra),
+                locust_args=tuple(argv_extra),
+                locust_users=int(st.session_state.get("locust_users", locust_users)),
+                locust_spawn_rate=int(st.session_state.get("locust_spawn_rate", locust_spawn_rate)),
+                locust_run_time=str(st.session_state.get("locust_run_time", locust_run_time)),
+                locust_only_summary=bool(st.session_state.get("locust_only_summary", locust_only_summary)),
+            )
 
     st.divider()
     col_out, col_stat = st.columns([2, 1], gap="large")
@@ -331,10 +557,12 @@ with tab_exec:
         st.subheader("Live output")
         console_text = "\n".join(st.session_state.log_lines)
         if st.session_state.running:
-            with st.status("Running tests…", expanded=True):
+            with st.status(_execution_status_title(), expanded=True):
                 st.caption(
                     "When the subprocess exits, the orchestrator runs **report sync** "
                     "(copying HTML into `./static/`). Expect a short pause before the run is marked complete."
+                    if not st.session_state.get("is_audit_mode")
+                    else "Audit runs Pytest, then BehaveX, then Locust into one Allure folder, then builds the master report."
                 )
                 st.code(console_text or "(starting…)", language="text")
         else:
@@ -347,155 +575,247 @@ with tab_exec:
 
         if st.session_state.last_result is not None:
             rr: RunResult = st.session_state.last_result
-            st.success(f"Finished with exit code {rr.returncode}")
-            st.json(
-                {
-                    "returncode": rr.returncode,
-                    "duration_s": round(rr.finished_at - rr.started_at, 3),
-                    "cwd": str(rr.command.cwd),
-                    "argv": rr.command.argv,
-                    "allure_results_dir": str(rr.command.env.get("UQO_SHARED_ALLURE_RESULTS_DIR", "")),
+            if rr.audit_mode and rr.audit_partial_success:
+                st.warning(
+                    f"Audit finished with exit code {rr.returncode} (partial success: phases {rr.audit_phase_returncodes})"
+                )
+            else:
+                st.success(f"Finished with exit code {rr.returncode}")
+            payload = {
+                "returncode": rr.returncode,
+                "duration_s": round(rr.finished_at - rr.started_at, 3),
+                "cwd": str(rr.command.cwd),
+                "argv": rr.command.argv,
+                "allure_results_dir": str(rr.command.env.get("UQO_SHARED_ALLURE_RESULTS_DIR", "")),
+            }
+            if rr.audit_mode:
+                payload["audit"] = {
+                    "phases_returncode": list(rr.audit_phase_returncodes),
+                    "partial_success": rr.audit_partial_success,
+                    "health_pct": rr.audit_health_pct,
                 }
-            )
+            st.json(payload)
         elif st.session_state.running:
             st.info("Process is running. Logs update live above.")
 
 with tab_analytics:
-    st.subheader("📊 Available Reports")
-    st.caption(
-        "After a run completes, native HTML is mirrored under `./static/` for Streamlit static serving. "
-        "If a report renders as plain text, use the optional HTTP viewer below."
-    )
+    st.subheader("Analytics")
+    st.caption("After a run completes, native HTML is mirrored under `./static/` for Streamlit static serving.")
 
     has_allure, has_locust = _static_paths_exist()
     last_tt = st.session_state.get("last_test_type")
+    has_behave = STATIC_BEHAVE_INDEX.is_file()
+
+    if st.session_state.get("run_completed") and st.session_state.get("is_audit_mode"):
+        hp = st.session_state.get("audit_health_pct")
+        if hp is not None:
+            st.metric("Overall system health score", f"{float(hp):.1f}%")
+        if st.session_state.get("audit_partial_success"):
+            st.warning("Partial success: at least one audit phase failed; see Execution logs for phase exit codes.")
 
     if st.session_state.get("run_completed"):
-        st.success("✅ Last run finished (see Execution tab for exit code).")
-        if last_tt == "behavex" and os.path.exists("./static/behave/index.html"):
-            st.link_button(
-                "🟢 Open BehaveX Native Report",
-                f"{get_base_url()}/app/static/behave/index.html",
-                width="stretch",
-            )
-        if last_tt == "locust" and has_locust:
-            st.link_button(
-                "📈 Open Locust Performance Report",
-                _streamlit_static_url("locust_report.html"),
-                width="stretch",
-            )
-        if has_allure:
-            st.link_button(
-                "🌐 Open Allure (Unified) Report",
-                _streamlit_static_url("allure_report.html"),
-                type="primary",
-                width="stretch",
-            )
+        st.success("Last run finished (see Execution tab for exit code).")
 
-    srv_http = st.session_state.get("static_server")
-    if srv_http is not None:
-        st.markdown("**Optional HTTP viewer** (full HTML/CSS)")
-        st.caption(f"Serving: `{srv_http.root_dir}`")
-        st.link_button("Open Allure (HTTP server)", url_for(srv_http, relative_path="artifacts/allure-report/index.html"))
-        rr_for_links: RunResult | None = st.session_state.get("last_result")
-        if rr_for_links is not None:
-            if st.session_state.get("last_test_type") == TestType.BEHAVEX.value:
+    st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
+
+    with st.container(border=True):
+        _section_label("TEST DASHBOARDS")
+        d1, d2 = st.columns(2)
+        with d1:
+            if has_behave and last_tt in (TestType.BEHAVEX.value, "audit"):
+                label = "BehaveX (deep dive)" if last_tt == "audit" else "Open BehaveX report"
                 st.link_button(
-                    "Open BehaveX (HTTP server)",
-                    url_for(srv_http, relative_path="static/behave/index.html"),
+                    label,
+                    f"{get_base_url()}/app/static/behave/index.html",
+                    type="secondary",
                 )
-            if st.session_state.get("last_test_type") == TestType.LOCUST.value:
+            else:
+                st.caption("BehaveX report not available for the last run.")
+        with d2:
+            if has_locust and last_tt in (TestType.LOCUST.value, "audit"):
+                label = "Locust (deep dive)" if last_tt == "audit" else "Open Locust report"
                 st.link_button(
-                    "Open Locust (HTTP server)",
-                    url_for(srv_http, relative_path="artifacts/locust_report.html"),
+                    label,
+                    _streamlit_static_url("locust_report.html"),
+                    type="secondary",
                 )
+            else:
+                st.caption("Locust report not available for the last run.")
 
-    st.divider()
-    st.markdown("**Allure HTML**")
-    st.caption("Requires Allure CLI installed (e.g. `brew install allure`).")
+    st.markdown('<div style="height:12px"></div>', unsafe_allow_html=True)
 
-    gen_clicked = st.button("Generate Allure Report", disabled=bool(st.session_state.running))
-    if gen_clicked:
-        ok_gen, msg_gen = generate_allure_html(results_dir=paths.results_dir, report_dir=paths.report_dir)
-        if ok_gen:
-            st.success(msg_gen)
-            if STATIC_ALLURE_HTML.is_file():
-                st.caption(f"Mirrored for static links: `{STATIC_ALLURE_HTML}`")
-        else:
-            st.error(msg_gen)
-
-    view_clicked = st.button("Prepare Fullscreen Viewer", disabled=bool(st.session_state.running))
-    if view_clicked:
-        try:
-            srv = st.session_state.get("static_server")
-            if srv is None:
-                root = Path(__file__).resolve().parent
-                st.session_state["static_server"] = start_static_server(root_dir=root)
-            st.toast("Static report server ready.", icon="✅")
-        except Exception as exc:
-            st.error(f"Unable to start report server: {exc}")
-
-    stop_view_clicked = st.button("Stop Viewer", disabled=bool(st.session_state.running))
-    if stop_view_clicked:
-        srv_stop = st.session_state.get("static_server")
-        if srv_stop is not None:
-            try:
-                srv_stop.stop()
-            except Exception:
-                pass
-        st.session_state["static_server"] = None
-        st.toast("Report server stopped.", icon="🛑")
-
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("**Export**")
-        zip_clicked = st.button("Build ZIP", disabled=bool(st.session_state.running))
-        if zip_clicked:
-            try:
-                zip_path = make_report_zip(report_dir=paths.report_dir, out_dir=artifacts_root, base_name="allure-report")
-                st.session_state["report_zip_path"] = str(zip_path)
-                st.success(f"ZIP created: {zip_path.name}")
-            except Exception as exc:
-                st.error(f"ZIP creation failed: {exc}")
-
-        zip_path_str = st.session_state.get("report_zip_path")
-        if zip_path_str:
-            zp = Path(zip_path_str)
-            if zp.exists():
-                st.download_button(
-                    "Download ZIP",
-                    data=zp.read_bytes(),
-                    file_name=zp.name,
-                    mime="application/zip",
+    with st.container(border=True):
+        _section_label("REPORTING DASHBOARD")
+        st.markdown(
+            '<p style="font-size:0.78rem;color:rgba(248,249,251,0.5);margin:0 0 0.75rem 0;">'
+            "Requires the <strong>Allure CLI</strong> on your PATH (e.g. <code>brew install allure</code> on macOS)."
+            "</p>",
+            unsafe_allow_html=True,
+        )
+        top1, top2 = st.columns([1, 1])
+        with top2:
+            cache_buster = int(time.time())
+            if has_allure:
+                st.link_button(
+                    "View Unified Report",
+                    _streamlit_static_url(f"allure-reports/unified/index.html?t={cache_buster}"),
+                    type="primary",
                 )
+            else:
+                st.caption("Generate reports first.")
 
-    with c2:
-        st.markdown("**Single-file HTML**")
-        ok_html, msg_html, html_bytes = read_single_file_html(report_dir=paths.report_dir)
-        if ok_html and html_bytes:
-            st.download_button(
-                "Download index.html",
-                data=html_bytes,
-                file_name="allure-report.html",
-                mime="text/html",
+        with top1:
+            gen_unified = st.button(
+                "Generate unified report",
+                type="secondary",
+                disabled=bool(st.session_state.running),
             )
-        else:
-            st.caption(msg_html)
 
-    st.markdown("**Metrics (JSON)**")
-    metrics_clicked = st.button("Generate metrics.json", disabled=bool(st.session_state.running))
-    if metrics_clicked:
-        try:
-            m = parse_allure_results_dir(paths.results_dir)
-            out = write_metrics_json(m, out_path=artifacts_root / "metrics.json")
-            st.success(f"Wrote {out}")
-        except Exception as exc:
-            st.error(f"Metrics generation failed: {exc}")
+        if gen_unified:
+            with st.spinner("Generating unified Allure report..."):
+                ok_gen, msg_gen, _gen_health = _report_svc.generate_unified_allure()
+            if ok_gen:
+                st.success(msg_gen)
+            else:
+                st.error(msg_gen)
+
+        st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
+        grid = ReportService.available_allure_reports()
+        if grid:
+            cols = st.columns(min(4, max(1, len(grid))))
+            for i, fw in enumerate(grid):
+                with cols[i % len(cols)]:
+                    st.link_button(
+                        f"View {fw}",
+                        _streamlit_static_url(f"allure-reports/{fw}/index.html?t={cache_buster}"),
+                        type="secondary",
+                    )
+
+    st.markdown('<div style="height:12px"></div>', unsafe_allow_html=True)
+
+    with st.container(border=True):
+        _section_label("EXPORTS & METRICS")
+        with st.expander("Export data", expanded=False):
+            ex1, ex2, ex3 = st.columns(3)
+            with ex1:
+                zip_clicked = st.button(
+                    "Build ZIP",
+                    type="secondary",
+                    disabled=bool(st.session_state.running),
+                    key="analytics_zip_btn",
+                )
+            with ex2:
+                ok_html, msg_html, html_bytes = _report_svc.read_single_file_html()
+                if ok_html and html_bytes:
+                    st.download_button(
+                        "Download index.html",
+                        data=html_bytes,
+                        file_name="allure-report.html",
+                        mime="text/html",
+                        type="secondary",
+                        key="analytics_dl_html_btn",
+                    )
+                else:
+                    st.caption(msg_html)
+            with ex3:
+                metrics_clicked = st.button(
+                    "Generate metrics.json",
+                    type="secondary",
+                    disabled=bool(st.session_state.running),
+                    key="analytics_metrics_btn",
+                )
+
+            if zip_clicked:
+                try:
+                    zip_path = _report_svc.make_report_zip(base_name="allure-report")
+                    st.session_state["report_zip_path"] = str(zip_path)
+                    st.success(f"ZIP created: {zip_path.name}")
+                except Exception as exc:
+                    st.error(f"ZIP creation failed: {exc}")
+
+            zip_path_str = st.session_state.get("report_zip_path")
+            if zip_path_str:
+                zp = Path(zip_path_str)
+                if zp.exists():
+                    st.download_button(
+                        "Download ZIP file",
+                        data=zp.read_bytes(),
+                        file_name=zp.name,
+                        mime="application/zip",
+                        type="secondary",
+                        key="analytics_dl_zip_btn",
+                    )
+
+            if metrics_clicked:
+                try:
+                    m = MetricsService.parse_allure_results_dir(paths.results_dir)
+                    out = write_metrics_json(m, out_path=artifacts_root / "metrics.json")
+                    st.success(f"Wrote {out}")
+                except Exception as exc:
+                    st.error(f"Metrics generation failed: {exc}")
 
 with tab_history:
-    st.subheader("Allure run history")
+    st.subheader("Run history")
+    st.caption(
+        "Runs are grouped by session. Expand a row to open the reports captured for that run."
+    )
+
+    try:
+        sessions = list_run_sessions(limit=30)
+    except Exception:
+        sessions = []
+
+    if not sessions:
+        st.info("No run history yet. Complete a run to record metadata and snapshots.")
+    else:
+        for s in sessions:
+            ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(s.created_at)))
+            summary = f"rc={int(s.returncode)}"
+            if s.total_tests is not None and s.passed is not None:
+                summary += f" · {int(s.passed)}/{int(s.total_tests)} passed"
+            if s.health_pct is not None:
+                summary += f" · health={float(s.health_pct):.1f}%"
+
+            title = f"{ts} · {s.run_id[:8]}… · {summary}"
+            with st.expander(title):
+                c1, c2, c3 = st.columns(3)
+                cache_buster = int(time.time())
+
+                # Only show buttons for reports that exist for this session.
+                if "pytest" in s.links_under_static:
+                    with c1:
+                        st.link_button(
+                            "Open Pytest report",
+                            _streamlit_static_url(f"{s.links_under_static['pytest']}?t={cache_buster}"),
+                            type="secondary",
+                        )
+                if "locust" in s.links_under_static:
+                    with c2:
+                        st.link_button(
+                            "Open Locust report",
+                            _streamlit_static_url(f"{s.links_under_static['locust']}?t={cache_buster}"),
+                            type="secondary",
+                        )
+                if "allure" in s.links_under_static:
+                    with c3:
+                        st.link_button(
+                            "Open unified Allure report",
+                            _streamlit_static_url(f"{s.links_under_static['allure']}?t={cache_buster}"),
+                            type="primary",
+                        )
+
+                if "behavex" in s.links_under_static:
+                    st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
+                    st.link_button(
+                        "Open BehaveX report",
+                        _streamlit_static_url(f"{s.links_under_static['behavex']}?t={cache_buster}"),
+                        type="secondary",
+                    )
+
+    st.divider()
+    st.subheader("Allure folder history (archives)")
     archive_root = artifacts_root / "allure-results-archive"
-    history = list_run_history(archive_root=archive_root, current_results_dir=paths.results_dir)
+    history = MetricsService.list_run_history(archive_root=archive_root, current_results_dir=paths.results_dir)
     if history:
         rows = []
         for m in history:
@@ -518,33 +838,162 @@ with tab_history:
         st.info("No Allure results found yet.")
 
 with tab_integrations:
-    st.subheader("Grafana / InfluxDB live sync")
-    influx_url = st.text_input("InfluxDB URL", value=str(st.session_state.get("influx_url", "")))
-    influx_org = st.text_input("Org", value=str(st.session_state.get("influx_org", "")))
-    influx_bucket = st.text_input("Bucket", value=str(st.session_state.get("influx_bucket", "")))
-    influx_token = st.text_input("Token", value=str(st.session_state.get("influx_token", "")), type="password")
-    st.session_state["influx_url"] = influx_url
-    st.session_state["influx_org"] = influx_org
-    st.session_state["influx_bucket"] = influx_bucket
-    st.session_state["influx_token"] = influx_token
+    st.subheader("Enterprise integrations")
+    st.caption(
+        f"Secrets can be set in `{_APP_ROOT / '.env'}` (see `.env.example`). "
+        "Values below override the environment for this session when non-empty."
+    )
 
-    push_clicked = st.button("Push latest metrics to InfluxDB", disabled=bool(st.session_state.running))
-    if push_clicked:
-        if not (influx_url and influx_org and influx_bucket and influx_token):
-            st.error("Please fill URL, Org, Bucket, and Token.")
+    try:
+        cfg_ok = integration_status_from_env()
+    except Exception:
+        cfg_ok = {"influx_configured": False, "prometheus_configured": False}
+
+    influx_ready = bool(cfg_ok.get("influx_configured")) or (
+        bool(str(st.session_state.get("influx_url") or "").strip())
+        and bool(str(st.session_state.get("influx_token") or "").strip())
+        and bool(str(st.session_state.get("influx_org") or "").strip())
+        and bool(str(st.session_state.get("influx_bucket") or "").strip())
+    )
+    prom_ready = bool(cfg_ok.get("prometheus_configured")) or bool(
+        str(st.session_state.get("prometheus_pushgateway_url") or "").strip()
+    )
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("**InfluxDB**")
+        if influx_ready:
+            st.caption("Config: credentials available (.env and/or form).")
         else:
-            latest = parse_allure_results_dir(paths.results_dir)
-            ok_push, msg_push = push_influxdb(
-                latest,
-                url=influx_url,
-                token=influx_token,
-                org=influx_org,
-                bucket=influx_bucket,
-            )
-            if ok_push:
-                st.success(msg_push)
-            else:
-                st.error(msg_push)
+            st.caption("Config: set `INFLUXDB_*` in `.env` or fill the form.")
+        if st.session_state.get("influx_test_ok") is True:
+            st.caption("Last test: connected.")
+        elif st.session_state.get("influx_test_ok") is False:
+            st.caption("Last test: disconnected.")
+        else:
+            st.caption("Last test: not run yet.")
+        st.toggle(
+            "Enable InfluxDB sync (auto after each run)",
+            key="auto_push_influx",
+        )
+
+        st.text_input("InfluxDB URL", key="influx_url")
+        st.text_input("Org", key="influx_org")
+        st.text_input("Bucket", key="influx_bucket")
+        st.text_input("Token", type="password", key="influx_token")
+
+        b1, b2 = st.columns(2)
+        with b1:
+            if st.button("Test InfluxDB connection", disabled=bool(st.session_state.running), key="test_influx_btn"):
+                try:
+                    ok_t, msg_t = test_influxdb_connection(
+                        url=st.session_state.get("influx_url") or None,
+                        token=st.session_state.get("influx_token") or None,
+                        org=st.session_state.get("influx_org") or None,
+                    )
+                    st.session_state["influx_test_ok"] = ok_t
+                    if ok_t:
+                        st.toast(msg_t)
+                    else:
+                        st.toast(msg_t)
+                except Exception as exc:
+                    st.session_state["influx_test_ok"] = False
+                    st.toast(f"InfluxDB test failed: {exc}")
+        with b2:
+            if st.button("Push metrics now (InfluxDB)", disabled=bool(st.session_state.running), key="push_influx_btn"):
+                try:
+                    em = MetricsService.extract_best(report_dir=paths.report_dir, results_dir=paths.results_dir)
+                    if em is None:
+                        st.error("No Allure data to push. Run tests or generate the Allure report first.")
+                    else:
+                        rm = to_run_metrics(
+                            em, run_id=MetricsService.parse_allure_results_dir(paths.results_dir).run_id
+                        )
+                        ok_push, msg_push = push_to_influxdb(
+                            rm,
+                            url=st.session_state.get("influx_url") or None,
+                            token=st.session_state.get("influx_token") or None,
+                            org=st.session_state.get("influx_org") or None,
+                            bucket=st.session_state.get("influx_bucket") or None,
+                        )
+                        if ok_push:
+                            st.success(msg_push)
+                        else:
+                            st.error(msg_push)
+                except Exception as exc:
+                    st.error(f"Push failed: {exc}")
+
+    with c2:
+        st.markdown("**Prometheus (Pushgateway)**")
+        if prom_ready:
+            st.caption("Config: Pushgateway URL set (.env and/or form).")
+        else:
+            st.caption("Config: set `PROMETHEUS_PUSHGATEWAY_URL` in `.env` or below.")
+        if st.session_state.get("prometheus_test_ok") is True:
+            st.caption("Last test: connected.")
+        elif st.session_state.get("prometheus_test_ok") is False:
+            st.caption("Last test: disconnected.")
+        else:
+            st.caption("Last test: not run yet.")
+        st.toggle(
+            "Enable Prometheus push (auto after each run)",
+            key="auto_push_prometheus",
+        )
+
+        st.text_input(
+            "Pushgateway URL",
+            help="Example: http://localhost:9091",
+            key="prometheus_pushgateway_url",
+        )
+
+        b3, b4 = st.columns(2)
+        with b3:
+            if st.button("Test Pushgateway", disabled=bool(st.session_state.running), key="test_prom_btn"):
+                try:
+                    ok_t, msg_t = test_prometheus_pushgateway(
+                        pushgateway_url=st.session_state.get("prometheus_pushgateway_url") or None
+                    )
+                    st.session_state["prometheus_test_ok"] = ok_t
+                    if ok_t:
+                        st.toast(msg_t)
+                    else:
+                        st.toast(msg_t)
+                except Exception as exc:
+                    st.session_state["prometheus_test_ok"] = False
+                    st.toast(f"Prometheus test failed: {exc}")
+        with b4:
+            if st.button("Push metrics now (Prometheus)", disabled=bool(st.session_state.running), key="push_prom_btn"):
+                try:
+                    em = MetricsService.extract_best(report_dir=paths.report_dir, results_dir=paths.results_dir)
+                    if em is None:
+                        st.error("No Allure data to push. Run tests or generate the Allure report first.")
+                    else:
+                        rm = to_run_metrics(
+                            em, run_id=MetricsService.parse_allure_results_dir(paths.results_dir).run_id
+                        )
+                        ok_push, msg_push = push_to_prometheus(
+                            rm,
+                            pushgateway_url=st.session_state.get("prometheus_pushgateway_url") or None,
+                        )
+                        if ok_push:
+                            st.success(msg_push)
+                        else:
+                            st.error(msg_push)
+                except Exception as exc:
+                    st.error(f"Push failed: {exc}")
+
+    with st.expander("Environment checklist"):
+        missing = []
+        if not os.getenv("INFLUXDB_TOKEN") and not st.session_state.get("influx_token"):
+            missing.append("INFLUXDB_TOKEN (or enter Token in the form above)")
+        if not os.getenv("INFLUXDB_URL") and not st.session_state.get("influx_url"):
+            missing.append("INFLUXDB_URL")
+        if not os.getenv("PROMETHEUS_PUSHGATEWAY_URL") and not st.session_state.get("prometheus_pushgateway_url"):
+            missing.append("PROMETHEUS_PUSHGATEWAY_URL (optional)")
+        if missing:
+            st.warning("Optional gaps for full automation: " + "; ".join(missing))
+        else:
+            st.success("Core keys appear present for this session.")
 
 if st.session_state.running:
     time.sleep(0.2)
