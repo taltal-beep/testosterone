@@ -92,7 +92,10 @@ def test_generate_allure_reports_individual_builds_per_framework_commands(tmp_pa
     assert any("-o" in c and "static" in c[c.index("-o") + 1] and "allure_reports" in c[c.index("-o") + 1] for c in calls)
 
 
-def test_generate_allure_reports_defaults_to_four_frameworks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_allure_reports_defaults_to_three_allure_frameworks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Locust uses native HTML, not Allure CLI; defaults omit ``locust``."""
     res = tmp_path / "allure-results"
     res.mkdir()
 
@@ -108,8 +111,8 @@ def test_generate_allure_reports_defaults_to_four_frameworks(tmp_path: Path, mon
 
     monkeypatch.setattr(rg, "publish_allure_index_to_static", lambda **_: None)
     out = generate_allure_reports(results_dir=res, subprocess_run=fake_run)
-    assert set(out.keys()) == {"pytest", "behavex", "locust", "behave_native"}
-    assert len(calls) == 4
+    assert set(out.keys()) == {"pytest", "behavex", "behave_native"}
+    assert len(calls) == 3
 
 
 def test_flatten_behavex_nested_results_moves_to_root(tmp_path: Path) -> None:

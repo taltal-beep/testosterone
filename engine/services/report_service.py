@@ -76,9 +76,9 @@ class ReportService:
         *,
         subprocess_run: Callable[..., Any] | None = None,
     ) -> dict[str, tuple[bool, str, float | None]]:
-        """Generate isolated Allure HTML for all supported frameworks."""
+        """Generate isolated Allure HTML for Allure-producing frameworks (Locust is native HTML)."""
         return self.generate_individual_allure(
-            frameworks=["pytest", "locust", "behavex", "behave_native"],
+            frameworks=["pytest", "behavex", "behave_native"],
             subprocess_run=subprocess_run,
         )
 
@@ -89,6 +89,9 @@ class ReportService:
             return []
         out: list[str] = []
         for p in sorted([d for d in STATIC_ALLURE_REPORTS_DIR.iterdir() if d.is_dir()]):
+            # Legacy/unsupported: never surface a unified master report in the UI.
+            if p.name == "unified":
+                continue
             if (p / "index.html").is_file():
                 out.append(p.name)
         return out

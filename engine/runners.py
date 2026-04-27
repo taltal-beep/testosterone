@@ -157,6 +157,7 @@ def run_streaming(
     _resolve_subprocess_argv(cmd.argv)
     emit("meta", f"$ (cwd={cmd.cwd}) {' '.join(cmd.argv)}\n")
 
+    os.makedirs(str(cfg.shared_allure_results_dir), exist_ok=True)
     proc = subprocess.Popen(
         cmd.argv,
         cwd=str(cmd.cwd),
@@ -255,6 +256,24 @@ def run_streaming(
                     line=f"{UQO_DONE_MARKER} returncode={int(rc)}\n",
                 )
 
+            # Framework-specific lifecycle fixes that must occur immediately after the subprocess exits,
+            # before any report generation/sync that relies on the shared Allure results directory.
+            if run_framework_hooks and cfg.test_type.value == "behavex":
+                try:
+                    moved = _collect_behavex_allure_json_into_shared_dir(
+                        target_repo=cmd.cwd,
+                        artifacts_root=artifacts_root,
+                        shared_allure_results_dir=shared_allure_dir,
+                    )
+                    if moved:
+                        yield LogEvent(
+                            ts=time.time(),
+                            stream="meta",
+                            line=f"[behavex allure json] copied {moved} *.json into {shared_allure_dir}\n",
+                        )
+                except Exception:
+                    pass
+
             if run_framework_hooks and cfg.test_type.value == "behavex":
                 try:
                     dest = collect_behavex_native_report(
@@ -269,6 +288,12 @@ def run_streaming(
 
             if run_framework_hooks and cfg.test_type.value == "locust":
                 try:
+                    # Locust's --html output is written into the isolated shared results directory.
+                    # Mirror it into artifacts_root so existing static sync code can publish it.
+                    _mirror_locust_html_into_artifacts_root(
+                        shared_allure_results_dir=shared_allure_dir,
+                        artifacts_root=artifacts_root,
+                    )
                     lp = publish_locust_html_to_static(artifacts_root=artifacts_root)
                     if lp:
                         yield LogEvent(ts=time.time(), stream="meta", line=f"[locust html mirror] {lp}\n")
@@ -344,7 +369,7 @@ def run_audit_streaming(
 
     if enable_native_behave:
         # Native Behave is executed via its own CLI (not BehaveX).
-        phases.insert(2, (TestType.BEHAVEX, "behave_native", "Behave (native)"))
+        phases.insert(2, (TestType.BEHAVE_NATIVE, "behave_native", "Behave (native)"))
 
     phase_returncodes: list[int] = []
     last_cmd: BuiltCommand | None = None
@@ -358,60 +383,42 @@ def run_audit_streaming(
         )
         extra = {"UQO_AUDIT_MODE": "1", "UQO_AUDIT_RUN_ID": audit_run_id}
         phase_allure = shared_allure / key
-        if key == "behave_native":
-            gen_nb = run_native_behave(
-                target_repo=target_repo,
-                artifacts_root=artifacts_root,
-                parent_env=parent_env,
-                behave_args=native_behave_args,
-                extra_env=extra,
-                run_id=f"{audit_run_id}-{key}",
-            )
-            try:
-                while True:
-                    yield next(gen_nb)
-            except StopIteration as e:
-                rr = e.value
-                if rr is None:
-                    raise RuntimeError("native behave phase returned no RunResult")
-                phase_returncodes.append(int(rr.returncode))
-                last_cmd = rr.command
-        else:
-            cfg = RunConfig(
-                test_type=tt,
-                target_repo=target_repo,
-                shared_allure_results_dir=phase_allure,
-                artifacts_root=artifacts_root,
-                pytest_args=tuple(pytest_args),
-                behavex_args=tuple(behavex_args),
-                locust_args=tuple(locust_args),
-                locust_headless=True,
-                locust_users=int(locust_users),
-                locust_spawn_rate=int(locust_spawn_rate),
-                locust_run_time=str(locust_run_time),
-                locust_only_summary=bool(locust_only_summary),
-                run_id=f"{audit_run_id}-{key}",
-                last_test_type=key,
-                extra_env=extra,
-            )
-            gen = run_streaming(
-                cfg,
-                parent_env=parent_env,
-                artifacts_root=artifacts_root,
-                prepare_allure=False,
-                emit_done_marker=False,
-                sync_static=False,
-                run_framework_hooks=False,
-            )
-            try:
-                while True:
-                    yield next(gen)
-            except StopIteration as e:
-                rr = e.value
-                if rr is None:
-                    raise RuntimeError("audit phase returned no RunResult")
-                phase_returncodes.append(int(rr.returncode))
-                last_cmd = rr.command
+        cfg = RunConfig(
+            test_type=tt,
+            target_repo=target_repo,
+            shared_allure_results_dir=phase_allure,
+            artifacts_root=artifacts_root,
+            pytest_args=tuple(pytest_args),
+            behavex_args=tuple(behavex_args),
+            behave_native_args=tuple(native_behave_args),
+            locust_args=tuple(locust_args),
+            locust_headless=True,
+            locust_users=int(locust_users),
+            locust_spawn_rate=int(locust_spawn_rate),
+            locust_run_time=str(locust_run_time),
+            locust_only_summary=bool(locust_only_summary),
+            run_id=f"{audit_run_id}-{key}",
+            last_test_type=key,
+            extra_env=extra,
+        )
+        gen = run_streaming(
+            cfg,
+            parent_env=parent_env,
+            artifacts_root=artifacts_root,
+            prepare_allure=False,
+            emit_done_marker=False,
+            sync_static=False,
+            run_framework_hooks=False,
+        )
+        try:
+            while True:
+                yield next(gen)
+        except StopIteration as e:
+            rr = e.value
+            if rr is None:
+                raise RuntimeError("audit phase returned no RunResult")
+            phase_returncodes.append(int(rr.returncode))
+            last_cmd = rr.command
 
         if key == "locust":
             try:
@@ -451,7 +458,6 @@ def run_audit_streaming(
     frameworks: list[str] = ["pytest", "behavex"]
     if enable_native_behave:
         frameworks.append("behave_native")
-    frameworks.append("locust")
 
     for fw in frameworks:
         out_dir = default_report_paths(artifacts_root=artifacts_root).report_dir / fw
@@ -671,5 +677,82 @@ def run_native_behave(
                 proc.wait(timeout=30.0)
             finished = time.time()
             return RunResult(returncode=int(rc), started_at=started, finished_at=finished, command=cmd)
+
+
+def _collect_behavex_allure_json_into_shared_dir(
+    *,
+    target_repo: Path,
+    artifacts_root: Path,
+    shared_allure_results_dir: Path,
+) -> int:
+    """
+    BehaveX may write Allure JSON into its own output folder tree instead of the orchestrator's
+    isolated ``shared_allure_results_dir``. Copy any emitted ``*.json`` files from known BehaveX
+    internal locations into the shared dir so Allure generation never sees an empty folder.
+    """
+    target_repo = target_repo.expanduser().resolve()
+    artifacts_root = artifacts_root.expanduser().resolve()
+    shared_allure_results_dir = shared_allure_results_dir.expanduser().resolve()
+    shared_allure_results_dir.mkdir(parents=True, exist_ok=True)
+
+    candidates: list[Path] = []
+
+    # Primary orchestrator BehaveX output folder (set by command builder: artifacts/behave_reports)
+    candidates.append(artifacts_root / "behave_reports" / "behave" / "allure")
+    candidates.append(artifacts_root / "behave_reports" / "allure")
+
+    # Legacy BehaveX output folder(s)
+    candidates.append(artifacts_root / "behavex-output" / "behave" / "allure")
+    candidates.append(artifacts_root / "behavex-output" / "allure")
+
+    # Repo-relative defaults some BehaveX versions/plugins use
+    candidates.append(target_repo / "behavex_output" / "behave" / "allure")
+    candidates.append(target_repo / "output" / "behave" / "allure")
+    candidates.append(target_repo / "output" / "allure")
+
+    copied = 0
+    seen: set[str] = set()
+    for src_dir in candidates:
+        if not src_dir.is_dir():
+            continue
+        try:
+            for p in src_dir.rglob("*.json"):
+                if not p.is_file():
+                    continue
+                # Avoid double-copying identical file names from multiple candidate roots.
+                if p.name in seen:
+                    continue
+                dest = shared_allure_results_dir / p.name
+                if dest.exists():
+                    continue
+                try:
+                    shutil.copy2(p, dest)
+                    seen.add(p.name)
+                    copied += 1
+                except OSError:
+                    continue
+        except OSError:
+            continue
+
+    return copied
+
+
+def _mirror_locust_html_into_artifacts_root(*, shared_allure_results_dir: Path, artifacts_root: Path) -> Path | None:
+    """
+    Locust writes native HTML via ``--html``. We keep it inside the isolated shared results dir,
+    but also mirror it into ``artifacts_root/locust_report.html`` so the static sync code can publish it.
+    """
+    shared_allure_results_dir = shared_allure_results_dir.expanduser().resolve()
+    artifacts_root = artifacts_root.expanduser().resolve()
+    src = shared_allure_results_dir / "locust_report.html"
+    if not src.is_file():
+        return None
+    artifacts_root.mkdir(parents=True, exist_ok=True)
+    dst = (artifacts_root / "locust_report.html").resolve()
+    try:
+        shutil.copy2(src, dst)
+    except OSError:
+        return None
+    return dst
 
 

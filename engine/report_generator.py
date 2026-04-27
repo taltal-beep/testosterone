@@ -183,7 +183,8 @@ def generate_allure_reports(
     out: dict[str, tuple[bool, str, float | None]] = {}
 
     if not frameworks:
-        frameworks = ["pytest", "behavex", "locust", "behave_native"]
+        # Locust produces native HTML (not Allure JSON) and must not run through Allure CLI.
+        frameworks = ["pytest", "behavex", "behave_native"]
     for fw in frameworks:
         fw_results = results_dir / fw
         fw_results.mkdir(parents=True, exist_ok=True)

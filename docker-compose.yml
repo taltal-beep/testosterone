@@ -1,0 +1,89 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: uqo-postgres
+    ports:
+      # PostgreSQL (DB) exposed on host for local tools
+      - "5432:5432"
+    environment:
+      # Default DB credentials (change for production)
+      POSTGRES_USER: uqo_admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: uqo_history
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - uqo-net
+
+  minio:
+    image: minio/minio
+    container_name: uqo-minio
+    command: server /data --console-address ":9001"
+    ports:
+      # MinIO S3-compatible API
+      - "9000:9000"
+      # MinIO admin console
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+      # Helps the Console UI redirect correctly on macOS Docker networking
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || (command -v nc >/dev/null 2>&1 && nc -z localhost 9000) || (command -v bash >/dev/null 2>&1 && bash -lc '>/dev/tcp/127.0.0.1/9000') || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks:
+      - uqo-net
+
+  minio-init:
+    image: minio/mc
+    container_name: uqo-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      set -eu
+      echo "Waiting for MinIO..."
+      until mc alias set uqo-minio http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" >/dev/null 2>&1; do
+        sleep 2
+      done
+      echo "Creating bucket uqo-artifacts (if missing)..."
+      mc mb --ignore-existing uqo-minio/uqo-artifacts
+      echo "Setting public download policy on uqo-artifacts..."
+      mc anonymous set download uqo-minio/uqo-artifacts
+      echo "MinIO initialization complete."
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+    networks:
+      - uqo-net
+    restart: "no"
+
+  allure:
+    image: frankescobar/allure-docker-service
+    container_name: uqo-allure
+    ports:
+      # Allure Docker Service UI/API
+      - "5050:5050"
+    environment:
+      CHECK_RESULTS_EVERY_SECONDS: 5
+      KEEP_HISTORY: "1"
+    volumes:
+      - allure_results:/app/allure-results
+    networks:
+      - uqo-net
+
+networks:
+  uqo-net:
+    name: uqo-net
+    driver: bridge
+
+volumes:
+  postgres_data:
+  minio_data:
+  allure_results:
