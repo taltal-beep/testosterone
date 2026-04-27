@@ -17,8 +17,6 @@ STATIC_DIR: Final[Path] = ORCHESTRATOR_ROOT / "static"
 # Allure HTML output directories (single-file bundle under each directory).
 # New layout: ``static/allure_reports/<framework>/index.html``
 STATIC_ALLURE_REPORTS_DIR: Final[Path] = STATIC_DIR / "allure_reports"
-STATIC_ALLURE_UNIFIED_DIR: Final[Path] = STATIC_ALLURE_REPORTS_DIR / "unified"
-STATIC_ALLURE_UNIFIED_INDEX: Final[Path] = STATIC_ALLURE_UNIFIED_DIR / "index.html"
 
 # Backwards-compatible legacy paths (kept for older snapshots / links).
 STATIC_ALLURE_REPORT_DIR: Final[Path] = STATIC_DIR / "allure_report"

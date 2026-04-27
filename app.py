@@ -47,11 +47,13 @@ from engine.integrations import (
 from engine.metrics import list_run_history, write_metrics_json
 from engine.metrics_extractor import to_run_metrics
 from engine.run_history import (
-    compare_latest_two,
-    list_recent_runs,
+    RunStatus,
+    create_run,
+    get_run,
     list_run_sessions,
     record_completed_run,
     snapshot_files_for_download,
+    update_run_status,
 )
 from engine.paths import STATIC_BEHAVE_INDEX
 from engine.report_generator import STATIC_ALLURE_HTML, STATIC_ALLURE_INDEX
@@ -111,10 +113,11 @@ def _append_line(line: str) -> None:
         st.session_state.log_lines = st.session_state.log_lines[-max_lines:]
 
 
-def _start_worker(cfg: RunConfig) -> None:
+def _start_worker(cfg: RunConfig, *, db_run_id: str | None = None) -> None:
     events_q: queue.Queue[LogEvent | RunResult] = queue.Queue()
 
     def worker() -> None:
+        # If the subprocess runner crashes, ensure the DB doesn't get stuck in RUNNING forever.
         try:
             gen = run_streaming(cfg, artifacts_root=default_artifacts_root())
             while True:
@@ -127,6 +130,16 @@ def _start_worker(cfg: RunConfig) -> None:
                     break
         except Exception as exc:
             import traceback
+
+            if db_run_id:
+                try:
+                    update_run_status(
+                        db_run_id,
+                        status=RunStatus.FAILED,
+                        metadata={"error": str(exc), "traceback": traceback.format_exc()},
+                    )
+                except Exception:
+                    pass
 
             events_q.put(
                 LogEvent(
@@ -146,6 +159,7 @@ def _start_worker(cfg: RunConfig) -> None:
     st.session_state.last_run_id = None
     st.session_state.is_audit_mode = False
     st.session_state.audit_phase_display = ""
+    st.session_state.active_db_run_id = db_run_id
     t.start()
 
 
@@ -219,6 +233,7 @@ def _apply_run_result_to_session(item: RunResult) -> None:
     st.session_state.run_completed = True
     env = item.command.env
     st.session_state.last_run_id = env.get("UQO_AUDIT_RUN_ID") or env.get("UQO_RUN_ID")
+    st.session_state.active_db_run_id = None
     if item.audit_mode:
         if item.audit_health_pct is not None:
             st.session_state["audit_health_pct"] = item.audit_health_pct
@@ -343,70 +358,6 @@ st.caption("Streamlit orchestrator — zero-touch wrapper; runs tools via subpro
 
 sandbox_path = str(sample_target_repo().resolve())
 
-with st.sidebar:
-    st.subheader("Sandbox")
-    st.checkbox(
-        "Load sandbox mode",
-        key="sandbox_mode",
-        on_change=_on_sandbox_toggle,
-        disabled=bool(st.session_state.running),
-    )
-    if st.session_state.sandbox_mode:
-        st.session_state["target_repo"] = sandbox_path
-        ok_api, api_msg = start_sandbox_if_needed()
-        if not ok_api:
-            st.error(api_msg)
-        else:
-            st.caption(api_msg)
-        st.caption(f"Mock API base: `{MOCK_BASE_URL}`")
-        col_stop, _ = st.columns([1, 1])
-        with col_stop:
-            if st.button("Stop Sandbox API", disabled=bool(st.session_state.running)):
-                stop_sandbox_if_managed()
-                st.toast("Sandbox API stopped.")
-                st.rerun()
-        if is_managed_process_alive():
-            st.caption("Orchestrator is managing the uvicorn process for this session.")
-
-    st.divider()
-    st.subheader("History")
-    try:
-        recent = list_recent_runs(limit=20)
-    except Exception:
-        recent = []
-    cmp = None
-    try:
-        cmp = compare_latest_two()
-    except Exception:
-        cmp = None
-    if cmp and cmp.get("summary_markdown"):
-        st.markdown(cmp["summary_markdown"])
-    elif cmp and len(recent) >= 2:
-        st.caption("Comparison needs Allure timing fields from at least two runs with results.")
-
-    if recent:
-        labels = [f"{r.run_id[:8]}… · {r.test_kind} · rc={r.returncode}" for r in recent]
-        pick = st.selectbox("Recorded runs", options=range(len(recent)), format_func=lambda i: labels[i])
-        sel = recent[int(pick)]
-        st.caption(f"**Run ID:** `{sel.run_id}`")
-        if sel.metrics_duration_ms is not None:
-            st.caption(f"Allure aggregate span: **{sel.metrics_duration_ms} ms** · cases: **{sel.total_tests or 0}**")
-        if sel.avg_case_ms is not None:
-            st.caption(f"Approx. per-case span: **{sel.avg_case_ms:.2f} ms**")
-        files = snapshot_files_for_download(record=sel)
-        for i, (label, fpath) in enumerate(files):
-            if fpath.is_file():
-                st.download_button(
-                    f"Download {label}",
-                    data=fpath.read_bytes(),
-                    file_name=f"{sel.run_id[:8]}_{label.replace('/', '_')}",
-                    key=f"hist_dl_{sel.run_id}_{i}",
-                )
-        if not files:
-            st.caption("No snapshot files (reports were not mirrored when this run finished).")
-    else:
-        st.caption("No runs in the database yet. Finish a run to record metadata and snapshots.")
-
 tab_exec, tab_analytics, tab_history, tab_integrations = st.tabs(
     ["Execution", "Analytics", "History", "Integrations"]
 )
@@ -416,194 +367,235 @@ artifacts_root = _report_svc.artifacts_root
 paths = _report_svc.report_paths()
 
 with tab_exec:
-    st.subheader("Run configuration")
+    left_cfg, right_run = st.columns([1, 2], gap="large")
 
-    target_repo_str = st.text_input(
-        "Target repository path",
-        value=st.session_state.get("target_repo", "") if not st.session_state.sandbox_mode else sandbox_path,
-        placeholder="/abs/path/to/test-repo or ./relative/path",
-        disabled=bool(st.session_state.running) or bool(st.session_state.sandbox_mode),
-    )
-    if st.session_state.sandbox_mode:
-        target_repo_str = sandbox_path
-        st.session_state["target_repo"] = sandbox_path
-    else:
-        st.session_state["target_repo"] = target_repo_str
+    with left_cfg:
+        st.subheader("Run configuration")
 
-    test_type = st.selectbox(
-        "Test type",
-        options=[t.value for t in TestType],
-        index=0,
-        disabled=bool(st.session_state.running),
-    )
-
-    locust_users = 10
-    locust_spawn_rate = 2
-    locust_run_time = "1m"
-    locust_only_summary = True
-    if test_type == TestType.LOCUST.value:
-        st.markdown("**Locust (headless)**")
-        locust_users = int(
-            st.slider("Users (-u)", min_value=1, max_value=500, value=int(st.session_state.get("locust_users", 10)))
-        )
-        locust_spawn_rate = int(
-            st.slider(
-                "Spawn rate (-r)",
-                min_value=1,
-                max_value=500,
-                value=int(st.session_state.get("locust_spawn_rate", 2)),
-            )
-        )
-        locust_run_time = st.text_input(
-            "Run time (-t)",
-            value=str(st.session_state.get("locust_run_time", "1m")),
-            help="Examples: 10s, 1m, 5m",
-        )
-        locust_only_summary = bool(
+        with st.container(border=True):
+            _section_label("SANDBOX")
             st.checkbox(
-                "Only summary",
-                value=bool(st.session_state.get("locust_only_summary", True)),
-                help="Keeps logs cleaner in headless mode.",
+                "Load sandbox mode",
+                key="sandbox_mode",
+                on_change=_on_sandbox_toggle,
+                disabled=bool(st.session_state.running),
             )
+            if st.session_state.sandbox_mode:
+                st.session_state["target_repo"] = sandbox_path
+                ok_api, api_msg = start_sandbox_if_needed()
+                if not ok_api:
+                    st.error(api_msg)
+                else:
+                    st.caption(api_msg)
+                st.caption(f"Mock API base: `{MOCK_BASE_URL}`")
+                col_stop, _ = st.columns([1, 1])
+                with col_stop:
+                    if st.button("Stop Sandbox API", disabled=bool(st.session_state.running), key="stop_sandbox_btn"):
+                        stop_sandbox_if_managed()
+                        st.toast("Sandbox API stopped.")
+                        st.rerun()
+                if is_managed_process_alive():
+                    st.caption("Orchestrator is managing the uvicorn process for this session.")
+
+        target_repo_str = st.text_input(
+            "Target repository path",
+            value=st.session_state.get("target_repo", "") if not st.session_state.sandbox_mode else sandbox_path,
+            placeholder="/abs/path/to/test-repo or ./relative/path",
+            disabled=bool(st.session_state.running) or bool(st.session_state.sandbox_mode),
         )
-        st.session_state["locust_users"] = locust_users
-        st.session_state["locust_spawn_rate"] = locust_spawn_rate
-        st.session_state["locust_run_time"] = locust_run_time
-        st.session_state["locust_only_summary"] = locust_only_summary
+        if st.session_state.sandbox_mode:
+            target_repo_str = sandbox_path
+            st.session_state["target_repo"] = sandbox_path
+        else:
+            st.session_state["target_repo"] = target_repo_str
 
-    extra_args = st.text_input(
-        "Extra CLI args (space-separated)",
-        value=str(st.session_state.get("extra_args", "")),
-        placeholder="e.g. -m smoke -q",
-        disabled=bool(st.session_state.running),
-    )
-    st.session_state["extra_args"] = extra_args
-
-    st.number_input(
-        "Console buffer (lines)",
-        min_value=200,
-        max_value=20000,
-        step=200,
-        key="log_max_lines",
-        disabled=bool(st.session_state.running),
-    )
-
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
-        run_clicked = st.button("Run", type="secondary", disabled=bool(st.session_state.running))
-    with col_b:
-        audit_clicked = st.button(
-            "Run full system audit",
-            type="secondary",
+        test_type = st.selectbox(
+            "Test type",
+            options=[t.value for t in TestType],
+            index=0,
             disabled=bool(st.session_state.running),
         )
-    with col_c:
-        clear_clicked = st.button("Clear console", type="secondary", disabled=bool(st.session_state.running))
 
-    if clear_clicked:
-        st.session_state.log_lines = []
-
-    target_repo = coerce_path(target_repo_str) if target_repo_str else Path(".")
-    ok, msg = validate_target_repo(target_repo)
-    if not ok:
-        st.warning(f"Target repo: {msg}")
-
-    if run_clicked:
-        if not ok:
-            st.error(f"Cannot run: {msg}")
-        else:
-            argv_extra = [a for a in extra_args.split() if a.strip()]
-            cfg = RunConfig(
-                test_type=TestType(test_type),
-                target_repo=target_repo,
-                shared_allure_results_dir=Path(f"artifacts/allure-results/{test_type}"),
-                artifacts_root=Path("artifacts"),
-                pytest_args=argv_extra if test_type == TestType.PYTEST.value else (),
-                behavex_args=argv_extra if test_type == TestType.BEHAVEX.value else (),
-                locust_args=argv_extra if test_type == TestType.LOCUST.value else (),
-                locust_headless=True,
-                locust_users=int(locust_users),
-                locust_spawn_rate=int(locust_spawn_rate),
-                locust_run_time=str(locust_run_time),
-                locust_only_summary=bool(locust_only_summary),
-                last_test_type=test_type,
-            )
-            st.session_state["last_test_type"] = test_type
-            st.session_state["is_audit_mode"] = False
-            _append_line(f"Starting run: {cfg.test_type.value} in {cfg.target_repo}")
-            _start_worker(cfg)
-
-    if audit_clicked:
-        if not ok:
-            st.error(f"Cannot run audit: {msg}")
-        else:
-            argv_extra = [a for a in extra_args.split() if a.strip()]
-            st.session_state["last_test_type"] = "audit"
-            st.session_state["is_audit_mode"] = True
-            st.session_state["audit_phase_display"] = ""
-            st.session_state["audit_health_pct"] = None
-            st.session_state["audit_partial_success"] = False
-            _append_line(f"Starting Full System Audit in {target_repo}")
-            _start_worker_audit(
-                target_repo=target_repo,
-                pytest_args=tuple(argv_extra),
-                behavex_args=tuple(argv_extra),
-                native_behave_args=tuple(argv_extra),
-                run_native_behave=True,
-                locust_args=tuple(argv_extra),
-                locust_users=int(st.session_state.get("locust_users", locust_users)),
-                locust_spawn_rate=int(st.session_state.get("locust_spawn_rate", locust_spawn_rate)),
-                locust_run_time=str(st.session_state.get("locust_run_time", locust_run_time)),
-                locust_only_summary=bool(st.session_state.get("locust_only_summary", locust_only_summary)),
-            )
-
-    st.divider()
-    col_out, col_stat = st.columns([2, 1], gap="large")
-
-    with col_out:
-        st.subheader("Live output")
-        console_text = "\n".join(st.session_state.log_lines)
-        if st.session_state.running:
-            with st.status(_execution_status_title(), expanded=True):
-                st.caption(
-                    "When the subprocess exits, the orchestrator runs **report sync** "
-                    "(copying HTML into `./static/`). Expect a short pause before the run is marked complete."
-                    if not st.session_state.get("is_audit_mode")
-                    else "Audit runs Pytest, BehaveX, Native Behave (optional), then Locust. Each framework writes to its own Allure results folder."
+        locust_users = 10
+        locust_spawn_rate = 2
+        locust_run_time = "1m"
+        locust_only_summary = True
+        if test_type == TestType.LOCUST.value:
+            st.markdown("**Locust (headless)**")
+            locust_users = int(
+                st.slider(
+                    "Users (-u)", min_value=1, max_value=500, value=int(st.session_state.get("locust_users", 10))
                 )
-                st.code(console_text or "(starting…)", language="text")
-        else:
-            st.code(console_text or "(no output yet)", language="text")
-
-    with col_stat:
-        st.subheader("Run status")
-        st.write(f"**Running:** {bool(st.session_state.running)}")
-        st.write(f"**Artifacts:** `{default_artifacts_root()}`")
-
-        if st.session_state.last_result is not None:
-            rr: RunResult = st.session_state.last_result
-            if rr.audit_mode and rr.audit_partial_success:
-                st.warning(
-                    f"Audit finished with exit code {rr.returncode} (partial success: phases {rr.audit_phase_returncodes})"
+            )
+            locust_spawn_rate = int(
+                st.slider(
+                    "Spawn rate (-r)",
+                    min_value=1,
+                    max_value=500,
+                    value=int(st.session_state.get("locust_spawn_rate", 2)),
                 )
+            )
+            locust_run_time = st.text_input(
+                "Run time (-t)",
+                value=str(st.session_state.get("locust_run_time", "1m")),
+                help="Examples: 10s, 1m, 5m",
+            )
+            locust_only_summary = bool(
+                st.checkbox(
+                    "Only summary",
+                    value=bool(st.session_state.get("locust_only_summary", True)),
+                    help="Keeps logs cleaner in headless mode.",
+                )
+            )
+            st.session_state["locust_users"] = locust_users
+            st.session_state["locust_spawn_rate"] = locust_spawn_rate
+            st.session_state["locust_run_time"] = locust_run_time
+            st.session_state["locust_only_summary"] = locust_only_summary
+
+        extra_args = st.text_input(
+            "Extra CLI args (space-separated)",
+            value=str(st.session_state.get("extra_args", "")),
+            placeholder="e.g. -m smoke -q",
+            disabled=bool(st.session_state.running),
+        )
+        st.session_state["extra_args"] = extra_args
+
+        st.number_input(
+            "Console buffer (lines)",
+            min_value=200,
+            max_value=20000,
+            step=200,
+            key="log_max_lines",
+            disabled=bool(st.session_state.running),
+        )
+
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            run_clicked = st.button("Run", type="secondary", disabled=bool(st.session_state.running))
+        with col_b:
+            audit_clicked = st.button(
+                "Run full system audit",
+                type="secondary",
+                disabled=bool(st.session_state.running),
+            )
+        with col_c:
+            clear_clicked = st.button("Clear console", type="secondary", disabled=bool(st.session_state.running))
+
+        if clear_clicked:
+            st.session_state.log_lines = []
+
+        target_repo = coerce_path(target_repo_str) if target_repo_str else Path(".")
+        ok, msg = validate_target_repo(target_repo)
+        if not ok:
+            st.warning(f"Target repo: {msg}")
+
+        if run_clicked:
+            if not ok:
+                st.error(f"Cannot run: {msg}")
             else:
-                st.success(f"Finished with exit code {rr.returncode}")
-            payload = {
-                "returncode": rr.returncode,
-                "duration_s": round(rr.finished_at - rr.started_at, 3),
-                "cwd": str(rr.command.cwd),
-                "argv": rr.command.argv,
-                "allure_results_dir": str(rr.command.env.get("UQO_SHARED_ALLURE_RESULTS_DIR", "")),
-            }
-            if rr.audit_mode:
-                payload["audit"] = {
-                    "phases_returncode": list(rr.audit_phase_returncodes),
-                    "partial_success": rr.audit_partial_success,
-                    "health_pct": rr.audit_health_pct,
+                argv_extra = [a for a in extra_args.split() if a.strip()]
+                # Create a DB row BEFORE execution so History shows it immediately.
+                try:
+                    db_run_uuid = create_run(status=RunStatus.RUNNING, metadata={"test_kind": str(test_type)})
+                    db_run_id = str(db_run_uuid)
+                except Exception:
+                    db_run_id = None
+                cfg = RunConfig(
+                    test_type=TestType(test_type),
+                    target_repo=target_repo,
+                    shared_allure_results_dir=Path(f"artifacts/allure-results/{test_type}"),
+                    artifacts_root=Path("artifacts"),
+                    pytest_args=argv_extra if test_type == TestType.PYTEST.value else (),
+                    behavex_args=argv_extra if test_type == TestType.BEHAVEX.value else (),
+                    behave_native_args=argv_extra if test_type == TestType.BEHAVE_NATIVE.value else (),
+                    locust_args=argv_extra if test_type == TestType.LOCUST.value else (),
+                    locust_headless=True,
+                    locust_users=int(locust_users),
+                    locust_spawn_rate=int(locust_spawn_rate),
+                    locust_run_time=str(locust_run_time),
+                    locust_only_summary=bool(locust_only_summary),
+                    last_test_type=test_type,
+                    run_id=db_run_id,
+                )
+                st.session_state["last_test_type"] = test_type
+                st.session_state["is_audit_mode"] = False
+                _append_line(f"Starting run: {cfg.test_type.value} in {cfg.target_repo}")
+                _start_worker(cfg, db_run_id=db_run_id)
+
+        if audit_clicked:
+            if not ok:
+                st.error(f"Cannot run audit: {msg}")
+            else:
+                argv_extra = [a for a in extra_args.split() if a.strip()]
+                st.session_state["last_test_type"] = "audit"
+                st.session_state["is_audit_mode"] = True
+                st.session_state["audit_phase_display"] = ""
+                st.session_state["audit_health_pct"] = None
+                st.session_state["audit_partial_success"] = False
+                _append_line(f"Starting Full System Audit in {target_repo}")
+                _start_worker_audit(
+                    target_repo=target_repo,
+                    pytest_args=tuple(argv_extra),
+                    behavex_args=tuple(argv_extra),
+                    native_behave_args=tuple(argv_extra),
+                    run_native_behave=True,
+                    locust_args=tuple(argv_extra),
+                    locust_users=int(st.session_state.get("locust_users", locust_users)),
+                    locust_spawn_rate=int(st.session_state.get("locust_spawn_rate", locust_spawn_rate)),
+                    locust_run_time=str(st.session_state.get("locust_run_time", locust_run_time)),
+                    locust_only_summary=bool(st.session_state.get("locust_only_summary", locust_only_summary)),
+                )
+
+    with right_run:
+        col_out, col_stat = st.columns([2, 1], gap="large")
+
+        with col_out:
+            st.subheader("Live output")
+            console_text = "\n".join(st.session_state.log_lines)
+            if st.session_state.running:
+                with st.status(_execution_status_title(), expanded=True):
+                    st.caption(
+                        "When the subprocess exits, the orchestrator runs **report sync** "
+                        "(copying HTML into `./static/`). Expect a short pause before the run is marked complete."
+                        if not st.session_state.get("is_audit_mode")
+                        else "Audit runs Pytest, BehaveX, Native Behave (optional), then Locust. Each framework writes to its own Allure results folder."
+                    )
+                    st.code(console_text or "(starting…)", language="text")
+            else:
+                st.code(console_text or "(no output yet)", language="text")
+
+        with col_stat:
+            st.subheader("Run status")
+            st.write(f"**Running:** {bool(st.session_state.running)}")
+            st.write(f"**Artifacts:** `{default_artifacts_root()}`")
+            active_db = st.session_state.get("active_db_run_id")
+            if st.session_state.running and active_db:
+                st.info(f"DB status: RUNNING (run id `{str(active_db)[:8]}…`)")
+
+            if st.session_state.last_result is not None:
+                rr: RunResult = st.session_state.last_result
+                if rr.audit_mode and rr.audit_partial_success:
+                    st.warning(
+                        f"Audit finished with exit code {rr.returncode} (partial success: phases {rr.audit_phase_returncodes})"
+                    )
+                else:
+                    st.success(f"Finished with exit code {rr.returncode}")
+                payload = {
+                    "returncode": rr.returncode,
+                    "duration_s": round(rr.finished_at - rr.started_at, 3),
+                    "cwd": str(rr.command.cwd),
+                    "argv": rr.command.argv,
+                    "allure_results_dir": str(rr.command.env.get("UQO_SHARED_ALLURE_RESULTS_DIR", "")),
                 }
-            st.json(payload)
-        elif st.session_state.running:
-            st.info("Process is running. Logs update live above.")
+                if rr.audit_mode:
+                    payload["audit"] = {
+                        "phases_returncode": list(rr.audit_phase_returncodes),
+                        "partial_success": rr.audit_partial_success,
+                        "health_pct": rr.audit_health_pct,
+                    }
+                st.json(payload)
+            elif st.session_state.running:
+                st.info("Process is running. Logs update live above.")
 
 with tab_analytics:
     st.subheader("Analytics")
@@ -696,7 +688,7 @@ with tab_analytics:
     with st.container(border=True):
         _section_label("EXPORTS & METRICS")
         with st.expander("Export data", expanded=False):
-            ex1, ex2, ex3 = st.columns(3)
+            ex1, ex2 = st.columns(2)
             with ex1:
                 zip_clicked = st.button(
                     "Build ZIP",
@@ -705,19 +697,6 @@ with tab_analytics:
                     key="analytics_zip_btn",
                 )
             with ex2:
-                ok_html, msg_html, html_bytes = _report_svc.read_single_file_html()
-                if ok_html and html_bytes:
-                    st.download_button(
-                        "Download index.html",
-                        data=html_bytes,
-                        file_name="allure-report.html",
-                        mime="text/html",
-                        type="secondary",
-                        key="analytics_dl_html_btn",
-                    )
-                else:
-                    st.caption(msg_html)
-            with ex3:
                 metrics_clicked = st.button(
                     "Generate metrics.json",
                     type="secondary",
@@ -760,6 +739,9 @@ with tab_history:
         "Runs are grouped by session. Expand a row to open the reports captured for that run."
     )
 
+    if st.button("Refresh history", type="secondary", key="history_refresh_btn"):
+        st.rerun()
+
     try:
         sessions = list_run_sessions(limit=30)
     except Exception:
@@ -770,9 +752,18 @@ with tab_history:
     else:
         for s in sessions:
             ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(s.created_at)))
-            summary = f"rc={int(s.returncode)}"
+            status_str = str(getattr(s, "status", "") or "")
+            summary = f"status={status_str}" if status_str else f"rc={int(s.returncode)}"
             if s.total_tests is not None and s.passed is not None:
-                summary += f" · {int(s.passed)}/{int(s.total_tests)} passed"
+                extra = []
+                extra.append(f"{int(s.passed)}/{int(s.total_tests)} passed")
+                if getattr(s, "failed", None) is not None:
+                    extra.append(f"{int(getattr(s, 'failed'))} failed")
+                if getattr(s, "skipped", None) is not None:
+                    extra.append(f"{int(getattr(s, 'skipped'))} skipped")
+                if getattr(s, "broken", None) is not None:
+                    extra.append(f"{int(getattr(s, 'broken'))} broken")
+                summary += " · " + " · ".join(extra)
             if s.health_pct is not None:
                 summary += f" · health={float(s.health_pct):.1f}%"
 
@@ -781,17 +772,51 @@ with tab_history:
                 cache_buster = int(time.time())
 
                 # Only show buttons for reports that exist for this session.
-                order = [("pytest", "View Pytest"), ("behave_native", "View Behave"), ("locust", "View Locust"), ("behavex", "View BehaveX")]
+                order = [
+                    ("pytest", "View Pytest"),
+                    ("behave_native", "View Behave"),
+                    ("locust", "View Locust"),
+                    ("behavex", "View BehaveX"),
+                ]
                 present = [(k, label) for (k, label) in order if k in s.links_under_static]
                 if present:
                     cols = st.columns(len(present))
                     for i, (k, label) in enumerate(present):
                         with cols[i]:
+                            raw_link = s.links_under_static[k]
+                            if raw_link.startswith("http://") or raw_link.startswith("https://"):
+                                sep = "&" if "?" in raw_link else "?"
+                                hist_btn_url = f"{raw_link}{sep}t={cache_buster}"
+                            else:
+                                hist_btn_url = _streamlit_static_url(f"{raw_link}?t={cache_buster}")
                             st.link_button(
                                 label,
-                                _streamlit_static_url(f"{s.links_under_static[k]}?t={cache_buster}"),
+                                hist_btn_url,
+                                type="primary",
+                            )
+
+                rr = get_run(run_id=s.run_id)
+                if rr is not None:
+                    st.markdown("**Test summary**")
+                    cols = st.columns(4)
+                    cols[0].metric("Passed", int(rr.passed) if rr.passed is not None else 0)
+                    cols[1].metric("Failed", int(rr.failed) if getattr(rr, "failed", None) is not None else 0)
+                    cols[2].metric("Skipped", int(rr.skipped) if getattr(rr, "skipped", None) is not None else 0)
+                    cols[3].metric("Broken", int(rr.broken) if getattr(rr, "broken", None) is not None else 0)
+
+                files = snapshot_files_for_download(record=rr) if rr else []
+                with st.expander("Download Artifacts", expanded=False):
+                    if files:
+                        for i, (label, payload) in enumerate(files):
+                            st.download_button(
+                                label,
+                                data=payload,
+                                file_name=f"{s.run_id[:8]}_{label.replace('/', '_')}",
+                                key=f"hist_row_dl_{s.run_id}_{i}",
                                 type="secondary",
                             )
+                    else:
+                        st.caption("No captured artifacts for this run.")
 
     st.divider()
     st.subheader("Allure folder history (archives)")

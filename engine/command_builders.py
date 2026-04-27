@@ -12,6 +12,7 @@ class TestType(str, Enum):
     __test__ = False
     PYTEST = "pytest"
     BEHAVEX = "behavex"
+    BEHAVE_NATIVE = "behave_native"
     LOCUST = "locust"
 
 
@@ -25,6 +26,7 @@ class RunConfig:
     # Optional knobs (kept minimal for Phase 2 bootstrap)
     pytest_args: Sequence[str] = ()
     behavex_args: Sequence[str] = ()
+    behave_native_args: Sequence[str] = ()
     locust_args: Sequence[str] = ()
 
     # For locust convenience when running headless from orchestrator
@@ -86,6 +88,8 @@ def build_command(cfg: RunConfig, *, parent_env: Mapping[str, str]) -> BuiltComm
         argv = _build_pytest(cfg, shared_dir)
     elif cfg.test_type == TestType.BEHAVEX:
         argv = _build_behavex(cfg, shared_dir)
+    elif cfg.test_type == TestType.BEHAVE_NATIVE:
+        argv = _build_behave_native(cfg, shared_dir)
     elif cfg.test_type == TestType.LOCUST:
         argv = _build_locust(cfg, shared_dir)
     else:
@@ -98,6 +102,36 @@ def _build_pytest(cfg: RunConfig, shared_dir: Path) -> list[str]:
     argv: list[str] = ["pytest"]
     argv.extend(list(cfg.pytest_args))
     argv.extend(["--alluredir", str(shared_dir.resolve())])
+    return argv
+
+
+def _build_behave_native(cfg: RunConfig, shared_dir: Path) -> list[str]:
+    """
+    Native Behave CLI with Allure formatter.
+
+    Uses ``UQO_SHARED_ALLURE_RESULTS_DIR`` as the Allure output root so the orchestrator can
+    enforce per-framework paths (e.g. ``artifacts/allure-results/behave_native``).
+    """
+    # Per contract: output must be exactly cfg.shared_allure_results_dir
+    out_dir = cfg.shared_allure_results_dir.expanduser().resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir_str = str(cfg.shared_allure_results_dir.expanduser().resolve())
+
+    # Required flags (explicit, stable shape)
+    argv: list[str] = [
+        "behave",
+        "-f",
+        "allure_behave.formatter:AllureFormatter",
+        "-o",
+        out_dir_str,
+    ]
+    argv.extend(list(cfg.behave_native_args))
+
+    has_explicit_target = any(
+        (a and not str(a).startswith("-")) or str(a).endswith(".feature") or "--paths" in str(a) for a in cfg.behave_native_args
+    )
+    if not has_explicit_target:
+        argv.append(str((cfg.target_repo.expanduser().resolve() / "features").resolve()))
     return argv
 
 
@@ -162,8 +196,7 @@ def _build_behavex(cfg: RunConfig, shared_dir: Path) -> list[str]:
 
 
 def _build_locust(cfg: RunConfig, shared_dir: Path) -> list[str]:
-    # Locust doesn't natively emit Allure results; we rely on drop-in hook module.
-    # Runner sets UQO_SHARED_ALLURE_RESULTS_DIR and can inject PYTHONPATH later.
+    # Locust does not emit Allure JSON. We generate Locust's native HTML report instead.
     locustfile_path = (cfg.target_repo / cfg.locustfile).as_posix()
 
     # Use locust_custom (not "locust") so PYTHONPATH does not shadow site-packages `locust`.
@@ -188,11 +221,11 @@ def _build_locust(cfg: RunConfig, shared_dir: Path) -> list[str]:
     if "-t" not in argv and "--run-time" not in argv:
         argv.extend(["-t", str(cfg.locust_run_time)])
 
-    # Headless HTML report → artifacts/locust_report.html (mirrored to static/ by runners)
+    # Headless HTML report → <shared_allure_results_dir>/locust_report.html (mirrored to static/ by runners)
     if cfg.locust_headless and "--html" not in argv:
-        artifacts_root = (cfg.artifacts_root or Path("artifacts")).expanduser().resolve()
-        artifacts_root.mkdir(parents=True, exist_ok=True)
-        html_path = (artifacts_root / "locust_report.html").resolve()
+        shared_resolved = shared_dir.expanduser().resolve()
+        shared_resolved.mkdir(parents=True, exist_ok=True)
+        html_path = (shared_resolved / "locust_report.html").resolve()
         argv.extend(["--html", str(html_path)])
 
     # Encourage headless mode default if not provided; user can override.
