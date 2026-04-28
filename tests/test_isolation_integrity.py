@@ -20,18 +20,21 @@ from engine.runners import LogEvent, RunResult, run_audit_streaming, run_native_
 
 def test_run_streaming_does_not_override_shared_allure_results_dir(tmp_path: Path) -> None:
     """
-    When the UI passes a framework-scoped Allure results directory, the runner must not
-    replace it with a generic artifacts/allure-results root.
+    When the UI passes a framework-scoped Allure results directory, the runner must
+    isolate the subprocess under the run id instead of replacing it with a generic
+    artifacts/allure-results root or mutating the shared framework parent.
     """
 
     requested = tmp_path / "artifacts" / "allure-results" / "pytest"
     requested.mkdir(parents=True, exist_ok=True)
+    run_id = "rid-iso"
 
     cfg = RunConfig(
         test_type=TestType.PYTEST,
         target_repo=tmp_path,
         shared_allure_results_dir=requested,
         pytest_args=("-q",),
+        run_id=run_id,
     )
 
     captured: dict[str, Path] = {}
@@ -65,7 +68,7 @@ def test_run_streaming_does_not_override_shared_allure_results_dir(tmp_path: Pat
                 )
             )
 
-    assert captured.get("shared") == requested
+    assert captured.get("shared") == requested / run_id
 
 
 def test_audit_does_not_generate_unified_allure_html(tmp_path: Path) -> None:

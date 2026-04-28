@@ -383,6 +383,10 @@ def record_completed_run(
 
     ar = artifacts_root.expanduser().resolve()
     results_dir = ar / "allure-results"
+    if not rr.audit_mode:
+        scoped_results = env.get("UQO_SHARED_ALLURE_RESULTS_DIR")
+        if scoped_results:
+            results_dir = Path(scoped_results).expanduser().resolve()
     m = None
     try:
         if results_dir.is_dir():
