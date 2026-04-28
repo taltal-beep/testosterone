@@ -3,8 +3,8 @@ from __future__ import annotations
 import contextlib
 import os
 import queue
+import shlex
 import shutil
-import subprocess
 import sys
 import threading
 import time
@@ -13,7 +13,9 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Generator, Mapping, Optional, Sequence
 
-from .command_builders import BuiltCommand, RunConfig, TestType, build_command
+from engine.orchestrator import client as docker_client
+
+from .run_config import BuiltCommand, RunConfig, TestType, build_command
 from .paths import default_artifacts_root
 from .metrics_extractor import write_manual_locust_results_json
 from .report_generator import (
@@ -47,6 +49,179 @@ def _resolve_subprocess_argv(argv: list[str]) -> None:
     else:
         argv[:] = [sys.executable, "-m", base_cmd] + argv[1:]
 
+
+DOCKER_IMAGE = "python:3.11-slim"
+DOCKER_NETWORK = "uqo-net"
+DOCKER_MOUNT_POINT = "/app"
+
+
+def _host_repo_root() -> Path:
+    # Repo root is the parent of `engine/`.
+    return Path(__file__).resolve().parents[1]
+
+
+def _to_container_path(host_path: Path) -> str:
+    """
+    Convert a host path under the orchestrator repo into a container path under /app.
+    If the path is outside the repo root, fall back to /app (best-effort).
+    """
+    root = _host_repo_root()
+    try:
+        rel = host_path.expanduser().resolve().relative_to(root)
+    except Exception:
+        return DOCKER_MOUNT_POINT
+    return str(Path(DOCKER_MOUNT_POINT) / rel).replace("\\", "/")
+
+
+def _docker_env_from_cmd_env(env: Mapping[str, str]) -> dict[str, str]:
+    """
+    Keep env minimal: propagate the SUT URL, run ids, and common S3/MinIO credentials.
+    """
+    allow_prefixes = ("UQO_", "AWS_", "S3_", "MINIO_")
+    allow_exact = {"SUT_URL"}
+    out: dict[str, str] = {}
+    for k, v in env.items():
+        if k in allow_exact or k.startswith(allow_prefixes):
+            out[str(k)] = str(v)
+    return out
+
+
+def _run_in_ephemeral_container_streaming(
+    *,
+    run_id: str,
+    cmd: BuiltCommand,
+    cfg_timeout_s: float | None,
+    cfg_heartbeat_s: float,
+    emit: "callable[[str, str], None]",
+    log_path: Path,
+) -> tuple[int, float, float]:
+    """
+    Run `cmd` in a one-off Docker container and stream logs into `emit` and `log_path`.
+    Returns (returncode, started_at, finished_at).
+    """
+    started_at = time.time()
+    host_root = _host_repo_root()
+
+    if docker_client is None:
+        raise RuntimeError(
+            "Docker client is not available. Ensure the `docker` Python package is installed "
+            "and Docker Desktop (daemon) is running."
+        )
+
+    container_repo_root = DOCKER_MOUNT_POINT
+    container_cwd = _to_container_path(cmd.cwd)
+
+    # Rewrite orchestrator-defined paths that are host-absolute into /app-relative paths.
+    env_for_container = dict(cmd.env)
+    shared_dir = env_for_container.get("UQO_SHARED_ALLURE_RESULTS_DIR")
+    if shared_dir:
+        env_for_container["UQO_SHARED_ALLURE_RESULTS_DIR"] = _to_container_path(Path(shared_dir))
+
+    # Ensure the container can import orchestrator/drop-in code when plugins need it.
+    pp_parts = [str(Path(container_repo_root) / "drop_in_hooks"), str(container_repo_root)]
+    existing_pp = env_for_container.get("PYTHONPATH")
+    if existing_pp:
+        pp_parts.append(existing_pp)
+    env_for_container["PYTHONPATH"] = os.pathsep.join([p for p in pp_parts if p])
+    env_for_container["PYTHONUNBUFFERED"] = "1"
+
+    # Install deps then execute the plugin command.
+    plugin_cmd = shlex.join(list(cmd.argv))
+    bash_cmd = f"pip install --no-cache-dir -r {shlex.quote(str(Path(container_repo_root) / 'requirements.txt'))} && cd {shlex.quote(container_cwd)} && {plugin_cmd}"
+
+    os.makedirs(str(log_path.parent), exist_ok=True)
+
+    container = None
+    returncode: int | None = None
+    try:
+        emit("meta", f"[docker] image={DOCKER_IMAGE} network={DOCKER_NETWORK}\n")
+        emit("meta", f"[docker] mount {host_root} -> {container_repo_root}\n")
+        emit("meta", f"[docker] $ (cwd={container_cwd}) bash -lc {bash_cmd}\n")
+
+        container = docker_client.containers.run(
+            DOCKER_IMAGE,
+            command=["bash", "-lc", bash_cmd],
+            detach=True,
+            network=DOCKER_NETWORK,
+            working_dir=container_repo_root,
+            volumes={str(host_root): {"bind": container_repo_root, "mode": "rw"}},
+            environment=_docker_env_from_cmd_env(env_for_container),
+            name=f"uqo-run-{run_id[:12]}",
+            auto_remove=False,
+        )
+
+        q: queue.Queue[LogEvent | None] = queue.Queue()
+
+        def reader_thread() -> None:
+            try:
+                with open(log_path, "a", encoding="utf-8") as lf:
+                    for chunk in container.logs(stream=True, follow=True):
+                        try:
+                            s = chunk.decode("utf-8", errors="replace")
+                        except Exception:
+                            s = str(chunk)
+                        # Preserve newlines so the UI matches the log file.
+                        for line in s.splitlines(True):
+                            lf.write(line)
+                            lf.flush()
+                            q.put(LogEvent(ts=time.time(), stream="stdout", line=line))
+            except Exception as exc:
+                q.put(LogEvent(ts=time.time(), stream="meta", line=f"[docker log stream error] {exc}\n"))
+            finally:
+                q.put(None)
+
+        t_out = threading.Thread(target=reader_thread, daemon=True)
+        t_out.start()
+
+        last_output_ts = time.time()
+        while True:
+            try:
+                item = q.get(timeout=0.1)
+                if item is None:
+                    # Log thread ended; container might still be exiting.
+                    pass
+                else:
+                    last_output_ts = time.time()
+                    emit(item.stream, item.line)
+            except queue.Empty:
+                pass
+
+            now = time.time()
+            if float(cfg_heartbeat_s) > 0 and (now - last_output_ts) >= float(cfg_heartbeat_s):
+                last_output_ts = now
+                emit("meta", "[still running...]\n")
+
+            if cfg_timeout_s is not None and (now - started_at) >= float(cfg_timeout_s):
+                emit("meta", f"[timeout after {cfg_timeout_s}s] terminating container...\n")
+                with contextlib.suppress(Exception):
+                    container.kill()
+                returncode = 124
+                break
+
+            with contextlib.suppress(Exception):
+                container.reload()
+            if getattr(container, "status", "") == "exited":
+                try:
+                    w = container.wait()
+                    returncode = int(w.get("StatusCode", 1))
+                except Exception:
+                    returncode = 1
+                break
+
+        t_out.join(timeout=2.0)
+        if returncode is None:
+            try:
+                w = container.wait()
+                returncode = int(w.get("StatusCode", 1))
+            except Exception:
+                returncode = 1
+
+        finished_at = time.time()
+        return int(returncode), started_at, finished_at
+    finally:
+        if container is not None:
+            with contextlib.suppress(Exception):
+                container.remove(force=True)
 
 @dataclass(frozen=True)
 class LogEvent:
@@ -126,25 +301,11 @@ def run_streaming(
         pythonpath_parts.append(existing_pp)
     cmd.env["PYTHONPATH"] = os.pathsep.join(pythonpath_parts)
 
-    if cfg.test_type.value == "behavex":
-        site_packages = _current_site_packages()
-        if site_packages:
-            cmd.env["PYTHONPATH"] = os.pathsep.join([site_packages, cmd.env.get("PYTHONPATH", "")]).strip(os.pathsep)
-
-    if cfg.test_type.value == "pytest":
-        existing = cmd.env.get("PYTEST_ADDOPTS", "")
-        injection = "-p drop_in_hooks.pytest_custom.conftest"
-        if injection not in existing:
-            cmd.env["PYTEST_ADDOPTS"] = (existing + " " + injection).strip()
-        opts = cmd.env.get("PYTEST_ADDOPTS", "")
-        padded = f" {opts} "
-        extra = []
-        if " -s " not in padded and "--capture=no" not in opts:
-            extra.append("-s")
-        if "--color=yes" not in opts and "--color=no" not in opts:
-            extra.append("--color=yes")
-        if extra:
-            cmd.env["PYTEST_ADDOPTS"] = (opts + " " + " ".join(extra)).strip()
+    # Plugins may optionally request a site-packages prefix (BehaveX runs often need this
+    # when launched from Streamlit workers where sys.path differs from the target venv).
+    site_packages = cmd.env.pop("_UQO_BEHAVEX_SITE_PACKAGES", None)
+    if site_packages:
+        cmd.env["PYTHONPATH"] = os.pathsep.join([site_packages, cmd.env.get("PYTHONPATH", "")]).strip(os.pathsep)
 
     cmd.env["PYTHONUNBUFFERED"] = "1"
 
@@ -154,175 +315,108 @@ def run_streaming(
         q.put(LogEvent(ts=time.time(), stream=stream, line=line))
 
     emit("meta", f"$ UQO_RUN_ID={run_id}\n")
-    _resolve_subprocess_argv(cmd.argv)
     emit("meta", f"$ (cwd={cmd.cwd}) {' '.join(cmd.argv)}\n")
 
     os.makedirs(str(cfg.shared_allure_results_dir), exist_ok=True)
-    proc = subprocess.Popen(
-        cmd.argv,
-        cwd=str(cmd.cwd),
-        env=cmd.env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
+    local_run_log = (_host_repo_root() / "logs" / f"{run_id}.log").resolve()
+
+    def emit_from_container(stream: str, line: str) -> None:
+        q.put(LogEvent(ts=time.time(), stream=stream, line=line))
+
+    rc, started_at, finished_at = _run_in_ephemeral_container_streaming(
+        run_id=run_id,
+        cmd=cmd,
+        cfg_timeout_s=cfg.timeout_s,
+        cfg_heartbeat_s=cfg.heartbeat_s,
+        emit=emit_from_container,
+        log_path=local_run_log,
     )
 
-    def reader_thread() -> None:
-        fh = proc.stdout
-        if fh is None:
-            return
+    # Drain any remaining queued output.
+    drain_deadline = time.time() + 2.0
+    while time.time() < drain_deadline:
         try:
-            for line in iter(fh.readline, ""):
-                emit("stdout", line)
-        finally:
-            with contextlib.suppress(Exception):
-                fh.close()
-
-    t_out = threading.Thread(target=reader_thread, daemon=True)
-    t_out.start()
-
-    last_output_ts = time.time()
-
-    while True:
-        try:
-            item = q.get(timeout=0.1)
+            item = q.get_nowait()
             if item is not None:
-                last_output_ts = time.time()
                 yield item
         except queue.Empty:
+            break
+
+    yield LogEvent(ts=finished_at, stream="meta", line=f"\n[exit code {int(rc)}]\n")
+    if emit_done_marker:
+        yield LogEvent(
+            ts=time.time(),
+            stream="meta",
+            line=f"{UQO_DONE_MARKER} returncode={int(rc)}\n",
+        )
+
+    # Framework-specific lifecycle fixes that must occur immediately after the run exits,
+    # before any report generation/sync that relies on the shared Allure results directory.
+    if run_framework_hooks and cfg.test_type.value == "behavex":
+        try:
+            moved = _collect_behavex_allure_json_into_shared_dir(
+                target_repo=cmd.cwd,
+                artifacts_root=artifacts_root,
+                shared_allure_results_dir=shared_allure_dir,
+            )
+            if moved:
+                yield LogEvent(
+                    ts=time.time(),
+                    stream="meta",
+                    line=f"[behavex allure json] copied {moved} *.json into {shared_allure_dir}\n",
+                )
+        except Exception:
             pass
 
-        now = time.time()
-        if float(cfg.heartbeat_s) > 0 and (now - last_output_ts) >= float(cfg.heartbeat_s):
-            last_output_ts = now
-            yield LogEvent(ts=now, stream="meta", line="[still running...]\n")
-
-        if cfg.timeout_s is not None and (now - started_at) >= float(cfg.timeout_s):
-            yield LogEvent(ts=now, stream="meta", line=f"[timeout after {cfg.timeout_s}s] terminating...\n")
-            with contextlib.suppress(Exception):
-                proc.terminate()
-            try:
-                proc.wait(timeout=5.0)
-            except Exception:
-                with contextlib.suppress(Exception):
-                    proc.kill()
-            with contextlib.suppress(Exception):
-                proc.wait(timeout=30.0)
-            rc = proc.poll()
-            finished_at = time.time()
-            yield LogEvent(ts=finished_at, stream="meta", line=f"\n[exit code {rc if rc is not None else 124}]\n")
-            if emit_done_marker:
-                yield LogEvent(
-                    ts=time.time(),
-                    stream="meta",
-                    line=f"{UQO_DONE_MARKER} returncode={int(rc if rc is not None else 124)}\n",
-                )
-            if sync_static:
-                yield LogEvent(
-                    ts=time.time(),
-                    stream="meta",
-                    line="[report sync] copying artifacts into ./static/ …\n",
-                )
-                sync_all_reports_to_static(artifacts_root=artifacts_root, run_id=run_id)
-            return RunResult(
-                returncode=int(rc if rc is not None else 124),
-                started_at=started_at,
-                finished_at=finished_at,
-                command=cmd,
+    if run_framework_hooks and cfg.test_type.value == "behavex":
+        try:
+            dest = collect_behavex_native_report(
+                target_repo=cmd.cwd,
+                run_id=run_id,
+                artifacts_root=artifacts_root,
             )
+            if dest:
+                yield LogEvent(ts=time.time(), stream="meta", line=f"[behavex native report] {dest}\n")
+        except Exception:
+            pass
 
-        rc = proc.poll()
-        if rc is not None:
-            drain_deadline = time.time() + 2.0
-            while time.time() < drain_deadline:
-                try:
-                    item = q.get_nowait()
-                    if item is not None:
-                        yield item
-                except queue.Empty:
-                    break
+    if run_framework_hooks and cfg.test_type.value == "locust":
+        try:
+            # Locust's --html output is written into the isolated shared results directory.
+            # Mirror it into artifacts_root so existing static sync code can publish it.
+            _mirror_locust_html_into_artifacts_root(
+                shared_allure_results_dir=shared_allure_dir,
+                artifacts_root=artifacts_root,
+            )
+            lp = publish_locust_html_to_static(artifacts_root=artifacts_root)
+            if lp:
+                yield LogEvent(ts=time.time(), stream="meta", line=f"[locust html mirror] {lp}\n")
+        except Exception:
+            pass
 
-            t_out.join(timeout=2.0)
-            with contextlib.suppress(Exception):
-                proc.wait(timeout=30.0)
-
-            finished_at = time.time()
-            yield LogEvent(ts=finished_at, stream="meta", line=f"\n[exit code {rc}]\n")
-            if emit_done_marker:
+    if sync_static:
+        try:
+            yield LogEvent(
+                ts=time.time(),
+                stream="meta",
+                line="[report sync] copying artifacts into ./static/ …\n",
+            )
+            synced = sync_all_reports_to_static(artifacts_root=artifacts_root, run_id=run_id)
+            if any(synced.values()):
                 yield LogEvent(
                     ts=time.time(),
                     stream="meta",
-                    line=f"{UQO_DONE_MARKER} returncode={int(rc)}\n",
+                    line=f"[static sync] { {k: str(v) for k, v in synced.items() if v} }\n",
                 )
+        except Exception:
+            pass
 
-            # Framework-specific lifecycle fixes that must occur immediately after the subprocess exits,
-            # before any report generation/sync that relies on the shared Allure results directory.
-            if run_framework_hooks and cfg.test_type.value == "behavex":
-                try:
-                    moved = _collect_behavex_allure_json_into_shared_dir(
-                        target_repo=cmd.cwd,
-                        artifacts_root=artifacts_root,
-                        shared_allure_results_dir=shared_allure_dir,
-                    )
-                    if moved:
-                        yield LogEvent(
-                            ts=time.time(),
-                            stream="meta",
-                            line=f"[behavex allure json] copied {moved} *.json into {shared_allure_dir}\n",
-                        )
-                except Exception:
-                    pass
-
-            if run_framework_hooks and cfg.test_type.value == "behavex":
-                try:
-                    dest = collect_behavex_native_report(
-                        target_repo=cmd.cwd,
-                        run_id=run_id,
-                        artifacts_root=artifacts_root,
-                    )
-                    if dest:
-                        yield LogEvent(ts=time.time(), stream="meta", line=f"[behavex native report] {dest}\n")
-                except Exception:
-                    pass
-
-            if run_framework_hooks and cfg.test_type.value == "locust":
-                try:
-                    # Locust's --html output is written into the isolated shared results directory.
-                    # Mirror it into artifacts_root so existing static sync code can publish it.
-                    _mirror_locust_html_into_artifacts_root(
-                        shared_allure_results_dir=shared_allure_dir,
-                        artifacts_root=artifacts_root,
-                    )
-                    lp = publish_locust_html_to_static(artifacts_root=artifacts_root)
-                    if lp:
-                        yield LogEvent(ts=time.time(), stream="meta", line=f"[locust html mirror] {lp}\n")
-                except Exception:
-                    pass
-
-            if sync_static:
-                try:
-                    yield LogEvent(
-                        ts=time.time(),
-                        stream="meta",
-                        line="[report sync] copying artifacts into ./static/ …\n",
-                    )
-                    synced = sync_all_reports_to_static(artifacts_root=artifacts_root, run_id=run_id)
-                    if any(synced.values()):
-                        yield LogEvent(
-                            ts=time.time(),
-                            stream="meta",
-                            line=f"[static sync] { {k: str(v) for k, v in synced.items() if v} }\n",
-                        )
-                except Exception:
-                    pass
-
-            return RunResult(
-                returncode=int(rc),
-                started_at=started_at,
-                finished_at=finished_at,
-                command=cmd,
-            )
+    return RunResult(
+        returncode=int(rc),
+        started_at=started_at,
+        finished_at=finished_at,
+        command=cmd,
+    )
 
 
 def run_audit_streaming(
@@ -599,84 +693,33 @@ def run_native_behave(
 
     yield LogEvent(ts=time.time(), stream="meta", line=f"[behave_native] running: {' '.join(argv)}\n")
 
-    q: queue.Queue[LogEvent] = queue.Queue()
+    run_id_eff = str(run_id or uuid.uuid4())
+    local_run_log = (_host_repo_root() / "logs" / f"{run_id_eff}.log").resolve()
+
+    q: queue.Queue[LogEvent | None] = queue.Queue()
 
     def _emit(stream: str, line: str) -> None:
         q.put(LogEvent(ts=time.time(), stream=stream, line=line))
 
-    try:
-        proc = subprocess.Popen(
-            argv,
-            cwd=str(cmd.cwd),
-            env=cmd.env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-        )
-    except FileNotFoundError:
-        finished = time.time()
-        yield LogEvent(ts=time.time(), stream="stderr", line="[behave_native] behave CLI not found\n")
-        return RunResult(returncode=127, started_at=started, finished_at=finished, command=cmd)
+    rc, started_at, finished_at = _run_in_ephemeral_container_streaming(
+        run_id=run_id_eff,
+        cmd=cmd,
+        cfg_timeout_s=60.0,
+        cfg_heartbeat_s=10.0,
+        emit=_emit,
+        log_path=local_run_log,
+    )
 
-    def _reader() -> None:
-        fh = proc.stdout
-        if fh is None:
-            return
+    drain_deadline = time.time() + 2.0
+    while time.time() < drain_deadline:
         try:
-            for line in iter(fh.readline, ""):
-                _emit("stdout", line)
-        finally:
-            with contextlib.suppress(Exception):
-                fh.close()
-
-    t = threading.Thread(target=_reader, daemon=True)
-    t.start()
-
-    timeout_s = 60.0
-    last_output_ts = time.time()
-
-    while True:
-        try:
-            ev = q.get(timeout=0.1)
-            last_output_ts = time.time()
-            yield ev
+            item = q.get_nowait()
+            if item is not None:
+                yield item
         except queue.Empty:
-            pass
+            break
 
-        now = time.time()
-        if (now - started) >= timeout_s:
-            yield LogEvent(ts=now, stream="meta", line=f"[behave_native] timeout after {timeout_s:.0f}s; terminating...\n")
-            with contextlib.suppress(Exception):
-                proc.terminate()
-            try:
-                proc.wait(timeout=5.0)
-            except Exception:
-                with contextlib.suppress(Exception):
-                    proc.kill()
-            with contextlib.suppress(Exception):
-                proc.wait(timeout=30.0)
-            finished = time.time()
-            return RunResult(returncode=124, started_at=started, finished_at=finished, command=cmd)
-
-        # Keep UI responsive even if Behave is quiet.
-        if (now - last_output_ts) >= 10.0:
-            last_output_ts = now
-            yield LogEvent(ts=now, stream="meta", line="[behave_native] [still running...]\n")
-
-        rc = proc.poll()
-        if rc is not None:
-            drain_deadline = time.time() + 2.0
-            while time.time() < drain_deadline:
-                try:
-                    yield q.get_nowait()
-                except queue.Empty:
-                    break
-            t.join(timeout=2.0)
-            with contextlib.suppress(Exception):
-                proc.wait(timeout=30.0)
-            finished = time.time()
-            return RunResult(returncode=int(rc), started_at=started, finished_at=finished, command=cmd)
+    return RunResult(returncode=int(rc), started_at=started_at, finished_at=finished_at, command=cmd)
 
 
 def _collect_behavex_allure_json_into_shared_dir(
