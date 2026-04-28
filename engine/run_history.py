@@ -111,6 +111,40 @@ def create_db_and_tables() -> None:
     SQLModel.metadata.create_all(engine)
 
 
+def cleanup_orphaned_runs(*, note: str = "Orphaned due to system crash") -> int:
+    """
+    On startup, mark any RUNNING runs as FAILED.
+
+    This prevents the UI from displaying runs that were interrupted by a crash or a force-quit
+    (Streamlit reload, kernel restart, machine reboot, etc.) as if they were still executing.
+    """
+    create_db_and_tables()
+    engine = get_engine()
+    now = _utcnow()
+    updated = 0
+    stmt = select(RunRecord).where(RunRecord.status == RunStatus.RUNNING)
+    with Session(engine) as session:
+        rows = session.exec(stmt).all()
+        for r in rows:
+            try:
+                merged = dict(r.metadata_ or {})
+                merged.setdefault("error", "orphaned")
+                merged.setdefault("error_message", str(note))
+                merged.setdefault("orphaned_at", float(time.time()))
+                r.metadata_ = merged
+                r.status = RunStatus.FAILED
+                r.end_time = now
+                session.add(r)
+                updated += 1
+            except Exception:
+                continue
+        if updated:
+            session.commit()
+    if updated:
+        logger.warning("Marked %s orphaned RUNNING run(s) as FAILED (%s).", updated, note)
+    return int(updated)
+
+
 def _run_uuid_from_external(run_id: str) -> uuid.UUID:
     """
     Convert the orchestrator's external run id (string) into a stable UUID.
@@ -414,6 +448,13 @@ def record_completed_run(
         )
 
     snap_prefix = _snapshot_reports(run_id=run_id, artifacts_root=ar)
+    # Also upload raw Allure results into MinIO under a layout compatible with
+    # Allure Docker Service "multiple projects" mode:
+    #   s3://<bucket>/projects/<run_id>/results/<allure result files>
+    try:
+        _upload_allure_results_to_s3(run_id=str(run_id), artifacts_root=ar, test_kind=str(test_kind))
+    except Exception:
+        pass
 
     target_repo = str(rr.command.cwd)
     payload: dict[str, Any] = {
@@ -436,8 +477,72 @@ def record_completed_run(
         "snapshot_dir": snap_prefix,
         "audit_json": str(audit_blob) if audit_blob else None,
     }
+    if int(rr.returncode) == 124:
+        payload.setdefault("error", "timeout")
+        payload.setdefault("error_message", "Container exceeded timeout and was force-killed.")
     status = RunStatus.COMPLETED if int(rr.returncode) == 0 else RunStatus.FAILED
     update_run_status(run_id, status=status, metadata=payload)
+
+
+def _upload_allure_results_to_s3(*, run_id: str, artifacts_root: Path, test_kind: str) -> None:
+    """
+    Upload raw Allure results into MinIO for Allure Docker Service.
+
+    We intentionally *flatten* the framework subfolders into a single project results folder
+    for per-run Allure server reports.
+    """
+    try:
+        storage = get_artifact_s3()
+    except Exception as exc:
+        logger.warning("Raw Allure results upload skipped (MinIO not configured): %s", exc)
+        return
+
+    ar = artifacts_root.expanduser().resolve()
+    src_root = (ar / "allure-results").resolve()
+    if not src_root.is_dir():
+        return
+
+    # Select which framework folders to include.
+    include_dirs: list[Path] = []
+    if str(test_kind).strip().lower() == "audit":
+        for fw in ("pytest", "behavex", "behave_native"):
+            p = (src_root / fw).resolve()
+            if p.is_dir():
+                include_dirs.append(p)
+    else:
+        p = (src_root / str(test_kind)).resolve()
+        if p.is_dir():
+            include_dirs.append(p)
+
+    if not include_dirs:
+        return
+
+    prefix = f"projects/{run_id}/results"
+
+    uploaded = 0
+    seen: set[str] = set()
+    for base in include_dirs:
+        for path in base.rglob("*"):
+            if not path.is_file():
+                continue
+            # Keep only valid Allure result payloads/attachments.
+            # - JSON: result/container/categories/executors
+            # - attachments: binary/text blobs referenced by tests
+            if path.suffix.lower() not in {".json", ".txt", ".png", ".jpg", ".jpeg", ".gif", ".xml", ".csv", ".log"}:
+                # Still allow attachment files without suffix.
+                if path.suffix:
+                    continue
+            name = path.name
+            # Avoid overwriting same-named files across frameworks (best-effort).
+            if name in seen:
+                continue
+            seen.add(name)
+            key = f"{prefix}/{name}"
+            storage.upload_file(path, key)
+            uploaded += 1
+
+    if uploaded:
+        logger.info("Uploaded %s Allure result file(s) to s3://%s/%s", uploaded, storage.bucket_name, prefix)
 
 
 def init_schema(db_path: Path | None = None) -> None:

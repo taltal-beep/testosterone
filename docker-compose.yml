@@ -74,9 +74,42 @@ services:
       CHECK_RESULTS_EVERY_SECONDS: 5
       KEEP_HISTORY: "1"
     volumes:
-      - allure_results:/app/allure-results
+      # Multiple-project mode: each project lives under /app/projects/<run_id>/
+      - allure_projects:/app/projects
     networks:
       - uqo-net
+
+  allure-sync:
+    image: minio/mc
+    container_name: uqo-allure-sync
+    depends_on:
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      set -eu
+      echo "[allure-sync] configuring MinIO alias..."
+      until mc alias set uqo-minio http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" >/dev/null 2>&1; do
+        sleep 2
+      done
+      echo "[allure-sync] mirroring s3://$${BUCKET_NAME:-uqo-artifacts}/projects -> /app/projects ..."
+      mkdir -p /app/projects
+      # Mirror is idempotent and keeps Allure projects updated from MinIO.
+      while true; do
+        mc mirror --overwrite uqo-minio/"$${BUCKET_NAME:-uqo-artifacts}"/projects /app/projects >/dev/null 2>&1 || true
+        sleep 5
+      done
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+      BUCKET_NAME: ${BUCKET_NAME:-uqo-artifacts}
+    volumes:
+      - allure_projects:/app/projects
+    networks:
+      - uqo-net
+    restart: unless-stopped
 
 networks:
   uqo-net:
@@ -86,4 +119,4 @@ networks:
 volumes:
   postgres_data:
   minio_data:
-  allure_results:
+  allure_projects:

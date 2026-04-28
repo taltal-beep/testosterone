@@ -55,6 +55,16 @@ DOCKER_NETWORK = "uqo-net"
 DOCKER_MOUNT_POINT = "/app"
 
 
+def _default_container_timeout_s() -> float:
+    v = (os.getenv("UQO_CONTAINER_TIMEOUT_S") or "").strip()
+    if not v:
+        return 600.0
+    try:
+        return float(v)
+    except ValueError:
+        return 600.0
+
+
 def _host_repo_root() -> Path:
     # Repo root is the parent of `engine/`.
     return Path(__file__).resolve().parents[1]
@@ -290,6 +300,10 @@ def run_streaming(
         run_id=run_id,
     )
 
+    # Safety net: enforce a default timeout (prevents runaway containers).
+    if cfg.timeout_s is None:
+        cfg = replace(cfg, timeout_s=_default_container_timeout_s())
+
     cmd = build_command(cfg, parent_env=parent_env or os.environ)
 
     orchestrator_root = Path(__file__).resolve().parents[1]
@@ -494,6 +508,7 @@ def run_audit_streaming(
             run_id=f"{audit_run_id}-{key}",
             last_test_type=key,
             extra_env=extra,
+            timeout_s=_default_container_timeout_s(),
         )
         gen = run_streaming(
             cfg,

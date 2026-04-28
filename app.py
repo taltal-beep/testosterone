@@ -48,6 +48,7 @@ from engine.metrics import list_run_history, write_metrics_json
 from engine.metrics_extractor import to_run_metrics
 from engine.run_history import (
     RunStatus,
+    cleanup_orphaned_runs,
     create_run,
     get_run,
     list_run_sessions,
@@ -351,6 +352,14 @@ st.set_page_config(page_title="Unified Quality Orchestration", layout="wide")
 
 init_state()
 
+# Startup safety: if the app was force-killed mid-run, don't leave DB entries stuck in RUNNING.
+if "uqo_startup_cleanup_done" not in st.session_state:
+    try:
+        cleanup_orphaned_runs()
+    except Exception:
+        pass
+    st.session_state["uqo_startup_cleanup_done"] = True
+
 _drain_events()
 
 st.title("Unified Quality Orchestration & Reporting Dashboard")
@@ -500,6 +509,7 @@ with tab_exec:
                     db_run_id = str(db_run_uuid)
                 except Exception:
                     db_run_id = None
+                timeout_s = float(os.getenv("UQO_CONTAINER_TIMEOUT_S", "600"))
                 cfg = RunConfig(
                     test_type=TestType(test_type),
                     target_repo=target_repo,
@@ -516,6 +526,7 @@ with tab_exec:
                     locust_only_summary=bool(locust_only_summary),
                     last_test_type=test_type,
                     run_id=db_run_id,
+                    timeout_s=timeout_s,
                 )
                 st.session_state["last_test_type"] = test_type
                 st.session_state["is_audit_mode"] = False
@@ -770,6 +781,15 @@ with tab_history:
             title = f"{ts} · {s.run_id[:8]}… · {summary}"
             with st.expander(title):
                 cache_buster = int(time.time())
+
+                # Allure Server link (per run_id project) when available.
+                if (s.status == RunStatus.COMPLETED) or (str(getattr(s, "status", "")) == str(RunStatus.COMPLETED)):
+                    allure_base = (os.getenv("ALLURE_SERVER_URL") or "http://localhost:5050").rstrip("/")
+                    st.link_button(
+                        "Open Allure Server report",
+                        f"{allure_base}/allure-docker-service/projects/{s.run_id}/reports/latest/index.html",
+                        type="secondary",
+                    )
 
                 # Only show buttons for reports that exist for this session.
                 order = [
