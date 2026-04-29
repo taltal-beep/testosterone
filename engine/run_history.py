@@ -55,6 +55,10 @@ class RunRecord(SQLModel, table=True):
       SQLAlchemy's `.metadata`.
     """
 
+    # Streamlit hot-reload can import this module multiple times within the same process,
+    # reusing the same SQLAlchemy MetaData instance. Allow redefining the table safely.
+    __table_args__ = {"extend_existing": True}
+
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
     status: RunStatus = Field(default=RunStatus.PENDING, index=True)
     start_time: Optional[datetime] = Field(default=None)

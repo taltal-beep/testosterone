@@ -5,6 +5,7 @@ import os
 import queue
 import shlex
 import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -112,11 +113,107 @@ def _run_in_ephemeral_container_streaming(
     started_at = time.time()
     host_root = _host_repo_root()
 
+    # When Docker is unavailable (common in local pytest / CI), fall back to a direct
+    # local subprocess runner while preserving the same streaming contract.
     if docker_client is None:
-        raise RuntimeError(
-            "Docker client is not available. Ensure the `docker` Python package is installed "
-            "and Docker Desktop (daemon) is running."
-        )
+        os.makedirs(str(log_path.parent), exist_ok=True)
+
+        argv = list(cmd.argv)
+        _resolve_subprocess_argv(argv)
+
+        emit("meta", "[runner] docker unavailable; falling back to local subprocess\n")
+        emit("meta", f"$ (cwd={cmd.cwd}) {' '.join(argv)}\n")
+
+        q: queue.Queue[LogEvent | None] = queue.Queue()
+        proc: subprocess.Popen[str] | None = None
+
+        try:
+            with open(log_path, "a", encoding="utf-8") as lf:
+                proc = subprocess.Popen(
+                    argv,
+                    cwd=str(cmd.cwd),
+                    env=dict(cmd.env),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                )
+
+                def reader_thread() -> None:
+                    try:
+                        assert proc is not None
+                        out = proc.stdout
+                        if out is None:
+                            q.put(LogEvent(ts=time.time(), stream="meta", line="[subprocess] no stdout pipe\n"))
+                            return
+                        for line in out:
+                            lf.write(line)
+                            lf.flush()
+                            q.put(LogEvent(ts=time.time(), stream="stdout", line=line))
+                    except Exception as exc:
+                        q.put(LogEvent(ts=time.time(), stream="meta", line=f"[subprocess stream error] {exc}\n"))
+                    finally:
+                        q.put(None)
+
+                t_out = threading.Thread(target=reader_thread, daemon=True)
+                t_out.start()
+
+                last_output_ts = time.time()
+                returncode: int | None = None
+
+                while True:
+                    try:
+                        item = q.get(timeout=0.1)
+                        if item is None:
+                            pass
+                        else:
+                            last_output_ts = time.time()
+                            emit(item.stream, item.line)
+                    except queue.Empty:
+                        pass
+
+                    now = time.time()
+                    if float(cfg_heartbeat_s) > 0 and (now - last_output_ts) >= float(cfg_heartbeat_s):
+                        last_output_ts = now
+                        emit("meta", "[still running...]\n")
+
+                    if cfg_timeout_s is not None and (now - started_at) >= float(cfg_timeout_s):
+                        emit("meta", f"[timeout after {cfg_timeout_s}s] terminating subprocess...\n")
+                        with contextlib.suppress(Exception):
+                            assert proc is not None
+                            proc.kill()
+                        returncode = 124
+                        break
+
+                    assert proc is not None
+                    polled = proc.poll()
+                    if polled is not None:
+                        returncode = int(polled)
+                        break
+
+                t_out.join(timeout=2.0)
+                if returncode is None and proc is not None:
+                    with contextlib.suppress(Exception):
+                        returncode = int(proc.wait(timeout=1.0))
+                if returncode is None:
+                    returncode = 1
+
+                finished_at = time.time()
+                return int(returncode), started_at, finished_at
+        except FileNotFoundError as exc:
+            finished_at = time.time()
+            emit("meta", f"[subprocess error] {exc}\n")
+            return 127, started_at, finished_at
+        except Exception as exc:
+            finished_at = time.time()
+            emit("meta", f"[subprocess error] {exc}\n")
+            return 1, started_at, finished_at
+        finally:
+            if proc is not None:
+                with contextlib.suppress(Exception):
+                    proc.kill()
+                with contextlib.suppress(Exception):
+                    proc.wait(timeout=0.5)
 
     container_repo_root = DOCKER_MOUNT_POINT
     container_cwd = _to_container_path(cmd.cwd)

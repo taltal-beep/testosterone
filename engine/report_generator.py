@@ -71,7 +71,13 @@ def _invoke_allure_generate(
 ) -> subprocess.CompletedProcess[str]:
     """Thin wrapper so tests can inject ``subprocess_run`` without patching ``subprocess``."""
     runner = subprocess_run or subprocess.run
-    return runner(cmd, capture_output=True, text=True, check=False)
+    # Allure CLI (Java) may attempt to collect analytics by resolving the local hostname,
+    # which can fail in sandboxed / restricted environments (e.g. CI, IDE sandboxes).
+    # Disable analytics to keep report generation deterministic and offline-safe.
+    env = dict(os.environ)
+    env.setdefault("ALLURE_NO_ANALYTICS", "1")
+    env.setdefault("ALLURE_ANALYTICS_DISABLED", "1")
+    return runner(cmd, capture_output=True, text=True, check=False, env=env)
 
 
 def compute_system_health_pct(results_dir: Path) -> float | None:
