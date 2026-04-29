@@ -3,12 +3,25 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Mapping, Protocol
 
-import pluggy
+try:
+    import pluggy  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+    pluggy = None  # type: ignore[assignment]
 
 from engine.command_builders import RunConfig
 
-hookspec = pluggy.HookspecMarker("uqo")
-hookimpl = pluggy.HookimplMarker("uqo")
+if pluggy is not None:
+    hookspec = pluggy.HookspecMarker("uqo")
+    hookimpl = pluggy.HookimplMarker("uqo")
+else:  # pragma: no cover
+    def _noop_marker(*args, **kwargs):  # type: ignore[no-redef]
+        def _decorator(fn):
+            return fn
+
+        return _decorator
+
+    hookspec = _noop_marker
+    hookimpl = _noop_marker
 
 
 class BaseRunnerSpec(Protocol):

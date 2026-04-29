@@ -10,15 +10,23 @@ import importlib.util
 import sys
 from pathlib import Path
 
-import pluggy
-import docker
-
 from engine.specs import BaseRunnerSpec
+
+# Keep import-time failures from breaking the UI when optional deps are missing.
+try:
+    import pluggy  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+    pluggy = None  # type: ignore[assignment]
+
+try:
+    import docker  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+    docker = None  # type: ignore[assignment]
 
 # Docker client for the local Docker Desktop socket (macOS dev).
 # Keep import-time failures from breaking the UI (e.g., Docker Desktop not running).
 try:
-    client = docker.from_env()
+    client = docker.from_env() if docker is not None else None
 except Exception:  # pragma: no cover
     client = None
 
@@ -53,6 +61,11 @@ def load_plugins(pm: pluggy.PluginManager) -> None:
 
 
 def create_plugin_manager(*, load_dropins: bool = True) -> pluggy.PluginManager:
+    if pluggy is None:  # pragma: no cover
+        raise RuntimeError(
+            "Optional dependency 'pluggy' is not installed. "
+            "Install it (e.g. `pip install -r requirements.txt`) to enable plugins."
+        )
     pm = pluggy.PluginManager("uqo")
     pm.add_hookspecs(BaseRunnerSpec)
 

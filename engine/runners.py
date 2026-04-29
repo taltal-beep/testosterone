@@ -15,7 +15,7 @@ from typing import Generator, Mapping, Optional, Sequence
 
 from engine.orchestrator import client as docker_client
 
-from .run_config import BuiltCommand, RunConfig, TestType, build_command
+from .command_builders import BuiltCommand, RunConfig, TestType, build_command
 from .paths import default_artifacts_root
 from .metrics_extractor import write_manual_locust_results_json
 from .report_generator import (
