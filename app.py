@@ -798,27 +798,14 @@ with tab_exec:
         locust_run_time = str(st.session_state.get("locust_run_time", "1m"))
         locust_only_summary = bool(st.session_state.get("locust_only_summary", True))
 
-        col_a, col_b, col_c = st.columns(3)
+        col_a, col_b = st.columns(2)
         with col_a:
             run_clicked = st.button("Run", type="primary", disabled=bool(st.session_state.running))
         with col_b:
-            audit_clicked = st.button(
-                "Run full system audit",
-                type="secondary",
-                disabled=bool(st.session_state.running),
-            )
-        with col_c:
             clear_clicked = st.button("Clear console", type="secondary", disabled=bool(st.session_state.running))
 
         if clear_clicked:
             st.session_state.log_lines = []
-
-        audit_target = (
-            coerce_path(str(updated[0].get("targetRepoPath") or ".")) if updated else Path(".")
-        )
-        ok, msg = validate_target_repo(audit_target)
-        if not ok:
-            st.warning(f"Target repo (audit / first card): {msg}")
 
         if run_clicked:
             bad: list[str] = []
@@ -875,30 +862,6 @@ with tab_exec:
                 st.session_state["is_audit_mode"] = False
                 _append_line(f"Starting {len(run_cfgs)} run(s)…")
                 _start_worker_multi(run_cfgs, db_run_ids=db_run_ids)
-
-        if audit_clicked:
-            if not ok:
-                st.error(f"Cannot run audit: {msg}")
-            else:
-                argv_extra = [a for a in str(updated[0].get("cliArgs") or "").split() if a.strip()] if updated else []
-                st.session_state["last_test_type"] = "audit"
-                st.session_state["is_audit_mode"] = True
-                st.session_state["audit_phase_display"] = ""
-                st.session_state["audit_health_pct"] = None
-                st.session_state["audit_partial_success"] = False
-                _append_line(f"Starting Full System Audit in {audit_target}")
-                _start_worker_audit(
-                    target_repo=audit_target,
-                    pytest_args=tuple(argv_extra),
-                    behavex_args=tuple(argv_extra),
-                    native_behave_args=tuple(argv_extra),
-                    run_native_behave=True,
-                    locust_args=tuple(argv_extra),
-                    locust_users=int(locust_users),
-                    locust_spawn_rate=int(locust_spawn_rate),
-                    locust_run_time=str(locust_run_time),
-                    locust_only_summary=bool(locust_only_summary),
-                )
 
     with right_run:
         col_out, col_stat = st.columns([2, 1], gap="large")
