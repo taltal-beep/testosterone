@@ -48,7 +48,7 @@ def stream_multi_run(
     db_run_ids: list[str | None],
     run_streaming_fn: Callable[..., Iterable[LogEvent]],
     update_run_status_fn: Callable[..., None],
-    failed_status: Any = _RunStatus.FAILED,
+    failed_status: Any = "FAILED",
 ) -> Iterable[LogEvent | RunResult]:
     """
     Run multiple configurations as one UI batch.
