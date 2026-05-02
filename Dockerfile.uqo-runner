@@ -1,0 +1,38 @@
+ARG UQO_RUNNER_BASE=python:3.11.9-slim-bookworm
+
+FROM ${UQO_RUNNER_BASE} AS builder
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /build
+COPY pyproject.toml README.md ./
+COPY uqo_core ./uqo_core
+
+RUN python -m pip install --upgrade pip build && \
+    python -m build --wheel --outdir /dist
+
+FROM ${UQO_RUNNER_BASE} AS runtime
+
+ARG UQO_VERSION=dev
+ARG UQO_COMMIT_SHA=unknown
+ARG UQO_CREATED=unknown
+
+LABEL org.opencontainers.image.title="uqo-runner" \
+      org.opencontainers.image.description="Prebuilt runner image for Unified Quality Orchestration CI execution." \
+      org.opencontainers.image.version="${UQO_VERSION}" \
+      org.opencontainers.image.revision="${UQO_COMMIT_SHA}" \
+      org.opencontainers.image.created="${UQO_CREATED}"
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /workspace
+COPY --from=builder /dist/*.whl /tmp/
+RUN python -m pip install /tmp/*.whl && rm -rf /tmp/*.whl
+
+ENTRYPOINT ["uqo"]
+CMD ["run", "--help"]

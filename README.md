@@ -338,6 +338,8 @@ Supported inputs:
 - `ghost-mode` (`auto` by default; `true` forces `--ghost`, `false` forces `--no-ghost`)
 - `stream-json` (`false` by default)
 - `persist` (`true` by default)
+- `runner-image` (empty by default; sets `UQO_RUNNER_IMAGE` for the execution engine)
+- `runner-prebuilt` (`auto` by default; `true` skips runtime dependency install inside the runner container, `false` forces legacy install path)
 - `python-version` (`3.11` by default)
 
 Action outputs:
@@ -359,6 +361,8 @@ include:
 
 variables:
   UQO_CONFIG_PATH: ".uqo/config.yaml"
+  UQO_RUNNER_IMAGE: "docker.io/ariel-evn/uqo-runner:v1"
+  UQO_RUNNER_PREBUILT: "true"
 ```
 
 Both wrappers call the same contract:
@@ -366,6 +370,15 @@ Both wrappers call the same contract:
 ```bash
 uqo run --config <path> --ci [--ghost|--no-ghost]
 ```
+
+GitLab template variables:
+
+- `UQO_CONFIG_PATH` (required; path to config YAML)
+- `UQO_GHOST_MODE` (`auto` by default)
+- `UQO_STREAM_JSON` (`false` by default)
+- `UQO_PERSIST` (`true` by default)
+- `UQO_RUNNER_IMAGE` (empty by default; set to prebuilt image reference)
+- `UQO_RUNNER_PREBUILT` (`auto` by default; `true|false|auto`)
 
 ### Required secrets and variables
 
@@ -379,10 +392,13 @@ Set these in your CI provider when persistence/artifact upload is enabled:
 
 - `exit_code=2`: invalid config path or schema; verify `--config` points to a valid YAML file.
 - `exit_code=3`: infrastructure dependency issue (Docker/DB/network/credentials); check DB and storage env vars.
+- Runner image pull errors: verify image reference, registry auth, and network egress; this is reported as infrastructure failure (`exit_code=3`).
 - Missing `run_id` output: run did not produce a terminal summary run entry; inspect `summary_json` and `uqo-output.ndjson`.
 - Upload/report link failures: verify MinIO credentials and bucket permissions for CI runner identity.
 
 Release gate for wrappers is documented in [`docs/release_checklist_phase2_ci.md`](docs/release_checklist_phase2_ci.md).
 
 Ghost-mode release gate is documented in [`docs/release_checklist_phase2_ghost_mode.md`](docs/release_checklist_phase2_ghost_mode.md).
+
+Runner image release gate is documented in [`docs/release_checklist_phase2_runner_image.md`](docs/release_checklist_phase2_runner_image.md).
 

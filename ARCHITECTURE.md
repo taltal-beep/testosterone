@@ -56,7 +56,9 @@ Runtime output directories such as `artifacts/`, `logs/`, and `static/` are gene
    - `shared_allure_results_dir`: usually `artifacts/allure-results/<test_type>`.
    - framework-specific args and optional Locust headless settings.
 3. `uqo_core.runners.run_streaming()` prepares the result directory, injects `UQO_RUN_ID`, and calls `build_command()`.
-4. The runner starts a `python:3.11-slim` container on Docker network `uqo-net`, mounts the orchestrator repo to `/app`, installs `requirements.txt`, changes into the target repo path inside the mount, and executes the command.
+4. The runner starts a container on Docker network `uqo-net` (default image `python:3.11-slim`, override via `UQO_RUNNER_IMAGE`), mounts the orchestrator repo to `/app`, and executes the command.
+   - Legacy mode installs `requirements.txt` at runtime.
+   - Prebuilt mode (`UQO_RUNNER_PREBUILT=true` or auto with a custom image) skips runtime dependency installation.
 5. Container logs are streamed to the adapter and written under `logs/<run_id>.log`.
 6. After completion, framework-specific fixups run:
    - BehaveX JSON may be copied from known BehaveX output locations into the shared Allure directory.

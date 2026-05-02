@@ -40,12 +40,23 @@ def test_extract_summary_uses_last_summary_json_line() -> None:
     assert summary["runs"][0]["run_id"] == "rid-1"
 
 
+def test_parse_runner_prebuilt_normalizes_values() -> None:
+    module = _load_wrapper_module()
+    assert module._parse_runner_prebuilt("true") == "true"
+    assert module._parse_runner_prebuilt("FALSE") == "false"
+    assert module._parse_runner_prebuilt("invalid") == "auto"
+
+
 def test_main_writes_outputs_and_summary_file(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
     module = _load_wrapper_module()
     summary_payload = {"schema_version": "1", "exit_code": 0, "runs": [{"run_id": "rid-7"}]}
     fake_stdout = json.dumps(summary_payload) + "\n"
+    captured_env: dict[str, str] = {}
 
-    def fake_run(*_args, **_kwargs):  # noqa: ANN001
+    def fake_run(*_args, **kwargs):  # noqa: ANN001
+        env = kwargs.get("env")
+        if isinstance(env, dict):
+            captured_env.update({k: str(v) for k, v in env.items()})
         return subprocess.CompletedProcess(args=[], returncode=0, stdout=fake_stdout, stderr="")
 
     output_file = tmp_path / "github_output.txt"
@@ -65,6 +76,10 @@ def test_main_writes_outputs_and_summary_file(tmp_path: Path, monkeypatch) -> No
             "false",
             "--persist",
             "true",
+            "--runner-image",
+            "docker.io/acme/uqo-runner:v1",
+            "--runner-prebuilt",
+            "true",
         ]
     )
     assert code == 0
@@ -76,3 +91,5 @@ def test_main_writes_outputs_and_summary_file(tmp_path: Path, monkeypatch) -> No
     assert kv["status"] == "success"
     summary_path = Path(kv["summary_path"])
     assert summary_path.is_file()
+    assert captured_env["UQO_RUNNER_IMAGE"] == "docker.io/acme/uqo-runner:v1"
+    assert captured_env["UQO_RUNNER_PREBUILT"] == "true"

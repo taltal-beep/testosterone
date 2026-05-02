@@ -10,10 +10,13 @@ import pytest
 
 from uqo_core.command_builders import BuiltCommand, RunConfig, TestType
 from uqo_core.runners import (
+    DEFAULT_DOCKER_IMAGE,
     DOCKER_MOUNT_POINT,
     ORCHESTRATOR_MOUNT_POINT,
     UQO_DONE_MARKER,
     _docker_volumes_for,
+    _resolve_runner_image,
+    _resolve_runner_prebuilt_mode,
     _resolve_subprocess_argv,
     _rewrite_container_arg,
     _run_in_ephemeral_container_streaming,
@@ -184,3 +187,73 @@ def test_local_subprocess_fallback_reports_missing_executable(
 
     assert rc == 127
     assert any("[subprocess error]" in line for stream, line in events if stream == "meta")
+
+
+def test_resolve_runner_image_uses_default_when_unset() -> None:
+    assert _resolve_runner_image({}) == DEFAULT_DOCKER_IMAGE
+
+
+def test_resolve_runner_prebuilt_auto_enabled_for_custom_image() -> None:
+    assert _resolve_runner_prebuilt_mode({}, image="docker.io/acme/uqo-runner:v1") is True
+    assert _resolve_runner_prebuilt_mode({}, image=DEFAULT_DOCKER_IMAGE) is False
+
+
+def test_docker_execution_uses_configured_runner_image_and_skips_pip_when_prebuilt(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class _FakeContainer:
+        def __init__(self) -> None:
+            self.status = "exited"
+
+        def logs(self, stream=True, follow=True):  # noqa: ANN001, FBT002
+            del stream, follow
+            if False:  # pragma: no cover - generator shape
+                yield b""
+            return iter(())
+
+        def reload(self) -> None:
+            self.status = "exited"
+
+        def wait(self):  # noqa: ANN201
+            return {"StatusCode": 0}
+
+        def remove(self, force=False):  # noqa: ANN001, FBT002
+            del force
+
+    class _FakeContainers:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, object]] = []
+
+        def run(self, image, **kwargs):  # noqa: ANN001, ANN201
+            self.calls.append({"image": image, **kwargs})
+            return _FakeContainer()
+
+    fake_containers = _FakeContainers()
+    fake_client = type("FakeDockerClient", (), {"containers": fake_containers})()
+    monkeypatch.setattr("uqo_core.runners._docker_client", lambda: fake_client)
+
+    cmd = BuiltCommand(
+        argv=["pytest", "-q"],
+        cwd=tmp_path,
+        env={
+            "UQO_RUNNER_IMAGE": "docker.io/acme/uqo-runner:v1",
+            "UQO_RUNNER_PREBUILT": "true",
+        },
+    )
+    emitted: list[tuple[str, str]] = []
+    rc, _started_at, _finished_at = _run_in_ephemeral_container_streaming(
+        run_id="rid-prebuilt",
+        cmd=cmd,
+        cfg_timeout_s=5.0,
+        cfg_heartbeat_s=0.0,
+        emit=lambda stream, line: emitted.append((stream, line)),
+        log_path=tmp_path / "logs" / "docker.log",
+    )
+
+    assert rc == 0
+    assert fake_containers.calls
+    docker_call = fake_containers.calls[0]
+    assert docker_call["image"] == "docker.io/acme/uqo-runner:v1"
+    shell_cmd = docker_call["command"][2]  # ["bash", "-lc", "<cmd>"]
+    assert "pip install --no-cache-dir -r" not in shell_cmd
+    assert any("prebuilt=true" in line for stream, line in emitted if stream == "meta")

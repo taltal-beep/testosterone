@@ -27,6 +27,13 @@ def _parse_ghost_mode(value: str) -> str:
     return "auto"
 
 
+def _parse_runner_prebuilt(value: str) -> str:
+    normalized = str(value or "auto").strip().lower()
+    if normalized in {"auto", "true", "false"}:
+        return normalized
+    return "auto"
+
+
 def build_command(*, config_path: str, ci_mode: bool, stream_json: bool, persist: bool, ghost_mode: str) -> list[str]:
     cmd = ["uqo", "run", "--config", config_path]
     if ci_mode:
@@ -87,6 +94,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--stream-json", default="false")
     parser.add_argument("--persist", default="true")
     parser.add_argument("--ghost-mode", default="auto")
+    parser.add_argument("--runner-image", default="")
+    parser.add_argument("--runner-prebuilt", default="auto")
     parser.add_argument("--summary-path", default="")
     args = parser.parse_args(argv)
 
@@ -94,6 +103,7 @@ def main(argv: list[str] | None = None) -> int:
     stream_json = _parse_bool(args.stream_json, default=False)
     persist = _parse_bool(args.persist, default=True)
     ghost_mode = _parse_ghost_mode(args.ghost_mode)
+    runner_prebuilt = _parse_runner_prebuilt(args.runner_prebuilt)
     cmd = build_command(
         config_path=args.config_path,
         ci_mode=ci_mode,
@@ -102,7 +112,14 @@ def main(argv: list[str] | None = None) -> int:
         ghost_mode=ghost_mode,
     )
 
-    proc = subprocess.run(cmd, check=False, capture_output=True, text=True)  # noqa: S603
+    env = os.environ.copy()
+    runner_image = str(args.runner_image or "").strip()
+    if runner_image:
+        env["UQO_RUNNER_IMAGE"] = runner_image
+    if runner_prebuilt != "auto":
+        env["UQO_RUNNER_PREBUILT"] = runner_prebuilt
+
+    proc = subprocess.run(cmd, check=False, capture_output=True, text=True, env=env)  # noqa: S603
     if proc.stdout:
         sys.stdout.write(proc.stdout)
     if proc.stderr:

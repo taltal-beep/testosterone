@@ -11,6 +11,8 @@ This composite action is a thin wrapper around the stable CLI contract:
 - `ghost-mode` (optional, default `auto`; `true` -> `--ghost`, `false` -> `--no-ghost`)
 - `stream-json` (optional, default `false`)
 - `persist` (optional, default `true`)
+- `runner-image` (optional, default empty; maps to `UQO_RUNNER_IMAGE`)
+- `runner-prebuilt` (optional, default `auto`; maps to `UQO_RUNNER_PREBUILT`)
 - `python-version` (optional, default `3.11`)
 
 ## Outputs
@@ -32,6 +34,8 @@ jobs:
       - uses: ariel-evn/uqo-action@v1
         with:
           config-path: ./.uqo/load-test.yaml
+          runner-image: docker.io/ariel-evn/uqo-runner:v1
+          runner-prebuilt: true
 ```
 
 ## Versioning and pinning policy

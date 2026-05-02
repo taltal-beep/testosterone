@@ -20,6 +20,14 @@ inputs:
     description: Persist run metadata to configured repository backend.
     required: false
     default: "true"
+  runner-image:
+    description: Optional runner image reference used by UQO execution engine.
+    required: false
+    default: ""
+  runner-prebuilt:
+    description: Prebuilt runner mode (`auto`, `true`, `false`) for runtime dependency install behavior.
+    required: false
+    default: "auto"
   python-version:
     description: Python version used to run UQO.
     required: false
@@ -61,4 +69,6 @@ runs:
           --ci-mode "${{ inputs.ci-mode }}" \
           --ghost-mode "${{ inputs.ghost-mode }}" \
           --stream-json "${{ inputs.stream-json }}" \
-          --persist "${{ inputs.persist }}"
+          --persist "${{ inputs.persist }}" \
+          --runner-image "${{ inputs.runner-image }}" \
+          --runner-prebuilt "${{ inputs.runner-prebuilt }}"

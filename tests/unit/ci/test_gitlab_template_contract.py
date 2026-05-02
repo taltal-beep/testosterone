@@ -11,6 +11,8 @@ def test_gitlab_template_invokes_shared_cli_contract() -> None:
     assert "UQO_GHOST_MODE" in template
     assert "--stream-json" in template
     assert "--no-persist" in template
+    assert "UQO_RUNNER_IMAGE" in template
+    assert "UQO_RUNNER_PREBUILT" in template
 
 
 def test_gitlab_template_defines_summary_artifacts() -> None:

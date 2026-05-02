@@ -19,7 +19,16 @@ def _load_wrapper_module():
 
 def test_action_contract_has_required_inputs_outputs() -> None:
     payload = yaml.safe_load(Path("integrations/github-action/action.yml").read_text(encoding="utf-8"))
-    assert set(payload["inputs"].keys()) == {"config-path", "ci-mode", "ghost-mode", "stream-json", "persist", "python-version"}
+    assert set(payload["inputs"].keys()) == {
+        "config-path",
+        "ci-mode",
+        "ghost-mode",
+        "stream-json",
+        "persist",
+        "runner-image",
+        "runner-prebuilt",
+        "python-version",
+    }
     assert set(payload["outputs"].keys()) == {"exit_code", "run_id", "summary_json", "summary_path", "status"}
 
 
@@ -33,6 +42,12 @@ def test_wrapper_uses_uqo_run_ci_command_shape() -> None:
 def test_github_fixture_is_one_line_consumer() -> None:
     workflow = Path("tests/fixtures/ci/github_workflow_minimal.yml").read_text(encoding="utf-8")
     assert "uses: ariel-evn/uqo-action@v1" in workflow
+
+
+def test_gitlab_template_exposes_runner_image_controls() -> None:
+    template = Path("ci/gitlab/uqo.gitlab-ci.yml").read_text(encoding="utf-8")
+    assert "UQO_RUNNER_IMAGE" in template
+    assert "UQO_RUNNER_PREBUILT" in template
 
 
 def test_core_summary_schema_keys_unchanged() -> None:

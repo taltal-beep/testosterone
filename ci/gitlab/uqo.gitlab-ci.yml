@@ -6,6 +6,8 @@ variables:
   UQO_GHOST_MODE: "auto"
   UQO_STREAM_JSON: "false"
   UQO_PERSIST: "true"
+  UQO_RUNNER_IMAGE: ""
+  UQO_RUNNER_PREBUILT: "auto"
 
 uqo_run:
   stage: quality

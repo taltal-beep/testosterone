@@ -65,7 +65,8 @@ def _resolve_subprocess_argv(argv: list[str]) -> None:
         argv[:] = [sys.executable, "-m", base_cmd] + argv[1:]
 
 
-DOCKER_IMAGE = "python:3.11-slim"
+DEFAULT_DOCKER_IMAGE = "python:3.11-slim"
+DOCKER_IMAGE = DEFAULT_DOCKER_IMAGE
 DOCKER_NETWORK = "uqo-net"
 DOCKER_MOUNT_POINT = "/app"
 ORCHESTRATOR_MOUNT_POINT = "/uqo"
@@ -79,6 +80,32 @@ def _default_container_timeout_s() -> float:
         return float(v)
     except ValueError:
         return 600.0
+
+
+def _parse_tristate_bool(raw_value: str | None) -> bool | None:
+    normalized = str(raw_value or "").strip().lower()
+    if not normalized or normalized == "auto":
+        return None
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return None
+
+
+def _resolve_runner_image(env: Mapping[str, str]) -> str:
+    configured = str(env.get("UQO_RUNNER_IMAGE", "")).strip()
+    if configured:
+        return configured
+    return DEFAULT_DOCKER_IMAGE
+
+
+def _resolve_runner_prebuilt_mode(env: Mapping[str, str], *, image: str) -> bool:
+    mode = _parse_tristate_bool(env.get("UQO_RUNNER_PREBUILT"))
+    if mode is not None:
+        return mode
+    # Auto mode: custom image references are treated as prebuilt by default.
+    return image != DEFAULT_DOCKER_IMAGE
 
 
 def _host_repo_root() -> Path:
@@ -308,21 +335,28 @@ def _run_in_ephemeral_container_streaming(
     env_for_container["PYTHONPATH"] = os.pathsep.join([p for p in pp_parts if p])
     env_for_container["PYTHONUNBUFFERED"] = "1"
 
+    runner_image = _resolve_runner_image(env_for_container)
+    runner_prebuilt = _resolve_runner_prebuilt_mode(env_for_container, image=runner_image)
+
     # Install deps then execute the plugin command.
     plugin_cmd = shlex.join(list(container_argv))
-    bash_cmd = f"pip install --no-cache-dir -r {shlex.quote(str(Path(container_repo_root) / 'requirements.txt'))} && cd {shlex.quote(container_cwd)} && {plugin_cmd}"
+    if runner_prebuilt:
+        bash_cmd = f"cd {shlex.quote(container_cwd)} && {plugin_cmd}"
+    else:
+        requirements = shlex.quote(str(Path(container_repo_root) / "requirements.txt"))
+        bash_cmd = f"pip install --no-cache-dir -r {requirements} && cd {shlex.quote(container_cwd)} && {plugin_cmd}"
 
     os.makedirs(str(log_path.parent), exist_ok=True)
 
     container = None
     returncode: int | None = None
     try:
-        emit("meta", f"[docker] image={DOCKER_IMAGE} network={DOCKER_NETWORK}\n")
+        emit("meta", f"[docker] image={runner_image} network={DOCKER_NETWORK} prebuilt={str(runner_prebuilt).lower()}\n")
         emit("meta", f"[docker] mounts {_container_display_mounts(target_root)}\n")
         emit("meta", f"[docker] $ (cwd={container_cwd}) bash -lc {bash_cmd}\n")
 
         container = docker_client.containers.run(
-            DOCKER_IMAGE,
+            runner_image,
             command=["bash", "-lc", bash_cmd],
             detach=True,
             network=DOCKER_NETWORK,

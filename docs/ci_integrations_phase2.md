@@ -41,6 +41,8 @@ Minimal consumer usage:
 - uses: ariel-evn/uqo-action@v1
   with:
     config-path: ./.uqo/config.yaml
+    runner-image: docker.io/ariel-evn/uqo-runner:v1
+    runner-prebuilt: true
 ```
 
 ## GitLab include template
@@ -56,10 +58,32 @@ include:
 
 variables:
   UQO_CONFIG_PATH: ".uqo/config.yaml"
+  UQO_RUNNER_IMAGE: "docker.io/ariel-evn/uqo-runner:v1"
+  UQO_RUNNER_PREBUILT: "true"
 ```
 
-## Versioning policy for `ariel-evn/uqo-action`
+GitLab template variables:
 
-- Publish immutable semver tags (`v1.0.0`, `v1.0.1`, ...).
-- Keep moving major tag `v1` pointing to latest stable `v1.x`.
-- Recommend SHA pinning for strict supply-chain environments.
+- `UQO_CONFIG_PATH` (required)
+- `UQO_GHOST_MODE` (`auto` default)
+- `UQO_STREAM_JSON` (`false` default)
+- `UQO_PERSIST` (`true` default)
+- `UQO_RUNNER_IMAGE` (empty default, optional image override)
+- `UQO_RUNNER_PREBUILT` (`auto` default, supports `true|false|auto`)
+
+## Runner image behavior
+
+- Core runner image selection is handled by `uqo_core.runners` via `UQO_RUNNER_IMAGE`.
+- `UQO_RUNNER_PREBUILT=true` skips runtime `pip install -r requirements.txt` in the execution container.
+- `UQO_RUNNER_PREBUILT=false` keeps legacy behavior with runtime dependency install.
+- `UQO_RUNNER_PREBUILT=auto` enables prebuilt behavior when a custom image is provided and keeps legacy behavior on default image.
+- Image pull/auth/network failures are classified as infrastructure failures (`exit_code=3`).
+
+## Versioning policy
+
+- GitHub action: publish immutable semver tags (`v1.0.0`, `v1.0.1`, ...), keep `v1` moving to latest stable `v1.x`, and recommend SHA pinning for strict supply-chain policies.
+- GitLab template: pin `include` to immutable tag or commit SHA in production pipelines.
+- Runner image tags:
+  - immutable: `v1.x.y`, `sha-<commit>`
+  - moving: `v1`, `latest`
+- Compatibility rule: `uqo-runner:v1.x.y` must embed a `uqo-core` `1.x.y` compatible CLI contract (`uqo run` summary/NDJSON/exit semantics).

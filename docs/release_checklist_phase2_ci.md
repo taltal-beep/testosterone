@@ -17,6 +17,7 @@ This is the go/no-go gate before assigning/re-pointing `v1` for the GitHub actio
 ## 3) CI integration suites
 
 - `python3 -m pytest -q --no-cov tests/unit/ci/test_github_action_wrapper.py tests/unit/ci/test_gitlab_template_contract.py tests/contract/ci/test_wrapper_contract.py`
+- `python3 -m pytest -q --no-cov tests/integration/test_runner_image_mode_smoke.py`
 
 ## 4) Documentation and adoption checks
 
@@ -34,8 +35,17 @@ This is the go/no-go gate before assigning/re-pointing `v1` for the GitHub actio
 - Move major tag `v1` to the same commit.
 - Re-verify consumer workflow resolves `uses: ariel-evn/uqo-action@v1`.
 
-## 6) Final pass criteria
+## 6) Runner image release checks (`uqo-runner`)
+
+- `docker buildx build --load -f Dockerfile.uqo-runner -t uqo-runner:rc .`
+- `docker run --rm uqo-runner:rc run --help`
+- `UQO_RUNNER_IMAGE=uqo-runner:rc UQO_RUNNER_PREBUILT=true python3 -m pytest -q --no-cov tests/integration/test_runner_image_mode_smoke.py`
+- `python3 scripts/ci/compare_runner_latency.py --baseline artifacts/legacy.json --candidate artifacts/image.json --max-startup-regression 0 --min-e2e-improvement-pct 20`
+
+## 7) Final pass criteria
 
 - All commands above exit with `0`.
 - No unversioned changes to `SUMMARY_SCHEMA_KEYS` or NDJSON event types.
 - No CI-provider conditionals were added to repository adapters/factory/DB wiring.
+- Runner image path shows no runtime dependency install command in smoke logs.
+- Image pull/auth failures classify as infra failure (`exit_code=3`) in summary.
