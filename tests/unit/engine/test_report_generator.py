@@ -41,6 +41,9 @@ def test_generate_allure_html_success(tmp_path: Path, fake_ok_subprocess: MagicM
     call_cmd = fake_ok_subprocess.call_args[0][0]
     assert call_cmd[0:2] == ["allure", "generate"]
     assert str(res / "pytest") in call_cmd
+    call_kwargs = fake_ok_subprocess.call_args.kwargs
+    assert call_kwargs["env"]["ALLURE_NO_ANALYTICS"] == "1"
+    assert call_kwargs["env"]["ALLURE_ANALYTICS_DISABLED"] == "1"
     assert isinstance(health, float) and health == 100.0
 
 

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from engine.command_builders import RunConfig, TestType
+from engine.command_builders import BuiltCommand, RunConfig, TestType
 from engine.runners import (
     DOCKER_MOUNT_POINT,
     ORCHESTRATOR_MOUNT_POINT,
@@ -15,6 +16,7 @@ from engine.runners import (
     _docker_volumes_for,
     _resolve_subprocess_argv,
     _rewrite_container_arg,
+    _run_in_ephemeral_container_streaming,
     _to_container_path,
     run_streaming,
     validate_target_repo,
@@ -96,3 +98,77 @@ def test_docker_mapping_rewrites_host_paths_for_container(tmp_path: Path) -> Non
     rewritten_hook_arg = _rewrite_container_arg(hook_arg, target_root=target_repo)
     assert rewritten_hook_arg.startswith("/app/locustfile.py,")
     assert f",{ORCHESTRATOR_MOUNT_POINT}/drop_in_hooks/locust_custom/locust_hooks.py" in rewritten_hook_arg
+
+
+def test_local_subprocess_fallback_streams_output_and_writes_log(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr("engine.runners._docker_client", lambda: None)
+    events: list[tuple[str, str]] = []
+
+    rc, started_at, finished_at = _run_in_ephemeral_container_streaming(
+        run_id="rid-local",
+        cmd=BuiltCommand(
+            argv=[sys.executable, "-c", "print('local fallback ok')"],
+            cwd=tmp_path,
+            env={},
+        ),
+        cfg_timeout_s=5.0,
+        cfg_heartbeat_s=0.0,
+        emit=lambda stream, line: events.append((stream, line)),
+        log_path=tmp_path / "logs" / "run.log",
+    )
+
+    assert rc == 0
+    assert finished_at >= started_at
+    assert ("stdout", "local fallback ok\n") in events
+    assert any("docker unavailable" in line for stream, line in events if stream == "meta")
+    assert (tmp_path / "logs" / "run.log").read_text(encoding="utf-8") == "local fallback ok\n"
+
+
+def test_local_subprocess_fallback_times_out_and_emits_124(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr("engine.runners._docker_client", lambda: None)
+    events: list[tuple[str, str]] = []
+
+    rc, _started_at, _finished_at = _run_in_ephemeral_container_streaming(
+        run_id="rid-timeout",
+        cmd=BuiltCommand(
+            argv=[sys.executable, "-c", "import time; time.sleep(10)"],
+            cwd=tmp_path,
+            env={},
+        ),
+        cfg_timeout_s=0.2,
+        cfg_heartbeat_s=0.0,
+        emit=lambda stream, line: events.append((stream, line)),
+        log_path=tmp_path / "logs" / "timeout.log",
+    )
+
+    assert rc == 124
+    assert any("timeout after 0.2s" in line for stream, line in events if stream == "meta")
+
+
+def test_local_subprocess_fallback_reports_missing_executable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr("engine.runners._docker_client", lambda: None)
+    monkeypatch.setattr("engine.runners.shutil.which", lambda _name: None)
+    monkeypatch.setattr("engine.runners.sys.executable", "/missing/python")
+    events: list[tuple[str, str]] = []
+
+    rc, _started_at, _finished_at = _run_in_ephemeral_container_streaming(
+        run_id="rid-missing",
+        cmd=BuiltCommand(
+            argv=["definitely-missing-uqo-command"],
+            cwd=tmp_path,
+            env={},
+        ),
+        cfg_timeout_s=5.0,
+        cfg_heartbeat_s=0.0,
+        emit=lambda stream, line: events.append((stream, line)),
+        log_path=tmp_path / "logs" / "missing.log",
+    )
+
+    assert rc == 127
+    assert any("[subprocess error]" in line for stream, line in events if stream == "meta")
