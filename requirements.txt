@@ -3,9 +3,11 @@ python-dotenv>=1.0.0
 pluggy>=1.5.0
 docker>=7.0.0
 
-# Database (PostgreSQL + SQLModel)
+# Database (SQLModel + SQLAlchemy; URL-driven: Postgres, SQLite, or MySQL)
 sqlmodel>=0.0.24
 psycopg[binary]>=3.2.0
+# Optional: only if DATABASE_URL uses mysql+pymysql://...
+# pymysql>=1.1.0
 
 # Explicit core stack (sandbox + runners)
 fastapi>=0.115.0
