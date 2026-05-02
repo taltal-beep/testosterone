@@ -49,4 +49,4 @@ db_mysql = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["uqo_core"]
+packages = ["uqo_core", "uqo_api"]

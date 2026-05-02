@@ -30,3 +30,7 @@ artifacts/allure-results-archive/
 # Runtime logs
 logs/
 
+# Frontend workspace artifacts
+frontend/node_modules/
+frontend/dist/
+

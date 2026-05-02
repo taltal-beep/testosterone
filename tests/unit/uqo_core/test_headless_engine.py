@@ -187,3 +187,35 @@ def test_engine_sync_failure_maps_successful_tests_to_infra_exit(tmp_path: Path,
     assert summary.failure_type == "sync_failure"
     assert summary.sync is not None
     assert summary.sync["status"] == "partial_failure"
+
+
+def test_engine_finalizes_each_persisted_run_exactly_once(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    completed_run_ids: list[str] = []
+
+    def fake_record_completed_run(*, rr, artifacts_root, test_kind, metadata_context, audit_health_pct=None, db_path=None):  # noqa: ANN001
+        del artifacts_root, test_kind, metadata_context, audit_health_pct, db_path
+        completed_run_ids.append(str(rr.command.env.get("UQO_RUN_ID") or ""))
+        return RunSyncStatus(
+            run_id=str(rr.command.env.get("UQO_RUN_ID") or "unknown"),
+            db_finalize=SyncOperationStatus(status="success", attempts=1),
+            artifact_upload=SyncOperationStatus(status="success", attempts=1),
+        )
+
+    monkeypatch.setattr("uqo_core.services.headless_engine.record_completed_run", fake_record_completed_run)
+    target = tmp_path / "repo"
+    target.mkdir()
+    request = EngineRequest(
+        runs=(
+            EngineRunSpec(test_type=TestType.PYTEST, target_repo=target),
+            EngineRunSpec(test_type=TestType.PYTEST, target_repo=target),
+        ),
+        trigger_source="ui",
+        persist=True,
+    )
+    engine = HeadlessEngineService(run_streaming_fn=_fake_streaming_success)
+    summary = _drain_summary(engine.stream(request))
+
+    assert summary is not None
+    assert len(summary.runs) == 2
+    assert len(completed_run_ids) == 2
+    assert all(run_id for run_id in completed_run_ids)

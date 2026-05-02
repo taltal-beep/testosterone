@@ -1,6 +1,6 @@
 # Unified Quality Orchestration & Reporting Dashboard — Architecture
 
-UQO is a shared-engine test orchestration system with two adapters: Streamlit UI and a headless CLI. It builds framework-specific commands, runs them in one-off Docker containers, persists run history in Postgres, stores report artifacts in MinIO, and exposes per-run Allure reports through Allure Docker Service.
+UQO is a shared-engine test orchestration system with adapter surfaces for Streamlit UI, FastAPI API, React frontend, and a headless CLI. It builds framework-specific commands, runs them in one-off Docker containers, persists run history in Postgres, stores report artifacts in MinIO, and exposes per-run Allure reports through Allure Docker Service.
 
 ## Design goals
 
@@ -19,13 +19,15 @@ UQO is a shared-engine test orchestration system with two adapters: Streamlit UI
 - **Allure Docker Service (`uqo-allure`)**: renders `projects/<run_id>/reports/latest/index.html`.
 - **Allure sync (`uqo-allure-sync`)**: continuously mirrors `s3://<bucket>/projects` into Allure's `/app/projects`.
 
-The Streamlit UI (`streamlit run app.py`) and CLI (`uqo run ...`) run on the host, not in Compose.
+The Streamlit UI (`streamlit run app.py`), FastAPI (`uvicorn uqo_api.main:app ...`), React frontend (`npm --prefix frontend run dev`), and CLI (`uqo run ...`) run on the host, not in Compose.
 
 ## Source map
 
 ```text
 .
 ├── app.py                         # Streamlit UI, worker startup, history/report tabs
+├── uqo_api/                       # FastAPI adapter (JSON/SSE routes, execution manager)
+├── frontend/                      # React dashboard consuming /api/v1 contracts
 ├── docker-compose.yml             # Postgres, MinIO, Allure, MinIO-to-Allure sync
 ├── uqo_core/
 │   ├── command_builders.py         # RunConfig, TestType, framework argv/env builders
@@ -49,7 +51,7 @@ Runtime output directories such as `artifacts/`, `logs/`, and `static/` are gene
 
 ## Execution flow
 
-1. A host adapter (UI or CLI) builds run specs and calls `HeadlessEngineService`.
+1. A host adapter (Streamlit, FastAPI, or CLI) builds run specs and calls `HeadlessEngineService`.
 2. The engine validates inputs, creates Postgres run row(s) with `status=RUNNING`, and maps requests into `RunConfig`:
    - `test_type`: one of `pytest`, `behavex`, `behave_native`, or `locust`.
    - `target_repo`: host path to the target repo.
@@ -109,9 +111,10 @@ Contract scope note:
 - The machine-readable contract is guaranteed for the `uqo run ...` command path.
 - Argument parser failures before command execution can emit argparse help text on stderr.
 
-Phase-1 migration status:
+Adapter migration status:
 
 - Streamlit and CLI run execution both delegate to `HeadlessEngineService`.
+- FastAPI execution also delegates to `HeadlessEngineService` and emits transport events over SSE.
 - Legacy unused Streamlit worker helpers that directly orchestrated `run_streaming`/`AuditService` were removed to prevent orchestration drift.
 
 ## Framework command contract

@@ -52,7 +52,6 @@ from uqo_core.run_history import (
     cleanup_orphaned_runs,
     get_run,
     list_run_sessions,
-    record_completed_run,
     snapshot_files_for_download,
 )
 from uqo_core.paths import STATIC_BEHAVE_INDEX
@@ -67,6 +66,7 @@ from uqo_core.services import (
     advance_after_run_result,
     iter_drained_queue_items,
 )
+from uqo_core.services.ui_mode import resolve_ui_mode
 
 _ENGINE = HeadlessEngineService()
 
@@ -312,18 +312,6 @@ def _apply_run_result_to_session(item: RunResult) -> None:
         if item.audit_health_pct is not None:
             st.session_state["audit_health_pct"] = item.audit_health_pct
         st.session_state["audit_partial_success"] = item.audit_partial_success
-    test_kind = str(st.session_state.get("last_test_type") or "unknown")
-    if str(st.session_state.get("last_test_type") or "") == "multi":
-        test_kind = str(env.get("UQO_LAST_TEST_TYPE") or test_kind)
-    try:
-        record_completed_run(
-            rr=item,
-            artifacts_root=default_artifacts_root().expanduser().resolve(),
-            test_kind=test_kind,
-            audit_health_pct=st.session_state.get("audit_health_pct"),
-        )
-    except Exception:
-        pass
     try:
         if st.session_state.get("auto_push_influx") or st.session_state.get("auto_push_prometheus"):
             rid = st.session_state.get("last_run_id")
@@ -429,6 +417,7 @@ def _execution_status_title() -> str:
 st.set_page_config(page_title="Unified Quality Orchestration", layout="wide")
 
 init_state()
+ui_mode = resolve_ui_mode(os.getenv("UQO_UI_MODE"))
 
 # Startup safety: if the app was force-killed mid-run, don't leave DB entries stuck in RUNNING.
 if "uqo_startup_cleanup_done" not in st.session_state:
@@ -448,6 +437,10 @@ with header_logo:
 with header_text:
     st.title("Unified Quality Orchestration & Reporting Dashboard")
     st.caption("Streamlit orchestrator — zero-touch wrapper; runs tools via subprocess in the target repo.")
+    if ui_mode in {"react", "dual"}:
+        st.info(
+            f"UI mode is '{ui_mode}'. React + FastAPI migration is enabled in parallel; Streamlit remains available for rollback safety."
+        )
 
 sandbox_path = str(sample_target_repo().resolve())
 

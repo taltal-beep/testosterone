@@ -5,6 +5,8 @@ UQO is a **production-oriented test orchestration system** that runs plugin-driv
 This repo ships both:
 - a Streamlit UI (`app.py`) for interactive execution/history
 - a headless CLI (`uqo`) for CI-friendly automation
+- a FastAPI backend adapter (`uqo_api`) with typed `/api/v1` JSON endpoints
+- a React frontend (`frontend/`) for dashboard parity migration
 
 ## What you get
 
@@ -72,6 +74,20 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+Phase 3 transitional UI mode (default `dual`):
+
+```bash
+export UQO_UI_MODE=dual  # streamlit | react | dual
+```
+
+Start the new backend + frontend in parallel:
+
+```bash
+uvicorn uqo_api.main:app --host 0.0.0.0 --port 8000 --reload
+npm --prefix frontend install
+npm --prefix frontend run dev
+```
+
 ### 5) Execute your first test
 
 Option A (recommended): use **Sandbox mode** in the UI.
@@ -96,6 +112,8 @@ Go to `History` → expand the run → click **Open Allure Server report**.
 ### Runtime services (Docker Compose)
 
 - **Streamlit (host process)**: interactive adapter over the shared headless engine (`app.py`)
+- **FastAPI (`uqo_api/main.py`)**: JSON + SSE adapter over the same headless engine
+- **React frontend (`frontend/`)**: dashboard client consuming `/api/v1` contracts
 - **UQO CLI (`uqo`)**: non-interactive adapter over the same shared headless engine (`uqo_core/cli.py`)
 - **Postgres** (`uqo-postgres`): canonical run lifecycle storage (`uqo_core/run_history.py`)
 - **MinIO** (`uqo-minio`): S3-compatible artifact store
@@ -110,6 +128,7 @@ Go to `History` → expand the run → click **Open Allure Server report**.
 ### Execution flow (happy path)
 
 1. UI or CLI calls the shared engine service (`uqo_core/services/headless_engine.py`)
+1.1 React calls FastAPI `/api/v1`; FastAPI calls the same `HeadlessEngineService`
 2. Engine creates DB run row(s) in Postgres: `status=RUNNING`
 3. Runner starts an ephemeral container via Docker SDK (`uqo_core/runners.py`)
 3. Plugin/test framework emits Allure result files
@@ -401,4 +420,18 @@ Release gate for wrappers is documented in [`docs/release_checklist_phase2_ci.md
 Ghost-mode release gate is documented in [`docs/release_checklist_phase2_ghost_mode.md`](docs/release_checklist_phase2_ghost_mode.md).
 
 Runner image release gate is documented in [`docs/release_checklist_phase2_runner_image.md`](docs/release_checklist_phase2_runner_image.md).
+
+---
+
+## Phase 3 API contracts (`/api/v1`)
+
+- `POST /api/v1/executions`: create run execution job from one or more run specs
+- `GET /api/v1/executions/{execution_id}`: poll execution status and final summary
+- `GET /api/v1/executions/{execution_id}/events`: SSE stream for `log`, `run_result`, and `summary` events
+- `GET /api/v1/runs`: list persisted run sessions
+- `GET /api/v1/runs/{run_id}`: run details
+- `GET /api/v1/runs/{run_id}/reports`: report links + artifact metadata
+- `GET /api/v1/health/live`, `GET /api/v1/health/ready`: liveness/readiness probes
+
+The backend and frontend are migration adapters only; orchestration remains centralized in `uqo_core`.
 
