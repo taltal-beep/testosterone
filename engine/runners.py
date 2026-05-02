@@ -39,6 +39,17 @@ UQO_AUDIT_PHASE = "[UQO_AUDIT_PHASE]"
 UQO_AUDIT_HEALTH = "[UQO_AUDIT_HEALTH]"
 
 
+def _run_scoped_allure_results_dir(base_dir: Path, run_id: str) -> Path:
+    """
+    Keep concurrent non-audit runs from sharing the same framework results directory.
+
+    The UI passes a framework-scoped parent such as ``artifacts/allure-results/pytest``;
+    each subprocess writes into its own child so another session cannot archive, delete,
+    or mix this run's Allure files while it is still executing.
+    """
+    return base_dir.expanduser().resolve() / str(run_id)
+
+
 def _resolve_subprocess_argv(argv: list[str]) -> None:
     """Ensure the spawned executable is findable when PATH is incomplete (e.g. Streamlit worker)."""
     if not argv:
@@ -441,12 +452,14 @@ def run_streaming(
     run_id = str(cfg.run_id) if cfg.run_id is not None else str(uuid.uuid4())
     artifacts_root = (artifacts_root or Path("artifacts")).expanduser().resolve()
     if prepare_allure:
-        # SOLID firewall: callers provide a framework-scoped Allure results directory.
-        # Never override it with a shared parent dir; only isolate per-run data *within*
-        # the provided directory.
-        shared_allure_dir = cfg.shared_allure_results_dir.expanduser().resolve()
-        prepared = prepare_allure_results_dir(shared_allure_dir, mode="archive", run_id=run_id)
-        shared_allure_dir = prepared.shared_dir
+        # SOLID firewall: callers provide a framework-scoped parent; isolate this run
+        # underneath it so concurrent sessions never mutate each other's output.
+        shared_allure_dir = _run_scoped_allure_results_dir(cfg.shared_allure_results_dir, run_id)
+        if shared_allure_dir.exists():
+            prepared = prepare_allure_results_dir(shared_allure_dir, mode="archive", run_id=run_id)
+            shared_allure_dir = prepared.shared_dir
+        else:
+            shared_allure_dir.mkdir(parents=True, exist_ok=True)
     else:
         shared_allure_dir = cfg.shared_allure_results_dir.expanduser().resolve()
         shared_allure_dir.mkdir(parents=True, exist_ok=True)
