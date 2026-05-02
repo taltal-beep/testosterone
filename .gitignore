@@ -7,6 +7,9 @@ venv/
 # Local secrets (copy from .env.example)
 .env
 
+# Default local SQLite DB when DATABASE_URL is unset (engine/db_config.py)
+uqo_history.db
+
 # Mirrored report HTML for Streamlit static serving
 static/allure_report.html
 static/allure_report/
