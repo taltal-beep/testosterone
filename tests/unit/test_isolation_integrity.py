@@ -14,8 +14,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from engine.command_builders import BuiltCommand, RunConfig, TestType
-from engine.runners import LogEvent, RunResult, run_audit_streaming, run_native_behave, run_streaming
+from uqo_core.command_builders import BuiltCommand, RunConfig, TestType
+from uqo_core.runners import LogEvent, RunResult, run_audit_streaming, run_native_behave, run_streaming
 
 
 def test_run_streaming_does_not_override_shared_allure_results_dir(tmp_path: Path) -> None:
@@ -43,8 +43,8 @@ def test_run_streaming_does_not_override_shared_allure_results_dir(tmp_path: Pat
         captured["shared"] = passed_cfg.shared_allure_results_dir
         return BuiltCommand(argv=["pytest", "-q"], cwd=tmp_path, env=dict(parent_env))
 
-    with patch("engine.runners.build_command", side_effect=fake_build_command):
-        with patch("engine.runners._run_in_ephemeral_container_streaming") as run:
+    with patch("uqo_core.runners.build_command", side_effect=fake_build_command):
+        with patch("uqo_core.runners._run_in_ephemeral_container_streaming") as run:
             run.return_value = (0, 1.0, 2.0)
             list(
                 run_streaming(
@@ -83,11 +83,11 @@ def test_audit_does_not_generate_unified_allure_html(tmp_path: Path) -> None:
         calls.append(results_dir)
         return True, "ok", 100.0
 
-    with patch("engine.runners.run_streaming", side_effect=fake_run_streaming):
-        with patch("engine.runners.generate_allure_html", side_effect=spy_generate_allure_html):
-            with patch("engine.runners.sync_all_reports_to_static", return_value={}):
-                with patch("engine.runners.collect_behavex_native_report", return_value=None):
-                    with patch("engine.runners.publish_locust_html_to_static", return_value=None):
+    with patch("uqo_core.runners.run_streaming", side_effect=fake_run_streaming):
+        with patch("uqo_core.runners.generate_allure_html", side_effect=spy_generate_allure_html):
+            with patch("uqo_core.runners.sync_all_reports_to_static", return_value={}):
+                with patch("uqo_core.runners.collect_behavex_native_report", return_value=None):
+                    with patch("uqo_core.runners.publish_locust_html_to_static", return_value=None):
                         gen = run_audit_streaming(target_repo=tmp_path, artifacts_root=tmp_path / "artifacts")
                         with pytest.raises(StopIteration):
                             while True:
@@ -112,7 +112,7 @@ def test_run_native_behave_streams_container_output(tmp_path: Path) -> None:
         return 0, 0.0, 1.0
 
     seen: list[str] = []
-    with patch("engine.runners._run_in_ephemeral_container_streaming", side_effect=fake_docker_run) as docker_run:
+    with patch("uqo_core.runners._run_in_ephemeral_container_streaming", side_effect=fake_docker_run) as docker_run:
         gen = run_native_behave(target_repo=tmp_path, artifacts_root=tmp_path / "artifacts")
         try:
             while True:

@@ -20,8 +20,8 @@ except Exception:
 
 import streamlit as st
 
-from engine.command_builders import RunConfig, TestType, coerce_path
-from engine.runners import (
+from uqo_core.command_builders import RunConfig, TestType, coerce_path
+from uqo_core.runners import (
     UQO_AUDIT_HEALTH,
     UQO_AUDIT_PHASE,
     UQO_DONE_MARKER,
@@ -31,14 +31,14 @@ from engine.runners import (
     run_streaming,
     validate_target_repo,
 )
-from engine.sandbox_api import (
+from uqo_core.sandbox_api import (
     MOCK_BASE_URL,
     is_managed_process_alive,
     sample_target_repo,
     start_sandbox_if_needed,
     stop_sandbox_if_managed,
 )
-from engine.integrations import (
+from uqo_core.integrations import (
     auto_push_metrics_if_enabled,
     integration_status_from_env,
     push_to_influxdb,
@@ -46,9 +46,9 @@ from engine.integrations import (
     test_influxdb_connection,
     test_prometheus_pushgateway,
 )
-from engine.metrics import list_run_history, write_metrics_json
-from engine.metrics_extractor import to_run_metrics
-from engine.run_history import (
+from uqo_core.metrics import list_run_history, write_metrics_json
+from uqo_core.metrics_extractor import to_run_metrics
+from uqo_core.run_history import (
     RunStatus,
     cleanup_orphaned_runs,
     create_run,
@@ -58,9 +58,9 @@ from engine.run_history import (
     snapshot_files_for_download,
     update_run_status,
 )
-from engine.paths import STATIC_BEHAVE_INDEX
-from engine.report_generator import STATIC_ALLURE_HTML, STATIC_ALLURE_INDEX
-from engine.services import (
+from uqo_core.paths import STATIC_BEHAVE_INDEX
+from uqo_core.report_generator import STATIC_ALLURE_HTML, STATIC_ALLURE_INDEX
+from uqo_core.services import (
     AuditService,
     MetricsService,
     ReportService,

@@ -89,7 +89,7 @@ Go to `History` → expand the run → click **Open Allure Server report**.
 ### Runtime services (Docker Compose)
 
 - **Streamlit (host process)**: UI and orchestration entrypoint (`app.py`)
-- **Postgres** (`uqo-postgres`): canonical run lifecycle storage (`engine/run_history.py`)
+- **Postgres** (`uqo-postgres`): canonical run lifecycle storage (`uqo_core/run_history.py`)
 - **MinIO** (`uqo-minio`): S3-compatible artifact store
   - Bucket: `BUCKET_NAME` (default `uqo-artifacts`)
   - Raw Allure results: `projects/<run_id>/results/*`
@@ -97,12 +97,12 @@ Go to `History` → expand the run → click **Open Allure Server report**.
 - **Allure Docker Service** (`uqo-allure`): generates per-run reports by project id
   - Report URL: `ALLURE_SERVER_URL/allure-docker-service/projects/<run_id>/reports/latest/index.html`
 - **Allure sync** (`uqo-allure-sync`): mirrors MinIO `projects/` into Allure’s `/app/projects/`
-- **Mock API (sandbox)**: local target used for demos (managed by Streamlit via `engine/sandbox_api.py`)
+- **Mock API (sandbox)**: local target used for demos (managed by Streamlit via `uqo_core/sandbox_api.py`)
 
 ### Execution flow (happy path)
 
 1. UI creates a DB run row in Postgres: `status=RUNNING`
-2. Runner starts an ephemeral container via Docker SDK (`engine/runners.py`)
+2. Runner starts an ephemeral container via Docker SDK (`uqo_core/runners.py`)
 3. Plugin/test framework emits Allure result files
 4. On completion:
    - DB row is updated to `COMPLETED` or `FAILED`
@@ -119,14 +119,14 @@ Go to `History` → expand the run → click **Open Allure Server report**.
 
 ## Writing a custom test plugin (step-by-step)
 
-UQO supports **drop-in runner plugins** via **Pluggy**. Plugins are Python modules placed under `plugins/` and loaded by `engine/orchestrator.py`.
+UQO supports **drop-in runner plugins** via **Pluggy**. Plugins are Python modules placed under `plugins/` and loaded by `uqo_core/orchestrator.py`.
 
-The plugin interface is defined in `engine/specs.py` (`BaseRunnerSpec`), with these hooks:
+The plugin interface is defined in `uqo_core/specs.py` (`BaseRunnerSpec`), with these hooks:
 - `get_command(config) -> list[str] | None` (first plugin to return an argv wins)
 - `setup_env(config) -> dict[str, str] | None`
 - `collect_artifacts(run_id) -> list[pathlib.Path] | None`
 
-The built-in Streamlit workflow uses `engine.command_builders.TestType` for `pytest`, `behavex`, `behave_native`, and `locust`. A custom plugin can participate in a runner path that calls `create_plugin_manager(load_dropins=True)`, but adding a file under `plugins/` does not automatically add a new option to the UI.
+The built-in Streamlit workflow uses `uqo_core.command_builders.TestType` for `pytest`, `behavex`, `behave_native`, and `locust`. A custom plugin can participate in a runner path that calls `create_plugin_manager(load_dropins=True)`, but adding a file under `plugins/` does not automatically add a new option to the UI.
 
 ### 1) Create a plugin module
 
@@ -138,8 +138,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Mapping
 
-from engine.command_builders import RunConfig, TestType
-from engine.specs import hookimpl
+from uqo_core.command_builders import RunConfig, TestType
+from uqo_core.specs import hookimpl
 
 
 @hookimpl
@@ -166,7 +166,7 @@ def collect_artifacts(run_id: str) -> list[Path] | None:
 
 ### 2) Run it (developer workflow)
 
-At runtime, `engine/orchestrator.create_plugin_manager(load_dropins=True)` scans `plugins/*.py` and registers each module.
+At runtime, `uqo_core/orchestrator.create_plugin_manager(load_dropins=True)` scans `plugins/*.py` and registers each module.
 
 If you’re extending the system to execute custom plugins from the UI, the typical wiring is:
 - build a `RunConfig` that expresses what tool/framework should run

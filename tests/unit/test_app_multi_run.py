@@ -3,9 +3,9 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from engine.command_builders import BuiltCommand, RunConfig, TestType
-from engine.runners import LogEvent, RunResult, UQO_DONE_MARKER
-from engine.services.multi_run import advance_after_run_result, stream_multi_run
+from uqo_core.command_builders import BuiltCommand, RunConfig, TestType
+from uqo_core.runners import LogEvent, RunResult, UQO_DONE_MARKER
+from uqo_core.services.multi_run import advance_after_run_result, stream_multi_run
 
 
 def _run_result(run_id: str, returncode: int) -> RunResult:

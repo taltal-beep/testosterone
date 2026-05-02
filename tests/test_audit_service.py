@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engine.services.audit_service import AuditService
+from uqo_core.services.audit_service import AuditService
 
 
 def test_stream_audit_is_generator(tmp_path: Path) -> None:

@@ -13,7 +13,7 @@ UQO is a Streamlit-driven test orchestration dashboard. It builds framework-spec
 
 `docker-compose.yml` defines the infrastructure expected by local development:
 
-- **Postgres (`uqo-postgres`)**: canonical run lifecycle storage used by `engine/run_history.py`.
+- **Postgres (`uqo-postgres`)**: canonical run lifecycle storage used by `uqo_core/run_history.py`.
 - **MinIO (`uqo-minio`)**: S3-compatible storage for raw results and report snapshots. The default bucket is `uqo-artifacts`.
 - **MinIO init (`uqo-minio-init`)**: creates the bucket and sets anonymous download policy for report links.
 - **Allure Docker Service (`uqo-allure`)**: renders `projects/<run_id>/reports/latest/index.html`.
@@ -27,7 +27,7 @@ The Streamlit UI (`streamlit run app.py`) runs on the host, not in Compose.
 .
 ├── app.py                         # Streamlit UI, worker startup, history/report tabs
 ├── docker-compose.yml             # Postgres, MinIO, Allure, MinIO-to-Allure sync
-├── engine/
+├── uqo_core/
 │   ├── command_builders.py         # RunConfig, TestType, framework argv/env builders
 │   ├── runners.py                  # Ephemeral Docker execution, audit workflow, log streaming
 │   ├── run_history.py              # Postgres models, snapshots, S3 upload, history views
@@ -49,12 +49,12 @@ Runtime output directories such as `artifacts/`, `logs/`, and `static/` are gene
 ## Execution flow
 
 1. The UI validates the target repository path and creates a Postgres run row with `status=RUNNING`.
-2. `app.py` creates a `RunConfig` from `engine.command_builders` with:
+2. `app.py` creates a `RunConfig` from `uqo_core.command_builders` with:
    - `test_type`: one of `pytest`, `behavex`, `behave_native`, or `locust`.
    - `target_repo`: host path to the target repo.
    - `shared_allure_results_dir`: usually `artifacts/allure-results/<test_type>`.
    - framework-specific args and optional Locust headless settings.
-3. `engine.runners.run_streaming()` prepares the result directory, injects `UQO_RUN_ID`, and calls `build_command()`.
+3. `uqo_core.runners.run_streaming()` prepares the result directory, injects `UQO_RUN_ID`, and calls `build_command()`.
 4. The runner starts a `python:3.11-slim` container on Docker network `uqo-net`, mounts the orchestrator repo to `/app`, installs `requirements.txt`, changes into the target repo path inside the mount, and executes the command.
 5. Container logs are streamed to the UI and written under `logs/<run_id>.log`.
 6. After completion, framework-specific fixups run:
@@ -65,7 +65,7 @@ Runtime output directories such as `artifacts/`, `logs/`, and `static/` are gene
 
 ## Framework command contract
 
-`engine.command_builders.RunConfig` is the public shape for runner command construction.
+`uqo_core.command_builders.RunConfig` is the public shape for runner command construction.
 
 | `TestType` | Command behavior |
 | --- | --- |
@@ -85,7 +85,7 @@ Only environment keys with prefixes `UQO_`, `AWS_`, `S3_`, `MINIO_`, plus `SUT_U
 
 ## Audit workflow
 
-`engine.runners.run_audit_streaming()` executes phases in one logical run:
+`uqo_core.runners.run_audit_streaming()` executes phases in one logical run:
 
 1. Pytest
 2. BehaveX
@@ -102,15 +102,15 @@ Each phase writes to `artifacts/allure-results/<framework>/`. A non-zero phase i
 - MinIO raw results for Allure Docker Service: `projects/<run_id>/results/<files>`.
 - MinIO downloadable snapshots: `runs/<run_id>/artifacts/...`.
 
-`engine/run_history.py` stores run metadata in Postgres and builds history links from either local static history or MinIO snapshot prefixes.
+`uqo_core/run_history.py` stores run metadata in Postgres and builds history links from either local static history or MinIO snapshot prefixes.
 
 ## Extension points
 
 UQO includes a Pluggy extension surface:
 
-- Specs: `engine/specs.py`
-- Manager/loader: `engine/orchestrator.py`
-- Built-in no-op hooks: `engine/plugins_builtin.py`
+- Specs: `uqo_core/specs.py`
+- Manager/loader: `uqo_core/orchestrator.py`
+- Built-in no-op hooks: `uqo_core/plugins_builtin.py`
 - Optional drop-ins: create `plugins/*.py` at the repository root
 
 The hook specs are:
