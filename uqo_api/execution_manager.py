@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from uqo_core.command_builders import TestType
 from uqo_core.runners import LogEvent, RunResult
+from uqo_core.security.redaction import redact_error_message
 from uqo_core.services import EngineRequest, EngineRunSpec, HeadlessEngineService
 
 from uqo_api.models import CreateExecutionRequest
@@ -128,19 +129,20 @@ class ExecutionManager:
                         }
                     )
         except Exception as exc:  # pragma: no cover - defensive fallback
+            error_message = redact_error_message(exc)
             state.append_event(
                 {
                     "event": "summary",
                     "data": {
                         "schema_version": "1",
                         "exit_code": 4,
-                        "error": str(exc),
+                        "error": error_message,
                         "runs": [],
                         "finished_at": time.time(),
                     },
                 }
             )
-            state.set_done(status="failed", summary=None, error=str(exc))
+            state.set_done(status="failed", summary=None, error=error_message)
 
     @staticmethod
     def _to_engine_spec(spec) -> EngineRunSpec:  # noqa: ANN001

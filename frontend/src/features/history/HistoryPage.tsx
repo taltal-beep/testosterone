@@ -19,6 +19,15 @@ export function HistoryPage() {
   return (
     <section>
       <h2>Run History</h2>
+      {runsQuery.data.items.length >= 2 && (
+        <p>
+          <Link
+            to={`/compare?current_run_id=${runsQuery.data.items[0].run_id}&baseline_run_id=${runsQuery.data.items[1].run_id}`}
+          >
+            Compare latest two runs
+          </Link>
+        </p>
+      )}
       <ul>
         {runsQuery.data.items.map((run) => (
           <li key={run.run_id}>

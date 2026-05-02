@@ -8,6 +8,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from uqo_api.routes.ai import router as ai_router
+from uqo_api.routes.analytics import router as analytics_router
+from uqo_api.routes.dashboard import router as dashboard_router
 from uqo_api.routes.events import router as events_router
 from uqo_api.routes.health import router as health_router
 from uqo_api.routes.history import router as history_router
@@ -27,8 +30,11 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(runs_router)
+    app.include_router(ai_router)
     app.include_router(events_router)
     app.include_router(history_router)
+    app.include_router(analytics_router)
+    app.include_router(dashboard_router)
     app.include_router(health_router)
 
     @app.middleware("http")
@@ -48,13 +54,25 @@ def create_app() -> FastAPI:
             503: "infra_failure",
         }
         code = status_map.get(exc.status_code, "internal_error")
+        message = str(exc.detail)
+        details = None
+        if isinstance(exc.detail, dict):
+            maybe_code = exc.detail.get("code")
+            if isinstance(maybe_code, str):
+                code = maybe_code
+            maybe_message = exc.detail.get("message")
+            if isinstance(maybe_message, str):
+                message = maybe_message
+            maybe_details = exc.detail.get("details")
+            if isinstance(maybe_details, dict):
+                details = maybe_details
         return JSONResponse(
             status_code=exc.status_code,
             content={
                 "error": {
                     "code": code,
-                    "message": str(exc.detail),
-                    "details": None,
+                    "message": message,
+                    "details": details,
                 },
                 "request_id": getattr(request.state, "request_id", str(uuid4())),
             },

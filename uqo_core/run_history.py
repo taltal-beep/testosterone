@@ -563,6 +563,24 @@ def get_run(*, run_id: str, db_path: Path | None = None) -> CompletedRunView | N
     return _completed_view_from_record(r)
 
 
+def get_run_metadata(*, run_id: str) -> dict[str, Any] | None:
+    record = get_repository().get_run(run_id)
+    if record is None:
+        return None
+    return dict(record.metadata_ or {})
+
+
+def upsert_run_metadata(*, run_id: str, metadata_patch: dict[str, Any]) -> bool:
+    record = get_repository().get_run(run_id)
+    if record is None:
+        return False
+    merged = dict(record.metadata_ or {})
+    merged.update(metadata_patch)
+    record.metadata_ = merged
+    get_repository().bulk_update([record])
+    return True
+
+
 def compare_latest_two(*, db_path: Path | None = None) -> dict[str, Any] | None:
     """Compare the two most recent runs (by ``created_at``)."""
     recent = list_recent_runs(limit=2, db_path=db_path)

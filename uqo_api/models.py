@@ -63,7 +63,19 @@ class ExecutionStatusResponse(BaseModel):
 
 
 class ErrorPayload(BaseModel):
-    code: Literal["invalid_input", "not_found", "domain_failure", "infra_failure", "internal_error"]
+    code: Literal[
+        "invalid_input",
+        "not_found",
+        "domain_failure",
+        "infra_failure",
+        "internal_error",
+        "provider_misconfigured",
+        "provider_timeout",
+        "provider_rate_limited",
+        "unsupported_provider_model",
+        "ai_feature_disabled",
+        "summary_not_available",
+    ]
     message: str
     details: dict[str, Any] | None = None
 
@@ -126,6 +138,129 @@ class RunReportsResponse(BaseModel):
     artifact_links: list[str] = Field(default_factory=list)
 
 
+class DeltaMetricNode(BaseModel):
+    current_value: float | None = None
+    baseline_value: float | None = None
+    absolute_delta: float | None = None
+    relative_delta_pct: float | None = None
+    classification: Literal["regression", "improvement", "neutral", "unknown"]
+    reason: str | None = None
+    direction: Literal["higher_is_better", "lower_is_better"]
+    unit: Literal["tests", "pct", "ms"]
+
+
+class DeltaReliabilityMetrics(BaseModel):
+    total_tests: DeltaMetricNode
+    passed: DeltaMetricNode
+    failed: DeltaMetricNode
+    broken: DeltaMetricNode
+    skipped: DeltaMetricNode
+    health_pct: DeltaMetricNode
+
+
+class DeltaPerformanceMetrics(BaseModel):
+    wall_duration_ms: DeltaMetricNode
+    metrics_duration_ms: DeltaMetricNode
+    avg_case_ms: DeltaMetricNode
+
+
+class DeltaMetricsResponse(BaseModel):
+    reliability: DeltaReliabilityMetrics
+    performance: DeltaPerformanceMetrics
+
+
+class DeltaComparisonMeta(BaseModel):
+    current_run_id: str
+    baseline_run_id: str
+    current_test_kind: str
+    baseline_test_kind: str
+
+
+class DeltaStatusSummaryResponse(BaseModel):
+    regressions: list[str] = Field(default_factory=list)
+    improvements: list[str] = Field(default_factory=list)
+    unchanged: list[str] = Field(default_factory=list)
+    unknown: list[str] = Field(default_factory=list)
+
+
+class DeltaComparisonResponse(BaseModel):
+    comparison: DeltaComparisonMeta
+    metrics: DeltaMetricsResponse
+    status_summary: DeltaStatusSummaryResponse
+    highlights: list[str] = Field(default_factory=list)
+
+
+class DashboardHeadlineKpis(BaseModel):
+    latest_run_id: str | None = None
+    latest_status: str | None = None
+    health_pct: float | None = None
+    pass_count: int | None = None
+    fail_count: int | None = None
+    duration_ms: float | None = None
+
+
+class DashboardTrendIndicator(BaseModel):
+    direction: Literal["up", "down", "flat", "unknown"]
+    delta_abs: float | None = None
+    delta_pct: float | None = None
+
+
+class DashboardRollupSummaryResponse(BaseModel):
+    regressions: int
+    improvements: int
+    unchanged: int
+    unknown: int
+
+
+class DashboardRollupResponse(BaseModel):
+    status_summary: DashboardRollupSummaryResponse
+    top_highlights: list[str] = Field(default_factory=list)
+
+
+class DashboardReportLinkResponse(BaseModel):
+    url: str | None = None
+    state: Literal["available", "missing", "unknown"]
+
+
+class DashboardReportLinksResponse(BaseModel):
+    allure: DashboardReportLinkResponse
+    locust: DashboardReportLinkResponse
+    behave: DashboardReportLinkResponse
+
+
+class DashboardRecentRunItem(BaseModel):
+    run_id: str
+    created_at: float
+    status: str | None = None
+    returncode: int
+    health_pct: float | None = None
+    duration_ms: float | None = None
+    run_detail_url: str
+    compare_url: str | None = None
+
+
+class DashboardDataFreshnessResponse(BaseModel):
+    generated_at: float
+    source_window_size: int
+    degraded: bool
+    notes: list[str] = Field(default_factory=list)
+
+
+class DashboardOverviewResponse(BaseModel):
+    headline_kpis: DashboardHeadlineKpis
+    trend_indicators: dict[Literal["health", "failed_count", "duration"], DashboardTrendIndicator]
+    reliability_rollup: DashboardRollupResponse
+    performance_rollup: DashboardRollupResponse
+    report_links: DashboardReportLinksResponse
+    recent_runs: list[DashboardRecentRunItem] = Field(default_factory=list)
+    data_freshness: DashboardDataFreshnessResponse
+
+
+class DashboardRecentRunsResponse(BaseModel):
+    items: list[DashboardRecentRunItem] = Field(default_factory=list)
+    generated_at: float
+
+
 class HealthLiveResponse(BaseModel):
     status: Literal["ok"]
 
@@ -138,3 +273,48 @@ class ReadinessCheck(BaseModel):
 class HealthReadyResponse(BaseModel):
     status: Literal["ready", "degraded"]
     checks: dict[str, ReadinessCheck]
+
+
+class AiConfigUpdateRequest(BaseModel):
+    enabled: bool = False
+    provider: Literal["openai", "anthropic"] = "openai"
+    model: str = "gpt-4o-mini"
+    api_key_source: Literal["env", "runtime_input"] = "env"
+    api_key_env_var: str | None = None
+    api_key_input: str | None = None
+    timeout_s: float = 8.0
+    retry_count: int = 1
+    max_input_chars: int = 16000
+    max_output_tokens: int = 300
+
+
+class AiConfigStatusResponse(BaseModel):
+    enabled: bool
+    configured: bool
+    provider: Literal["openai", "anthropic"]
+    model: str
+    api_key_source: Literal["env", "runtime_input"]
+    api_key_env_var: str | None = None
+    key_present: bool | None = None
+    timeout_s: float
+    retry_count: int
+    max_input_chars: int
+    max_output_tokens: int
+
+
+class AiSummaryResponse(BaseModel):
+    schema_version: Literal["v1"]
+    run_id: str
+    status: Literal["available", "no_summary_generated"]
+    summary_text: str | None = None
+    confidence: Literal["low", "medium", "high"] | None = None
+    limitations: list[str] = Field(default_factory=list)
+    provider: str | None = None
+    model: str | None = None
+    generated_at: float
+    context_stats: dict[str, int] = Field(default_factory=dict)
+    error_code: str | None = None
+
+
+class GenerateAiSummaryRequest(BaseModel):
+    force_refresh: bool = False

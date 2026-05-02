@@ -16,6 +16,11 @@ export function RunDetailPage() {
     queryFn: () => apiClient.getRunReports(runId),
     enabled: Boolean(runId)
   });
+  const aiSummaryQuery = useQuery({
+    queryKey: ["run-ai-summary", runId],
+    queryFn: () => apiClient.getRunAiSummary(runId),
+    enabled: Boolean(runId)
+  });
 
   if (!runId) {
     return <p>Missing run id.</p>;
@@ -49,6 +54,32 @@ export function RunDetailPage() {
           <li key={artifact}>{artifact}</li>
         ))}
       </ul>
+      <h3>AI Failure Summary</h3>
+      {runQuery.data.run.returncode === 0 ? (
+        <p>Summary only applies to failed runs.</p>
+      ) : aiSummaryQuery.isLoading ? (
+        <p>Loading AI summary...</p>
+      ) : aiSummaryQuery.isError ? (
+        <p>Failed to load AI summary.</p>
+      ) : aiSummaryQuery.data.status === "available" ? (
+        <article>
+          <p>{aiSummaryQuery.data.summary_text}</p>
+          <p>
+            Confidence: {aiSummaryQuery.data.confidence ?? "unknown"} | Model: {aiSummaryQuery.data.model ?? "unknown"}
+          </p>
+        </article>
+      ) : (
+        <p>No summary generated ({aiSummaryQuery.data.error_code ?? "not_available"}).</p>
+      )}
+      <button
+        type="button"
+        onClick={async () => {
+          await apiClient.generateRunAiSummary(runId, true);
+          await aiSummaryQuery.refetch();
+        }}
+      >
+        Generate AI Summary
+      </button>
       <Link to="/history">Back to history</Link>
     </section>
   );
