@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError, version as pkg_version
+
 from .command_builders import RunConfig, TestType, build_command, coerce_path
 from .db import get_repository, reset_repository_cache
 from .db_config import (
@@ -46,4 +48,7 @@ __all__ = [
     "validate_target_repo",
 ]
 
-__version__ = "0.1.0"
+try:
+    __version__ = pkg_version("uqo-core")
+except PackageNotFoundError:  # pragma: no cover - source tree import before install
+    __version__ = "0.1.0"

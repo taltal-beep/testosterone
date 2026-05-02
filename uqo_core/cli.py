@@ -10,9 +10,25 @@ from uqo_core.services import (
     ConfigValidationError,
     EngineExitCode,
     EngineRequest,
+    SCHEMA_VERSION,
     HeadlessEngineService,
     load_run_specs_from_yaml,
 )
+
+SUMMARY_SCHEMA_KEYS: tuple[str, ...] = (
+    "schema_version",
+    "trigger_source",
+    "ci_mode",
+    "persist",
+    "exit_code",
+    "aggregate_returncode",
+    "started_at",
+    "finished_at",
+    "duration_s",
+    "runs",
+    "error",
+)
+NDJSON_EVENT_TYPES: frozenset[str] = frozenset({"log", "run_result", "unknown"})
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -64,7 +80,7 @@ def _run_command(args: argparse.Namespace) -> int:
     except ConfigValidationError as exc:
         _write_json_stdout(
             {
-                "schema_version": "1",
+                "schema_version": SCHEMA_VERSION,
                 "error": str(exc),
                 "exit_code": int(EngineExitCode.INVALID_INPUT),
             }
@@ -79,7 +95,7 @@ def _run_command(args: argparse.Namespace) -> int:
     )
     engine = HeadlessEngineService()
     stream_json = bool(args.stream_json)
-    print_summary = bool(args.json or args.ci or not args.stream_json)
+    print_summary = True
 
     try:
         gen = engine.stream(request)
@@ -93,12 +109,16 @@ def _run_command(args: argparse.Namespace) -> int:
             except StopIteration as stop:
                 summary = stop.value
                 if print_summary:
-                    _write_json_stdout(summary.to_dict())
+                    payload = summary.to_dict()
+                    missing_keys = [k for k in SUMMARY_SCHEMA_KEYS if k not in payload]
+                    if missing_keys:
+                        raise RuntimeError(f"Engine summary missing required key(s): {', '.join(missing_keys)}")
+                    _write_json_stdout(payload)
                 return int(summary.exit_code)
     except ConfigValidationError as exc:
         _write_json_stdout(
             {
-                "schema_version": "1",
+                "schema_version": SCHEMA_VERSION,
                 "error": str(exc),
                 "exit_code": int(EngineExitCode.INVALID_INPUT),
             }
@@ -107,7 +127,7 @@ def _run_command(args: argparse.Namespace) -> int:
     except Exception as exc:  # pragma: no cover - defensive fallback
         _write_json_stdout(
             {
-                "schema_version": "1",
+                "schema_version": SCHEMA_VERSION,
                 "error": str(exc),
                 "exit_code": int(EngineExitCode.INTERNAL_ERROR),
             }

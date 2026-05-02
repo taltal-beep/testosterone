@@ -11,6 +11,7 @@ from sqlalchemy.engine import Engine
 from sqlmodel import SQLModel, create_engine
 
 _DEFAULT_SQLITE_URL: Final[str] = "sqlite:///./uqo_history.db"
+SUPPORTED_DATABASE_DIALECTS: Final[frozenset[str]] = frozenset({"sqlite", "postgresql", "mysql"})
 
 
 def _is_running_in_docker() -> bool:
@@ -59,9 +60,18 @@ def _dialect(url: str) -> str:
     return scheme.split("+", 1)[0]
 
 
+def validate_database_url(url: str) -> str:
+    """Validate database URL dialect and return normalized dialect."""
+    dialect = _dialect(url)
+    if dialect not in SUPPORTED_DATABASE_DIALECTS:
+        allowed = ", ".join(sorted(SUPPORTED_DATABASE_DIALECTS))
+        raise ValueError(f"Unsupported database dialect `{dialect}`. Supported dialects: {allowed}.")
+    return dialect
+
+
 @lru_cache(maxsize=8)
 def _build_engine(url: str) -> Engine:
-    dialect = _dialect(url)
+    dialect = validate_database_url(url)
     kwargs: dict[str, object] = {"echo": False}
 
     if dialect == "sqlite":

@@ -20,7 +20,7 @@ except Exception:
 
 import streamlit as st
 
-from uqo_core.command_builders import RunConfig, TestType, coerce_path
+from uqo_core.command_builders import TestType, coerce_path
 from uqo_core.runners import (
     UQO_AUDIT_HEALTH,
     UQO_AUDIT_PHASE,
@@ -28,7 +28,6 @@ from uqo_core.runners import (
     LogEvent,
     RunResult,
     default_artifacts_root,
-    run_streaming,
     validate_target_repo,
 )
 from uqo_core.sandbox_api import (
@@ -55,12 +54,10 @@ from uqo_core.run_history import (
     list_run_sessions,
     record_completed_run,
     snapshot_files_for_download,
-    update_run_status,
 )
 from uqo_core.paths import STATIC_BEHAVE_INDEX
 from uqo_core.report_generator import STATIC_ALLURE_HTML, STATIC_ALLURE_INDEX
 from uqo_core.services import (
-    AuditService,
     EngineRequest,
     EngineRunSpec,
     HeadlessEngineService,
@@ -230,59 +227,6 @@ def _append_line(line: str) -> None:
         st.session_state.log_lines = st.session_state.log_lines[-max_lines:]
 
 
-def _start_worker(cfg: RunConfig, *, db_run_id: str | None = None) -> None:
-    events_q: queue.Queue[LogEvent | RunResult] = queue.Queue()
-
-    def worker() -> None:
-        # If the subprocess runner crashes, ensure the DB doesn't get stuck in RUNNING forever.
-        try:
-            gen = run_streaming(cfg, artifacts_root=default_artifacts_root())
-            while True:
-                try:
-                    ev = next(gen)
-                    events_q.put(ev)
-                except StopIteration as e:
-                    if e.value is not None:
-                        events_q.put(e.value)
-                    break
-        except Exception as exc:
-            import traceback
-
-            if db_run_id:
-                try:
-                    update_run_status(
-                        db_run_id,
-                        status=RunStatus.FAILED,
-                        metadata={"error": str(exc), "traceback": traceback.format_exc()},
-                    )
-                except Exception:
-                    pass
-
-            events_q.put(
-                LogEvent(
-                    ts=time.time(),
-                    stream="meta",
-                    line=f"[orchestrator worker error] {exc}\n{traceback.format_exc()}\n",
-                )
-            )
-            events_q.put(LogEvent(ts=time.time(), stream="meta", line=f"{UQO_DONE_MARKER} returncode=-1\n"))
-
-    t = threading.Thread(target=worker, daemon=True)
-    st.session_state.events_q = events_q
-    st.session_state.worker = t
-    st.session_state.running = True
-    st.session_state.last_result = None
-    st.session_state.run_completed = False
-    st.session_state.last_run_id = None
-    st.session_state.is_audit_mode = False
-    st.session_state.multi_run_active = False
-    st.session_state.multi_runs_remaining = 0
-    st.session_state.audit_phase_display = ""
-    st.session_state.active_db_run_id = db_run_id
-    st.session_state.multi_runs_remaining = 0
-    t.start()
-
-
 def _start_worker_multi(specs: list[EngineRunSpec], *, ci_mode: bool = False) -> None:
     events_q: queue.Queue[LogEvent | RunResult] = queue.Queue()
 
@@ -344,73 +288,6 @@ def _start_worker_multi(specs: list[EngineRunSpec], *, ci_mode: bool = False) ->
     st.session_state.audit_phase_display = ""
     st.session_state.active_db_run_id = None
     st.session_state.multi_runs_remaining = len(specs)
-    t.start()
-
-
-def _start_worker_audit(
-    *,
-    target_repo: Path,
-    pytest_args: tuple[str, ...],
-    behavex_args: tuple[str, ...],
-    native_behave_args: tuple[str, ...],
-    run_native_behave: bool,
-    locust_args: tuple[str, ...],
-    locust_users: int,
-    locust_spawn_rate: int,
-    locust_run_time: str,
-    locust_only_summary: bool,
-) -> None:
-    events_q: queue.Queue[LogEvent | RunResult] = queue.Queue()
-
-    def worker() -> None:
-        try:
-            gen = AuditService.stream_audit(
-                target_repo=target_repo,
-                artifacts_root=default_artifacts_root(),
-                parent_env=os.environ,
-                pytest_args=pytest_args,
-                behavex_args=behavex_args,
-                native_behave_args=native_behave_args,
-                run_native_behave=run_native_behave,
-                locust_args=locust_args,
-                locust_users=locust_users,
-                locust_spawn_rate=locust_spawn_rate,
-                locust_run_time=locust_run_time,
-                locust_only_summary=locust_only_summary,
-            )
-            while True:
-                try:
-                    ev = next(gen)
-                    events_q.put(ev)
-                except StopIteration as e:
-                    if e.value is not None:
-                        events_q.put(e.value)
-                    break
-        except Exception as exc:
-            import traceback
-
-            events_q.put(
-                LogEvent(
-                    ts=time.time(),
-                    stream="meta",
-                    line=f"[orchestrator worker error] {exc}\n{traceback.format_exc()}\n",
-                )
-            )
-            events_q.put(LogEvent(ts=time.time(), stream="meta", line=f"{UQO_DONE_MARKER} returncode=-1\n"))
-
-    t = threading.Thread(target=worker, daemon=True)
-    st.session_state.events_q = events_q
-    st.session_state.worker = t
-    st.session_state.running = True
-    st.session_state.last_result = None
-    st.session_state.run_completed = False
-    st.session_state.last_run_id = None
-    st.session_state.is_audit_mode = True
-    st.session_state.multi_run_active = False
-    st.session_state.multi_runs_remaining = 0
-    st.session_state.audit_phase_display = ""
-    st.session_state.audit_health_pct = None
-    st.session_state.multi_runs_remaining = 0
     t.start()
 
 

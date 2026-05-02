@@ -92,3 +92,53 @@ def test_engine_maps_runtime_failure_to_infra_exit_code(tmp_path: Path) -> None:
 
     assert summary.exit_code == int(EngineExitCode.INFRA_FAILURE)
     assert summary.error is not None
+
+
+def test_engine_maps_nonzero_run_to_domain_exit_code(tmp_path: Path) -> None:
+    def fake_streaming_domain_fail(cfg, **kwargs):  # noqa: ANN001
+        del kwargs
+        yield LogEvent(ts=time.time(), stream="stdout", line="tests failed\n")
+        cmd = BuiltCommand(
+            argv=["pytest", "-q"],
+            cwd=cfg.target_repo,
+            env={"UQO_RUN_ID": "rid-fail", "UQO_LAST_TEST_TYPE": cfg.test_type.value},
+        )
+        return RunResult(
+            returncode=5,
+            started_at=time.time() - 1.0,
+            finished_at=time.time(),
+            command=cmd,
+        )
+
+    target = tmp_path / "repo"
+    target.mkdir()
+    request = EngineRequest(
+        runs=(EngineRunSpec(test_type=TestType.PYTEST, target_repo=target),),
+        trigger_source="cli",
+        persist=False,
+    )
+    engine = HeadlessEngineService(run_streaming_fn=fake_streaming_domain_fail)
+    summary = _drain_summary(engine.stream(request))
+
+    assert summary.exit_code == int(EngineExitCode.DOMAIN_FAILURE)
+    assert summary.aggregate_returncode == 1
+
+
+def test_engine_maps_empty_results_to_internal_error(tmp_path: Path) -> None:
+    def fake_streaming_no_result(cfg, **kwargs):  # noqa: ANN001
+        del cfg, kwargs
+        yield LogEvent(ts=time.time(), stream="stdout", line="no terminal result\n")
+        return None
+
+    target = tmp_path / "repo"
+    target.mkdir()
+    request = EngineRequest(
+        runs=(EngineRunSpec(test_type=TestType.PYTEST, target_repo=target),),
+        trigger_source="cli",
+        persist=False,
+    )
+    engine = HeadlessEngineService(run_streaming_fn=fake_streaming_no_result)
+    summary = _drain_summary(engine.stream(request))
+
+    assert summary.exit_code == int(EngineExitCode.INTERNAL_ERROR)
+    assert summary.aggregate_returncode == 1
