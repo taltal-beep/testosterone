@@ -69,7 +69,7 @@ Runtime output directories such as `artifacts/`, `logs/`, and `static/` are gene
 `uqo run --config <path> --ci` guarantees machine-readable stdout:
 
 - With `--json`: one final summary JSON object.
-- With `--stream-json`: NDJSON event objects followed by final summary JSON.
+- With `--stream-json`: NDJSON event objects followed by final summary JSON (always).
 
 Exit code mapping:
 
@@ -84,6 +84,23 @@ The engine enriches metadata with provenance fields:
 - `trigger_source` (`ui` or `cli`)
 - `ci_mode` (boolean)
 - `schema_version` (current engine schema marker)
+
+Stable `schema_version=1` summary payload keys:
+
+- `schema_version`, `trigger_source`, `ci_mode`, `persist`
+- `exit_code`, `aggregate_returncode`
+- `started_at`, `finished_at`, `duration_s`
+- `runs`, `error`
+
+Contract scope note:
+
+- The machine-readable contract is guaranteed for the `uqo run ...` command path.
+- Argument parser failures before command execution can emit argparse help text on stderr.
+
+Phase-1 migration status:
+
+- Streamlit and CLI run execution both delegate to `HeadlessEngineService`.
+- Legacy unused Streamlit worker helpers that directly orchestrated `run_streaming`/`AuditService` were removed to prevent orchestration drift.
 
 ## Framework command contract
 

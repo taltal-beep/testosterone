@@ -130,7 +130,7 @@ uqo run --config load-test.yaml --ci --stream-json
 
 - `--ci`: strict machine output on stdout (no human chatter mixed in)
 - `--json`: print final summary JSON object
-- `--stream-json`: print NDJSON events and then final summary JSON
+- `--stream-json`: print NDJSON event lines and then final summary JSON (always)
 - `--no-persist`: execute without DB/history persistence
 
 Stable process exit codes:
@@ -139,6 +139,20 @@ Stable process exit codes:
 - `2`: invalid config/arguments
 - `3`: infrastructure/runtime dependency failure
 - `4`: unexpected internal error
+
+Final summary JSON schema (`schema_version=1`) is stable for `uqo run`:
+- `schema_version`, `trigger_source`, `ci_mode`, `persist`
+- `exit_code`, `aggregate_returncode`
+- `started_at`, `finished_at`, `duration_s`
+- `runs` (list of run records), `error` (nullable)
+
+NDJSON event schema (`--stream-json`):
+- `{"event":"log","stream":"stdout|stderr|meta","line":"...","ts":<float>}`
+- `{"event":"run_result","returncode":<int>,"started_at":<float>,"finished_at":<float>,"run_id":"...","test_type":"...","cwd":"..."}`
+
+Contract scope note:
+- machine JSON contract applies to the `uqo run ...` execution path.
+- parser/help failures before command execution may emit argparse usage text to stderr.
 
 Minimal single-run YAML example:
 
@@ -168,8 +182,10 @@ runs:
 - Added a shared headless application engine in `uqo_core/services/headless_engine.py`.
 - Added package CLI entrypoint `uqo` in `pyproject.toml`.
 - Streamlit main run path now delegates orchestration to the same core engine used by CLI.
+- Removed legacy unused UI worker helpers that directly orchestrated `run_streaming` / `AuditService` paths.
 - Existing `RunConfig`, repository interfaces, and persistence/update flow remain in `uqo_core`.
 - Backward compatibility is preserved; metadata now includes `trigger_source`, `ci_mode`, and `schema_version`.
+- Optional MySQL runtime driver is available via `pip install -e '.[db_mysql]'`.
 
 ### Resilience guarantees
 
@@ -290,4 +306,5 @@ Metrics pushes are best-effort. They do not change the run result.
   - orphan cleanup works (force-kill Streamlit mid-run; restart; run is `FAILED`)
   - timeout works (plugin that sleeps forever; container killed; run is `FAILED`)
   - Allure link works (`/projects/<run_id>/reports/latest/index.html` returns 200)
+- Use [`docs/release_checklist_phase1.md`](docs/release_checklist_phase1.md) as the mandatory Foundation go/no-go gate.
 
