@@ -341,10 +341,12 @@ def record_completed_run(
 
     ar = artifacts_root.expanduser().resolve()
     results_dir = ar / "allure-results"
+    scoped_results_dir: Path | None = None
     if not rr.audit_mode:
         scoped_results = env.get("UQO_SHARED_ALLURE_RESULTS_DIR")
         if scoped_results:
             results_dir = Path(scoped_results).expanduser().resolve()
+            scoped_results_dir = results_dir
     m = None
     try:
         if results_dir.is_dir():
@@ -391,6 +393,7 @@ def record_completed_run(
             run_id=str(run_id),
             artifacts_root=ar,
             test_kind=str(test_kind),
+            scoped_results_dir=scoped_results_dir,
         )
 
     snapshot_attempts, snapshot_error = _run_with_retry(_snapshot_op)
@@ -450,7 +453,13 @@ def record_completed_run(
     )
 
 
-def _upload_allure_results_to_s3(*, run_id: str, artifacts_root: Path, test_kind: str) -> int:
+def _upload_allure_results_to_s3(
+    *,
+    run_id: str,
+    artifacts_root: Path,
+    test_kind: str,
+    scoped_results_dir: Path | None = None,
+) -> int:
     """
     Upload raw Allure results into MinIO for Allure Docker Service.
 
@@ -468,7 +477,9 @@ def _upload_allure_results_to_s3(*, run_id: str, artifacts_root: Path, test_kind
     if not src_root.is_dir():
         return 0
 
-    # Select which framework folders to include.
+    # Select which framework folders to include. Non-audit runs are isolated under
+    # <framework>/<run_id>; use that scoped directory so a new S3 project never
+    # inherits stale Allure payloads from prior runs in the same framework folder.
     include_dirs: list[Path] = []
     if str(test_kind).strip().lower() == "audit":
         for fw in ("pytest", "behavex", "behave_native"):
@@ -476,7 +487,7 @@ def _upload_allure_results_to_s3(*, run_id: str, artifacts_root: Path, test_kind
             if p.is_dir():
                 include_dirs.append(p)
     else:
-        p = (src_root / str(test_kind)).resolve()
+        p = scoped_results_dir.expanduser().resolve() if scoped_results_dir is not None else (src_root / str(test_kind)).resolve()
         if p.is_dir():
             include_dirs.append(p)
 

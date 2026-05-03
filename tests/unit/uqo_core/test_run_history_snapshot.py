@@ -98,3 +98,40 @@ def test_record_completed_run_uses_scoped_results_dir_for_metrics(
     assert captured["total_tests"] == 1
     assert captured["passed"] == 1
     assert captured["failed"] == 0
+
+
+def test_record_completed_run_uploads_only_scoped_results_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import uqo_core.run_history as rh
+
+    scoped = tmp_path / "artifacts" / "allure-results" / "pytest" / "rid"
+    other = tmp_path / "artifacts" / "allure-results" / "pytest" / "other"
+    scoped.mkdir(parents=True)
+    other.mkdir(parents=True)
+    (scoped / "current-result.json").write_text('{"status":"passed"}', encoding="utf-8")
+    (other / "stale-result.json").write_text('{"status":"failed"}', encoding="utf-8")
+
+    uploaded: list[tuple[str, str]] = []
+
+    class _Storage:
+        bucket_name = "bucket"
+
+        def upload_file(self, local_path: Path, s3_key: str) -> None:
+            uploaded.append((Path(local_path).name, s3_key))
+
+    monkeypatch.setattr(rh, "_snapshot_reports", lambda **_: None)
+    monkeypatch.setattr(rh, "update_run_status", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(rh, "get_artifact_s3", lambda: _Storage())
+
+    cmd = BuiltCommand(
+        argv=["pytest"],
+        cwd=tmp_path,
+        env={"UQO_RUN_ID": "rid", "UQO_SHARED_ALLURE_RESULTS_DIR": str(scoped)},
+    )
+    rr = RunResult(returncode=0, started_at=0.0, finished_at=1.0, command=cmd)
+
+    status = record_completed_run(rr=rr, artifacts_root=tmp_path / "artifacts", test_kind="pytest")
+
+    assert status.artifact_upload.status == "success"
+    assert uploaded == [("current-result.json", "projects/rid/results/current-result.json")]
