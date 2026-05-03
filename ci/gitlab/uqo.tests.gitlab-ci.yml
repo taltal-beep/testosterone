@@ -1,0 +1,45 @@
+stages:
+  - test
+
+default:
+  image: python:3.11-slim
+  before_script:
+    - python -m pip install --upgrade pip
+    - python -m pip install -e ".[dev]"
+
+fast_required:
+  stage: test
+  script:
+    - python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1 --no-cov
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - .artifacts/e2e/
+      - "**/*.log"
+      - "**/*summary*.json"
+      - "**/*api*.json"
+      - "**/*.png"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+
+heavy_optional:
+  stage: test
+  script:
+    - python -m pytest -q -m "tier_heavy and not tier_external" --maxfail=1 --durations=25
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - .artifacts/e2e/
+      - "**/*.log"
+      - "**/*summary*.json"
+      - "**/*api*.json"
+      - "**/*.png"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $RUN_HEAVY_E2E == "true"'
+      when: manual
+

@@ -49,3 +49,15 @@ This is the go/no-go gate before assigning/re-pointing `v1` for the GitHub actio
 - No CI-provider conditionals were added to repository adapters/factory/DB wiring.
 - Runner image path shows no runtime dependency install command in smoke logs.
 - Image pull/auth failures classify as infra failure (`exit_code=3`) in summary.
+
+## 8) Tiered E2E gate criteria
+
+- Fast required gate command:
+  - `python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1 --no-cov`
+  - Pass threshold: 100% pass, deterministic rerun, zero cleanup ledger failures.
+- Heavy optional gate command:
+  - `python -m pytest -q -m "tier_heavy and not tier_external" --maxfail=1 --durations=25`
+  - Pass threshold: 100% pass for executed scenarios and diagnostics artifacts available on failure.
+- External nightly/release gate command:
+  - `python -m pytest -q -m "tier_external and cleanup_required" --maxfail=1 --durations=50`
+  - Pass threshold: 100% pass for GitHub+GitLab lifecycle scenarios, plugin path coverage included, cleanup audit reports zero leaked resources.

@@ -6,6 +6,21 @@ This repo historically used a flat `tests/` layout. We now split tests by intent
 - `tests/integration/`: component interaction / state persistence (FastAPI TestClient or managed sandbox)
 - `tests/e2e/`: sequential user journeys (Allure-stepped)
 - `tests/contracts/`: schema/contract enforcement (Pydantic)
+- `tests/contract/`: contract enforcement for CLI/API/CI wrappers (legacy singular path still supported)
+- `tests/e2e/flows/`: reusable flow scenarios (`provision -> execute -> poll -> verify -> cleanup`)
+- `tests/e2e/provisioners/`: local/mock/external resource provisioners
+- `tests/e2e/verifiers/`: DB/API/artifact/cleanup verifiers
+- `tests/fixtures/e2e/`: repeatable fixture packs and env templates for each tier
+
+## Tier markers
+
+- `tier_fast`: deterministic PR-required baseline (no external provider resource creation)
+- `tier_heavy`: PR-optional deep suite (full stack + plugin path with local/mocked providers)
+- `tier_external`: nightly/release suite (real provider lifecycle)
+- `provider_github` / `provider_gitlab`: provider-specific scenario coverage
+- `plugin_path`: plugin-enabled scenario coverage
+- `cleanup_required`: ephemeral resource lifecycle with mandatory cleanup audit
+- `quarantined`: temporarily excluded flaky test bucket
 
 ### Migration map (old → new)
 

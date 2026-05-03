@@ -1,0 +1,9 @@
+stages:
+  - test
+
+heavy_optional:
+  stage: test
+  when: manual
+  script:
+    - python -m pytest -q -m "tier_heavy and not tier_external"
+

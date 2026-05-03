@@ -1,0 +1,45 @@
+name: nightly-external
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: external-e2e
+  cancel-in-progress: false
+
+jobs:
+  external_nightly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      UQO_E2E_EXTERNAL_DRY_RUN: "false"
+      UQO_E2E_GITHUB_TOKEN: ${{ secrets.UQO_E2E_GITHUB_TOKEN }}
+      UQO_E2E_GITHUB_OWNER: ${{ secrets.UQO_E2E_GITHUB_OWNER }}
+      UQO_E2E_GITLAB_TOKEN: ${{ secrets.UQO_E2E_GITLAB_TOKEN }}
+      UQO_E2E_GITLAB_GROUP_ID: ${{ secrets.UQO_E2E_GITLAB_GROUP_ID }}
+      UQO_E2E_GITLAB_BASE_URL: ${{ secrets.UQO_E2E_GITLAB_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run external lifecycle suite
+        run: python -m pytest -q -m "tier_external and cleanup_required" --maxfail=1 --durations=50
+      - name: Upload diagnostics artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-external-artifacts
+          path: |
+            .artifacts/e2e/**
+            **/*.log
+            **/*summary*.json
+            **/*api*.json
+            **/*.png
+

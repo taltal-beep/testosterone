@@ -1,0 +1,6 @@
+version: 1
+flows:
+  - name: plugin-mocked
+    provider: github
+    plugin: sample_plugin.py
+

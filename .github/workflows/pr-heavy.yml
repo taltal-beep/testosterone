@@ -1,0 +1,35 @@
+name: pr-heavy
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  heavy_optional:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'e2e-heavy')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run heavy optional suite
+        run: python -m pytest -q -m "tier_heavy and not tier_external" --maxfail=1 --durations=25
+      - name: Upload diagnostics artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-heavy-artifacts
+          path: |
+            .artifacts/e2e/**
+            **/*.log
+            **/*summary*.json
+            **/*api*.json
+            **/*.png
+

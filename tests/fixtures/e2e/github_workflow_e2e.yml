@@ -1,0 +1,9 @@
+name: uqo-e2e-heavy
+on:
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - run: python -m pytest -q -m "tier_heavy and not tier_external"
+

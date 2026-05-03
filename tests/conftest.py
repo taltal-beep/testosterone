@@ -6,7 +6,11 @@ import os
 import random
 import hashlib
 import importlib.util
+import json
+import re
 import sys
+import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
@@ -51,12 +55,14 @@ def _env_str(name: str, default: str) -> str:
 
 
 def _path_kind(path: Path) -> str:
-    p = str(path).replace("\\", "/")
-    if "/tests/e2e/" in p:
+    p = str(path).replace("\\", "/").lstrip("./")
+    if p.startswith("tests/e2e/") or "/tests/e2e/" in p:
         return "e2e"
-    if "/tests/integration/" in p:
+    if p.startswith("tests/integration/") or "/tests/integration/" in p:
         return "integration"
-    if "/tests/contracts/" in p:
+    if p.startswith("tests/contract/") or "/tests/contract/" in p:
+        return "contract"
+    if p.startswith("tests/contracts/") or "/tests/contracts/" in p:
         return "contract"
     return "unit"
 
@@ -76,6 +82,117 @@ def _default_story(item: pytest.Item) -> str:
         return str(rel).replace("\\", "/")
     except Exception:
         return str(getattr(item, "fspath", "unknown"))
+
+
+def _has_marker(item: pytest.Item, marker_name: str) -> bool:
+    return item.get_closest_marker(marker_name) is not None
+
+
+def _add_marker_if_missing(item: pytest.Item, marker_name: str) -> None:
+    if not _has_marker(item, marker_name):
+        item.add_marker(getattr(pytest.mark, marker_name))
+
+
+def _normalized_test_path(item: pytest.Item) -> str:
+    return str(item.fspath).replace("\\", "/")
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """
+    Keep marker taxonomy deterministic across legacy and migrated test paths.
+    """
+    for item in items:
+        p = _normalized_test_path(item)
+        kind = _path_kind(Path(p))
+        _add_marker_if_missing(item, kind)
+
+        if "/tests/e2e/flows/test_external_provider_lifecycle.py" in p:
+            _add_marker_if_missing(item, "tier_external")
+            _add_marker_if_missing(item, "cleanup_required")
+            continue
+
+        if "/tests/e2e/" in p:
+            _add_marker_if_missing(item, "tier_heavy")
+            continue
+
+        if "/tests/integration/test_runner_image_mode_smoke.py" in p or "/tests/integration/ui/" in p:
+            _add_marker_if_missing(item, "tier_heavy")
+            continue
+
+        _add_marker_if_missing(item, "tier_fast")
+
+
+def _sanitize_run_id(value: str) -> str:
+    collapsed = re.sub(r"[^A-Za-z0-9_.-]+", "-", value.strip())
+    return collapsed.strip("-")[:48] or "local"
+
+
+def _default_run_id() -> str:
+    for key in ("GITHUB_RUN_ID", "CI_PIPELINE_ID", "BUILD_BUILDID", "BUILD_TAG"):
+        raw = os.getenv(key)
+        if raw:
+            return _sanitize_run_id(raw)
+    return _sanitize_run_id(uuid.uuid4().hex[:12])
+
+
+@pytest.fixture(scope="session")
+def e2e_run_id() -> str:
+    configured = os.getenv("UQO_E2E_RUN_ID")
+    if configured:
+        return _sanitize_run_id(configured)
+    return _default_run_id()
+
+
+@dataclass
+class CleanupRecord:
+    resource_type: str
+    resource_id: str
+    provider: str
+    status: str
+    detail: str = ""
+
+
+class CleanupLedger:
+    def __init__(self, run_id: str) -> None:
+        self.run_id = run_id
+        self.records: list[CleanupRecord] = []
+
+    def add(self, *, resource_type: str, resource_id: str, provider: str, status: str, detail: str = "") -> None:
+        self.records.append(
+            CleanupRecord(
+                resource_type=resource_type,
+                resource_id=resource_id,
+                provider=provider,
+                status=status,
+                detail=detail,
+            )
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "run_id": self.run_id,
+            "generated_at_epoch_s": int(time.time()),
+            "records": [record.__dict__ for record in self.records],
+        }
+
+    def write(self, root: Path) -> Path:
+        root.mkdir(parents=True, exist_ok=True)
+        out = root / "cleanup-ledger.json"
+        out.write_text(json.dumps(self.to_payload(), indent=2, sort_keys=True), encoding="utf-8")
+        return out
+
+
+@pytest.fixture(scope="session")
+def cleanup_ledger(e2e_run_id: str, request: pytest.FixtureRequest) -> CleanupLedger:
+    ledger = CleanupLedger(run_id=e2e_run_id)
+
+    def _flush() -> None:
+        artifact_root = _ROOT / ".artifacts" / "e2e" / e2e_run_id
+        ledger.write(artifact_root)
+
+    request.addfinalizer(_flush)
+    return ledger
 
 
 @pytest.hookimpl(tryfirst=True)

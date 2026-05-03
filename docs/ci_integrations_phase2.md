@@ -79,6 +79,24 @@ GitLab template variables:
 - `UQO_RUNNER_PREBUILT=auto` enables prebuilt behavior when a custom image is provided and keeps legacy behavior on default image.
 - Image pull/auth/network failures are classified as infrastructure failures (`exit_code=3`).
 
+## Tiered test harness commands
+
+Tier selection is marker-driven and shared across local, GitHub Actions, and GitLab CI:
+
+- Fast required gate:
+  - `python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1 --no-cov`
+- Heavy optional gate:
+  - `python -m pytest -q -m "tier_heavy and not tier_external" --maxfail=1 --durations=25`
+- External nightly/release gate:
+  - `python -m pytest -q -m "tier_external and cleanup_required" --maxfail=1 --durations=50`
+
+Reference CI definitions:
+
+- GitHub: `.github/workflows/pr-fast.yml`, `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`
+- GitLab: `ci/gitlab/uqo.tests.gitlab-ci.yml`, `ci/gitlab/uqo.external.gitlab-ci.yml`
+
+All tier jobs upload diagnostics artifacts (`logs`, summary JSON, API responses, screenshots when present) on failure, and external suites run with `external-e2e` concurrency isolation.
+
 ## Versioning policy
 
 - GitHub action: publish immutable semver tags (`v1.0.0`, `v1.0.1`, ...), keep `v1` moving to latest stable `v1.x`, and recommend SHA pinning for strict supply-chain policies.

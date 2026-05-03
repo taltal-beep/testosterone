@@ -10,7 +10,7 @@ from uqo_core.command_builders import RunConfig, TestType
 from uqo_core.specs import BaseRunnerSpec
 
 
-pytestmark = [pytest.mark.unit]
+pytestmark = [pytest.mark.unit, pytest.mark.plugin_path, pytest.mark.tier_fast]
 
 
 def test_load_plugins_registers_python_files(tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
