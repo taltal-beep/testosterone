@@ -6,7 +6,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Protocol
 from uuid import uuid4
 
 from uqo_core.command_builders import TestType
@@ -18,6 +18,10 @@ from uqo_api.models import CreateExecutionRequest
 
 
 ExecutionStatus = Literal["queued", "running", "completed", "failed"]
+
+
+class FailureAnalysisServiceProtocol(Protocol):
+    def generate_summary(self, *, run_id: str, force_refresh: bool = False): ...  # noqa: ANN201
 
 
 @dataclass
@@ -45,10 +49,11 @@ class ExecutionState:
 
 
 class ExecutionManager:
-    def __init__(self) -> None:
+    def __init__(self, *, failure_analysis_service: FailureAnalysisServiceProtocol | None = None) -> None:
         self._engine = HeadlessEngineService()
         self._states: dict[str, ExecutionState] = {}
         self._states_lock = threading.Lock()
+        self._failure_analysis_service = failure_analysis_service
 
     def create_execution(self, request_model: CreateExecutionRequest) -> ExecutionState:
         if not request_model.runs:
@@ -80,6 +85,7 @@ class ExecutionManager:
 
     def _run_execution(self, state: ExecutionState, request_model: CreateExecutionRequest) -> None:
         state.status = "running"
+        failed_run_ids: list[str] = []
         try:
             specs = tuple(self._to_engine_spec(spec) for spec in request_model.runs)
             request = EngineRequest(
@@ -95,6 +101,7 @@ class ExecutionManager:
                 except StopIteration as stop:
                     summary = stop.value.to_dict() if stop.value is not None else None
                     if summary is not None:
+                        self._generate_failure_summaries(run_ids=failed_run_ids)
                         state.append_event({"event": "summary", "data": summary})
                         status: ExecutionStatus = "completed" if int(summary.get("exit_code", 1)) == 0 else "failed"
                     else:
@@ -115,6 +122,8 @@ class ExecutionManager:
                     )
                 elif isinstance(payload, RunResult):
                     run_id = payload.command.env.get("UQO_AUDIT_RUN_ID") or payload.command.env.get("UQO_RUN_ID")
+                    if request.persist and run_id and int(payload.returncode) != 0:
+                        failed_run_ids.append(run_id)
                     state.append_event(
                         {
                             "event": "run_result",
@@ -143,6 +152,16 @@ class ExecutionManager:
                 }
             )
             state.set_done(status="failed", summary=None, error=error_message)
+
+    def _generate_failure_summaries(self, *, run_ids: list[str]) -> None:
+        if self._failure_analysis_service is None:
+            return
+        for run_id in dict.fromkeys(run_ids):
+            try:
+                self._failure_analysis_service.generate_summary(run_id=run_id)
+            except Exception:
+                # Summary generation is best-effort and must not mask the execution result.
+                continue
 
     @staticmethod
     def _to_engine_spec(spec) -> EngineRunSpec:  # noqa: ANN001
