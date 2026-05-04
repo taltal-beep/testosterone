@@ -37,3 +37,40 @@ def test_failure_context_applies_budget_truncation() -> None:
     )
     assert context.context_stats["prompt_chars"] <= 120
     assert "log_truncated" in context.limitations or "context_budget_truncated" in context.limitations
+
+
+def test_failure_context_redacts_secrets_from_all_prompt_sections() -> None:
+    context = build_failure_context(
+        run=_run(),
+        metadata={
+            "error_message": "request failed with api_key=logsecret123",
+            "traceback": "Trace included Bearer traceToken123456",
+            "sync": {"token": "metasecret123", "status": "failed"},
+        },
+        budget=FailureContextBudget(max_total_chars=2_000),
+    )
+
+    assert "***REDACTED***" in context.prompt
+    assert "logsecret123" not in context.prompt
+    assert "traceToken123456" not in context.prompt
+    assert "metasecret123" not in context.prompt
+
+
+def test_failure_context_uses_primary_metadata_keys_before_fallbacks() -> None:
+    context = build_failure_context(
+        run=_run(),
+        metadata={
+            "error_message": "primary log",
+            "error": "fallback log",
+            "traceback": "primary trace",
+            "stack_trace": "fallback trace",
+            "audit_json": "fallback audit",
+        },
+        budget=FailureContextBudget(max_total_chars=2_000),
+    )
+
+    assert "primary log" in context.prompt
+    assert "primary trace" in context.prompt
+    assert "fallback log" not in context.prompt
+    assert "fallback trace" not in context.prompt
+    assert "fallback audit" not in context.prompt

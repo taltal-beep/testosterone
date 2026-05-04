@@ -9,6 +9,7 @@ _TOKEN_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"(?:api[_-]?key|token|secret)\s*[:=]\s*([\"'])?([A-Za-z0-9_\-]{8,})(\1)?", re.IGNORECASE),
     re.compile(r"Bearer\s+[A-Za-z0-9_\-]{8,}", re.IGNORECASE),
 )
+_SENSITIVE_KEY_PATTERN = re.compile(r"(?:api[_-]?key|token|secret)", re.IGNORECASE)
 _REDACTED = "***REDACTED***"
 
 
@@ -20,7 +21,10 @@ def redact_text(text: str) -> str:
 
 
 def redact_mapping(payload: Mapping[str, Any]) -> dict[str, Any]:
-    return {str(k): redact_value(v) for k, v in payload.items()}
+    return {
+        str(k): _REDACTED if _SENSITIVE_KEY_PATTERN.search(str(k)) else redact_value(v)
+        for k, v in payload.items()
+    }
 
 
 def redact_sequence(payload: Sequence[Any]) -> list[Any]:

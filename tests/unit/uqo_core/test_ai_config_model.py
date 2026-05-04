@@ -12,3 +12,5 @@ def test_ai_config_validation_rejects_invalid_limits() -> None:
         AiProviderConfig(retry_count=-1).validate()
     with pytest.raises(ValueError):
         AiProviderConfig(max_input_chars=0).validate()
+    with pytest.raises(ValueError):
+        AiProviderConfig(max_output_tokens=0).validate()

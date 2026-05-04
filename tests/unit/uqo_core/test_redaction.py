@@ -12,7 +12,9 @@ def test_redact_value_masks_nested_structures() -> None:
     payload = {
         "error": "api_key=SECRET12345678",
         "items": ["Bearer verysecret12345"],
+        "metadata": {"token": "rawsecret123"},
     }
     redacted = redact_value(payload)
     assert redacted["error"] == "***REDACTED***"
     assert redacted["items"][0] == "***REDACTED***"
+    assert redacted["metadata"]["token"] == "***REDACTED***"
