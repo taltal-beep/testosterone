@@ -45,6 +45,7 @@ Ensure these are updated and internally consistent:
 
 - `README.md`
 - `ARCHITECTURE.md`
+- `docs/ai_failure_summaries.md`
 - `docs/release_checklist_phase4_ai.md`
 
 ## 8) Go / No-Go criteria

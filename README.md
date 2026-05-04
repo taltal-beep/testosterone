@@ -453,6 +453,9 @@ Security and behavior guarantees:
 - Token-like values are redacted from internal error surfaces before transport.
 - Existing run execution and CLI/CI contracts are unchanged when AI is unavailable.
 
+Developer setup, API examples, response semantics, and troubleshooting are documented in
+[`docs/ai_failure_summaries.md`](docs/ai_failure_summaries.md).
+
 Release gate: `docs/release_checklist_phase4_ai.md`.
 
 ### Unified dashboard interpretation rules

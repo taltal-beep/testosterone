@@ -200,6 +200,8 @@ Each phase writes to `artifacts/allure-results/<framework>/`. A non-zero phase i
 - UI surface remains presentation-only:
   - settings: `frontend/src/features/settings/AIIntegrationSettingsPage.tsx`
   - run details summary card: `frontend/src/features/run-detail/RunDetailPage.tsx`
+- Operational setup, API examples, response semantics, and troubleshooting are documented in
+  `docs/ai_failure_summaries.md`.
 
 Security model:
 
