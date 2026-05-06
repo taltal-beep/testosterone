@@ -4,9 +4,9 @@ from uqo_api.execution_manager import ExecutionManager
 from uqo_core.services.ai.integration_settings import InMemoryAiSettingsStore
 from uqo_core.services.failure_analysis_service import FailureAnalysisService
 
-_MANAGER = ExecutionManager()
 _AI_SETTINGS_STORE = InMemoryAiSettingsStore()
 _FAILURE_ANALYSIS_SERVICE = FailureAnalysisService(settings_store=_AI_SETTINGS_STORE)
+_MANAGER = ExecutionManager(failure_analysis_service=_FAILURE_ANALYSIS_SERVICE)
 
 
 def get_execution_manager() -> ExecutionManager:

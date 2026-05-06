@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import queue
 import threading
 import time
@@ -13,11 +14,13 @@ from uqo_core.command_builders import TestType
 from uqo_core.runners import LogEvent, RunResult
 from uqo_core.security.redaction import redact_error_message
 from uqo_core.services import EngineRequest, EngineRunSpec, HeadlessEngineService
+from uqo_core.services.failure_analysis_service import FailureAnalysisService
 
 from uqo_api.models import CreateExecutionRequest
 
 
 ExecutionStatus = Literal["queued", "running", "completed", "failed"]
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -45,8 +48,9 @@ class ExecutionState:
 
 
 class ExecutionManager:
-    def __init__(self) -> None:
+    def __init__(self, *, failure_analysis_service: FailureAnalysisService | None = None) -> None:
         self._engine = HeadlessEngineService()
+        self._failure_analysis_service = failure_analysis_service
         self._states: dict[str, ExecutionState] = {}
         self._states_lock = threading.Lock()
 
@@ -128,6 +132,11 @@ class ExecutionManager:
                             },
                         }
                     )
+                    if run_id and int(payload.returncode) != 0 and self._failure_analysis_service is not None:
+                        try:
+                            self._failure_analysis_service.generate_summary(run_id=str(run_id), force_refresh=False)
+                        except Exception as exc:  # pragma: no cover - best-effort side effect
+                            logger.warning("AI failure summary generation skipped for run %s: %s", run_id, exc)
         except Exception as exc:  # pragma: no cover - defensive fallback
             error_message = redact_error_message(exc)
             state.append_event(
