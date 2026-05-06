@@ -6,7 +6,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Protocol
 from uuid import uuid4
 
 from uqo_core.command_builders import TestType
@@ -18,6 +18,11 @@ from uqo_api.models import CreateExecutionRequest
 
 
 ExecutionStatus = Literal["queued", "running", "completed", "failed"]
+
+
+class FailureAnalysisServiceLike(Protocol):
+    def generate_summary(self, *, run_id: str, force_refresh: bool = False) -> object:
+        ...
 
 
 @dataclass
@@ -45,8 +50,9 @@ class ExecutionState:
 
 
 class ExecutionManager:
-    def __init__(self) -> None:
+    def __init__(self, *, failure_analysis_service: FailureAnalysisServiceLike | None = None) -> None:
         self._engine = HeadlessEngineService()
+        self._failure_analysis_service = failure_analysis_service
         self._states: dict[str, ExecutionState] = {}
         self._states_lock = threading.Lock()
 
@@ -89,6 +95,7 @@ class ExecutionManager:
                 persist=bool(request_model.persist),
             )
             gen = self._engine.stream(request)
+            failed_run_ids: list[str] = []
             while True:
                 try:
                     event = next(gen)
@@ -99,6 +106,7 @@ class ExecutionManager:
                         status: ExecutionStatus = "completed" if int(summary.get("exit_code", 1)) == 0 else "failed"
                     else:
                         status = "failed"
+                    self._generate_failure_summaries(failed_run_ids)
                     state.set_done(status=status, summary=summary, error=None)
                     return
                 payload = event.payload
@@ -115,6 +123,8 @@ class ExecutionManager:
                     )
                 elif isinstance(payload, RunResult):
                     run_id = payload.command.env.get("UQO_AUDIT_RUN_ID") or payload.command.env.get("UQO_RUN_ID")
+                    if request_model.persist and run_id and int(payload.returncode) != 0:
+                        failed_run_ids.append(str(run_id))
                     state.append_event(
                         {
                             "event": "run_result",
@@ -143,6 +153,15 @@ class ExecutionManager:
                 }
             )
             state.set_done(status="failed", summary=None, error=error_message)
+
+    def _generate_failure_summaries(self, run_ids: list[str]) -> None:
+        if self._failure_analysis_service is None:
+            return
+        for run_id in run_ids:
+            try:
+                self._failure_analysis_service.generate_summary(run_id=run_id, force_refresh=False)
+            except Exception:
+                continue
 
     @staticmethod
     def _to_engine_spec(spec) -> EngineRunSpec:  # noqa: ANN001
