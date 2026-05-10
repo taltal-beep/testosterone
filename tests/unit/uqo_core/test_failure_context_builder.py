@@ -37,3 +37,47 @@ def test_failure_context_applies_budget_truncation() -> None:
     )
     assert context.context_stats["prompt_chars"] <= 120
     assert "log_truncated" in context.limitations or "context_budget_truncated" in context.limitations
+
+
+def test_failure_context_redacts_secrets_from_prompt() -> None:
+    context = build_failure_context(
+        run=_run(),
+        metadata={
+            "error_message": "request failed with Bearer sk-test-secret-token",
+            "traceback": "RuntimeError: api_key=supersecretvalue",
+            "sync": "token=syncsecrettoken",
+        },
+        budget=FailureContextBudget(),
+    )
+
+    assert "***REDACTED***" in context.prompt
+    assert "sk-test-secret-token" not in context.prompt
+    assert "supersecretvalue" not in context.prompt
+    assert "syncsecrettoken" not in context.prompt
+
+
+def test_failure_context_prefers_specific_metadata_fields() -> None:
+    context = build_failure_context(
+        run=_run(),
+        metadata={
+            "error_message": "specific error message",
+            "error": "generic error",
+            "audit_json": "audit fallback trace",
+        },
+        budget=FailureContextBudget(),
+    )
+
+    assert "specific error message" in context.prompt
+    assert "generic error" not in context.prompt
+    assert "audit fallback trace" in context.prompt
+
+
+def test_failure_context_uses_error_and_audit_fallbacks() -> None:
+    context = build_failure_context(
+        run=_run(),
+        metadata={"error": "generic error", "audit_json": "audit fallback trace"},
+        budget=FailureContextBudget(),
+    )
+
+    assert "generic error" in context.prompt
+    assert "audit fallback trace" in context.prompt
