@@ -17,11 +17,20 @@ import typer
 
 
 def run(
+    cycle: str = typer.Option(
+        None,
+        "--cycle",
+        help=(
+            "Name of the cycle to execute (from 'cycles:' in testosterone.yaml). "
+            "Use 'all' to run every cycle in sorted order (each trigger evaluated separately)."
+        ),
+    ),
     plan: str = typer.Option(
         None,
         "--plan",
         "-p",
-        help="Name of the plan to execute (from the 'plans:' section of testosterone.yaml).",
+        help="Deprecated alias for --cycle.",
+        hidden=True,
     ),
     config: Path = typer.Option(
         None,
@@ -47,11 +56,27 @@ def run(
         "--no-persist",
         help="Skip writing run records to the optional history database.",
     ),
+    no_report_db: bool = typer.Option(
+        False,
+        "--no-report-db",
+        help="Skip archiving cycle artifacts (Allure/JSON) to the report database after the run.",
+    ),
+    async_report_db: bool = typer.Option(
+        False,
+        "--async-report-db",
+        help="Archive reports in a background thread (may not finish before the process exits).",
+    ),
     workers: int = typer.Option(
         None,
         "--workers",
         "-w",
         help="Override the default worker count for parallel-aware frameworks (e.g. BehaveX).",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Run the cycle even when a trigger would skip it (ignore selective paths).",
     ),
 ) -> None:
     """Run a plan end-to-end."""
@@ -62,11 +87,14 @@ def run(
     console = make_console(plain=True) if ci else default_console()
     exit_code = execute_plan_command(
         console=console,
-        plan_name=plan,
+        plan_name=cycle if cycle is not None else plan,
         config_path=config,
         stream=stream,
         ci=ci,
         persist=not no_persist,
         workers_override=workers,
+        force=force,
+        report_db=not no_report_db,
+        async_report_db=async_report_db,
     )
     raise typer.Exit(code=int(exit_code))

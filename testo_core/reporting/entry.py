@@ -24,6 +24,7 @@ def dispatch_report(
     out_dir: Path,
     fmt: str,
     summary_out: Path | None,
+    inject_history: bool = True,
 ) -> int:
     """Wire one ``testo report`` invocation to the right backend."""
     results = collect_results(artifacts_root, plan_name=plan_name)
@@ -57,11 +58,21 @@ def dispatch_report(
         console.print(f"[fail]unknown --format {fmt_normalised!r}[/]")
         return int(EngineExitCode.INVALID_INPUT)
 
+    from testo_core.reporting.history_inject import try_inject_prior_history
+
+    if inject_history:
+        try_inject_prior_history(
+            artifacts_root=artifacts_root,
+            plan_name=plan_name,
+            console=console,
+            enabled=True,
+        )
+
     from testo_core.reporting.allure import (
         AllureCLINotFoundError,
         generate_html,
     )
-    from testo_core.reporting.server import open_generated_report
+    from testo_core.reporting.server import open_generated_report, resolve_serve_port
 
     try:
         outcome = generate_html(result_dirs=results.result_dirs, out_dir=out_dir)
@@ -95,11 +106,16 @@ def dispatch_report(
         )
         return int(EngineExitCode.INFRA_FAILURE)
 
-    url = f"http://{host}:{port}/"
+    serve_port = resolve_serve_port(host, port)
+    if serve_port != port:
+        console.print(
+            f"[muted]Port {port} is in use; serving the dashboard on[/] [bold]{serve_port}[/] instead."
+        )
+    url = f"http://{host}:{serve_port}/"
     console.print(f"[bold]Dashboard[/] [link={url}]{url}[/]")
     console.print("[dim]Press Ctrl+C here to stop the server when you are done.[/]")
 
-    code = open_generated_report(report_dir=out_resolved, host=host, port=port)
+    code = open_generated_report(report_dir=out_resolved, host=host, port=serve_port)
     if code == 127:
         console.print("[fail]``allure`` CLI was not found on PATH.[/]")
         return int(EngineExitCode.INFRA_FAILURE)

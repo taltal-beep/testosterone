@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Optional
 
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Column, LargeBinary
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -45,4 +45,43 @@ class RunRecord(SQLModel, table=True):
     metadata_: dict[str, Any] = Field(
         default_factory=dict,
         sa_column=Column("metadata", _METADATA_JSON_COL, nullable=False),
+    )
+
+
+class ReportArchive(SQLModel, table=True):
+    """Stored Allure/JSON artifacts for a completed CLI cycle (zip payload).
+
+    Denormalized counters support fast listing/filtering without unpacking ``artifact_bytes``.
+    Existing deployments that created this table before these columns need a manual
+    ``ALTER TABLE`` (Postgres/MySQL) or a fresh SQLite file for dev.
+    """
+
+    __table_args__ = {"extend_existing": True}
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
+    cycle_name: str = Field(index=True, max_length=512)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC), index=True)
+    exit_code: int = Field(default=0)
+    summary_json: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column("summary_json", _METADATA_JSON_COL, nullable=False),
+    )
+    artifact_bytes: bytes = Field(sa_column=Column("artifact_bytes", LargeBinary, nullable=False))
+    total_tests: Optional[int] = Field(default=None, index=True)
+    passed: Optional[int] = Field(default=None)
+    failed: Optional[int] = Field(default=None)
+    broken: Optional[int] = Field(default=None)
+    skipped: Optional[int] = Field(default=None)
+    unknown: Optional[int] = Field(
+        default=None,
+        description="Sum of Allure unknown-status counts across per-stage result trees.",
+    )
+    allure_duration_ms: Optional[int] = Field(
+        default=None,
+        description="Sum of per-result-tree duration spans from *-result.json timestamps.",
+    )
+    plan_duration_ms: Optional[int] = Field(
+        default=None,
+        index=True,
+        description="Wall time from plan_result.json duration_s when present.",
     )

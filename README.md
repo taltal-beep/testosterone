@@ -80,6 +80,15 @@ Phase 3 transitional UI mode (default `dual`):
 export UQO_UI_MODE=dual  # streamlit | react | dual
 ```
 
+---
+
+## CLI cycles (`testo`)
+
+The `testo` CLI reads `testosterone.yaml` and runs a named **cycle** (top-level key under `cycles:`). Each cycle contains one or more stages, and each stage declares an `equipment` (e.g. `pytest`, `behave`, `behavex`).
+
+- **BehaveX dependency**: `behavex` is already included as a runtime dependency in `pyproject.toml`. You can verify the executable is available with:
+  - `testo config validate --check-executables`
+
 Start the new backend + frontend in parallel:
 
 ```bash

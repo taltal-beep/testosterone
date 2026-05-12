@@ -110,6 +110,7 @@ def test_dispatch_report_generate_only_does_not_open_dashboard(tmp_path: Path) -
             out_dir=out,
             fmt="html",
             summary_out=None,
+            inject_history=False,
         )
         assert code == int(EngineExitCode.SUCCESS)
         op.assert_not_called()

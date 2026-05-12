@@ -67,6 +67,41 @@ def _path_kind(path: Path) -> str:
     return "unit"
 
 
+def _is_mock_api_test_path(path_str: str) -> bool:
+    """True only for mock API flow/e2e dirs or ``test_sandbox_api*.py`` unit files."""
+    p = path_str.replace("\\", "/")
+    return "/sandbox_api/" in p or "/test_sandbox_api" in p
+
+
+def _mock_api_flaky_probability() -> float:
+    """Clamp ``SANDBOX_API_FLAKY_P`` to ``[0, 1]`` (0 = off; chaos runs often use 0.07)."""
+    return max(0.0, min(1.0, _env_float("SANDBOX_API_FLAKY_P", 0.0)))
+
+
+@pytest.fixture(autouse=True)
+def _optional_mock_api_flaky(request: pytest.FixtureRequest) -> None:
+    """Opt-in random failures for mock API tests only (never other ``testo_core`` tests).
+
+    Set ``SANDBOX_API_FLAKY_P=0.07`` to make each eligible test fail independently with
+    probability 7%. Unset or ``0`` disables this entirely.
+    """
+    p = _mock_api_flaky_probability()
+    if p <= 0:
+        return
+    node = request.node
+    raw = getattr(node, "path", None)
+    try:
+        path_str = raw.as_posix() if raw is not None else str(getattr(node, "fspath", ""))
+    except Exception:
+        path_str = str(node)
+    if not _is_mock_api_test_path(path_str):
+        return
+    if random.random() < p:
+        pytest.fail(
+            f"Simulated flaky mock API (SANDBOX_API_FLAKY_P={p}); unset or set to 0 to disable."
+        )
+
+
 def _default_feature(kind: str) -> str:
     return {
         "unit": "Unit",

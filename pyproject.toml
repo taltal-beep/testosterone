@@ -43,6 +43,7 @@ api = [
 db = [
     "sqlmodel>=0.0.24",
     "psycopg[binary]>=3.2.0",
+    "tomli-w>=1.0.0",
 ]
 db_mysql = [
     "pymysql>=1.1.0",

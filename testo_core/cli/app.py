@@ -28,19 +28,37 @@ def _register_commands() -> None:
     only the lightweight Typer + Rich surface is loaded here.
     """
     from testo_core.cli.commands import config as config_cmd
-    from testo_core.cli.commands import plans as plans_cmd
+    from testo_core.cli.commands import config_db as config_db_cmd
+    from testo_core.cli.commands import diff_cli as diff_cli_mod
+    from testo_core.cli.commands import plans as cycles_cmd
     from testo_core.cli.commands import report as report_cmd
     from testo_core.cli.commands import run as run_cmd
     from testo_core.cli.commands import version as version_cmd
 
-    app.command(name="run", help="Execute a plan defined in testosterone.yaml.")(run_cmd.run)
-    app.add_typer(plans_cmd.app, name="plans", help="Inspect plans defined in the config.")
-    app.add_typer(config_cmd.app, name="config", help="Validate or scaffold a testosterone.yaml.")
+    app.command(name="run", help="Execute a cycle defined in testosterone.yaml.")(run_cmd.run)
     app.command(
+        name="config-db",
+        help="Set database.url in testosterone.yaml (or pyproject [tool.testosterone]).",
+    )(config_db_cmd.config_db)
+    app.command(
+        name="diff",
+        help="Compare two archived report runs (UUIDs from ``testo report list``).",
+    )(diff_cli_mod.diff_reports)
+    app.command(
+        name="summary",
+        help="Rich diff of the two most recent archived runs (optional ``--cycle``).",
+    )(diff_cli_mod.summary_reports)
+    app.add_typer(cycles_cmd.app, name="cycles", help="Inspect cycles defined in the config.")
+    # Backward-compatible alias for muscle memory.
+    app.add_typer(cycles_cmd.app, name="plans", help="Deprecated alias for `testo cycles`.", hidden=True)
+    app.add_typer(config_cmd.app, name="config", help="Validate or scaffold a testosterone.yaml.")
+    app.add_typer(
+        report_cmd.report_app,
         name="report",
-        help="Build a unified Allure report from the latest cycle and open it locally (HTTP).",
-    )(
-        report_cmd.report
+        help=(
+            "Unified Allure reports from the latest cycle, or raw framework-native reports "
+            "(e.g. BehaveX HTML) via ``testo report native``."
+        ),
     )
     app.command(name="version", help="Print testo-core version.")(version_cmd.version)
 

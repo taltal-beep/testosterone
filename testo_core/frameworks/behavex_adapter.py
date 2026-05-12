@@ -21,7 +21,9 @@ class BehaveXAdapter:
         workers: int,
     ) -> list[str]:
         del target_repo  # behavex picks up its own working dir
-        behavex_output = results_dir.parent / "behave_reports"
+        # ``results_dir`` is ``<stage>/allure-results/<framework>/`` — native BehaveX output
+        # must be a *sibling* of ``allure-results/``, not nested under it.
+        behavex_output = results_dir.parent.parent / "behave_reports"
         behavex_output.mkdir(parents=True, exist_ok=True)
         results_dir.mkdir(parents=True, exist_ok=True)
 
