@@ -13,23 +13,23 @@ UQO is a shared-engine test orchestration system with adapter surfaces for Strea
 
 `docker-compose.yml` defines the infrastructure expected by local development:
 
-- **Postgres (`uqo-postgres`)**: canonical run lifecycle storage used by `uqo_core/run_history.py`.
+- **Postgres (`uqo-postgres`)**: canonical run lifecycle storage used by `testo_core/run_history.py`.
 - **MinIO (`uqo-minio`)**: S3-compatible storage for raw results and report snapshots. The default bucket is `uqo-artifacts`.
 - **MinIO init (`uqo-minio-init`)**: creates the bucket and sets anonymous download policy for report links.
 - **Allure Docker Service (`uqo-allure`)**: renders `projects/<run_id>/reports/latest/index.html`.
 - **Allure sync (`uqo-allure-sync`)**: continuously mirrors `s3://<bucket>/projects` into Allure's `/app/projects`.
 
-The Streamlit UI (`streamlit run app.py`), FastAPI (`uvicorn uqo_api.main:app ...`), React frontend (`npm --prefix frontend run dev`), and CLI (`uqo run ...`) run on the host, not in Compose.
+The Streamlit UI (`streamlit run app.py`), FastAPI (`uvicorn testo_api.main:app ...`), React frontend (`npm --prefix frontend run dev`), and CLI (`uqo run ...`) run on the host, not in Compose.
 
 ## Source map
 
 ```text
 .
 ├── app.py                         # Streamlit UI, worker startup, history/report tabs
-├── uqo_api/                       # FastAPI adapter (JSON/SSE routes, execution manager)
+├── testo_api/                       # FastAPI adapter (JSON/SSE routes, execution manager)
 ├── frontend/                      # React dashboard consuming /api/v1 contracts
 ├── docker-compose.yml             # Postgres, MinIO, Allure, MinIO-to-Allure sync
-├── uqo_core/
+├── testo_core/
 │   ├── command_builders.py         # RunConfig, TestType, framework argv/env builders
 │   ├── runners.py                  # Ephemeral Docker execution, audit workflow, log streaming
 │   ├── run_history.py              # Postgres models, snapshots, S3 upload, history views
@@ -57,7 +57,7 @@ Runtime output directories such as `artifacts/`, `logs/`, and `static/` are gene
    - `target_repo`: host path to the target repo.
    - `shared_allure_results_dir`: usually `artifacts/allure-results/<test_type>`.
    - framework-specific args and optional Locust headless settings.
-3. `uqo_core.runners.run_streaming()` prepares the result directory, injects `UQO_RUN_ID`, and calls `build_command()`.
+3. `testo_core.runners.run_streaming()` prepares the result directory, injects `UQO_RUN_ID`, and calls `build_command()`.
 4. The runner starts a container on Docker network `uqo-net` (default image `python:3.11-slim`, override via `UQO_RUNNER_IMAGE`), mounts the orchestrator repo to `/app`, and executes the command.
    - Legacy mode installs `requirements.txt` at runtime.
    - Prebuilt mode (`UQO_RUNNER_PREBUILT=true` or auto with a custom image) skips runtime dependency installation.
@@ -119,7 +119,7 @@ Adapter migration status:
 
 ## Framework command contract
 
-`uqo_core.command_builders.RunConfig` is the public shape for runner command construction.
+`testo_core.command_builders.RunConfig` is the public shape for runner command construction.
 
 | `TestType` | Command behavior |
 | --- | --- |
@@ -139,7 +139,7 @@ Only environment keys with prefixes `UQO_`, `AWS_`, `S3_`, `MINIO_`, plus `SUT_U
 
 ## Audit workflow
 
-`uqo_core.runners.run_audit_streaming()` executes phases in one logical run:
+`testo_core.runners.run_audit_streaming()` executes phases in one logical run:
 
 1. Pytest
 2. BehaveX
@@ -156,19 +156,19 @@ Each phase writes to `artifacts/allure-results/<framework>/`. A non-zero phase i
 - MinIO raw results for Allure Docker Service: `projects/<run_id>/results/<files>`.
 - MinIO downloadable snapshots: `runs/<run_id>/artifacts/...`.
 
-`uqo_core/run_history.py` stores run metadata in Postgres and builds history links from either local static history or MinIO snapshot prefixes.
+`testo_core/run_history.py` stores run metadata in Postgres and builds history links from either local static history or MinIO snapshot prefixes.
 
 ## Delta comparison analytics
 
-- Core source of truth: `uqo_core/services/delta_service.py`.
+- Core source of truth: `testo_core/services/delta_service.py`.
 - Delta endpoint: `GET /api/v1/analytics/delta?current_run_id=...&baseline_run_id=...`.
 - Frontend adapter: `frontend/src/features/compare/ComparePage.tsx` with API wiring in `frontend/src/lib/api-client.ts`.
 - Deterministic direction/classification policy table: `docs/delta_comparison_policy.md`.
 
 ## Unified dashboard architecture
 
-- Core aggregation source of truth: `uqo_core/services/dashboard_service.py`.
-- Dashboard API adapter: `uqo_api/routes/dashboard.py`.
+- Core aggregation source of truth: `testo_core/services/dashboard_service.py`.
+- Dashboard API adapter: `testo_api/routes/dashboard.py`.
 - Dashboard frontend entrypoint: `frontend/src/features/dashboard/DashboardPage.tsx` (route `/`).
 - API contracts:
   - `GET /api/v1/dashboard/overview`
@@ -186,15 +186,15 @@ Each phase writes to `artifacts/allure-results/<framework>/`. A non-zero phase i
 
 ## Phase 4 BYOK failure analysis architecture
 
-- Core AI provider boundary lives in `uqo_core/services/ai/`:
+- Core AI provider boundary lives in `testo_core/services/ai/`:
   - provider protocol + typed config (`config.py`, `provider_base.py`)
   - pluggable adapters (`providers/openai_provider.py`, `providers/anthropic_provider.py`)
   - provider factory (`factory.py`)
 - Failure summarization remains core-owned in:
-  - `uqo_core/services/failure_context_builder.py`
-  - `uqo_core/services/failure_analysis_service.py`
+  - `testo_core/services/failure_context_builder.py`
+  - `testo_core/services/failure_analysis_service.py`
 - Summary persistence is additive-only in run metadata (`metadata_.ai_summary_v1`), preserving existing run schema contracts.
-- API adapter surface (`uqo_api/routes/ai.py`) is intentionally thin:
+- API adapter surface (`testo_api/routes/ai.py`) is intentionally thin:
   - `GET/PUT /api/v1/ai/config...`
   - `GET/POST /api/v1/runs/{run_id}/ai-summary...`
 - UI surface remains presentation-only:
@@ -213,9 +213,9 @@ Security model:
 
 UQO includes a Pluggy extension surface:
 
-- Specs: `uqo_core/specs.py`
-- Manager/loader: `uqo_core/orchestrator.py`
-- Built-in no-op hooks: `uqo_core/plugins_builtin.py`
+- Specs: `testo_core/specs.py`
+- Manager/loader: `testo_core/orchestrator.py`
+- Built-in no-op hooks: `testo_core/plugins_builtin.py`
 - Optional drop-ins: create `plugins/*.py` at the repository root
 
 The hook specs are:

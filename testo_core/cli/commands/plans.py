@@ -1,0 +1,89 @@
+"""``testo plans`` — inspect plans defined in testosterone.yaml."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import typer
+
+
+app = typer.Typer(help="Inspect plans defined in the config.", no_args_is_help=True)
+
+
+@app.command("list")
+def list_plans(
+    config: Path = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="Path to a testosterone.yaml file (defaults to discovery).",
+    ),
+) -> None:
+    """List every plan defined in the resolved configuration."""
+    from testo_core.cli.ui.console import default_console
+    from testo_core.config.loader import discover_and_load
+    from testo_core.config.errors import ConfigError
+    from rich.table import Table
+
+    console = default_console()
+    try:
+        cfg = discover_and_load(config_path=config)
+    except ConfigError as exc:
+        console.print(f"[fail]config error:[/] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    table = Table(title="Plans", show_lines=False, title_justify="left")
+    table.add_column("Name", style="title")
+    table.add_column("Description")
+    table.add_column("Stages", justify="right")
+    for plan in cfg.plans.values():
+        table.add_row(plan.name, plan.description or "", str(len(plan.stages)))
+    console.print(table)
+
+
+@app.command("show")
+def show_plan(
+    name: str = typer.Argument(..., help="Plan name to show."),
+    config: Path = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="Path to a testosterone.yaml file (defaults to discovery).",
+    ),
+) -> None:
+    """Pretty-print one resolved plan."""
+    from testo_core.cli.ui.console import default_console
+    from testo_core.config.loader import discover_and_load
+    from testo_core.config.errors import ConfigError, PlanNotFoundError
+    from testo_core.config.resolver import resolve_plan
+    from rich.table import Table
+
+    console = default_console()
+    try:
+        cfg = discover_and_load(config_path=config)
+        plan = resolve_plan(cfg, plan_name=name)
+    except PlanNotFoundError as exc:
+        console.print(f"[fail]{exc}[/]")
+        raise typer.Exit(code=2) from exc
+    except ConfigError as exc:
+        console.print(f"[fail]config error:[/] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    console.print(f"[title]{plan.name}[/]: {plan.description or ''}")
+    table = Table(show_lines=False)
+    table.add_column("#", style="muted", justify="right")
+    table.add_column("Stage", style="title")
+    table.add_column("Framework", style="framework")
+    table.add_column("Target")
+    table.add_column("Args")
+    table.add_column("Timeout", justify="right")
+    for idx, stage in enumerate(plan.stages, start=1):
+        table.add_row(
+            str(idx),
+            stage.name,
+            stage.framework,
+            str(stage.target_repo),
+            " ".join(stage.args) or "",
+            f"{stage.timeout_s:.0f}s" if stage.timeout_s else "-",
+        )
+    console.print(table)

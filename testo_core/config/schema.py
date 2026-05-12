@@ -1,0 +1,64 @@
+"""Immutable, framework-agnostic dataclasses for the plan-aware config schema.
+
+The CLI loader produces a :class:`TestosteroneConfig` by parsing YAML or the
+``[tool.testosterone]`` table of ``pyproject.toml``.  Down-stream code (the
+orchestrator, the report exporter, tests) consumes these objects directly and
+never re-parses the source text.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+
+
+# Supported frameworks. Add new ones in :mod:`testo_core.frameworks` and append here.
+SUPPORTED_FRAMEWORKS: frozenset[str] = frozenset({"pytest", "behave", "behavex"})
+
+
+@dataclass(frozen=True)
+class Defaults:
+    """Repository-wide defaults inherited by every stage unless overridden."""
+
+    target_repo: Path = Path(".")
+    artifacts_root: Path = Path("artifacts")
+    timeout_s: float | None = 600.0
+    workers: int = 4
+    extra_env: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
+class Stage:
+    """One execution step in a plan.
+
+    All path-typed fields are resolved against the config file's directory at
+    load time so the orchestrator never has to know where the YAML lives.
+    """
+
+    name: str
+    framework: str
+    target_repo: Path
+    args: tuple[str, ...] = ()
+    workers: int = 4
+    timeout_s: float | None = 600.0
+    if_expr: str | None = None
+    extra_env: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
+class Plan:
+    """A named sequence of stages executed in order by ``testo run --plan <name>``."""
+
+    name: str
+    description: str | None
+    stages: tuple[Stage, ...]
+
+
+@dataclass(frozen=True)
+class TestosteroneConfig:
+    """Top-level configuration object produced by the loader."""
+
+    version: int
+    defaults: Defaults
+    plans: dict[str, Plan] = field(default_factory=dict)
+    source_path: Path | None = None

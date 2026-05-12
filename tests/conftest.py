@@ -351,7 +351,7 @@ def mock_api_app():
     """
     In-process FastAPI app for integration/contract tests.
     """
-    from uqo_core.sandbox_api import sample_target_repo
+    from testo_core.sandbox_api import sample_target_repo
 
     mock_api_path = sample_target_repo() / "mock_api.py"
     if not mock_api_path.exists():
@@ -453,7 +453,7 @@ def sandbox_server() -> str:
 
     Returns base URL (e.g. http://127.0.0.1:8000).
     """
-    from uqo_core import sandbox_api as sa
+    from testo_core import sandbox_api as sa
 
     ok, msg = sa.start_sandbox_if_needed()
     assert ok is True, msg

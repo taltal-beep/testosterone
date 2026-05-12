@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from uqo_core.command_builders import BuiltCommand
-from uqo_core.runners import _run_in_ephemeral_container_streaming
+from testo_core.command_builders import BuiltCommand
+from testo_core.runners import _run_in_ephemeral_container_streaming
 
 
 def test_runner_image_prebuilt_mode_skips_runtime_pip_install(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
@@ -35,7 +35,7 @@ def test_runner_image_prebuilt_mode_skips_runtime_pip_install(monkeypatch, tmp_p
 
     fake_containers = _FakeContainers()
     fake_client = type("FakeDockerClient", (), {"containers": fake_containers})()
-    monkeypatch.setattr("uqo_core.runners._docker_client", lambda: fake_client)
+    monkeypatch.setattr("testo_core.runners._docker_client", lambda: fake_client)
 
     emitted: list[tuple[str, str]] = []
     cmd = BuiltCommand(

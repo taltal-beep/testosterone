@@ -14,7 +14,7 @@ uqo_run:
   image: python:3.11-slim
   script:
     - python -m pip install --upgrade pip
-    - python -m pip install uqo-core
+    - python -m pip install testo-core
     - |
       UQO_ARGS=(run --config "$UQO_CONFIG_PATH" --ci)
       if [ "$UQO_GHOST_MODE" = "true" ]; then

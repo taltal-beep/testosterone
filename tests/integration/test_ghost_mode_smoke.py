@@ -6,14 +6,14 @@ import time
 import uuid
 from pathlib import Path
 
-from uqo_core.command_builders import BuiltCommand
-from uqo_core.run_history import RunSyncStatus, SyncOperationStatus
-from uqo_core.runners import LogEvent, RunResult
-from uqo_core.services.headless_engine import HeadlessEngineService
+from testo_core.command_builders import BuiltCommand
+from testo_core.run_history import RunSyncStatus, SyncOperationStatus
+from testo_core.runners import LogEvent, RunResult
+from testo_core.services.headless_engine import HeadlessEngineService
 
 
 def test_cli_ghost_auto_detect_smoke_with_mocked_sync(monkeypatch, capsys) -> None:  # noqa: ANN001
-    from uqo_core import cli
+    from testo_core import cli
 
     fixture = Path("tests/fixtures/ci/ghost_minimal.yml").resolve()
     create_calls: list[dict] = []
@@ -60,8 +60,8 @@ def test_cli_ghost_auto_detect_smoke_with_mocked_sync(monkeypatch, capsys) -> No
         )
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
-    monkeypatch.setattr("uqo_core.services.headless_engine.create_run", fake_create_run)
-    monkeypatch.setattr("uqo_core.services.headless_engine.record_completed_run", fake_record_completed_run)
+    monkeypatch.setattr("testo_core.services.headless_engine.create_run", fake_create_run)
+    monkeypatch.setattr("testo_core.services.headless_engine.record_completed_run", fake_record_completed_run)
     monkeypatch.setattr(
         cli,
         "HeadlessEngineService",

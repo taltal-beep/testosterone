@@ -5,11 +5,11 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from uqo_api.execution_manager import ExecutionManager
-from uqo_api.main import create_app
-from uqo_core.command_builders import BuiltCommand
-from uqo_core.runners import LogEvent, RunResult
-from uqo_core.services.headless_engine import EngineEvent, EngineRunRecord, EngineSummary
+from testo_api.execution_manager import ExecutionManager
+from testo_api.main import create_app
+from testo_core.command_builders import BuiltCommand
+from testo_core.runners import LogEvent, RunResult
+from testo_core.services.headless_engine import EngineEvent, EngineRunRecord, EngineSummary
 
 
 class _FakeEngine:
@@ -58,7 +58,7 @@ def test_execution_lifecycle_with_sse_events() -> None:
     app = create_app()
     manager = ExecutionManager()
     manager._engine = _FakeEngine()  # type: ignore[assignment]
-    from uqo_api.dependencies import get_execution_manager
+    from testo_api.dependencies import get_execution_manager
 
     app.dependency_overrides[get_execution_manager] = lambda: manager
     client = TestClient(app)

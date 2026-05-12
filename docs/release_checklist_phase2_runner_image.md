@@ -10,20 +10,20 @@ This checklist gates publication of the `uqo-runner` prebuilt image used by CI a
 
 ## 2) Contract and adapter validation
 
-- `python3 -m pytest -q --no-cov tests/contract/uqo_core/test_cli_contract.py tests/contract/uqo_core/test_ghost_ndjson_contract.py tests/contract/uqo_core/test_ghost_summary_contract.py`
+- `python3 -m pytest -q --no-cov tests/contract/testo_core/test_cli_contract.py tests/contract/testo_core/test_ghost_ndjson_contract.py tests/contract/testo_core/test_ghost_summary_contract.py`
 - `python3 -m pytest -q --no-cov tests/unit/ci/test_github_action_wrapper.py tests/unit/ci/test_gitlab_template_contract.py tests/contract/ci/test_wrapper_contract.py tests/integration/test_runner_image_mode_smoke.py`
 
 ## 3) Tagging and compatibility policy
 
 - Publish immutable tags: `v1.x.y`, `sha-<commit>`.
 - Move `v1` to latest stable `v1.x.y`; move `latest` to latest stable release.
-- Verify the image embeds compatible `uqo-core` `1.x.y` CLI contracts before promoting moving tags.
+- Verify the image embeds compatible `testo-core` `1.x.y` CLI contracts before promoting moving tags.
 
 ## 4) Security and maintenance
 
 - Run vulnerability scan on release candidate image; block release on critical vulnerabilities unless exception is approved.
 - Record base image reference and planned refresh date (monthly cadence minimum).
-- Keep an auditable changelog entry for image digest and embedded `uqo-core` version.
+- Keep an auditable changelog entry for image digest and embedded `testo-core` version.
 
 ## 5) Performance evidence
 

@@ -1,10 +1,10 @@
 # Phase 2 CI Integrations
 
-Phase 2 introduces pre-packaged CI wrappers that keep orchestration logic centralized in `uqo_core` and the `uqo run` CLI contract.
+Phase 2 introduces pre-packaged CI wrappers that keep orchestration logic centralized in `testo_core` and the `uqo run` CLI contract.
 
 ## Architecture boundary
 
-- Core execution remains in `uqo_core` and `uqo run`.
+- Core execution remains in `testo_core` and `uqo run`.
 - CI wrappers are thin adapters that only prepare inputs and consume stable machine outputs.
 - CI provenance is normalized in service/CLI boundaries and persisted through existing repository metadata fields, with no CI-provider logic in repository adapters.
 
@@ -73,7 +73,7 @@ GitLab template variables:
 
 ## Runner image behavior
 
-- Core runner image selection is handled by `uqo_core.runners` via `UQO_RUNNER_IMAGE`.
+- Core runner image selection is handled by `testo_core.runners` via `UQO_RUNNER_IMAGE`.
 - `UQO_RUNNER_PREBUILT=true` skips runtime `pip install -r requirements.txt` in the execution container.
 - `UQO_RUNNER_PREBUILT=false` keeps legacy behavior with runtime dependency install.
 - `UQO_RUNNER_PREBUILT=auto` enables prebuilt behavior when a custom image is provided and keeps legacy behavior on default image.
@@ -104,4 +104,4 @@ All tier jobs upload diagnostics artifacts (`logs`, summary JSON, API responses,
 - Runner image tags:
   - immutable: `v1.x.y`, `sha-<commit>`
   - moving: `v1`, `latest`
-- Compatibility rule: `uqo-runner:v1.x.y` must embed a `uqo-core` `1.x.y` compatible CLI contract (`uqo run` summary/NDJSON/exit semantics).
+- Compatibility rule: `uqo-runner:v1.x.y` must embed a `testo-core` `1.x.y` compatible CLI contract (`uqo run` summary/NDJSON/exit semantics).

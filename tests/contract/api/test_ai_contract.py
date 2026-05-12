@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from uqo_api.main import create_app
-from uqo_core.services.failure_analysis_service import FailureAnalysisSummary
+from testo_api.main import create_app
+from testo_core.services.failure_analysis_service import FailureAnalysisSummary
 
 
 class _FakeFailureService:
@@ -81,7 +81,7 @@ class _FakeSettingsStore:
 
 def _client() -> TestClient:
     app = create_app()
-    from uqo_api.dependencies import get_ai_settings_store, get_failure_analysis_service
+    from testo_api.dependencies import get_ai_settings_store, get_failure_analysis_service
 
     app.dependency_overrides[get_failure_analysis_service] = lambda: _FakeFailureService()
     app.dependency_overrides[get_ai_settings_store] = lambda: _FakeSettingsStore()

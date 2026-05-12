@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from uqo_api.main import create_app
-from uqo_core.services.dashboard_service import (
+from testo_api.main import create_app
+from testo_core.services.dashboard_service import (
     DashboardDataFreshness,
     DashboardHeadlineKpis,
     DashboardOverview,
@@ -39,7 +39,6 @@ def _overview_payload() -> DashboardOverview:
         ),
         report_links=DashboardReportLinks(
             allure=DashboardReportLink(url="http://allure/reports/run-1", state="available"),
-            locust=DashboardReportLink(url="/history/run-1/locust_report.html", state="available"),
             behave=DashboardReportLink(url="/history/run-1/allure_reports/behavex/index.html", state="available"),
         ),
         recent_runs=(
@@ -65,7 +64,7 @@ def _overview_payload() -> DashboardOverview:
 
 def test_dashboard_overview_contract(monkeypatch) -> None:  # noqa: ANN001
     monkeypatch.setattr(
-        "uqo_api.routes.dashboard.DashboardService.get_overview",
+        "testo_api.routes.dashboard.DashboardService.get_overview",
         lambda self, recent_limit=5: _overview_payload(),  # noqa: ARG005
     )
     client = TestClient(create_app())
@@ -89,7 +88,7 @@ def test_dashboard_overview_contract(monkeypatch) -> None:  # noqa: ANN001
 
 def test_dashboard_recent_runs_contract(monkeypatch) -> None:  # noqa: ANN001
     monkeypatch.setattr(
-        "uqo_api.routes.dashboard.DashboardService.get_recent_runs",
+        "testo_api.routes.dashboard.DashboardService.get_recent_runs",
         lambda self, limit=10: (  # noqa: ARG005
             DashboardRecentRun(
                 run_id="run-9",
@@ -115,7 +114,7 @@ def test_dashboard_endpoint_validation_errors_follow_error_envelope(monkeypatch)
     def _raise_value(self, recent_limit=5):  # noqa: ARG001
         raise ValueError("recent_limit must be greater than zero.")
 
-    monkeypatch.setattr("uqo_api.routes.dashboard.DashboardService.get_overview", _raise_value)
+    monkeypatch.setattr("testo_api.routes.dashboard.DashboardService.get_overview", _raise_value)
     client = TestClient(create_app())
     resp = client.get("/api/v1/dashboard/overview?recent_limit=0")
     assert resp.status_code == 400

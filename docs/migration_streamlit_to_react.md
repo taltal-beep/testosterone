@@ -2,12 +2,12 @@
 
 ## Goal
 
-Move dashboard UX from Streamlit to React while keeping `uqo_core` as the only orchestration engine and preserving CLI/CI contracts.
+Move dashboard UX from Streamlit to React while keeping `testo_core` as the only orchestration engine and preserving CLI/CI contracts.
 
 ## Transitional topology
 
 - Streamlit remains available as rollback UI.
-- FastAPI (`uqo_api`) exposes `/api/v1` JSON + SSE contracts.
+- FastAPI (`testo_api`) exposes `/api/v1` JSON + SSE contracts.
 - React (`frontend/`) consumes FastAPI endpoints for execution/history/report flows.
 - CLI and CI wrappers remain unchanged (`uqo run ...` contract preserved).
 
@@ -16,7 +16,7 @@ Move dashboard UX from Streamlit to React while keeping `uqo_core` as the only o
 1. Start infrastructure:
    - `docker compose up -d`
 2. Start backend:
-   - `uvicorn uqo_api.main:app --host 0.0.0.0 --port 8000 --reload`
+   - `uvicorn testo_api.main:app --host 0.0.0.0 --port 8000 --reload`
 3. Start React frontend:
    - `npm --prefix frontend install`
    - `npm --prefix frontend run dev`

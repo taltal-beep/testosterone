@@ -5,7 +5,7 @@ import threading
 
 from fastapi.testclient import TestClient
 
-from uqo_api.main import create_app
+from testo_api.main import create_app
 
 
 @dataclass
@@ -37,7 +37,7 @@ def _client() -> TestClient:
     app = create_app()
     manager = _FakeManager()
     app.dependency_overrides.clear()
-    from uqo_api.dependencies import get_execution_manager
+    from testo_api.dependencies import get_execution_manager
 
     app.dependency_overrides[get_execution_manager] = lambda: manager
     return TestClient(app)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-from uqo_core.services.ui_mode import resolve_ui_mode
+from testo_core.services.ui_mode import resolve_ui_mode
 
 
 def test_dual_mode_flag_defaults_and_override(monkeypatch) -> None:  # noqa: ANN001

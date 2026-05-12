@@ -11,13 +11,13 @@ This checklist is the release gate for Ghost Mode CI auto-detection, non-interac
 
 ## 2) Ghost policy and provenance tests
 
-- `python3 -m pytest -q --no-cov tests/unit/uqo_core/test_ghost_policy.py tests/unit/uqo_core/test_ci_provenance.py`
-- `python3 -m pytest -q --no-cov tests/unit/uqo_core/test_cli_run.py`
+- `python3 -m pytest -q --no-cov tests/unit/testo_core/test_ghost_policy.py tests/unit/testo_core/test_ci_provenance.py`
+- `python3 -m pytest -q --no-cov tests/unit/testo_core/test_cli_run.py`
 
 ## 3) Engine + sync behavior tests
 
-- `python3 -m pytest -q --no-cov tests/unit/uqo_core/test_headless_engine.py`
-- `python3 -m pytest -q --no-cov tests/contract/uqo_core/test_cli_contract.py tests/contract/uqo_core/test_ghost_summary_contract.py tests/contract/uqo_core/test_ghost_ndjson_contract.py`
+- `python3 -m pytest -q --no-cov tests/unit/testo_core/test_headless_engine.py`
+- `python3 -m pytest -q --no-cov tests/contract/testo_core/test_cli_contract.py tests/contract/testo_core/test_ghost_summary_contract.py tests/contract/testo_core/test_ghost_ndjson_contract.py`
 
 ## 4) CI wrapper contract tests
 
@@ -39,4 +39,4 @@ This checklist is the release gate for Ghost Mode CI auto-detection, non-interac
 - In CI env, `uqo run --config ...` auto-enters ghost mode without `--ci`.
 - `--no-ghost` disables auto-detected ghost mode.
 - Summary JSON contains deterministic `execution_mode`, `failure_type`, and `sync` fields.
-- No CI-provider conditionals added in `uqo_core/repository` adapters/factory.
+- No CI-provider conditionals added in `testo_core/repository` adapters/factory.

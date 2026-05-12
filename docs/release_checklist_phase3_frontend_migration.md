@@ -11,10 +11,10 @@ This checklist is the go/no-go gate before marking Streamlit deprecated (not rem
 
 ## 2) Phase 1/2 contract preservation
 
-- `python3 -m pytest -q --no-cov tests/unit/uqo_core/test_cli_run.py tests/unit/uqo_core/test_headless_engine.py tests/contract/uqo_core/test_cli_contract.py`
-- `python3 -m pytest -q --no-cov tests/unit/uqo_core/test_repository_sqlite.py tests/unit/uqo_core/test_repository_factory.py tests/contract/uqo_core/test_repository_contract.py`
+- `python3 -m pytest -q --no-cov tests/unit/testo_core/test_cli_run.py tests/unit/testo_core/test_headless_engine.py tests/contract/testo_core/test_cli_contract.py`
+- `python3 -m pytest -q --no-cov tests/unit/testo_core/test_repository_sqlite.py tests/unit/testo_core/test_repository_factory.py tests/contract/testo_core/test_repository_contract.py`
 - `python3 -m pytest -q --no-cov tests/unit/ci/test_github_action_wrapper.py tests/unit/ci/test_gitlab_template_contract.py tests/contract/ci/test_wrapper_contract.py`
-- `python3 -m pytest -q --no-cov tests/contract/uqo_core/test_ghost_summary_contract.py tests/contract/uqo_core/test_ghost_ndjson_contract.py`
+- `python3 -m pytest -q --no-cov tests/contract/testo_core/test_ghost_summary_contract.py tests/contract/testo_core/test_ghost_ndjson_contract.py`
 
 ## 3) Backend API contracts and lifecycle
 

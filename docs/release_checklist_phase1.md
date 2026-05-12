@@ -19,14 +19,14 @@ This checklist is the required gate before starting any Phase-2 work.
   - `uqo --help`
   - `uqo run --help`
 - Verify version consistency:
-  - `python -c "import uqo_core; import importlib.metadata as m; print(uqo_core.__version__, m.version('uqo-core'))"`
+  - `python -c "import testo_core; import importlib.metadata as m; print(testo_core.__version__, m.version('testo-core'))"`
 
 ## 3) Contract and regression tests
 
 - Run focused Phase-1 closure suites:
-  - `pytest -q --no-cov tests/unit/uqo_core/test_repository_sqlite.py tests/unit/uqo_core/test_repository_factory.py tests/contract/uqo_core/test_repository_contract.py`
-  - `pytest -q --no-cov tests/unit/uqo_core/test_cli_run.py tests/unit/uqo_core/test_headless_engine.py tests/contract/uqo_core/test_cli_contract.py tests/unit/uqo_core/test_config_loader.py`
-  - `pytest -q --no-cov tests/contract/uqo_core/test_packaging_contract.py`
+  - `pytest -q --no-cov tests/unit/testo_core/test_repository_sqlite.py tests/unit/testo_core/test_repository_factory.py tests/contract/testo_core/test_repository_contract.py`
+  - `pytest -q --no-cov tests/unit/testo_core/test_cli_run.py tests/unit/testo_core/test_headless_engine.py tests/contract/testo_core/test_cli_contract.py tests/unit/testo_core/test_config_loader.py`
+  - `pytest -q --no-cov tests/contract/testo_core/test_packaging_contract.py`
 - Run full suite gate:
   - `pytest -q`
 

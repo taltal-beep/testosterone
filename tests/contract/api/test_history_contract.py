@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from uqo_api.main import create_app
-from uqo_core.repository.models import RunStatus
-from uqo_core.run_history import CompletedRunView, RunSessionView
+from testo_api.main import create_app
+from testo_core.repository.models import RunStatus
+from testo_core.run_history import CompletedRunView, RunSessionView
 
 
 def test_runs_and_details_contract(monkeypatch) -> None:  # noqa: ANN001
     monkeypatch.setattr(
-        "uqo_api.routes.history.list_run_sessions",
+        "testo_api.routes.history.list_run_sessions",
         lambda limit=30: [  # noqa: ARG005
             RunSessionView(
                 run_id="run-1",
@@ -27,7 +27,7 @@ def test_runs_and_details_contract(monkeypatch) -> None:  # noqa: ANN001
         ],
     )
     monkeypatch.setattr(
-        "uqo_api.routes.history.get_run",
+        "testo_api.routes.history.get_run",
         lambda run_id: CompletedRunView(  # noqa: ARG005
             run_id="run-1",
             status=RunStatus.COMPLETED,
@@ -51,7 +51,7 @@ def test_runs_and_details_contract(monkeypatch) -> None:  # noqa: ANN001
         ),
     )
     monkeypatch.setattr(
-        "uqo_api.routes.history.snapshot_files_for_download",
+        "testo_api.routes.history.snapshot_files_for_download",
         lambda record: [("allure_report.html", b"x")],  # noqa: ARG005
     )
 

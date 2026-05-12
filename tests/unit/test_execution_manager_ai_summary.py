@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from uqo_api.execution_manager import ExecutionState, ExecutionManager
-from uqo_api.models import CreateExecutionRequest, RunSpecRequest
-from uqo_core.command_builders import BuiltCommand
-from uqo_core.runners import RunResult
-from uqo_core.services.headless_engine import EngineEvent, EngineSummary
+from testo_api.execution_manager import ExecutionState, ExecutionManager
+from testo_api.models import CreateExecutionRequest, RunSpecRequest
+from testo_core.command_builders import BuiltCommand
+from testo_core.runners import RunResult
+from testo_core.services.headless_engine import EngineEvent, EngineSummary
 
 
 class _RecordingFailureService:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from uqo_api.main import create_app
+from testo_api.main import create_app
 
 
 def test_health_endpoints() -> None:

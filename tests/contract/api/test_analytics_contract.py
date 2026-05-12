@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from uqo_api.main import create_app
-from uqo_core.services.delta_models import DeltaComparisonResult, DeltaStatusSummary, MetricDelta
-from uqo_core.services.delta_service import IncompatibleRunDataError, InvalidRunIdError, RunNotFoundComparisonError
+from testo_api.main import create_app
+from testo_core.services.delta_models import DeltaComparisonResult, DeltaStatusSummary, MetricDelta
+from testo_core.services.delta_service import IncompatibleRunDataError, InvalidRunIdError, RunNotFoundComparisonError
 
 
 def _fake_result() -> DeltaComparisonResult:
@@ -148,7 +148,7 @@ def _fake_result() -> DeltaComparisonResult:
 
 def test_analytics_delta_contract_success(monkeypatch) -> None:  # noqa: ANN001
     monkeypatch.setattr(
-        "uqo_api.routes.analytics.DeltaComparisonService.compare_runs",
+        "testo_api.routes.analytics.DeltaComparisonService.compare_runs",
         lambda self, **_: _fake_result(),
     )
     client = TestClient(create_app())
@@ -166,7 +166,7 @@ def test_analytics_delta_invalid_id(monkeypatch) -> None:  # noqa: ANN001
     def _raise_invalid(self, **kwargs):  # noqa: ANN001, ARG001
         raise InvalidRunIdError("current_run_id must be a non-empty string.")
 
-    monkeypatch.setattr("uqo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_invalid)
+    monkeypatch.setattr("testo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_invalid)
     client = TestClient(create_app())
     resp = client.get("/api/v1/analytics/delta?current_run_id=&baseline_run_id=run-1")
     assert resp.status_code == 400
@@ -178,7 +178,7 @@ def test_analytics_delta_run_not_found(monkeypatch) -> None:  # noqa: ANN001
     def _raise_not_found(self, **kwargs):  # noqa: ANN001, ARG001
         raise RunNotFoundComparisonError("missing")
 
-    monkeypatch.setattr("uqo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_not_found)
+    monkeypatch.setattr("testo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_not_found)
     client = TestClient(create_app())
     resp = client.get("/api/v1/analytics/delta?current_run_id=run-2&baseline_run_id=missing")
     assert resp.status_code == 404
@@ -190,7 +190,7 @@ def test_analytics_delta_incompatible_data(monkeypatch) -> None:  # noqa: ANN001
     def _raise_incompatible(self, **kwargs):  # noqa: ANN001, ARG001
         raise IncompatibleRunDataError("Cannot compare runs with different test kinds.")
 
-    monkeypatch.setattr("uqo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_incompatible)
+    monkeypatch.setattr("testo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_incompatible)
     client = TestClient(create_app())
     resp = client.get("/api/v1/analytics/delta?current_run_id=run-2&baseline_run_id=run-1")
     assert resp.status_code == 422

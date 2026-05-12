@@ -5,7 +5,7 @@ UQO is a **production-oriented test orchestration system** that runs plugin-driv
 This repo ships both:
 - a Streamlit UI (`app.py`) for interactive execution/history
 - a headless CLI (`uqo`) for CI-friendly automation
-- a FastAPI backend adapter (`uqo_api`) with typed `/api/v1` JSON endpoints
+- a FastAPI backend adapter (`testo_api`) with typed `/api/v1` JSON endpoints
 - a React frontend (`frontend/`) for dashboard parity migration
 
 ## What you get
@@ -83,7 +83,7 @@ export UQO_UI_MODE=dual  # streamlit | react | dual
 Start the new backend + frontend in parallel:
 
 ```bash
-uvicorn uqo_api.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn testo_api.main:app --host 0.0.0.0 --port 8000 --reload
 npm --prefix frontend install
 npm --prefix frontend run dev
 ```
@@ -112,10 +112,10 @@ Go to `History` → expand the run → click **Open Allure Server report**.
 ### Runtime services (Docker Compose)
 
 - **Streamlit (host process)**: interactive adapter over the shared headless engine (`app.py`)
-- **FastAPI (`uqo_api/main.py`)**: JSON + SSE adapter over the same headless engine
+- **FastAPI (`testo_api/main.py`)**: JSON + SSE adapter over the same headless engine
 - **React frontend (`frontend/`)**: dashboard client consuming `/api/v1` contracts
-- **UQO CLI (`uqo`)**: non-interactive adapter over the same shared headless engine (`uqo_core/cli.py`)
-- **Postgres** (`uqo-postgres`): canonical run lifecycle storage (`uqo_core/run_history.py`)
+- **UQO CLI (`uqo`)**: non-interactive adapter over the same shared headless engine (`testo_core/cli.py`)
+- **Postgres** (`uqo-postgres`): canonical run lifecycle storage (`testo_core/run_history.py`)
 - **MinIO** (`uqo-minio`): S3-compatible artifact store
   - Bucket: `BUCKET_NAME` (default `uqo-artifacts`)
   - Raw Allure results: `projects/<run_id>/results/*`
@@ -123,14 +123,14 @@ Go to `History` → expand the run → click **Open Allure Server report**.
 - **Allure Docker Service** (`uqo-allure`): generates per-run reports by project id
   - Report URL: `ALLURE_SERVER_URL/allure-docker-service/projects/<run_id>/reports/latest/index.html`
 - **Allure sync** (`uqo-allure-sync`): mirrors MinIO `projects/` into Allure’s `/app/projects/`
-- **Mock API (sandbox)**: local target used for demos (managed by Streamlit via `uqo_core/sandbox_api.py`)
+- **Mock API (sandbox)**: local target used for demos (managed by Streamlit via `testo_core/sandbox_api.py`)
 
 ### Execution flow (happy path)
 
-1. UI or CLI calls the shared engine service (`uqo_core/services/headless_engine.py`)
+1. UI or CLI calls the shared engine service (`testo_core/services/headless_engine.py`)
 1.1 React calls FastAPI `/api/v1`; FastAPI calls the same `HeadlessEngineService`
 2. Engine creates DB run row(s) in Postgres: `status=RUNNING`
-3. Runner starts an ephemeral container via Docker SDK (`uqo_core/runners.py`)
+3. Runner starts an ephemeral container via Docker SDK (`testo_core/runners.py`)
 3. Plugin/test framework emits Allure result files
 4. On completion:
    - DB row is updated to `COMPLETED` or `FAILED`
@@ -211,11 +211,11 @@ runs:
 
 ## Migration notes
 
-- Added a shared headless application engine in `uqo_core/services/headless_engine.py`.
+- Added a shared headless application engine in `testo_core/services/headless_engine.py`.
 - Added package CLI entrypoint `uqo` in `pyproject.toml`.
 - Streamlit main run path now delegates orchestration to the same core engine used by CLI.
 - Removed legacy unused UI worker helpers that directly orchestrated `run_streaming` / `AuditService` paths.
-- Existing `RunConfig`, repository interfaces, and persistence/update flow remain in `uqo_core`.
+- Existing `RunConfig`, repository interfaces, and persistence/update flow remain in `testo_core`.
 - Backward compatibility is preserved; metadata now includes `trigger_source`, `ci_mode`, and `schema_version`.
 - Optional MySQL runtime driver is available via `pip install -e '.[db_mysql]'`.
 
@@ -228,14 +228,14 @@ runs:
 
 ## Writing a custom test plugin (step-by-step)
 
-UQO supports **drop-in runner plugins** via **Pluggy**. Plugins are Python modules placed under `plugins/` and loaded by `uqo_core/orchestrator.py`.
+UQO supports **drop-in runner plugins** via **Pluggy**. Plugins are Python modules placed under `plugins/` and loaded by `testo_core/orchestrator.py`.
 
-The plugin interface is defined in `uqo_core/specs.py` (`BaseRunnerSpec`), with these hooks:
+The plugin interface is defined in `testo_core/specs.py` (`BaseRunnerSpec`), with these hooks:
 - `get_command(config) -> list[str] | None` (first plugin to return an argv wins)
 - `setup_env(config) -> dict[str, str] | None`
 - `collect_artifacts(run_id) -> list[pathlib.Path] | None`
 
-The built-in Streamlit workflow uses `uqo_core.command_builders.TestType` for `pytest`, `behavex`, `behave_native`, and `locust`. A custom plugin can participate in a runner path that calls `create_plugin_manager(load_dropins=True)`, but adding a file under `plugins/` does not automatically add a new option to the UI.
+The built-in Streamlit workflow uses `testo_core.command_builders.TestType` for `pytest`, `behavex`, `behave_native`, and `locust`. A custom plugin can participate in a runner path that calls `create_plugin_manager(load_dropins=True)`, but adding a file under `plugins/` does not automatically add a new option to the UI.
 
 ### 1) Create a plugin module
 
@@ -247,8 +247,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Mapping
 
-from uqo_core.command_builders import RunConfig, TestType
-from uqo_core.specs import hookimpl
+from testo_core.command_builders import RunConfig, TestType
+from testo_core.specs import hookimpl
 
 
 @hookimpl
@@ -275,7 +275,7 @@ def collect_artifacts(run_id: str) -> list[Path] | None:
 
 ### 2) Run it (developer workflow)
 
-At runtime, `uqo_core/orchestrator.create_plugin_manager(load_dropins=True)` scans `plugins/*.py` and registers each module.
+At runtime, `testo_core/orchestrator.create_plugin_manager(load_dropins=True)` scans `plugins/*.py` and registers each module.
 
 If you’re extending the system to execute custom plugins from the UI, the typical wiring is:
 - build a `RunConfig` that expresses what tool/framework should run
@@ -436,7 +436,7 @@ Runner image release gate is documented in [`docs/release_checklist_phase2_runne
 - `GET /api/v1/analytics/delta?current_run_id=<id>&baseline_run_id=<id>`: core-owned run delta comparison
 - `GET /api/v1/health/live`, `GET /api/v1/health/ready`: liveness/readiness probes
 
-The backend and frontend are migration adapters only; orchestration remains centralized in `uqo_core`.
+The backend and frontend are migration adapters only; orchestration remains centralized in `testo_core`.
 
 ## Phase 4 AI/BYOK contracts
 
@@ -458,7 +458,7 @@ Release gate: `docs/release_checklist_phase4_ai.md`.
 ### Unified dashboard interpretation rules
 
 - Primary React entrypoint is `/` and renders a single overview page fed by `GET /api/v1/dashboard/overview`.
-- KPI/trend computations stay in backend/core (`uqo_core/services/dashboard_service.py`); React renders provided values and states.
+- KPI/trend computations stay in backend/core (`testo_core/services/dashboard_service.py`); React renders provided values and states.
 - Trend semantics:
   - `health`: higher is better
   - `failed_count`: lower is better
@@ -475,7 +475,7 @@ Release gate: `docs/release_checklist_phase4_ai.md`.
 ### Delta comparison semantics
 
 - Baseline/current roles and sign rules are deterministic and documented in [`docs/delta_comparison_policy.md`](docs/delta_comparison_policy.md).
-- Core analytics logic lives in `uqo_core/services/delta_service.py`; route and React layers map and render only.
+- Core analytics logic lives in `testo_core/services/delta_service.py`; route and React layers map and render only.
 - Classification labels: `regression`, `improvement`, `neutral`, `unknown`.
 
 Unified dashboard release gate is documented in [`docs/release_checklist_phase3_unified_dashboard.md`](docs/release_checklist_phase3_unified_dashboard.md).

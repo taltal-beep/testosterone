@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from uqo_core.cli import SUMMARY_SCHEMA_KEYS
+from testo_core.cli import SUMMARY_SCHEMA_KEYS
 
 
 def _load_wrapper_module():

@@ -10,8 +10,8 @@ This checklist gates the merge of Phase 3 delta analytics across core, API, and 
 
 ## 2) Core delta analytics tests
 
-- `python3 -m pytest -q --no-cov tests/unit/uqo_core/test_delta_service.py`
-- `python3 -m pytest -q --no-cov tests/unit/uqo_core/test_run_history_unit.py`
+- `python3 -m pytest -q --no-cov tests/unit/testo_core/test_delta_service.py`
+- `python3 -m pytest -q --no-cov tests/unit/testo_core/test_run_history_unit.py`
 
 ## 3) API contract and regression gate
 
@@ -20,7 +20,7 @@ This checklist gates the merge of Phase 3 delta analytics across core, API, and 
 
 ## 4) CLI/CI contract guard
 
-- `python3 -m pytest -q --no-cov tests/contract/uqo_core/test_cli_contract.py tests/contract/uqo_core/test_ghost_summary_contract.py tests/contract/uqo_core/test_ghost_ndjson_contract.py`
+- `python3 -m pytest -q --no-cov tests/contract/testo_core/test_cli_contract.py tests/contract/testo_core/test_ghost_summary_contract.py tests/contract/testo_core/test_ghost_ndjson_contract.py`
 
 ## 5) Frontend gate
 

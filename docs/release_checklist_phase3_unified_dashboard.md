@@ -12,7 +12,7 @@ This checklist gates rollout of the unified dashboard as the primary React entry
 
 ## 2) Dashboard backend and API contracts
 
-- `python -m pytest -q --no-cov tests/unit/uqo_core/test_dashboard_service.py`
+- `python -m pytest -q --no-cov tests/unit/testo_core/test_dashboard_service.py`
 - `python -m pytest -q --no-cov tests/contract/api/test_dashboard_contract.py`
 
 ## 3) Existing API compatibility gate
@@ -21,7 +21,7 @@ This checklist gates rollout of the unified dashboard as the primary React entry
 
 ## 4) CLI/CI/Ghost compatibility gate
 
-- `python -m pytest -q --no-cov tests/contract/uqo_core/test_cli_contract.py tests/contract/uqo_core/test_ghost_summary_contract.py tests/contract/uqo_core/test_ghost_ndjson_contract.py`
+- `python -m pytest -q --no-cov tests/contract/testo_core/test_cli_contract.py tests/contract/testo_core/test_ghost_summary_contract.py tests/contract/testo_core/test_ghost_ndjson_contract.py`
 
 ## 5) Frontend gate
 

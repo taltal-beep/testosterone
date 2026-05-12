@@ -1,3 +1,4 @@
-# Full local development + Streamlit UI (editable install).
-# Core runtime dependencies are defined in pyproject.toml.
--e .[ui,dev]
+# Full local development install (editable). All runtime extras are pulled in
+# transitively via `[dev]` for parity with CI. Production deployments should
+# use a slimmer profile, e.g. `pip install testo-core[api]` or just `testo-core`.
+-e .[dev]

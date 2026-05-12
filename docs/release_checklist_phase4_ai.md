@@ -12,11 +12,11 @@ This checklist gates rollout of BYOK AI integration and run failure summaries.
 
 ## 2) Core AI and security gate
 
-- `python -m pytest -q --no-cov tests/unit/uqo_core/test_ai_provider_abstraction.py`
-- `python -m pytest -q --no-cov tests/unit/uqo_core/test_ai_config_model.py`
-- `python -m pytest -q --no-cov tests/unit/uqo_core/test_redaction.py`
-- `python -m pytest -q --no-cov tests/unit/uqo_core/test_failure_context_builder.py`
-- `python -m pytest -q --no-cov tests/unit/uqo_core/test_failure_analysis_service.py`
+- `python -m pytest -q --no-cov tests/unit/testo_core/test_ai_provider_abstraction.py`
+- `python -m pytest -q --no-cov tests/unit/testo_core/test_ai_config_model.py`
+- `python -m pytest -q --no-cov tests/unit/testo_core/test_redaction.py`
+- `python -m pytest -q --no-cov tests/unit/testo_core/test_failure_context_builder.py`
+- `python -m pytest -q --no-cov tests/unit/testo_core/test_failure_analysis_service.py`
 
 ## 3) API compatibility + AI contract gate
 
@@ -24,7 +24,7 @@ This checklist gates rollout of BYOK AI integration and run failure summaries.
 
 ## 4) CLI/CI/Ghost compatibility gate
 
-- `python -m pytest -q --no-cov tests/contract/uqo_core/test_cli_contract.py tests/contract/uqo_core/test_ghost_summary_contract.py tests/contract/uqo_core/test_ghost_ndjson_contract.py`
+- `python -m pytest -q --no-cov tests/contract/testo_core/test_cli_contract.py tests/contract/testo_core/test_ghost_summary_contract.py tests/contract/testo_core/test_ghost_ndjson_contract.py`
 
 ## 5) Frontend gate
 
