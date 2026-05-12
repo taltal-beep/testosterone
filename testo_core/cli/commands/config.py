@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
+import shutil
 
 
 app = typer.Typer(help="Validate or scaffold a testosterone.yaml.", no_args_is_help=True)
@@ -19,22 +20,22 @@ defaults:
   timeout_s: 600
   workers: 4
 
-plans:
+cycles:
   smoke-test:
     description: Fast sanity sweep used by the PR gate.
     stages:
       - name: api
-        framework: pytest
+        equipment: pytest
         args: ["-m", "smoke", "--maxfail=1"]
 
   nightly-build:
     description: Full suite executed on cron.
     stages:
       - name: api
-        framework: pytest
+        equipment: pytest
         args: ["-q"]
       - name: ui-bdd
-        framework: behavex
+        equipment: behavex
         workers: 8
         timeout_s: 1800
 """
@@ -48,6 +49,11 @@ def validate(
         "-c",
         help="Path to a testosterone.yaml file (defaults to discovery).",
     ),
+    check_executables: bool = typer.Option(
+        True,
+        "--check-executables/--no-check-executables",
+        help="Verify required test executables (pytest/behave/behavex) are available on PATH.",
+    ),
 ) -> None:
     """Load + resolve the config and print 'ok' (or exit non-zero with an error)."""
     from testo_core.cli.ui.console import default_console
@@ -60,9 +66,43 @@ def validate(
     except ConfigError as exc:
         console.print(f"[fail]config error:[/] {exc}")
         raise typer.Exit(code=2) from exc
+
+    if check_executables:
+        missing = _missing_executables(cfg)
+        if missing:
+            console.print("[fail]missing executables:[/]")
+            for name in missing:
+                console.print(f"  - {name}")
+            console.print(
+                "[muted]hint:[/] install dependencies (e.g. `pip install -e .`) or ensure the active environment's bin/ is on PATH."
+            )
+            raise typer.Exit(code=2)
     console.print(
-        f"[ok]ok[/] — version={cfg.version} plans={len(cfg.plans)} defaults_target={cfg.defaults.target_repo}"
+        f"[ok]ok[/] — version={cfg.version} cycles={len(cfg.cycles)} defaults_target={cfg.defaults.target_repo}"
     )
+
+
+def _missing_executables(cfg) -> list[str]:  # type: ignore[no-untyped-def]
+    # Collect the distinct equipment/framework names used across all cycles.
+    used: set[str] = set()
+    for cycle in cfg.cycles.values():
+        for stage in cycle.stages:
+            used.add(str(stage.framework))
+
+    # Map equipment names to the expected CLI executable.
+    exe_for = {
+        "pytest": "pytest",
+        "behave": "behave",
+        "behavex": "behavex",
+    }
+    missing: list[str] = []
+    for fw in sorted(used):
+        exe = exe_for.get(fw)
+        if not exe:
+            continue
+        if shutil.which(exe) is None:
+            missing.append(exe)
+    return missing
 
 
 @app.command("init")

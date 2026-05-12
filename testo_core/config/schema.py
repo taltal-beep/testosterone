@@ -1,4 +1,4 @@
-"""Immutable, framework-agnostic dataclasses for the plan-aware config schema.
+"""Immutable, framework-agnostic dataclasses for the cycle-aware config schema.
 
 The CLI loader produces a :class:`TestosteroneConfig` by parsing YAML or the
 ``[tool.testosterone]`` table of ``pyproject.toml``.  Down-stream code (the
@@ -28,6 +28,17 @@ class Defaults:
 
 
 @dataclass(frozen=True)
+class CycleTrigger:
+    """Optional selective execution: run the cycle only when matched paths change.
+
+    ``paths`` use pathlib-style globs relative to the config file directory (anchor).
+    """
+
+    paths: tuple[str, ...]
+    since_ref: str | None = None  # e.g. ``origin/main`` → ``git diff since_ref...HEAD``
+
+
+@dataclass(frozen=True)
 class Stage:
     """One execution step in a plan.
 
@@ -47,11 +58,12 @@ class Stage:
 
 @dataclass(frozen=True)
 class Plan:
-    """A named sequence of stages executed in order by ``testo run --plan <name>``."""
+    """A named sequence of stages executed in order by ``testo run --cycle <name>``."""
 
     name: str
     description: str | None
     stages: tuple[Stage, ...]
+    trigger: CycleTrigger | None = None
 
 
 @dataclass(frozen=True)
@@ -60,5 +72,10 @@ class TestosteroneConfig:
 
     version: int
     defaults: Defaults
-    plans: dict[str, Plan] = field(default_factory=dict)
+    cycles: dict[str, Plan] = field(default_factory=dict)
     source_path: Path | None = None
+
+    @property
+    def plans(self) -> dict[str, Plan]:
+        """Backward-compatible alias for older call sites."""
+        return self.cycles

@@ -21,6 +21,7 @@ _THEME = Theme(
         "warn": "bold yellow",
         "muted": "dim",
         "framework": "magenta",
+        "behavex": "bold cyan",
     }
 )
 

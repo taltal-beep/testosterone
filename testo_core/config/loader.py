@@ -26,6 +26,7 @@ import yaml
 from testo_core.config.errors import ConfigDiscoveryError, ConfigValidationError
 from testo_core.config.schema import (
     SUPPORTED_FRAMEWORKS,
+    CycleTrigger,
     Defaults,
     Plan,
     Stage,
@@ -111,35 +112,42 @@ def _read_pyproject_section(path: Path) -> dict[str, Any] | None:
 def _build_config(raw: dict[str, Any], *, source: Path) -> TestosteroneConfig:
     config_dir = source.parent
 
-    if "plans" in raw:
-        return _build_plan_config(raw, config_dir=config_dir, source=source)
+    if "cycles" in raw or "plans" in raw:
+        return _build_cycle_config(raw, config_dir=config_dir, source=source)
     if "runs" in raw:
         return _build_legacy_runs_config(raw, config_dir=config_dir, source=source)
     if {"test_type", "target_repo"}.issubset(raw):
         # Single legacy run, no `runs:` wrapper.
         return _build_legacy_runs_config({"runs": [raw]}, config_dir=config_dir, source=source)
 
-    raise ConfigValidationError(
-        f"config at {source} has neither a 'plans:' nor a 'runs:' section."
-    )
+    raise ConfigValidationError(f"config at {source} has neither a 'cycles:' nor a 'runs:' section.")
 
 
-def _build_plan_config(raw: dict[str, Any], *, config_dir: Path, source: Path) -> TestosteroneConfig:
+def _build_cycle_config(raw: dict[str, Any], *, config_dir: Path, source: Path) -> TestosteroneConfig:
     version = int(raw.get("version", 1))
     defaults = _parse_defaults(raw.get("defaults", {}), config_dir=config_dir)
-    plans_raw = raw.get("plans")
-    if not isinstance(plans_raw, dict) or not plans_raw:
-        raise ConfigValidationError("'plans:' must be a non-empty mapping.")
-    plans: dict[str, Plan] = {}
-    for plan_name, plan_raw in plans_raw.items():
-        plan = _parse_plan(
-            plan_name=str(plan_name),
-            plan_raw=plan_raw or {},
+    # Canonical: cycles. Legacy: plans.
+    cycles_raw = raw.get("cycles")
+    if cycles_raw is None:
+        cycles_raw = raw.get("plans")
+    if not isinstance(cycles_raw, dict) or not cycles_raw:
+        raise ConfigValidationError("'cycles:' must be a non-empty mapping.")
+    cycles: dict[str, Plan] = {}
+    for cycle_name, cycle_raw in cycles_raw.items():
+        name_key = str(cycle_name)
+        if name_key == "all":
+            raise ConfigValidationError(
+                "cycle name 'all' is reserved for `testo run --cycle all` (run every cycle). "
+                "Rename this cycle in your config."
+            )
+        cycle = _parse_cycle(
+            cycle_name=name_key,
+            cycle_raw=cycle_raw or {},
             defaults=defaults,
             config_dir=config_dir,
         )
-        plans[plan.name] = plan
-    return TestosteroneConfig(version=version, defaults=defaults, plans=plans, source_path=source)
+        cycles[cycle.name] = cycle
+    return TestosteroneConfig(version=version, defaults=defaults, cycles=cycles, source_path=source)
 
 
 def _build_legacy_runs_config(
@@ -177,11 +185,11 @@ def _build_legacy_runs_config(
             config_dir=config_dir,
         )
         stages.append(stage)
-    plan = Plan(name=_DEFAULT_PLAN_NAME, description="Legacy 'runs:' shim.", stages=tuple(stages))
+    plan = Plan(name=_DEFAULT_PLAN_NAME, description="Legacy 'runs:' shim.", stages=tuple(stages), trigger=None)
     return TestosteroneConfig(
         version=int(raw.get("version", 1)),
         defaults=defaults,
-        plans={plan.name: plan},
+        cycles={plan.name: plan},
         source_path=source,
     )
 
@@ -203,29 +211,59 @@ def _parse_defaults(raw: Any, *, config_dir: Path) -> Defaults:
     )
 
 
-def _parse_plan(*, plan_name: str, plan_raw: dict[str, Any], defaults: Defaults, config_dir: Path) -> Plan:
-    if not isinstance(plan_raw, dict):
-        raise ConfigValidationError(f"plan {plan_name!r} must be a mapping.")
-    description = plan_raw.get("description")
-    stages_raw = plan_raw.get("stages")
+def _parse_cycle(*, cycle_name: str, cycle_raw: dict[str, Any], defaults: Defaults, config_dir: Path) -> Plan:
+    if not isinstance(cycle_raw, dict):
+        raise ConfigValidationError(f"cycle {cycle_name!r} must be a mapping.")
+    description = cycle_raw.get("description")
+    stages_raw = cycle_raw.get("stages")
     if not isinstance(stages_raw, list) or not stages_raw:
-        raise ConfigValidationError(f"plan {plan_name!r} must define a non-empty 'stages:' list.")
+        raise ConfigValidationError(f"cycle {cycle_name!r} must define a non-empty 'stages:' list.")
     stages = tuple(
         _parse_stage(stage_raw=item, defaults=defaults, config_dir=config_dir)
         for item in stages_raw
     )
-    return Plan(name=plan_name, description=description, stages=stages)
+    trigger = _parse_trigger(cycle_raw.get("trigger"), cycle_name=cycle_name)
+    return Plan(name=cycle_name, description=description, stages=stages, trigger=trigger)
+
+
+def _parse_trigger(raw: Any, *, cycle_name: str) -> CycleTrigger | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ConfigValidationError(f"cycle {cycle_name!r}: 'trigger' must be a mapping.")
+    paths_raw = raw.get("paths")
+    if not isinstance(paths_raw, list) or not paths_raw:
+        raise ConfigValidationError(f"cycle {cycle_name!r}: 'trigger.paths' must be a non-empty list.")
+    paths_out: list[str] = []
+    for i, p in enumerate(paths_raw):
+        if not isinstance(p, str) or not p.strip():
+            raise ConfigValidationError(f"cycle {cycle_name!r}: trigger.paths[{i}] must be a non-empty string.")
+        paths_out.append(p.strip())
+    since_raw = raw.get("since_ref")
+    since_ref: str | None = None
+    if since_raw is not None:
+        if not isinstance(since_raw, str) or not since_raw.strip():
+            raise ConfigValidationError(f"cycle {cycle_name!r}: 'trigger.since_ref' must be a non-empty string.")
+        since_ref = since_raw.strip()
+    return CycleTrigger(paths=tuple(paths_out), since_ref=since_ref)
 
 
 def _parse_stage(*, stage_raw: Mapping[str, Any], defaults: Defaults, config_dir: Path) -> Stage:
     if not isinstance(stage_raw, Mapping):
         raise ConfigValidationError("stage entries must be mappings.")
     name = str(stage_raw.get("name") or "").strip()
-    framework = str(stage_raw.get("framework") or "").strip()
+    equipment_raw = stage_raw.get("equipment")
+    framework_raw = stage_raw.get("framework")
+    if equipment_raw is not None and framework_raw is not None:
+        if str(equipment_raw).strip() != str(framework_raw).strip():
+            raise ConfigValidationError(
+                f"stage {name or '<unnamed>'!r} defines both 'equipment' and 'framework' with different values."
+            )
+    framework = str((equipment_raw if equipment_raw is not None else framework_raw) or "").strip()
     if not name:
         raise ConfigValidationError("stage is missing 'name'.")
     if not framework:
-        raise ConfigValidationError(f"stage {name!r} is missing 'framework'.")
+        raise ConfigValidationError(f"stage {name!r} is missing 'equipment' (legacy: 'framework').")
     if framework == "behave_native":
         framework = "behave"
     if framework not in SUPPORTED_FRAMEWORKS:

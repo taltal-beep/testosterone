@@ -25,10 +25,27 @@ from pathlib import Path
 from typing import Iterator
 
 
-def find_free_port() -> int:
+def find_free_port(host: str = "127.0.0.1") -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
+        sock.bind((host, 0))
         return int(sock.getsockname()[1])
+
+
+def resolve_serve_port(host: str, preferred: int) -> int:
+    """Return ``preferred`` if it can be bound on ``host``, else an ephemeral free port.
+
+    Used so ``allure open`` does not fail with *Address already in use* when the default
+    port is occupied by a previous Allure or another process.
+    """
+    if preferred == 0:
+        return find_free_port(host=host)
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind((host, int(preferred)))
+        return int(preferred)
+    except OSError:
+        return find_free_port(host=host)
 
 
 def open_generated_report(*, report_dir: Path, host: str = "127.0.0.1", port: int = 8080) -> int:
@@ -79,8 +96,9 @@ def serve_report(*, report_dir: Path, port: int = 8080) -> int:
     if not report_dir.is_dir():
         raise FileNotFoundError(f"report directory not found: {report_dir}")
     if shutil.which("allure") is not None:
-        return open_generated_report(report_dir=report_dir, host="127.0.0.1", port=port)
-    return _serve_with_stdlib(report_dir=report_dir, port=port)
+        chosen = resolve_serve_port("127.0.0.1", port)
+        return open_generated_report(report_dir=report_dir, host="127.0.0.1", port=chosen)
+    return _serve_with_stdlib(report_dir=report_dir, port=resolve_serve_port("127.0.0.1", port))
 
 
 def _serve_with_stdlib(*, report_dir: Path, port: int) -> int:

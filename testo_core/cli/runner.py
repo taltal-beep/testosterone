@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from rich.console import Console
+from rich.panel import Panel
 
 from testo_core.cli.ui.renderers import (
     BufferedRenderer,
@@ -20,7 +21,9 @@ from testo_core.cli.ui.renderers import (
 from testo_core.config.errors import ConfigDiscoveryError, ConfigError, PlanNotFoundError
 from testo_core.config.loader import discover_and_load
 from testo_core.config.resolver import resolve_plan, resolve_stages_for_plan
+from testo_core.config.schema import Plan, TestosteroneConfig
 from testo_core.engine.exit_codes import EngineExitCode
+from testo_core.triggers import TriggerResult, evaluate_cycle_trigger, persist_trigger_snapshot
 
 
 def execute_plan_command(
@@ -32,13 +35,41 @@ def execute_plan_command(
     ci: bool,
     persist: bool,
     workers_override: int | None,
+    force: bool = False,
+    report_db: bool = True,
+    async_report_db: bool = False,
 ) -> int:
-    """Load + resolve + execute one plan; return the process exit code."""
+    """Load + resolve + execute one plan (or every cycle when ``plan_name == 'all'``)."""
     try:
         cfg = discover_and_load(config_path=config_path)
     except (ConfigError, ConfigDiscoveryError) as exc:
         _emit_config_error(console=console, exc=exc, ci=ci)
         return int(EngineExitCode.INVALID_INPUT)
+
+    if plan_name == "all":
+        if not cfg.cycles:
+            _emit_config_error(
+                console=console,
+                exc=ConfigError("no cycles defined in configuration."),
+                ci=ci,
+            )
+            return int(EngineExitCode.INVALID_INPUT)
+        worst = 0
+        for name in sorted(cfg.cycles.keys()):
+            ec = _execute_one_cycle(
+                cfg=cfg,
+                plan=cfg.cycles[name],
+                console=console,
+                stream=stream,
+                ci=ci,
+                persist=persist,
+                workers_override=workers_override,
+                force=force,
+                report_db=report_db,
+                async_report_db=async_report_db,
+            )
+            worst = max(worst, ec)
+        return worst
 
     try:
         plan = resolve_plan(cfg, plan_name=plan_name)
@@ -46,6 +77,33 @@ def execute_plan_command(
         _emit_config_error(console=console, exc=exc, ci=ci)
         return int(EngineExitCode.INVALID_INPUT)
 
+    return _execute_one_cycle(
+        cfg=cfg,
+        plan=plan,
+        console=console,
+        stream=stream,
+        ci=ci,
+        persist=persist,
+        workers_override=workers_override,
+        force=force,
+        report_db=report_db,
+        async_report_db=async_report_db,
+    )
+
+
+def _execute_one_cycle(
+    *,
+    cfg: TestosteroneConfig,
+    plan: Plan,
+    console: Console,
+    stream: bool,
+    ci: bool,
+    persist: bool,
+    workers_override: int | None,
+    force: bool,
+    report_db: bool = True,
+    async_report_db: bool = False,
+) -> int:
     resolved_stages = resolve_stages_for_plan(plan)
     if not resolved_stages:
         _emit_config_error(
@@ -55,12 +113,20 @@ def execute_plan_command(
         )
         return int(EngineExitCode.INVALID_INPUT)
 
-    renderer = _pick_renderer(console=console, stream=stream, ci=ci)
+    tr_result: TriggerResult | None = None
+    if plan.trigger is not None and not force:
+        tr_result = evaluate_cycle_trigger(plan=plan, cfg=cfg)
+        _emit_cycle_trigger_event(ci=ci, plan=plan, tr=tr_result)
+        if not tr_result.stimulus:
+            _emit_cycle_resting(console=console, ci=ci, plan=plan)
+            return int(EngineExitCode.SUCCESS)
+        _emit_cycle_activating(console=console, ci=ci, plan=plan, tr=tr_result)
+    elif plan.trigger is not None and force and not ci:
+        console.print("[muted]Trigger bypassed (--force).[/]")
 
-    # Apply runtime overrides without mutating the immutable Plan.
+    renderer = _pick_renderer(console=console, stream=stream, ci=ci)
     effective_plan = _apply_workers_override(plan, resolved_stages, workers_override)
 
-    # Deferred engine import: keeps `testo --help` cheap.
     from testo_core.engine.orchestrator import run_plan
 
     result = run_plan(
@@ -69,7 +135,109 @@ def execute_plan_command(
         artifacts_root=cfg.defaults.artifacts_root,
         persist=persist,
     )
-    return int(result.exit_code)
+    exit_int = int(result.exit_code)
+    _maybe_archive_cycle_report(
+        cfg=cfg,
+        plan=effective_plan,
+        console=console,
+        ci=ci,
+        persist=persist,
+        report_db=report_db,
+        async_report_db=async_report_db,
+        plan_exit_code=exit_int,
+    )
+    if (
+        tr_result is not None
+        and tr_result.persist_snapshot_after_run
+        and exit_int == 0
+        and cfg.source_path is not None
+        and plan.trigger is not None
+    ):
+        persist_trigger_snapshot(
+            cfg=cfg,
+            plan_name=plan.name,
+            anchor=cfg.source_path.parent.expanduser().resolve(),
+            patterns=plan.trigger.paths,
+        )
+    return exit_int
+
+
+def _maybe_archive_cycle_report(
+    *,
+    cfg: TestosteroneConfig,
+    plan: Plan,
+    console: Console,
+    ci: bool,
+    persist: bool,
+    report_db: bool,
+    async_report_db: bool,
+    plan_exit_code: int,
+) -> None:
+    if not persist or not report_db:
+        return
+
+    from testo_core.services.report_archive import try_persist_cycle_report
+
+    artifacts_root = cfg.defaults.artifacts_root
+    if async_report_db:
+        import threading
+
+        def _job() -> None:
+            try_persist_cycle_report(
+                artifacts_root=artifacts_root,
+                plan_name=plan.name,
+                exit_code_override=plan_exit_code,
+            )
+
+        threading.Thread(target=_job, daemon=True, name="testo-report-archive").start()
+        if not ci:
+            console.print(
+                "[dim]Report database archive started in background "
+                "(may not complete if the process exits immediately).[/]"
+            )
+        return
+
+    rid = try_persist_cycle_report(
+        artifacts_root=artifacts_root,
+        plan_name=plan.name,
+        exit_code_override=plan_exit_code,
+    )
+    if rid is not None and not ci:
+        console.print(f"[muted]Archived cycle report[/] [bold]{rid}[/]")
+
+
+def _emit_cycle_trigger_event(*, ci: bool, plan: Plan, tr: TriggerResult) -> None:
+    if not ci:
+        return
+    from testo_core.cli.ui.ci_renderer import emit_ndjson
+
+    emit_ndjson(
+        {
+            "event": "cycle_trigger",
+            "cycle": plan.name,
+            "status": "activated" if tr.stimulus else "resting",
+            "reason": tr.reason,
+            "matched": list(tr.matched_paths),
+            "mode": tr.mode,
+        }
+    )
+
+
+def _emit_cycle_resting(*, console: Console, ci: bool, plan: Plan) -> None:
+    if ci:
+        return
+    msg = f"Cycle {plan.name} skipped: No stimulus detected in targeted muscle groups."
+    console.print(Panel(msg, title="Resting", border_style="dim"))
+
+
+def _emit_cycle_activating(*, console: Console, ci: bool, plan: Plan, tr: TriggerResult) -> None:
+    if ci:
+        return
+    hint = tr.matched_paths[0] if tr.matched_paths else ""
+    if not hint and plan.trigger is not None and plan.trigger.paths:
+        hint = plan.trigger.paths[0]
+    body = f"[ok]Stimulus detected[/] in [bold]{hint}[/]. [bold]Activating Cycle:[/] {plan.name}."
+    console.print(Panel(body, title="Trigger", border_style="green"))
 
 
 def _pick_renderer(*, console: Console, stream: bool, ci: bool) -> Renderer:
@@ -83,10 +251,14 @@ def _pick_renderer(*, console: Console, stream: bool, ci: bool) -> Renderer:
 def _apply_workers_override(plan, stages, workers_override):  # type: ignore[no-untyped-def]
     """Return a new Plan with the workers override applied to every stage."""
     if workers_override is None:
-        # Just swap in the resolved stages.
         from testo_core.config.schema import Plan
 
-        return Plan(name=plan.name, description=plan.description, stages=tuple(stages))
+        return Plan(
+            name=plan.name,
+            description=plan.description,
+            stages=tuple(stages),
+            trigger=plan.trigger,
+        )
 
     from testo_core.config.schema import Plan, Stage
 
@@ -103,7 +275,12 @@ def _apply_workers_override(plan, stages, workers_override):  # type: ignore[no-
         )
         for s in stages
     )
-    return Plan(name=plan.name, description=plan.description, stages=new_stages)
+    return Plan(
+        name=plan.name,
+        description=plan.description,
+        stages=new_stages,
+        trigger=plan.trigger,
+    )
 
 
 def _emit_config_error(*, console: Console, exc: Exception, ci: bool) -> None:

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from rich.console import Console, Group
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
+
+from testo_core.metrics import parse_allure_results_dir
 
 
 @dataclass(frozen=True)
@@ -20,6 +23,7 @@ class StagePanelData:
     duration_s: float
     log_path: str | None
     output_tail: str
+    results_dir: str | None = None
     command: str | None = None
 
 
@@ -28,8 +32,9 @@ def render_stage_panel(console: Console, data: StagePanelData, *, tail_max_lines
     status_label = "PASS" if data.returncode == 0 else f"FAIL ({data.returncode})"
     style = "ok" if data.returncode == 0 else "fail"
 
+    equipment = _format_equipment(data.framework)
     title = Text.from_markup(
-        f"[{style}]{data.name}[/] [framework]({data.framework})[/] [{style}]{status_label}[/]"
+        f"[{style}]{data.name}[/] {equipment} [{style}]{status_label}[/]"
     )
 
     rows: list[object] = []
@@ -61,15 +66,59 @@ def render_plan_summary(
     """Render a final table summarising every stage in the plan."""
     style = "ok" if aggregate_returncode == 0 else "fail"
     table = Table(
-        title=Text.from_markup(f"[{style}]Plan summary — {plan_name}[/]"),
+        title=Text.from_markup(f"[{style}]Cycle summary — {plan_name}[/]"),
         show_lines=False,
         title_justify="left",
     )
     table.add_column("Stage", style="title")
-    table.add_column("Framework", style="framework")
+    table.add_column("Equipment", style="framework")
     table.add_column("Status")
     table.add_column("Duration", justify="right")
     for stage in stage_results:
         status = "[ok]PASS[/]" if stage.returncode == 0 else f"[fail]FAIL ({stage.returncode})[/]"
-        table.add_row(stage.name, stage.framework, status, f"{stage.duration_s:.2f}s")
+        table.add_row(stage.name, _equipment_cell(stage.framework), status, f"{stage.duration_s:.2f}s")
     console.print(table)
+
+    # Secondary table: metrics derived from Allure results (robust to BehaveX parallel stdout shape).
+    metrics = Table(title="Cycle Summary", show_lines=False, title_justify="left")
+    metrics.add_column("Stage", style="title")
+    metrics.add_column("Equipment", style="framework")
+    metrics.add_column("Total", justify="right")
+    metrics.add_column("Passed", justify="right", style="ok")
+    metrics.add_column("Failed", justify="right", style="fail")
+    metrics.add_column("Skipped", justify="right", style="muted")
+
+    for stage in stage_results:
+        total = passed = failed = skipped = 0
+        if stage.results_dir:
+            try:
+                rm = parse_allure_results_dir(Path(stage.results_dir))
+                total = int(rm.total_tests)
+                passed = int(rm.passed)
+                failed = int(rm.failed) + int(rm.broken)
+                skipped = int(rm.skipped)
+            except Exception:
+                total = passed = failed = skipped = 0
+        metrics.add_row(
+            stage.name,
+            _equipment_cell(stage.framework),
+            str(total),
+            str(passed),
+            str(failed),
+            str(skipped),
+        )
+    console.print(metrics)
+
+
+def _format_equipment(equipment: str) -> str:
+    eq = (equipment or "").strip()
+    if eq.lower() == "behavex":
+        return f"[behavex]({eq})[/]"
+    return f"[framework]({eq})[/]"
+
+
+def _equipment_cell(equipment: str) -> str:
+    eq = (equipment or "").strip()
+    if eq.lower() == "behavex":
+        return f"[behavex]{eq}[/]"
+    return eq

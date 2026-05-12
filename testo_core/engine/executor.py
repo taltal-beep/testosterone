@@ -16,6 +16,7 @@ under ``testo_core/engine/backends/`` and adapt to the same return type.
 from __future__ import annotations
 
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -48,6 +49,9 @@ def run_stage(
     adapter: FrameworkAdapter = get_adapter(stage.framework)
     stage_root = (artifacts_root / plan_name / stage.name).expanduser().resolve()
     results_dir = (stage_root / "allure-results" / adapter.results_subdir()).resolve()
+    stage_root.mkdir(parents=True, exist_ok=True)
+    if results_dir.exists():
+        shutil.rmtree(results_dir)
     results_dir.mkdir(parents=True, exist_ok=True)
     log_path = (stage_root / "run.log").resolve()
 
@@ -114,6 +118,14 @@ def run_stage(
         reader.join(timeout=2.0)
         finished_at = time.time()
         output_tail = buffer.tail(max_lines=tail_lines)
+
+    if stage.framework == "behavex":
+        try:
+            from testo_core.reporting.native_reports import ensure_behavex_report_html
+
+            ensure_behavex_report_html(stage_root)
+        except Exception:
+            pass
 
     duration = max(0.0, finished_at - started_at)
     return StageResult(

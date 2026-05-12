@@ -34,6 +34,7 @@ static/behave/
 
 # Persisted run history (SQLite + per-run HTML snapshots)
 artifacts/uqo_run_history.sqlite
+artifacts/testo_sandbox.db
 artifacts/history/
 
 # Local/generated artifacts

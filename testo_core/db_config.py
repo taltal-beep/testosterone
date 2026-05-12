@@ -34,14 +34,25 @@ def resolve_database_url() -> str:
     Resolution order:
 
     1. ``DATABASE_URL`` environment variable (recommended single source of truth).
-    2. Legacy Postgres: if ``POSTGRES_USER``, ``POSTGRES_PASSWORD``, and ``POSTGRES_DB`` are all
+    2. ``database.url`` from the discovered testosterone config (``testosterone.yaml`` /
+       ``testosterone.yml`` / ``[tool.testosterone]`` in ``pyproject.toml`` under the current
+       working directory), when set.
+    3. Legacy Postgres: if ``POSTGRES_USER``, ``POSTGRES_PASSWORD``, and ``POSTGRES_DB`` are all
        non-empty, build ``postgresql+psycopg://...`` using ``POSTGRES_HOST`` / ``POSTGRES_PORT``
        (with docker-aware host default when host is unset).
-    3. Default file-backed SQLite at ``sqlite:///./uqo_history.db`` for sandbox / zero-config runs.
+    4. Default file-backed SQLite at ``sqlite:///./uqo_history.db`` for sandbox / zero-config runs.
     """
+    from pathlib import Path
+
+    from testo_core.config.database_section import database_url_from_discovered_config
+
     explicit = (os.getenv("DATABASE_URL") or "").strip()
     if explicit:
         return explicit
+
+    file_url = database_url_from_discovered_config(cwd=Path.cwd())
+    if file_url:
+        return file_url.strip()
 
     user = (os.getenv("POSTGRES_USER") or "").strip()
     pwd = (os.getenv("POSTGRES_PASSWORD") or "").strip()
@@ -90,7 +101,7 @@ def get_engine() -> Engine:
 def create_db_and_tables() -> None:
     """Create all registered SQLModel tables on the active engine (idempotent)."""
     # Import registers ``RunRecord`` on ``SQLModel.metadata``.
-    from testo_core.repository.models import RunRecord  # noqa: F401
+    from testo_core.repository.models import ReportArchive, RunRecord  # noqa: F401
 
     SQLModel.metadata.create_all(get_engine())
 

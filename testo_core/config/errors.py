@@ -22,7 +22,7 @@ class PlanNotFoundError(ConfigError):
 
     def __init__(self, plan_name: str, available: tuple[str, ...]) -> None:
         avail = ", ".join(available) if available else "(none)"
-        super().__init__(f"plan {plan_name!r} not found. Available: {avail}.")
+        super().__init__(f"cycle {plan_name!r} not found. Available: {avail}.")
         self.plan_name = plan_name
         self.available = available
 

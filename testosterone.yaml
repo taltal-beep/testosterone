@@ -1,0 +1,87 @@
+version: 1
+database:
+  url: sqlite:////tmp/testo-reports.db
+defaults:
+  target_repo: .
+  artifacts_root: artifacts
+  timeout_s: 600
+  workers: 4
+cycles:
+  sample-pytests:
+    description: Pytest suite for the sample target repo (regular pytest + Allure).
+    stages:
+      - name: pytest-sample
+        equipment: pytest
+        target_repo: sample_target_repo
+        args:
+          - -q
+          - tests
+
+  sample-behave:
+    description: Native Behave + Allure against sample target features/.
+    stages:
+      - name: behave-features
+        equipment: behave
+        target_repo: sample_target_repo
+        args:
+          - features
+
+  behavex-flow-tests:
+    description: Run all Behave-based flow tests with BehaveX.
+    stages:
+      - name: flow-tests
+        equipment: behavex
+        target_repo: sample_target_repo
+        args:
+          - features
+
+  sample-all-frameworks:
+    description: Run pytest, native Behave, then BehaveX on the sample target in one cycle.
+    stages:
+      - name: pytest-sample
+        equipment: pytest
+        target_repo: sample_target_repo
+        args:
+          - -q
+          - tests
+      - name: behave-features
+        equipment: behave
+        target_repo: sample_target_repo
+        args:
+          - features
+      - name: flow-tests
+        equipment: behavex
+        target_repo: sample_target_repo
+        args:
+          - features
+
+  # Same as sample-all-frameworks but injects random failures in sample_target_repo
+  # (pytest + Behave + BehaveX). Each stage rolls independently per test/scenario.
+  # Tune probability via TESTO_SAMPLE_RANDOM_FAIL_P in extra_env or export it globally (0–1).
+  sample-all-frameworks-stochastic:
+    description: >
+      Full sample cycle with TESTO_SAMPLE_RANDOM_FAIL_P=0.35 (each run differs).
+      For a stable green run use sample-all-frameworks instead.
+    stages:
+      - name: pytest-sample
+        equipment: pytest
+        target_repo: sample_target_repo
+        args:
+          - -q
+          - tests
+        extra_env:
+          TESTO_SAMPLE_RANDOM_FAIL_P: "0.35"
+      - name: behave-features
+        equipment: behave
+        target_repo: sample_target_repo
+        args:
+          - features
+        extra_env:
+          TESTO_SAMPLE_RANDOM_FAIL_P: "0.35"
+      - name: flow-tests
+        equipment: behavex
+        target_repo: sample_target_repo
+        args:
+          - features
+        extra_env:
+          TESTO_SAMPLE_RANDOM_FAIL_P: "0.35"

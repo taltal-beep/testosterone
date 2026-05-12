@@ -21,19 +21,19 @@ _ENV_PATTERN = re.compile(r"\$\{env:(?P<name>[A-Za-z_][A-Za-z0-9_]*)(?::-(?P<def
 
 
 def resolve_plan(config: TestosteroneConfig, *, plan_name: str | None) -> Plan:
-    """Pick the right plan from the config.
+    """Pick the right cycle from the config.
 
     When ``plan_name`` is ``None`` and exactly one plan is defined, that one
     is returned.  Otherwise an explicit name is required.
     """
     if plan_name is None:
-        if len(config.plans) == 1:
-            return next(iter(config.plans.values()))
-        raise PlanNotFoundError("<unspecified>", tuple(config.plans.keys()))
+        if len(config.cycles) == 1:
+            return next(iter(config.cycles.values()))
+        raise PlanNotFoundError("<unspecified>", tuple(config.cycles.keys()))
     try:
-        return config.plans[plan_name]
+        return config.cycles[plan_name]
     except KeyError as exc:
-        raise PlanNotFoundError(plan_name, tuple(config.plans.keys())) from exc
+        raise PlanNotFoundError(plan_name, tuple(config.cycles.keys())) from exc
 
 
 def resolve_stages_for_plan(

@@ -53,7 +53,7 @@ class BufferedRenderer:
 
     def handle(self, event: EngineEvent) -> None:
         if isinstance(event, PlanStarted):
-            self._console.rule(f"[title]Plan:[/] {event.plan.name}", style="title")
+            self._console.rule(f"[title]Cycle:[/] {event.plan.name}", style="title")
         elif isinstance(event, StageStarted):
             label = f"[{event.stage_index}/{event.stage_count}] {event.stage.name} ({event.stage.framework})"
             self._progress_ctx = stage_progress(self._console, label=label)
@@ -155,6 +155,15 @@ class CIRenderer:
 
 
 def _panel_from_result(result) -> StagePanelData:  # type: ignore[no-untyped-def]
+    # Executor layout contract:
+    #   <artifacts>/<cycle>/<stage>/allure-results/<equipment>/
+    results_dir = None
+    try:
+        artifacts_dir = getattr(result, "artifacts_dir", None)
+        if artifacts_dir is not None:
+            results_dir = str((artifacts_dir / "allure-results" / str(result.framework)).resolve())
+    except Exception:
+        results_dir = None
     return StagePanelData(
         name=result.stage_name,
         framework=result.framework,
@@ -162,5 +171,6 @@ def _panel_from_result(result) -> StagePanelData:  # type: ignore[no-untyped-def
         duration_s=float(result.duration_s),
         log_path=str(result.log_path) if result.log_path else None,
         output_tail=result.output_tail,
+        results_dir=results_dir,
         command=" ".join(result.command),
     )
