@@ -9,7 +9,14 @@ from pathlib import Path
 def plan_artifacts_dir(artifacts_root: Path, plan: str | None = None) -> Path:
     """Return ``<artifacts>/<plan>/`` (or ``<artifacts>/`` if ``plan`` is None)."""
     root = artifacts_root.expanduser().resolve()
-    return (root / plan).resolve() if plan else root
+    if not plan:
+        return root
+    path = (root / plan).resolve()
+    try:
+        path.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"plan name escapes artifacts root: {plan!r}") from exc
+    return path
 
 
 def discover_plan_dirs(artifacts_root: Path) -> list[Path]:

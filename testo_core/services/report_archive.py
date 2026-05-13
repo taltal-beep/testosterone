@@ -110,8 +110,20 @@ def extract_archive_to_plan_dir(*, zip_bytes: bytes, dest_artifacts_root: Path, 
     dest = plan_artifacts_dir(dest_artifacts_root, plan_name)
     dest.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zf:
-        zf.extractall(dest)
+        _safe_extract(zf, dest)
     return dest
+
+
+def _safe_extract(zf: zipfile.ZipFile, dest: Path) -> None:
+    """Extract zip members only when they stay inside ``dest``."""
+    dest = dest.expanduser().resolve()
+    for info in zf.infolist():
+        member_path = (dest / info.filename).resolve()
+        try:
+            member_path.relative_to(dest)
+        except ValueError as exc:
+            raise ValueError(f"archive member escapes destination: {info.filename!r}") from exc
+        zf.extract(info, dest)
 
 
 def try_persist_cycle_report(

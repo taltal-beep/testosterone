@@ -10,7 +10,7 @@ from testo_core.engine.exit_codes import EngineExitCode
 from testo_core.reporting.allure import AllureGenerateResult
 from testo_core.reporting.collector import CollectedResults, StageCollection
 from testo_core.reporting.entry import dispatch_report
-from testo_core.reporting.paths import discover_latest_plan_dir, relpath_for_display
+from testo_core.reporting.paths import discover_latest_plan_dir, plan_artifacts_dir, relpath_for_display
 
 
 def test_relpath_for_display_relative(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -21,6 +21,14 @@ def test_relpath_for_display_relative(tmp_path: Path, monkeypatch: pytest.Monkey
     rel = relpath_for_display(p)
     assert rel.startswith("./")
     assert "artifacts/report/index.html" in rel.replace("\\", "/")
+
+
+def test_plan_artifacts_dir_rejects_paths_outside_artifacts_root(tmp_path: Path) -> None:
+    root = tmp_path / "artifacts"
+    with pytest.raises(ValueError, match="escapes artifacts root"):
+        plan_artifacts_dir(root, "../outside")
+    with pytest.raises(ValueError, match="escapes artifacts root"):
+        plan_artifacts_dir(root, str(tmp_path / "outside"))
 
 
 def test_discover_latest_plan_dir_by_events_mtime(tmp_path: Path) -> None:

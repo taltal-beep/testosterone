@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -52,6 +53,32 @@ def test_build_and_extract_cycle_zip_roundtrip(tmp_path: Path) -> None:
     extract_archive_to_plan_dir(zip_bytes=blob, dest_artifacts_root=out_root, plan_name=plan)
     assert (out_root / plan / "plan_result.json").is_file()
     assert (out_root / plan / "stage-a" / "allure-results" / "pytest" / "x-result.json").is_file()
+
+
+def test_extract_archive_rejects_plan_name_outside_artifacts_root(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="escapes artifacts root"):
+        extract_archive_to_plan_dir(
+            zip_bytes=b"not reached",
+            dest_artifacts_root=tmp_path / "out-artifacts",
+            plan_name="../outside",
+        )
+
+
+def test_extract_archive_rejects_zip_member_outside_plan_dir(tmp_path: Path) -> None:
+    blob = tmp_path / "bad.zip"
+    with zipfile.ZipFile(blob, "w") as zf:
+        zf.writestr("../escape.txt", "owned")
+
+    out_root = tmp_path / "out-artifacts"
+    with pytest.raises(ValueError, match="archive member escapes destination"):
+        extract_archive_to_plan_dir(
+            zip_bytes=blob.read_bytes(),
+            dest_artifacts_root=out_root,
+            plan_name="safe-cycle",
+        )
+
+    assert not (out_root / "escape.txt").exists()
+    assert not (tmp_path / "escape.txt").exists()
 
 
 def test_report_archive_repository_crud(sqlite_report_repo: SQLReportArchiveRepository) -> None:
