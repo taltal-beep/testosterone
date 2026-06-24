@@ -1,34 +1,33 @@
 name: Claude AI Code Review
 
-# Only trigger when a PR is opened or new code is pushed to it
-
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
 
-# CRITICAL SECURITY STEP: Strictly limit what this workflow can do
 permissions:
-  contents: read          # Can only read the code, cannot push changes
-  pull-requests: write    # Can only post comments on the PR
+  contents: read
+  pull-requests: write
+  issues: read
 
 jobs:
   claude-review:
+    if: |
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetches the history so the AI can see the diffs
-          
-      # Replace this with the specific Claude action/script you decide to use
+          fetch-depth: 0
 
-      - name: Run Claude Code Reviewer
-        uses: broadinstitute/action-setup-claude@v1 # Example placeholder !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-
+      - name: Run Claude Code Review
+        uses: anthropics/claude-code-action@v1
         with:
-          # Tell Claude to focus on logic, not stylistic nitpicks
-          system_prompt: "You are an expert code reviewer. Focus on logic errors, security flaws, and performance bottlenecks. Do not comment on stylistic formatting."
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          direct_prompt: |
+            Review this PR. Focus on logic errors, security flaws, and performance bottlenecks.
+            Do not comment on stylistic formatting.
