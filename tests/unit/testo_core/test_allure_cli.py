@@ -36,11 +36,9 @@ def test_build_generate_argv_uses_awesome_for_single_file(tmp_path: Path, monkey
     root = tmp_path / "repo"
     root.mkdir()
     (root / "allurerc.mjs").write_text("export default {}", encoding="utf-8")
-    bin_dir = root / "node_modules" / ".bin"
-    bin_dir.mkdir(parents=True)
-    (bin_dir / "allure").write_text("#!/bin/sh\n", encoding="utf-8")
-    monkeypatch.delenv("TESTO_ALLURE_BIN", raising=False)
-    monkeypatch.setattr(cli.shutil, "which", lambda _: None)
+    fake_allure = str(root / "node_modules" / ".bin" / "allure")
+    fake_cmd = cli.AllureCommand(argv=(fake_allure,), cwd=root)
+    monkeypatch.setattr(cli, "resolve_allure_command", lambda **_kw: fake_cmd)
 
     results = root / "allure-results"
     results.mkdir()
