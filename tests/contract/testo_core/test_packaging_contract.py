@@ -87,8 +87,8 @@ def test_new_console_script_testo_works() -> None:
     assert proc.returncode == 0
     stdout = _strip_ansi(proc.stdout)
     assert "Usage:" in stdout
-    assert "--plan" in stdout
     assert "--ci" in stdout
+    assert "--cycle" in stdout
 
 
 @pytest.mark.contract
