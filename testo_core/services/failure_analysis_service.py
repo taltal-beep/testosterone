@@ -120,7 +120,8 @@ class FailureAnalysisService:
                 error_code="summary_not_available",
                 limitations=(*context.limitations, redact_error_message(exc)),
             )
-        self._metadata_upsert(run_id, {"ai_summary_v1": summary.to_dict()})
+        if summary.status == "available" or existing.status != "available":
+            self._metadata_upsert(run_id, {"ai_summary_v1": summary.to_dict()})
         return summary
 
     @staticmethod

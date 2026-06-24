@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import pytest
+
 from testo_core.repository.models import RunStatus
 from testo_core.run_history import CompletedRunView
+from testo_core.services.ai.provider_base import ProviderTimeoutError
 from testo_core.services.ai.integration_settings import InMemoryAiSettingsStore
 from testo_core.services.failure_analysis_service import FailureAnalysisService
 
@@ -42,3 +45,42 @@ def test_generate_summary_returns_disabled_fallback() -> None:
     summary = service.generate_summary(run_id="run-1")
     assert summary.status == "no_summary_generated"
     assert summary.error_code == "ai_feature_disabled"
+
+
+def test_force_refresh_failure_preserves_cached_available_summary(monkeypatch: pytest.MonkeyPatch) -> None:
+    store = InMemoryAiSettingsStore()
+    store.update(enabled=True, api_key_source="runtime_input", runtime_api_key="runtime-token")
+    cached_summary = {
+        "schema_version": "v1",
+        "run_id": "run-1",
+        "status": "available",
+        "summary_text": "Known good root cause.",
+        "confidence": "medium",
+        "limitations": [],
+        "provider": "openai",
+        "model": "gpt-4o-mini",
+        "generated_at": 1.0,
+        "context_stats": {"prompt_chars": 100},
+        "error_code": None,
+    }
+    state: dict[str, dict] = {"md": {"ai_summary_v1": dict(cached_summary)}}
+
+    class _TimeoutProvider:
+        def generate(self, request):  # noqa: ANN001,ANN202
+            raise ProviderTimeoutError("provider timed out")
+
+    monkeypatch.setattr(
+        "testo_core.services.failure_analysis_service.build_ai_provider",
+        lambda **_: _TimeoutProvider(),
+    )
+    service = FailureAnalysisService(
+        settings_store=store,
+        run_lookup=lambda _: _failed_run(),
+        metadata_lookup=lambda _: state["md"],
+        metadata_upsert=lambda _, patch: state["md"].update(patch) or True,
+    )
+
+    result = service.generate_summary(run_id="run-1", force_refresh=True)
+    assert result.status == "no_summary_generated"
+    assert result.error_code == "provider_timeout"
+    assert state["md"]["ai_summary_v1"] == cached_summary
