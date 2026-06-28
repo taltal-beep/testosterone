@@ -94,7 +94,7 @@ Tier selection is marker-driven and shared across local, GitHub Actions, and Git
 
 Reference CI definitions:
 
-- GitHub: `.github/workflows/pr-fast.yml`, `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`
+- GitHub: `.github/workflows/ci.yml` (unified format → ai-review → test → deploy pipeline; the fast-required gate lives in its `test` job), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`
 - GitLab: `ci/gitlab/testo.tests.gitlab-ci.yml`, `ci/gitlab/testo.external.gitlab-ci.yml`
 
 All tier jobs upload diagnostics artifacts (`logs`, summary JSON, API responses, screenshots when present) on failure, and external suites run with `external-e2e` concurrency isolation.

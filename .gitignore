@@ -11,6 +11,9 @@ venv/
 uqo_history.db
 testo_history.db
 
+# Generated sandbox DB from the test suite (tests/artifacts/)
+tests/artifacts/*.db
+
 # Cursor IDE local state (debug logs, plans, rules, etc.)
 .cursor/
 

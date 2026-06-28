@@ -68,3 +68,14 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["testo_core", "testo_api", "testo_ui"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+# Conservative starter set: pyflakes (F), a subset of pycodestyle (E), import
+# sorting (I). Line-length (E501) is ignored for now to keep the rollout quiet;
+# tighten this once the tree is clean and the format gate is made blocking.
+select = ["E", "F", "I"]
+ignore = ["E501"]
