@@ -73,25 +73,51 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-      pull-requests: write   # post review comments
-      id-token: write        # required by claude-code-action for OIDC token exchange
+      pull-requests: write   # post the review comment via the built-in GITHUB_TOKEN
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0     # full history so the diff is visible
-      - name: Claude code review
-        uses: anthropics/claude-code-action@v1
+      - uses: actions/setup-node@v4
         with:
-          # Subscription auth (Pro/Max) -- NOT anthropic_api_key.
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: >-
-            Review the changes in this pull request. Focus on logic errors,
-            security flaws, data-loss/race conditions, and clear performance
-            problems. Post concise inline comments only where there is a real
-            issue, and a short summary. Skip pure style and formatting nits --
-            ruff already handles those. If the diff looks good, say so briefly.
-          # Cap turns to bound subscription usage per review.
-          claude_args: "--max-turns 12"
+          node-version: "20"
+      # No-App approach: run the Claude Code CLI directly with subscription auth
+      # (CLAUDE_CODE_OAUTH_TOKEN). This avoids needing the Claude GitHub App
+      # installed on the repo. Swap back to anthropics/claude-code-action@v1
+      # later once the app is installed, if richer inline review is desired.
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Build PR diff
+        run: |
+          git diff "${{ github.event.pull_request.base.sha }}...HEAD" > pr.diff
+          echo "diff size: $(wc -c < pr.diff) bytes, $(wc -l < pr.diff) lines"
+      - name: Run Claude review
+        env:
+          # Subscription auth (Pro/Max) -- NOT an API key. Generated via
+          # `claude setup-token` and stored as a repo secret.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ ! -s pr.diff ]; then
+            echo "_No code changes to review._" > review.md
+            exit 0
+          fi
+          # Diff is piped on stdin; cap size to bound subscription usage.
+          # --max-turns 1 keeps it to a single text response (no tool use).
+          head -c 120000 pr.diff | claude -p \
+            "You are an expert code reviewer. A pull request's unified diff is provided on stdin. Review it for logic errors, security flaws, data-loss/race conditions, and clear performance problems. Be concise: short markdown bullets grouped by file, referencing paths. Skip pure style/formatting nits -- ruff handles those. If it looks good, say so in one line." \
+            --model sonnet --max-turns 1 --output-format text | tee review.md
+      - name: Post review comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "## 🤖 Claude AI code review"
+            echo
+            cat review.md
+            echo
+            echo "_Automated review via Claude Code CLI (subscription auth, no API tokens)._"
+          } > comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file comment.md
 
   test:
     name: test (fast required)
