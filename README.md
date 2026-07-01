@@ -26,8 +26,8 @@ This repo ships both:
 ### 1) Clone
 
 ```bash
-git clone https://github.com/YOUR_ORG/unified-quality-orchestration-reporting-dashboard.git
-cd unified-quality-orchestration-reporting-dashboard
+git clone https://github.com/taltal-beep/testosterone.git
+cd testosterone
 ```
 
 ### 2) Configure env
