@@ -183,7 +183,7 @@ testo doctor -c testosterone.yaml
 
 **Output:** Rich table with Check / Status / Detail rows (`PASS`, `FAIL`, `WARN`, `SKIP`).
 
-Exits **3** on hard failures (config or missing required executables).
+Exits **2** on hard failures (config or missing required executables) — see [[Troubleshooting and Error Codes#Commands that use exit codes]].
 
 ---
 
