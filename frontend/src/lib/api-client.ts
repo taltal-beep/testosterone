@@ -17,6 +17,26 @@ export interface ExecutionAccepted {
   summary_url: string;
 }
 
+export interface CycleExecutionRequest {
+  config_path?: string | null;
+  artifacts_root?: string | null;
+  stream?: boolean;
+  persist?: boolean;
+  fail_fast?: boolean;
+  force?: boolean;
+  workers_override?: number | null;
+  report_db?: boolean;
+  async_report_db?: boolean;
+  reporter_override?: string[] | null;
+}
+
+export interface CycleExecutionAccepted {
+  execution_id: string;
+  status: "queued" | "running";
+  events_url: string;
+  summary_url: string;
+}
+
 export interface ExecutionStatus {
   execution_id: string;
   status: "queued" | "running" | "completed" | "failed";
@@ -216,6 +236,12 @@ export const apiClient = {
         ci_mode: false,
         ...payload
       })
+    });
+  },
+  createCycleExecution(cycle: string, payload: CycleExecutionRequest): Promise<CycleExecutionAccepted> {
+    return api<CycleExecutionAccepted>(`/api/v1/cycles/${encodeURIComponent(cycle)}/executions`, {
+      method: "POST",
+      body: JSON.stringify(payload)
     });
   },
   getExecution(executionId: string): Promise<ExecutionStatus> {

@@ -58,6 +58,36 @@ class ExecutionStatusResponse(BaseModel):
         )
 
 
+class CycleExecutionRequest(BaseModel):
+    config_path: str | None = None
+    artifacts_root: str | None = None
+    stream: bool = False
+    persist: bool = True
+    fail_fast: bool = False
+    force: bool = False
+    workers_override: int | None = None
+    report_db: bool = True
+    async_report_db: bool = False
+    reporter_override: list[str] | None = None
+
+
+class CycleExecutionAcceptedResponse(BaseModel):
+    execution_id: str
+    status: Literal["queued", "running"]
+    events_url: str
+    summary_url: str
+
+
+class CycleExecutionStatusResponse(BaseModel):
+    execution_id: str
+    cycle: str
+    status: Literal["queued", "running", "completed", "failed"]
+    artifacts_root: str | None = None
+    events_path: str | None = None
+    plan_result_path: str | None = None
+    error: str | None = None
+
+
 class ErrorPayload(BaseModel):
     code: Literal[
         "invalid_input",

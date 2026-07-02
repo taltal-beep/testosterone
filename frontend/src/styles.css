@@ -1,0 +1,13 @@
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: theme(colors.slate.950);
+  color: theme(colors.slate.100);
+}
+

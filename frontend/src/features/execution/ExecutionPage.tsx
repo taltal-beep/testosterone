@@ -3,6 +3,9 @@ import { FormEvent, useMemo, useState } from "react";
 import { apiClient } from "../../lib/api-client";
 import { subscribeToExecutionEvents } from "../../lib/sse-client";
 
+const inputClass = "rounded border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100";
+const labelClass = "grid gap-1 text-xs font-medium text-slate-300";
+
 export function ExecutionPage() {
   const [targetRepo, setTargetRepo] = useState(".");
   const [testType, setTestType] = useState<"pytest" | "behavex" | "behave_native" | "locust">("pytest");
@@ -44,32 +47,57 @@ export function ExecutionPage() {
   }
 
   return (
-    <section>
-      <h2>Execution</h2>
-      <form onSubmit={onSubmit}>
-        <label>
+    <section className="space-y-4">
+      <header className="space-y-1">
+        <h2 className="text-xl font-semibold">Execution</h2>
+      </header>
+
+      <form onSubmit={onSubmit} className="grid gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+        <label className={labelClass}>
           Target Repo
-          <input value={targetRepo} onChange={(e) => setTargetRepo(e.target.value)} />
+          <input className={inputClass} value={targetRepo} onChange={(e) => setTargetRepo(e.target.value)} />
         </label>
-        <label>
+        <label className={labelClass}>
           Test Type
-          <select value={testType} onChange={(e) => setTestType(e.target.value as typeof testType)}>
+          <select className={inputClass} value={testType} onChange={(e) => setTestType(e.target.value as typeof testType)}>
             <option value="pytest">pytest</option>
             <option value="behavex">behavex</option>
             <option value="behave_native">behave_native</option>
             <option value="locust">locust</option>
           </select>
         </label>
-        <label>
+        <label className={labelClass}>
           CLI Args
-          <input value={cliArgs} onChange={(e) => setCliArgs(e.target.value)} />
+          <input className={inputClass} value={cliArgs} onChange={(e) => setCliArgs(e.target.value)} />
         </label>
-        <button type="submit">Run</button>
+        <div>
+          <button
+            type="submit"
+            className="rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+          >
+            Run
+          </button>
+        </div>
       </form>
-      <p>Status: {status}</p>
-      {executionId ? <p>Execution ID: {executionId}</p> : null}
-      <pre data-testid="log-console">{consoleText}</pre>
-      {summary ? <pre data-testid="summary-json">{JSON.stringify(summary, null, 2)}</pre> : null}
+
+      <div className="text-sm text-slate-300">
+        Status: <span className="font-mono">{status}</span>
+      </div>
+      {executionId ? <p className="text-xs text-slate-400">Execution ID: {executionId}</p> : null}
+      <pre
+        data-testid="log-console"
+        className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-slate-800 bg-slate-950 p-3 text-xs text-slate-200"
+      >
+        {consoleText}
+      </pre>
+      {summary ? (
+        <pre
+          data-testid="summary-json"
+          className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-slate-800 bg-slate-950 p-3 text-xs text-slate-200"
+        >
+          {JSON.stringify(summary, null, 2)}
+        </pre>
+      ) : null}
     </section>
   );
 }

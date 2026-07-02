@@ -3,6 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiClient, UpdateAiConfigRequest } from "../../lib/api-client";
 
+const inputClass = "rounded border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100";
+const labelClass = "grid gap-1 text-xs font-medium text-slate-300";
+
 export function AIIntegrationSettingsPage() {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -44,10 +47,10 @@ export function AIIntegrationSettingsPage() {
   }, [status]);
 
   if (statusQuery.isLoading) {
-    return <p>Loading AI settings...</p>;
+    return <p className="text-sm text-slate-300">Loading AI settings...</p>;
   }
   if (statusQuery.isError || !status) {
-    return <p>Failed to load AI settings.</p>;
+    return <p className="text-sm text-red-400">Failed to load AI settings.</p>;
   }
 
   const effectiveForm = formState;
@@ -71,21 +74,25 @@ export function AIIntegrationSettingsPage() {
   }
 
   return (
-    <section>
-      <h2>AI Integration Settings</h2>
-      <p>Bring your own key. Tokens are masked and never returned by the API.</p>
-      <form onSubmit={onSubmit} style={{ display: "grid", gap: "0.75rem", maxWidth: "480px" }}>
-        <label>
+    <section className="space-y-4">
+      <header className="space-y-1">
+        <h2 className="text-xl font-semibold">AI Integration Settings</h2>
+        <p className="text-sm text-slate-300">Bring your own key. Tokens are masked and never returned by the API.</p>
+      </header>
+
+      <form onSubmit={onSubmit} className="grid max-w-lg gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+        <label className="flex items-center gap-2 text-sm text-slate-300">
           <input
             type="checkbox"
             checked={effectiveForm.enabled}
             onChange={(event) => setFormState((prev) => ({ ...prev, enabled: event.target.checked }))}
-          />{" "}
+          />
           Enable AI failure summaries
         </label>
-        <label>
+        <label className={labelClass}>
           Provider
           <select
+            className={inputClass}
             value={effectiveForm.provider}
             onChange={(event) =>
               setFormState((prev) => ({ ...prev, provider: event.target.value as "openai" | "anthropic" }))
@@ -95,16 +102,18 @@ export function AIIntegrationSettingsPage() {
             <option value="anthropic">Anthropic</option>
           </select>
         </label>
-        <label>
+        <label className={labelClass}>
           Model
           <input
+            className={inputClass}
             value={effectiveForm.model}
             onChange={(event) => setFormState((prev) => ({ ...prev, model: event.target.value }))}
           />
         </label>
-        <label>
+        <label className={labelClass}>
           API key source
           <select
+            className={inputClass}
             value={effectiveForm.api_key_source}
             onChange={(event) =>
               setFormState((prev) => ({ ...prev, api_key_source: event.target.value as "env" | "runtime_input" }))
@@ -115,34 +124,43 @@ export function AIIntegrationSettingsPage() {
           </select>
         </label>
         {effectiveForm.api_key_source === "env" ? (
-          <label>
+          <label className={labelClass}>
             API key env var
             <input
+              className={inputClass}
               value={effectiveForm.api_key_env_var ?? ""}
               onChange={(event) => setFormState((prev) => ({ ...prev, api_key_env_var: event.target.value || null }))}
             />
           </label>
         ) : (
-          <label>
+          <label className={labelClass}>
             API token
             <input
               type="password"
+              className={inputClass}
               value={apiKeyInput}
               placeholder="Enter token (not persisted to disk)"
               onChange={(event) => setApiKeyInput(event.target.value)}
             />
           </label>
         )}
-        <button type="submit" disabled={saveState === "saving"}>
-          {saveState === "saving" ? "Saving..." : "Save settings"}
-        </button>
+        <div>
+          <button
+            type="submit"
+            disabled={saveState === "saving"}
+            className="rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saveState === "saving" ? "Saving..." : "Save settings"}
+          </button>
+        </div>
       </form>
-      <p role="status">
+
+      <p role="status" className="text-sm text-slate-300">
         Status: {status.configured ? "configured" : "not configured"} | Provider: {status.provider} | Model:{" "}
         {status.model}
       </p>
-      {saveState === "saved" ? <p>Settings saved.</p> : null}
-      {saveState === "error" ? <p>Save failed: {saveError}</p> : null}
+      {saveState === "saved" ? <p className="text-sm text-emerald-400">Settings saved.</p> : null}
+      {saveState === "error" ? <p className="text-sm text-red-400">Save failed: {saveError}</p> : null}
     </section>
   );
 }

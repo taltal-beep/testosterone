@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from testo_api.routes.ai import router as ai_router
 from testo_api.routes.analytics import router as analytics_router
 from testo_api.routes.dashboard import router as dashboard_router
+from testo_api.routes.cycles import router as cycles_router
 from testo_api.routes.events import router as events_router
 from testo_api.routes.health import router as health_router
 from testo_api.routes.history import router as history_router
@@ -32,6 +33,7 @@ def create_app() -> FastAPI:
     app.include_router(runs_router)
     app.include_router(ai_router)
     app.include_router(events_router)
+    app.include_router(cycles_router)
     app.include_router(history_router)
     app.include_router(analytics_router)
     app.include_router(dashboard_router)

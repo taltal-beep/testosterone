@@ -7,6 +7,7 @@ import { ExecutionPage } from "../features/execution/ExecutionPage";
 import { HistoryPage } from "../features/history/HistoryPage";
 import { RunDetailPage } from "../features/run-detail/RunDetailPage";
 import { AIIntegrationSettingsPage } from "../features/settings/AIIntegrationSettingsPage";
+import { LiveExecutionConsole } from "../features/runner/LiveExecutionConsole";
 
 export const router = createBrowserRouter([
   {
@@ -20,6 +21,10 @@ export const router = createBrowserRouter([
       {
         path: "execution",
         element: <ExecutionPage />
+      },
+      {
+        path: "runner",
+        element: <LiveExecutionConsole />
       },
       {
         path: "history",
