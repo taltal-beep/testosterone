@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- `.pre-commit-config.yaml`: local `ruff`, changelog-format, and whitespace/YAML/TOML hooks (`pre-commit install` to enable)
 - `mypy` type-check tooling: `[tool.mypy]` config in `pyproject.toml`, advisory step in `ci.yml`'s `format` job
 - Extended `[tool.ruff.lint]` selection (added `UP`, `B`) and made `ruff check` blocking in `ci.yml` now that the tree is clean
 - Persistence module with `PersistenceBackend` protocol, JSON and DB backends

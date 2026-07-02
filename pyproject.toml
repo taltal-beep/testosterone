@@ -63,6 +63,7 @@ dev = [
     "build>=1.2.0",
     "ruff>=0.15.0",
     "mypy>=2.1.0",
+    "pre-commit>=4.0.0",
     # The dev profile installs every extra so the test suite covers the full
     # surface area without needing per-test installs.
     "testo-core[ui,api,db,docker,metrics]",
