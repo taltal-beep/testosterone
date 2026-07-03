@@ -58,6 +58,39 @@ class ExecutionStatusResponse(BaseModel):
         )
 
 
+class StageSummary(BaseModel):
+    name: str
+    equipment: str
+    target_repo: str
+    args: list[str] = Field(default_factory=list)
+    timeout_s: float | None = None
+    workers: int | None = None
+
+
+class CycleSummary(BaseModel):
+    name: str
+    description: str | None = None
+    stage_count: int
+    equipment: list[str] = Field(default_factory=list)
+
+
+class CycleListResponse(BaseModel):
+    items: list[CycleSummary]
+    config_path: str | None = None
+
+
+class CycleTriggerSummary(BaseModel):
+    paths: list[str] = Field(default_factory=list)
+    since_ref: str | None = None
+
+
+class CycleDetailResponse(BaseModel):
+    name: str
+    description: str | None = None
+    stages: list[StageSummary]
+    trigger: CycleTriggerSummary | None = None
+
+
 class CycleExecutionRequest(BaseModel):
     config_path: str | None = None
     artifacts_root: str | None = None

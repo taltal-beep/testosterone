@@ -8,12 +8,77 @@ from fastapi.responses import StreamingResponse
 from testo_api.cycle_execution_manager import CycleExecutionManager, iter_sse_from_ndjson_file
 from testo_api.dependencies import get_cycle_execution_manager
 from testo_api.models import (
+    CycleDetailResponse,
     CycleExecutionAcceptedResponse,
     CycleExecutionRequest,
     CycleExecutionStatusResponse,
+    CycleListResponse,
+    CycleSummary,
+    CycleTriggerSummary,
+    StageSummary,
 )
+from testo_core.config.errors import ConfigError
+from testo_core.config.loader import discover_and_load
 
 router = APIRouter(prefix="/api/v1", tags=["cycles"])
+
+
+def _load_config(config_path: str | None = None):
+    try:
+        return discover_and_load(
+            config_path=Path(config_path).expanduser().resolve() if config_path else None
+        )
+    except ConfigError as exc:
+        raise HTTPException(status_code=503, detail=f"config error: {exc}") from exc
+
+
+@router.get("/cycles", response_model=CycleListResponse)
+def list_cycles(config_path: str | None = None) -> CycleListResponse:
+    """List every cycle defined in the resolved configuration (UI parity with ``testo cycles list``)."""
+    cfg = _load_config(config_path)
+    items = [
+        CycleSummary(
+            name=cycle.name,
+            description=cycle.description,
+            stage_count=len(cycle.stages),
+            equipment=sorted({stage.framework for stage in cycle.stages}),
+        )
+        for cycle in cfg.cycles.values()
+    ]
+    return CycleListResponse(
+        items=items,
+        config_path=str(cfg.source_path) if cfg.source_path else None,
+    )
+
+
+@router.get("/cycles/{cycle}", response_model=CycleDetailResponse)
+def get_cycle(cycle: str, config_path: str | None = None) -> CycleDetailResponse:
+    """Resolved view of one cycle (UI parity with ``testo cycles show <name>``)."""
+    cfg = _load_config(config_path)
+    plan = cfg.cycles.get(cycle)
+    if plan is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown cycle: {cycle}. Available cycles: {', '.join(sorted(cfg.cycles))}",
+        )
+    return CycleDetailResponse(
+        name=plan.name,
+        description=plan.description,
+        stages=[
+            StageSummary(
+                name=stage.name,
+                equipment=stage.framework,
+                target_repo=str(stage.target_repo),
+                args=list(stage.args),
+                timeout_s=stage.timeout_s,
+                workers=stage.workers,
+            )
+            for stage in plan.stages
+        ],
+        trigger=CycleTriggerSummary(paths=list(plan.trigger.paths), since_ref=plan.trigger.since_ref)
+        if plan.trigger
+        else None,
+    )
 
 
 @router.post("/cycles/{cycle}/executions", response_model=CycleExecutionAcceptedResponse, status_code=202)
