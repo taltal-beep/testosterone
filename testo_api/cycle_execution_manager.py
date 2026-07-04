@@ -275,7 +275,6 @@ def _apply_workers_override(*, plan: Plan, stages: tuple[Stage, ...], workers_ov
             description=plan.description,
             stages=tuple(stages),
             trigger=plan.trigger,
-            tags=plan.tags,
         )
     new_stages = tuple(
         Stage(
@@ -295,7 +294,6 @@ def _apply_workers_override(*, plan: Plan, stages: tuple[Stage, ...], workers_ov
         description=plan.description,
         stages=new_stages,
         trigger=plan.trigger,
-        tags=plan.tags,
     )
 
 
