@@ -92,7 +92,7 @@ def run_plan(
                     parent_env=parent_env,
                     on_chunk=on_chunk(stage.name),
                 )
-            except Exception as exc:  # pragma: no cover - defensive
+            except Exception as exc:
                 stage_result = _internal_failure_result(stage=stage, exc=exc)
 
             stage_results.append(stage_result)
@@ -107,6 +107,7 @@ def run_plan(
                     "log_path": str(stage_result.log_path) if stage_result.log_path else None,
                     "timed_out": stage_result.timed_out,
                     "error": stage_result.error,
+                    "internal_failure": stage_result.internal_failure,
                 }
             )
 
@@ -123,7 +124,11 @@ def run_plan(
 
         finished_at = time.time()
         rcs = [s.returncode for s in stage_results]
-        exit_code = classify_exit_code(rcs, infra_error=None)
+        exit_code = classify_exit_code(
+            rcs,
+            infra_error=None,
+            internal_failure=any(s.internal_failure for s in stage_results),
+        )
         plan_result = PlanResult(
             plan_name=plan.name,
             started_at=started_at,
@@ -222,6 +227,7 @@ def _internal_failure_result(*, stage, exc: Exception) -> StageResult:  # type: 
         output_tail="",
         timed_out=False,
         error=f"internal error: {exc}",
+        internal_failure=True,
     )
 
 
