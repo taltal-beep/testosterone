@@ -63,7 +63,7 @@ function HealthDot() {
   });
 
   const health = query.data;
-  const ok = health?.status === "ok";
+  const ok = health?.status === "ready";
   const color = query.isError ? "bg-danger-400" : ok ? "bg-success-400" : health ? "bg-warn-400" : "bg-ink-500";
   const label = query.isError ? "API unreachable" : ok ? "All systems go" : health ? "Degraded" : "Checking…";
 
