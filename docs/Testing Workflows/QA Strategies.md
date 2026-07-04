@@ -310,7 +310,7 @@ The repo’s own QA lives under `tests/`. The **modern `testo run` execution pat
 
 | ID | Scenario | Test location |
 |----|----------|---------------|
-| LC-01–06 | Artifacts, NDJSON, fail-fast, `plan_result.json` | `test_orchestrator.py`, `test_orchestrator_lifecycle.py` |
+| LC-01–06 | Artifacts, NDJSON, fail-fast, `plan_result.json` | Fail-fast + NDJSON event order: `tests/unit/testo_core/engine/test_orchestrator.py`. Artifacts/`plan_result.json` rows: planned (`test_orchestrator_lifecycle.py` not yet written) |
 | LC-07–08 | Reporters post-run, trigger snapshot | `test_run_flags.py` |
 | ST-01–08 | Logs, env carry-over, Allure wipe, NDJSON fields | `test_executor.py`, `test_log_buffer.py`, `test_orchestrator_lifecycle.py` |
 
