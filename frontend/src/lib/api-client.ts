@@ -101,6 +101,7 @@ export interface DeltaComparisonResponse {
 export interface RunDetailResponse {
   run: {
     run_id: string;
+    status: string | null;
     test_kind: string;
     returncode: number;
     created_at: number;

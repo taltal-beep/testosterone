@@ -46,7 +46,7 @@ export function RunDetailPage() {
         title={
           <span className="flex items-center gap-3">
             <span className="font-mono">{run.run_id}</span>
-            <StatusPill status="" returncode={run.returncode} />
+            <StatusPill status={run.status} returncode={run.returncode} />
           </span>
         }
         subtitle="Run Details"

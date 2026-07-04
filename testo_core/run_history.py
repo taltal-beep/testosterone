@@ -595,6 +595,28 @@ def init_schema(db_path: Path | None = None) -> None:
     create_db_and_tables()
 
 
+def _returncode_from_metadata(md: dict[str, Any]) -> int:
+    """``DbBackend.persist`` (engine-sourced runs) writes ``exit_code``/``aggregate_returncode``
+    but no plain ``returncode`` key; the legacy headless runner writes ``returncode`` directly.
+    Prefer the explicit key, then fall back through the engine-shaped aliases.
+    """
+    for key in ("returncode", "aggregate_returncode", "exit_code"):
+        value = md.get(key)
+        if value is not None:
+            return int(value)
+    return 0
+
+
+def _health_pct_from_metadata(md: dict[str, Any]) -> float | None:
+    if md.get("health_pct") is not None:
+        return float(md["health_pct"])
+    stages = md.get("stages")
+    if isinstance(stages, list) and stages:
+        passed_stages = sum(1 for s in stages if isinstance(s, dict) and s.get("returncode") == 0)
+        return 100.0 * passed_stages / len(stages)
+    return None
+
+
 def _completed_view_from_record(r: RunRecord) -> CompletedRunView | None:
     md = r.metadata_ or {}
     run_id = md.get("run_id")
@@ -607,7 +629,7 @@ def _completed_view_from_record(r: RunRecord) -> CompletedRunView | None:
         started_at=float(md.get("started_at") or 0.0),
         finished_at=float(md.get("finished_at") or 0.0),
         test_kind=str(md.get("test_kind") or "unknown"),
-        returncode=int(md.get("returncode") or 0),
+        returncode=_returncode_from_metadata(md),
         wall_duration_ms=float(md.get("wall_duration_ms") or 0.0),
         metrics_duration_ms=int(md["metrics_duration_ms"]) if md.get("metrics_duration_ms") is not None else None,
         total_tests=int(md["total_tests"]) if md.get("total_tests") is not None else None,
@@ -616,7 +638,7 @@ def _completed_view_from_record(r: RunRecord) -> CompletedRunView | None:
         broken=int(md["broken"]) if md.get("broken") is not None else None,
         skipped=int(md["skipped"]) if md.get("skipped") is not None else None,
         avg_case_ms=float(md["avg_case_ms"]) if md.get("avg_case_ms") is not None else None,
-        health_pct=float(md["health_pct"]) if md.get("health_pct") is not None else None,
+        health_pct=_health_pct_from_metadata(md),
         target_repo=str(md["target_repo"]) if md.get("target_repo") else None,
         snapshot_dir=str(md["snapshot_dir"]) if md.get("snapshot_dir") else None,
         audit_json=str(md["audit_json"]) if md.get("audit_json") else None,
