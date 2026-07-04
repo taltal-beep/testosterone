@@ -18,11 +18,9 @@ Execute one cycle or all cycles from `testosterone.yaml`.
 
 ```bash
 testo run --cycle sample-pytests
-testo run --cycle all --tag smoke --fail-fast
-testo run --cycle sample-pytests --dry-run
 testo run --cycle sample-pytests --ci
 testo run --cycle sample-pytests --stream
-testo run --cycle sample-pytests --reporter allure,extent
+testo run --cycle sample-pytests --workers 8 --force
 ```
 
 ### Options
@@ -39,10 +37,9 @@ testo run --cycle sample-pytests --reporter allure,extent
 | `--async-report-db` | | Archive in background thread with join timeout; **ignored when `--ci` is set** |
 | `--workers` | `-w` | Override parallel workers (e.g. BehaveX) |
 | `--force` | `-f` | Run even when trigger would skip the cycle |
-| `--tag` | | With `--cycle all`, only cycles listing this tag; with one cycle, fail if tag missing |
-| `--fail-fast` | | Stop after first failing stage; with `all`, stop after first failing cycle |
-| `--dry-run` | | Print resolved plan (respects triggers unless `--force`) |
-| `--reporter` | | Comma-separated reporter types (overrides YAML `reporters:`) |
+
+> [!warning] Roadmap flags — not implemented yet
+> `--tag`, `--fail-fast`, `--dry-run` and `--reporter` were previously listed here but are **not present in `testo_core/cli/commands/run.py`**. The API layer already accepts `fail_fast` and `reporter_override` on `POST /api/v1/cycles/{cycle}/executions` (surfaced in the React Run panel); the CLI flags remain roadmap items. (Doc corrected 2026-07-04 during the Phase 5 UI redesign.)
 
 ### Expected terminal output
 
@@ -59,8 +56,6 @@ Run exited with code 1.
 ```
 
 **`--ci`:** One NDJSON object per line (`plan_started`, `stage_started`, `stage_finished`, `plan_finished`, etc.), no Rich styling.
-
-**`--dry-run`:** Table of stage index, name, equipment, cwd, and resolved shell command; or NDJSON `dry_run_stage` events when `--ci`.
 
 ### Exit codes
 
@@ -173,6 +168,9 @@ Prefer **`testo report compare`** for Rich diff plus Allure visual comparison pi
 ---
 
 ## `testo doctor`
+
+> [!warning] Roadmap — not implemented yet
+> `doctor`, `clean`, `watch` and top-level `init` below are documented targets but are **not registered in `testo_core/cli/app.py`** as of 2026-07-04. The React UI's health indicator uses `GET /api/v1/health/ready` for the same diagnostics need.
 
 Health check: config load, framework CLIs on PATH, Node.js + Allure Report 3 CLI, optional Docker warnings, DB probe if `DATABASE_URL` or config URL is set.
 
