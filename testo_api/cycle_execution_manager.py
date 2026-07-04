@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
@@ -208,30 +210,48 @@ class CycleExecutionManager:
 
             renderer = _NullRenderer()
             effective_plan = _apply_workers_override(plan=plan, stages=resolved_stages, workers_override=workers_override)
+            # Stage subprocesses resolve tools (pytest/behave/...) via PATH. The API server
+            # may be launched without an activated venv, so prepend this interpreter's bin
+            # dir to guarantee stages run against the same environment as the engine.
+            parent_env = dict(os.environ)
+            # Note: do not resolve() — in a venv, sys.executable is a symlink into the
+            # base interpreter; resolving it would point PATH at the wrong bin dir.
+            exe_bin = str(Path(sys.executable).parent)
+            path_entries = parent_env.get("PATH", "").split(os.pathsep)
+            if exe_bin not in path_entries:
+                parent_env["PATH"] = os.pathsep.join([exe_bin, *path_entries])
             # `run_plan` persists events.ndjson and plan_result.json under artifacts/<cycle>/.
             result = run_plan(
                 plan=effective_plan,
                 renderer=renderer,
                 artifacts_root=artifacts_root,
+                parent_env=parent_env,
                 persist=persist,
                 fail_fast=fail_fast,
             )
 
             # Post-run reporters + optional report DB archive (same flow as CLI runner).
-            if cfg.reporters or reporter_override:
-                from rich.console import Console
+            # The reporters subsystem (config `reporters:` + orchestrate module) is not
+            # part of every build; skip post-run reporting instead of failing the run.
+            config_reporters = getattr(cfg, "reporters", ()) or ()
+            if config_reporters or reporter_override:
+                try:
+                    from testo_core.reporting.reporters.orchestrate import run_configured_reporters
+                except ImportError:
+                    run_configured_reporters = None
 
-                from testo_core.reporting.reporters.orchestrate import run_configured_reporters
+                if run_configured_reporters is not None:
+                    from rich.console import Console
 
-                run_configured_reporters(
-                    cfg=cfg,
-                    artifacts_root=artifacts_root,
-                    plan_name=effective_plan.name,
-                    reporter_override=reporter_override,
-                    console=Console(),
-                    ci=ci,
-                    generate_only=True,
-                )
+                    run_configured_reporters(
+                        cfg=cfg,
+                        artifacts_root=artifacts_root,
+                        plan_name=effective_plan.name,
+                        reporter_override=reporter_override,
+                        console=Console(),
+                        ci=ci,
+                        generate_only=True,
+                    )
 
             if persist and report_db:
                 from rich.console import Console

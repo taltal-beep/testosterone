@@ -42,12 +42,18 @@ def run_plan(
     artifacts_root: Path | None = None,
     parent_env: Mapping[str, str] | None = None,
     persist: bool = True,
+    fail_fast: bool = False,
 ) -> PlanResult:
     """Execute every stage in ``plan`` sequentially.
 
     When *persist* is ``True``, the :mod:`testo_core.persistence` composite
     backend writes ``plan_result.json`` and (when the DB layer is available)
     upserts a :class:`~testo_core.repository.models.RunRecord`.
+
+    When *fail_fast* is ``True``, a stage finishing with a non-zero returncode
+    aborts the remaining stages: a ``plan_aborted`` NDJSON event is written
+    (see ``docs/CLI Commands/Troubleshooting and Error Codes.md``) before the
+    terminal ``plan_finished`` event.
     """
     artifacts_root = (artifacts_root or Path("artifacts")).expanduser().resolve()
     plan_artifacts = plan_artifacts_dir(artifacts_root, plan.name)
@@ -103,6 +109,17 @@ def run_plan(
                     "error": stage_result.error,
                 }
             )
+
+            if fail_fast and stage_result.returncode != 0:
+                recorder.write(
+                    {
+                        "event": "plan_aborted",
+                        "plan": plan.name,
+                        "reason": "fail_fast",
+                        "completed_stages": idx,
+                    }
+                )
+                break
 
         finished_at = time.time()
         rcs = [s.returncode for s in stage_results]
