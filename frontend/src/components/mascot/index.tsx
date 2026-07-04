@@ -1,4 +1,10 @@
 import { PixelArt } from "./PixelArt";
+import { AnimatedPixelArt } from "./AnimatedPixelArt";
+import { FLEX, GLOVES, HURT, SMASH } from "./animations";
+
+export { PixelArt } from "./PixelArt";
+export { AnimatedPixelArt } from "./AnimatedPixelArt";
+export { FLEX, SMASH, HURT, GLOVES, ANIMATIONS, MASCOT_PALETTE } from "./animations";
 
 export interface MascotProps {
   size?: number;
@@ -6,92 +12,88 @@ export interface MascotProps {
   className?: string;
 }
 
-// Flexed bicep, fist raised — the brand mark and the "run passed" celebration.
-const FLEX_GRID = [
-  "................",
-  "....ooo.........",
-  "...owwso........",
-  "..owssso........",
-  "..ossssso.......",
-  "..osssso........",
-  "...ossso........",
-  "....osso........",
-  "....odsso.......",
-  "....odssso......",
-  "...odssssso.....",
-  "..odsssshsso....",
-  "..ossssshhsso...",
-  "..oosssssssoo...",
-  "....oosssoo.....",
-  "......ooo......."
-];
-
-// Drooping arm with a sweat drop — the "run failed" reaction.
-const DEFEATED_GRID = [
-  "................",
-  "..oooooo........",
-  ".ossssssoo......",
-  ".osssssssso.....",
-  "..oosssssso..t..",
-  "....oossso...t..",
-  "......osso..tt..",
-  "......osso......",
-  ".....osso.......",
-  ".....osso.......",
-  "....osso........",
-  "....osso........",
-  "...owwo.........",
-  "...owwo.........",
-  "....oo..........",
-  "................"
-];
-
 // Open palm turned up with a floating question mark — empty states.
 const SHRUG_GRID = [
   "................",
-  "..........qqq...",
-  ".........q...q..",
-  ".............q..",
-  "............q...",
-  "...........q....",
+  "..........ggg...",
+  ".........g...g..",
+  ".............g..",
+  "............g...",
+  "...........g....",
   "................",
-  "...........q....",
+  "...........g....",
   "................",
-  ".w.w.w..........",
-  ".owwwo..........",
+  ".s.s.s..........",
+  ".osssso.........",
   ".osssoo.........",
   ".ossssoo........",
   "..osssssoooooo..",
   "...ossssssssso..",
-  "....oooooooo...."
+  "....oooooooo....",
 ];
 
+/** Brand mark: the flexed arm at peak. */
 export function MuscleLogo({ size = 24, className }: MascotProps) {
-  return <PixelArt grid={FLEX_GRID} size={size} className={className} title="Testo" />;
+  return <PixelArt grid={FLEX[2]} size={size} className={className} title="Testo" />;
 }
 
+/** Bicep pump — the "run passed" celebration. */
 export function MuscleFlex({ size = 96, animate = false, className }: MascotProps) {
   return (
-    <PixelArt
-      grid={FLEX_GRID}
+    <AnimatedPixelArt
+      animation={FLEX}
+      playing={animate}
+      stillFrame={2}
       size={size}
-      className={`${animate ? "animate-muscle-flex " : ""}${className ?? ""}`}
+      className={className}
       title="Flexing muscle — success"
     />
   );
 }
 
+/** Arm takes a hit and droops with a bandage — the "run failed" reaction. */
 export function MuscleDefeated({ size = 96, animate = false, className }: MascotProps) {
   return (
-    <PixelArt
-      grid={DEFEATED_GRID}
+    <AnimatedPixelArt
+      animation={HURT}
+      playing={animate}
+      stillFrame={3}
       size={size}
-      className={`${animate ? "animate-muscle-droop " : ""}${className ?? ""}`}
-      title="Defeated muscle — failure"
+      className={className}
+      title="Hurt muscle — failure"
     />
   );
 }
 
+/** Fist smashing through bricks — heavy work in progress. */
+export function MuscleSmash({ size = 96, animate = true, className }: MascotProps) {
+  return (
+    <AnimatedPixelArt
+      animation={SMASH}
+      playing={animate}
+      stillFrame={0}
+      size={size}
+      className={className}
+      title="Smashing bricks — running"
+    />
+  );
+}
+
+/** Red and blue gloves trading a punch — comparisons and deltas. */
+export function GlovesPunch({ size = 96, animate = true, className }: MascotProps) {
+  return (
+    <AnimatedPixelArt
+      animation={GLOVES}
+      playing={animate}
+      stillFrame={2}
+      size={size}
+      className={className}
+      title="Gloves punching — versus"
+    />
+  );
+}
+
+/** Shrugging palm with a question mark — nothing here yet. */
 export function MuscleShrug({ size = 96, className }: MascotProps) {
   return <PixelArt grid={SHRUG_GRID} size={size} className={className} title="Shrugging muscle — nothing here yet" />;
 }

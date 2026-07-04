@@ -1,23 +1,16 @@
-// Shared pixel-grid renderer for the Testo arm-muscle mascot family.
+// Shared pixel-grid renderer for the Testo mascot family.
 // Each mascot declares a character grid; every char maps to a palette color,
 // "." is transparent. shape-rendering keeps edges crisp at any size.
 
-export type PixelPalette = Record<string, string>;
+import { MASCOT_PALETTE, type PixelPalette } from "./animations";
 
-export const MASCOT_PALETTE: PixelPalette = {
-  o: "#1d4ed8", // outline (deep brand blue)
-  s: "#3b82f6", // muscle fill (brand blue)
-  h: "#93c5fd", // highlight
-  d: "#2563eb", // shading
-  w: "#ececf1", // wristband / accents
-  t: "#7dd3fc", // sweat drop
-  q: "#9b9ba4"  // question mark / neutral detail
-};
+export type { PixelPalette };
+export { MASCOT_PALETTE };
 
 export interface PixelArtProps {
   grid: string[];
   palette?: PixelPalette;
-  /** Rendered width/height in px (square). */
+  /** Rendered width in px; height follows the grid's aspect ratio. */
   size?: number;
   className?: string;
   title?: string;
@@ -26,11 +19,12 @@ export interface PixelArtProps {
 export function PixelArt({ grid, palette = MASCOT_PALETTE, size = 64, className, title }: PixelArtProps) {
   const rows = grid.length;
   const cols = Math.max(0, ...grid.map((row) => row.length));
+  const height = cols > 0 ? Math.round((size * rows) / cols) : size;
   return (
     <svg
       viewBox={`0 0 ${cols} ${rows}`}
       width={size}
-      height={size}
+      height={height}
       shapeRendering="crispEdges"
       role="img"
       aria-label={title ?? "Testo mascot"}
