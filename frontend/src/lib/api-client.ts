@@ -213,6 +213,39 @@ export interface DashboardOverviewResponse {
   };
 }
 
+export interface CycleSummary {
+  name: string;
+  description: string | null;
+  stage_count: number;
+  equipment: string[];
+}
+
+export interface CycleListResponse {
+  items: CycleSummary[];
+  config_path: string | null;
+}
+
+export interface StageSummary {
+  name: string;
+  equipment: string;
+  target_repo: string;
+  args: string[];
+  timeout_s: number | null;
+  workers: number | null;
+}
+
+export interface CycleDetailResponse {
+  name: string;
+  description: string | null;
+  stages: StageSummary[];
+  trigger: { paths: string[]; since_ref: string | null } | null;
+}
+
+export interface HealthReadyResponse {
+  status: "ok" | "degraded";
+  checks: Record<string, { status: string; detail: string | null }>;
+}
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -246,6 +279,19 @@ export const apiClient = {
   },
   getExecution(executionId: string): Promise<ExecutionStatus> {
     return api<ExecutionStatus>(`/api/v1/executions/${executionId}`);
+  },
+  listCycles(): Promise<CycleListResponse> {
+    return api<CycleListResponse>("/api/v1/cycles");
+  },
+  getCycle(name: string): Promise<CycleDetailResponse> {
+    return api<CycleDetailResponse>(`/api/v1/cycles/${encodeURIComponent(name)}`);
+  },
+  async getHealthReady(): Promise<HealthReadyResponse> {
+    // /health/ready responds 503 when degraded but still carries the check payload.
+    const resp = await fetch(`${API_BASE}/api/v1/health/ready`, {
+      headers: { "Content-Type": "application/json" }
+    });
+    return (await resp.json()) as HealthReadyResponse;
   },
   listRuns(): Promise<{ items: RunListItem[] }> {
     return api<{ items: RunListItem[] }>("/api/v1/runs");

@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { DashboardTrendIndicator, apiClient } from "../../lib/api-client";
+import { Badge, Card, PageHeader, Spinner, StatusPill } from "../../components/ui";
+import { MuscleShrug } from "../../components/mascot";
 
 export function DashboardPage() {
   const overviewQuery = useQuery({
@@ -10,34 +12,41 @@ export function DashboardPage() {
   });
 
   if (overviewQuery.isLoading) {
-    return <p className="text-sm text-slate-300">Loading dashboard overview...</p>;
+    return (
+      <div className="flex items-center gap-2 text-sm text-ink-300">
+        <Spinner /> Loading dashboard overview...
+      </div>
+    );
   }
   if (overviewQuery.isError) {
-    return <p className="text-sm text-red-400">Failed to load dashboard overview.</p>;
+    return <p className="text-sm text-danger-400">Failed to load dashboard overview.</p>;
   }
 
   const data = overviewQuery.data;
   if (!data) {
-    return <p className="text-sm text-slate-300">No dashboard data available.</p>;
+    return <p className="text-sm text-ink-300">No dashboard data available.</p>;
   }
   const recentRuns = data.recent_runs ?? [];
   const latestRunId = data.headline_kpis?.latest_run_id;
 
-  return (
-    <section className="space-y-4">
-      <header className="space-y-1">
-        <h2 className="text-xl font-semibold">Dashboard Overview</h2>
-        <p className="text-sm text-slate-300">
-          Health, reliability, and performance at a glance with direct drill-down paths.
-        </p>
-        {data.data_freshness?.degraded ? (
-          <p role="status" className="text-sm text-amber-400">
-            Some metrics are degraded: {data.data_freshness.notes?.join(", ") || "unknown source issue"}.
-          </p>
-        ) : null}
-      </header>
+  // First-run experience: nothing has ever executed, so guide instead of showing n/a walls.
+  if (!latestRunId && recentRuns.length === 0) {
+    return <FirstRunGuide />;
+  }
 
-      <div className="grid gap-3 sm:grid-cols-2">
+  return (
+    <section className="space-y-5">
+      <PageHeader
+        title="Dashboard"
+        subtitle="Health, reliability, and performance at a glance."
+      />
+      {data.data_freshness?.degraded ? (
+        <p role="status" className="rounded-md border border-warn-500/40 bg-warn-500/10 px-3 py-2 text-sm text-warn-300">
+          Some metrics are degraded: {data.data_freshness.notes?.join(", ") || "unknown source issue"}.
+        </p>
+      ) : null}
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Health" value={formatPct(data.headline_kpis.health_pct)} trend={data.trend_indicators.health} />
         <KpiCard
           label="Failed"
@@ -58,64 +67,140 @@ export function DashboardPage() {
         />
       </div>
 
-      <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-        <h3 className="mb-2 text-sm font-semibold text-slate-200">Rollups</h3>
-        <ul className="space-y-1 text-sm text-slate-300">
-          <li>
-            <strong className="text-slate-200">Reliability</strong>: {renderSummary(data.reliability_rollup.status_summary)}
-          </li>
-          <li>
-            <strong className="text-slate-200">Performance</strong>: {renderSummary(data.performance_rollup.status_summary)}
-          </li>
-        </ul>
-      </section>
-
-      <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-        <h3 className="mb-2 text-sm font-semibold text-slate-200">Quick Links</h3>
-        <ul className="space-y-1 text-sm">
-          {latestRunId ? (
-            <li>
-              <Link to={`/runs/${latestRunId}`} className="text-indigo-400 hover:text-indigo-300">
-                Latest run details
-              </Link>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card title="Rollups">
+          <ul className="space-y-2 text-sm text-ink-300">
+            <li className="flex flex-wrap items-center gap-2">
+              <strong className="text-ink-100">Reliability</strong>
+              <RollupBadges summary={data.reliability_rollup.status_summary} />
             </li>
-          ) : (
-            <li className="text-slate-400">Latest run details unavailable</li>
-          )}
-          {recentRuns[0]?.compare_url ? (
-            <li>
-              <Link to={recentRuns[0].compare_url} className="text-indigo-400 hover:text-indigo-300">
-                Compare latest two runs
-              </Link>
+            <li className="flex flex-wrap items-center gap-2">
+              <strong className="text-ink-100">Performance</strong>
+              <RollupBadges summary={data.performance_rollup.status_summary} />
             </li>
-          ) : (
-            <li className="text-slate-400">Compare view unavailable</li>
-          )}
-          <li className="text-slate-300">{reportLink("Allure report", data.report_links?.allure ?? { url: null, state: "unknown" })}</li>
-          <li className="text-slate-300">{reportLink("Locust report", data.report_links?.locust ?? { url: null, state: "unknown" })}</li>
-          <li className="text-slate-300">{reportLink("Behave report", data.report_links?.behave ?? { url: null, state: "unknown" })}</li>
-        </ul>
-      </section>
+          </ul>
+        </Card>
 
-      <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-        <h3 className="mb-2 text-sm font-semibold text-slate-200">Recent Runs</h3>
+        <Card title="Quick Links">
+          <ul className="space-y-1.5 text-sm">
+            {latestRunId ? (
+              <li>
+                <Link to={`/runs/${latestRunId}`} className="text-brand-300 hover:text-brand-400 hover:underline">
+                  Latest run details
+                </Link>
+              </li>
+            ) : (
+              <li className="text-ink-400">Latest run details unavailable</li>
+            )}
+            {recentRuns[0]?.compare_url ? (
+              <li>
+                <Link to={recentRuns[0].compare_url} className="text-brand-300 hover:text-brand-400 hover:underline">
+                  Compare latest two runs
+                </Link>
+              </li>
+            ) : (
+              <li className="text-ink-400">Compare view unavailable</li>
+            )}
+            <li className="text-ink-300">{reportLink("Allure report", data.report_links?.allure ?? { url: null, state: "unknown" })}</li>
+            <li className="text-ink-300">{reportLink("Locust report", data.report_links?.locust ?? { url: null, state: "unknown" })}</li>
+            <li className="text-ink-300">{reportLink("Behave report", data.report_links?.behave ?? { url: null, state: "unknown" })}</li>
+          </ul>
+        </Card>
+      </div>
+
+      <Card title="Recent Runs">
         {recentRuns.length === 0 ? (
-          <p className="text-sm text-slate-400">No recent runs available.</p>
+          <p className="text-sm text-ink-400">No recent runs available.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="divide-y divide-ink-800">
             {recentRuns.map((run) => (
-              <li key={run.run_id} className="rounded border border-slate-800 bg-slate-950 p-2 text-sm text-slate-300">
-                <Link to={run.run_detail_url} className="font-mono text-indigo-400 hover:text-indigo-300">
-                  {run.run_id}
-                </Link>{" "}
-                status={run.status ?? "unknown"} rc={run.returncode} health=
-                {formatPct(run.health_pct)}
+              <li key={run.run_id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
+                <div className="flex items-center gap-3">
+                  <StatusPill status={run.status ?? "unknown"} returncode={run.returncode} />
+                  <Link to={run.run_detail_url} className="font-mono text-brand-300 hover:text-brand-400 hover:underline">
+                    {run.run_id}
+                  </Link>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-ink-400">
+                  <span>health {formatPct(run.health_pct)}</span>
+                  {run.compare_url ? (
+                    <Link to={run.compare_url} className="text-brand-300 hover:underline">
+                      compare
+                    </Link>
+                  ) : null}
+                </div>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </Card>
     </section>
+  );
+}
+
+function FirstRunGuide() {
+  return (
+    <section className="space-y-6">
+      <PageHeader title="Welcome to Testo" subtitle="Three steps to your first quality cycle." />
+      <div className="flex flex-col items-center gap-2 py-4">
+        <MuscleShrug size={112} />
+        <p className="text-sm text-ink-300">No runs yet — let&apos;s change that.</p>
+      </div>
+      <ol className="grid gap-4 md:grid-cols-3" data-testid="first-run-guide">
+        <GuideStep
+          step={1}
+          title="Check system health"
+          body="The dot in the top-right corner shows engine readiness. Green means go."
+        />
+        <GuideStep
+          step={2}
+          title="Pick a cycle"
+          body={
+            <>
+              Browse the cycles defined in your config —{" "}
+              <Link to="/cycles" className="text-brand-300 hover:underline">
+                see what you have
+              </Link>
+              .
+            </>
+          }
+        />
+        <GuideStep
+          step={3}
+          title="Run it"
+          body="Hit Run on any cycle card and watch stages stream live. Results land here."
+        />
+      </ol>
+    </section>
+  );
+}
+
+function GuideStep({ step, title, body }: { step: number; title: string; body: React.ReactNode }) {
+  return (
+    <li>
+      <Card className="h-full">
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-600/20 font-mono text-sm font-bold text-brand-300">
+          {step}
+        </span>
+        <h3 className="mt-2 text-sm font-semibold text-ink-100">{title}</h3>
+        <p className="mt-1 text-sm text-ink-300">{body}</p>
+      </Card>
+    </li>
+  );
+}
+
+function RollupBadges({
+  summary
+}: {
+  summary: { regressions: number; improvements: number; unchanged: number; unknown: number };
+}) {
+  return (
+    <span className="flex flex-wrap gap-1.5">
+      <Badge tone={summary.regressions > 0 ? "danger" : "neutral"}>{summary.regressions} regressions</Badge>
+      <Badge tone={summary.improvements > 0 ? "success" : "neutral"}>{summary.improvements} improvements</Badge>
+      <Badge>{summary.unchanged} unchanged</Badge>
+      <Badge>{summary.unknown} unknown</Badge>
+    </span>
   );
 }
 
@@ -133,13 +218,13 @@ function KpiCard({
   const semantic = trendSemantic(trend, lowerIsBetter);
   const trendColor =
     semantic.label === "improved"
-      ? "text-emerald-400"
+      ? "text-success-400"
       : semantic.label === "regressed"
-        ? "text-red-400"
-        : "text-slate-400";
+        ? "text-danger-400"
+        : "text-ink-400";
   return (
-    <article className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-      <strong className="text-sm font-medium text-slate-300">{label}</strong>
+    <article className="rounded-xl border border-ink-700 bg-ink-900 p-4">
+      <strong className="text-sm font-medium text-ink-300">{label}</strong>
       <p className="my-1 text-2xl font-semibold text-white">{value}</p>
       <p data-testid={`${label.toLowerCase().replace(/\s+/g, "-")}-trend`} className={`text-xs ${trendColor}`}>
         Trend: {semantic.label}
@@ -164,17 +249,13 @@ export function trendSemantic(
   return { label: trend.direction === "up" ? "improved" : "regressed" };
 }
 
-function renderSummary(summary: { regressions: number; improvements: number; unchanged: number; unknown: number }) {
-  return `regressions=${summary.regressions} improvements=${summary.improvements} unchanged=${summary.unchanged} unknown=${summary.unknown}`;
-}
-
 function reportLink(
   label: string,
   report: { url: string | null; state: "available" | "missing" | "unknown" }
 ) {
   if (report.state === "available" && report.url) {
     return (
-      <a href={report.url} target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300">
+      <a href={report.url} target="_blank" rel="noreferrer" className="text-brand-300 hover:text-brand-400 hover:underline">
         {label}
       </a>
     );

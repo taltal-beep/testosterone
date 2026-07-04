@@ -19,8 +19,8 @@ const PERFORMANCE_ORDER: Array<{ key: keyof ReturnType<typeof getPerformanceMetr
   { key: "avg_case_ms", label: "Avg Case (ms)" }
 ];
 
-const selectClass = "rounded border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100";
-const labelClass = "grid gap-1 text-xs font-medium text-slate-300";
+const selectClass = "rounded border border-ink-700 bg-ink-950 px-3 py-2 text-sm text-ink-100";
+const labelClass = "grid gap-1 text-xs font-medium text-ink-300";
 
 export function ComparePage() {
   const [searchParams] = useSearchParams();
@@ -39,13 +39,13 @@ export function ComparePage() {
   const options = useMemo(() => runsQuery.data?.items ?? [], [runsQuery.data?.items]);
 
   if (runsQuery.isLoading) {
-    return <p className="text-sm text-slate-300">Loading runs for comparison...</p>;
+    return <p className="text-sm text-ink-300">Loading runs for comparison...</p>;
   }
   if (runsQuery.isError) {
-    return <p className="text-sm text-red-400">Failed to load runs for comparison.</p>;
+    return <p className="text-sm text-danger-400">Failed to load runs for comparison.</p>;
   }
   if (options.length < 2) {
-    return <p className="text-sm text-slate-300">At least two completed runs are required for comparison.</p>;
+    return <p className="text-sm text-ink-300">At least two completed runs are required for comparison.</p>;
   }
 
   const comparisonReady = Boolean(currentRunId && baselineRunId && currentRunId !== baselineRunId);
@@ -55,10 +55,10 @@ export function ComparePage() {
     <section className="space-y-4">
       <header className="space-y-1">
         <h2 className="text-xl font-semibold">Run Comparison</h2>
-        <p className="text-sm text-slate-300">Select baseline and current runs to identify regressions and improvements.</p>
+        <p className="text-sm text-ink-300">Select baseline and current runs to identify regressions and improvements.</p>
       </header>
 
-      <div className="flex flex-wrap gap-4 rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+      <div className="flex flex-wrap gap-4 rounded-xl border border-ink-700 bg-ink-900 p-4">
         <label className={labelClass}>
           Current run
           <select
@@ -93,52 +93,52 @@ export function ComparePage() {
         </label>
       </div>
 
-      {!comparisonReady && <p className="text-sm text-slate-400">Select two different runs to start comparison.</p>}
-      {comparisonReady && compareQuery.isLoading && <p className="text-sm text-slate-300">Loading delta comparison...</p>}
-      {comparisonReady && compareQuery.isError && <p className="text-sm text-red-400">Failed to load delta comparison.</p>}
+      {!comparisonReady && <p className="text-sm text-ink-400">Select two different runs to start comparison.</p>}
+      {comparisonReady && compareQuery.isLoading && <p className="text-sm text-ink-300">Loading delta comparison...</p>}
+      {comparisonReady && compareQuery.isError && <p className="text-sm text-danger-400">Failed to load delta comparison.</p>}
       {comparisonReady && payload && (
         <>
-          <p className="text-sm text-slate-300">
-            Comparing <strong className="text-slate-100">{payload.comparison.current_run_id}</strong> against baseline{" "}
-            <strong className="text-slate-100">{payload.comparison.baseline_run_id}</strong>.
+          <p className="text-sm text-ink-300">
+            Comparing <strong className="text-ink-100">{payload.comparison.current_run_id}</strong> against baseline{" "}
+            <strong className="text-ink-100">{payload.comparison.baseline_run_id}</strong>.
           </p>
 
-          <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-            <h3 className="mb-2 text-sm font-semibold text-slate-200">Reliability</h3>
-            <ul className="space-y-1 text-sm text-slate-300">
+          <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
+            <h3 className="mb-2 text-sm font-semibold text-ink-100">Reliability</h3>
+            <ul className="space-y-1 text-sm text-ink-300">
               {RELIABILITY_ORDER.map(({ key, label }) => (
                 <li key={key}>
-                  <strong className="text-slate-200">{label}</strong>: <MetricRow metric={getReliabilityMetrics(payload)[key]} />
+                  <strong className="text-ink-100">{label}</strong>: <MetricRow metric={getReliabilityMetrics(payload)[key]} />
                 </li>
               ))}
             </ul>
           </section>
 
-          <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-            <h3 className="mb-2 text-sm font-semibold text-slate-200">Performance</h3>
-            <ul className="space-y-1 text-sm text-slate-300">
+          <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
+            <h3 className="mb-2 text-sm font-semibold text-ink-100">Performance</h3>
+            <ul className="space-y-1 text-sm text-ink-300">
               {PERFORMANCE_ORDER.map(({ key, label }) => (
                 <li key={key}>
-                  <strong className="text-slate-200">{label}</strong>: <MetricRow metric={getPerformanceMetrics(payload)[key]} />
+                  <strong className="text-ink-100">{label}</strong>: <MetricRow metric={getPerformanceMetrics(payload)[key]} />
                 </li>
               ))}
             </ul>
           </section>
 
-          <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-            <h3 className="mb-2 text-sm font-semibold text-slate-200">Status Summary</h3>
-            <p className="text-sm text-slate-300">
+          <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
+            <h3 className="mb-2 text-sm font-semibold text-ink-100">Status Summary</h3>
+            <p className="text-sm text-ink-300">
               regressions={payload.status_summary.regressions.length} improvements={payload.status_summary.improvements.length}{" "}
               unchanged={payload.status_summary.unchanged.length} unknown={payload.status_summary.unknown.length}
             </p>
           </section>
 
-          <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-            <h3 className="mb-2 text-sm font-semibold text-slate-200">Highlights</h3>
+          <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
+            <h3 className="mb-2 text-sm font-semibold text-ink-100">Highlights</h3>
             {payload.highlights.length === 0 ? (
-              <p className="text-sm text-slate-400">No major changes detected.</p>
+              <p className="text-sm text-ink-400">No major changes detected.</p>
             ) : (
-              <ul className="space-y-1 text-sm text-slate-300">
+              <ul className="space-y-1 text-sm text-ink-300">
                 {payload.highlights.map((line) => (
                   <li key={line}>{line}</li>
                 ))}
@@ -156,7 +156,7 @@ function MetricRow({ metric }: { metric: DeltaMetricNode }) {
   const relative = metric.relative_delta_pct == null ? "n/a" : `${metric.relative_delta_pct.toFixed(2)}%`;
   const reason = metric.reason ? ` (${metric.reason})` : "";
   return (
-    <span className="font-mono text-xs text-slate-300">
+    <span className="font-mono text-xs text-ink-300">
       current={formatMetricValue(metric.current_value, metric.unit)} baseline={formatMetricValue(metric.baseline_value, metric.unit)} delta=
       {absolute} relative={relative} state={metric.classification}
       {reason}

@@ -3,8 +3,8 @@ import { FormEvent, useMemo, useState } from "react";
 import { apiClient } from "../../lib/api-client";
 import { subscribeToExecutionEvents } from "../../lib/sse-client";
 
-const inputClass = "rounded border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100";
-const labelClass = "grid gap-1 text-xs font-medium text-slate-300";
+const inputClass = "rounded border border-ink-700 bg-ink-950 px-3 py-2 text-sm text-ink-100";
+const labelClass = "grid gap-1 text-xs font-medium text-ink-300";
 
 export function ExecutionPage() {
   const [targetRepo, setTargetRepo] = useState(".");
@@ -49,10 +49,17 @@ export function ExecutionPage() {
   return (
     <section className="space-y-4">
       <header className="space-y-1">
-        <h2 className="text-xl font-semibold">Execution</h2>
+        <h2 className="text-xl font-semibold">Legacy Execution</h2>
+        <p className="text-sm text-ink-300">
+          Advanced: invoke a single framework directly, bypassing cycles. Prefer{" "}
+          <a href="/cycles" className="text-brand-300 hover:underline">
+            Cycles
+          </a>{" "}
+          for the guided flow.
+        </p>
       </header>
 
-      <form onSubmit={onSubmit} className="grid gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+      <form onSubmit={onSubmit} className="grid gap-3 rounded-xl border border-ink-700 bg-ink-900 p-4">
         <label className={labelClass}>
           Target Repo
           <input className={inputClass} value={targetRepo} onChange={(e) => setTargetRepo(e.target.value)} />
@@ -73,27 +80,27 @@ export function ExecutionPage() {
         <div>
           <button
             type="submit"
-            className="rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+            className="rounded bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-400"
           >
             Run
           </button>
         </div>
       </form>
 
-      <div className="text-sm text-slate-300">
+      <div className="text-sm text-ink-300">
         Status: <span className="font-mono">{status}</span>
       </div>
-      {executionId ? <p className="text-xs text-slate-400">Execution ID: {executionId}</p> : null}
+      {executionId ? <p className="text-xs text-ink-400">Execution ID: {executionId}</p> : null}
       <pre
         data-testid="log-console"
-        className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-slate-800 bg-slate-950 p-3 text-xs text-slate-200"
+        className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-ink-700 bg-ink-950 p-3 text-xs text-ink-100"
       >
         {consoleText}
       </pre>
       {summary ? (
         <pre
           data-testid="summary-json"
-          className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-slate-800 bg-slate-950 p-3 text-xs text-slate-200"
+          className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-ink-700 bg-ink-950 p-3 text-xs text-ink-100"
         >
           {JSON.stringify(summary, null, 2)}
         </pre>

@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { apiClient } from "../../lib/api-client";
+import { Button, EmptyState, PageHeader, Spinner, StatusPill } from "../../components/ui";
+import { MuscleShrug } from "../../components/mascot";
 
 export function HistoryPage() {
   const runsQuery = useQuery({
@@ -10,37 +12,61 @@ export function HistoryPage() {
   });
 
   if (runsQuery.isLoading) {
-    return <p className="text-sm text-slate-300">Loading run history...</p>;
+    return (
+      <div className="flex items-center gap-2 text-sm text-ink-300">
+        <Spinner /> Loading run history...
+      </div>
+    );
   }
   if (runsQuery.isError) {
-    return <p className="text-sm text-red-400">Failed to load runs.</p>;
+    return <p className="text-sm text-danger-400">Failed to load runs.</p>;
   }
 
+  const items = runsQuery.data?.items ?? [];
+
   return (
-    <section className="space-y-4">
-      <header className="space-y-1">
-        <h2 className="text-xl font-semibold">Run History</h2>
-        {runsQuery.data.items.length >= 2 && (
-          <p className="text-sm">
-            <Link
-              to={`/compare?current_run_id=${runsQuery.data.items[0].run_id}&baseline_run_id=${runsQuery.data.items[1].run_id}`}
-              className="text-indigo-400 hover:text-indigo-300"
-            >
-              Compare latest two runs
+    <section>
+      <PageHeader
+        title="Runs"
+        subtitle="Every archived cycle run, newest first."
+        actions={
+          items.length >= 2 ? (
+            <Link to={`/compare?current_run_id=${items[0].run_id}&baseline_run_id=${items[1].run_id}`}>
+              <Button variant="secondary" size="sm">
+                Compare latest two
+              </Button>
             </Link>
-          </p>
-        )}
-      </header>
-      <ul className="space-y-2">
-        {runsQuery.data.items.map((run) => (
-          <li key={run.run_id} className="rounded border border-slate-800 bg-slate-900/40 p-3 text-sm text-slate-300">
-            <Link to={`/runs/${run.run_id}`} className="font-mono text-indigo-400 hover:text-indigo-300">
-              {run.run_id}
-            </Link>{" "}
-            - status={run.status ?? "unknown"} rc={run.returncode}
-          </li>
-        ))}
-      </ul>
+          ) : undefined
+        }
+      />
+      {items.length === 0 ? (
+        <EmptyState
+          mascot={<MuscleShrug />}
+          title="No runs yet"
+          message="Run a cycle and its archived result will show up here."
+          action={
+            <Link to="/cycles">
+              <Button size="sm">Browse cycles</Button>
+            </Link>
+          }
+        />
+      ) : (
+        <ul className="divide-y divide-ink-800 rounded-xl border border-ink-700 bg-ink-900">
+          {items.map((run) => (
+            <li key={run.run_id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+              <div className="flex items-center gap-3">
+                <StatusPill status={run.status ?? "unknown"} returncode={run.returncode} />
+                <Link to={`/runs/${run.run_id}`} className="font-mono text-brand-300 hover:text-brand-400 hover:underline">
+                  {run.run_id}
+                </Link>
+              </div>
+              <span className="text-xs text-ink-400">
+                {run.health_pct != null ? `health ${run.health_pct.toFixed(2)}%` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
