@@ -111,6 +111,7 @@ class CompletedRunView:
     target_repo: str | None
     snapshot_dir: str | None
     audit_json: str | None
+    cycle: str | None = None
 
 
 def _is_s3_snapshot_prefix(snapshot_dir: str | None) -> bool:
@@ -184,6 +185,7 @@ class RunSessionView:
     broken: int | None
     status: RunStatus | None
     links_under_static: dict[str, str]
+    cycle: str | None = None
 
 
 @dataclass(frozen=True)
@@ -298,6 +300,7 @@ def list_run_sessions(*, limit: int = 30, db_path: Path | None = None) -> list[R
                 run_id=r.run_id,
                 created_at=r.created_at,
                 returncode=r.returncode,
+                cycle=r.cycle,
                 health_pct=r.health_pct,
                 total_tests=r.total_tests,
                 passed=r.passed,
@@ -629,6 +632,7 @@ def _completed_view_from_record(r: RunRecord) -> CompletedRunView | None:
         started_at=float(md.get("started_at") or 0.0),
         finished_at=float(md.get("finished_at") or 0.0),
         test_kind=str(md.get("test_kind") or "unknown"),
+        cycle=str(md["plan"]) if md.get("plan") else None,
         returncode=_returncode_from_metadata(md),
         wall_duration_ms=float(md.get("wall_duration_ms") or 0.0),
         metrics_duration_ms=int(md["metrics_duration_ms"]) if md.get("metrics_duration_ms") is not None else None,
