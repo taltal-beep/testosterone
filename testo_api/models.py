@@ -149,6 +149,7 @@ class RunListItem(BaseModel):
     created_at: float
     returncode: int
     status: str | None = None
+    cycle: str | None = None
     health_pct: float | None = None
     total_tests: int | None = None
     passed: int | None = None
@@ -170,6 +171,7 @@ class RunDetail(BaseModel):
     started_at: float
     finished_at: float
     test_kind: str
+    cycle: str | None = None
     returncode: int
     wall_duration_ms: float
     metrics_duration_ms: int | None = None

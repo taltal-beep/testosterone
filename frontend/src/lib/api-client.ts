@@ -50,6 +50,7 @@ export interface RunListItem {
   created_at: number;
   returncode: number;
   status: string | null;
+  cycle: string | null;
   health_pct: number | null;
   links_under_static: Record<string, string>;
 }
@@ -101,6 +102,8 @@ export interface DeltaComparisonResponse {
 export interface RunDetailResponse {
   run: {
     run_id: string;
+    status: string | null;
+    cycle: string | null;
     test_kind: string;
     returncode: number;
     created_at: number;

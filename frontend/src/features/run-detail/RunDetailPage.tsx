@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { apiClient } from "../../lib/api-client";
 import { Button, Card, KeyValue, PageHeader, Spinner, StatusPill } from "../../components/ui";
+import { formatRunName } from "../../lib/format";
 
 export function RunDetailPage() {
   const params = useParams();
@@ -45,8 +46,8 @@ export function RunDetailPage() {
       <PageHeader
         title={
           <span className="flex items-center gap-3">
-            <span className="font-mono">{run.run_id}</span>
-            <StatusPill status="" returncode={run.returncode} />
+            <span>{formatRunName(run.cycle, run.created_at)}</span>
+            <StatusPill status={run.status} returncode={run.returncode} />
           </span>
         }
         subtitle="Run Details"
@@ -62,6 +63,7 @@ export function RunDetailPage() {
       <Card title="Summary">
         <KeyValue
           items={[
+            { label: "Run ID", value: <span className="font-mono text-xs">{run.run_id}</span> },
             { label: "Type", value: run.test_kind },
             { label: "Return code", value: <span className="font-mono">{run.returncode}</span> },
             { label: "Health", value: run.health_pct != null ? `${run.health_pct.toFixed(2)}%` : "n/a" },
