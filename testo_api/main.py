@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import logging
 import os
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
@@ -17,9 +20,26 @@ from testo_api.routes.health import router as health_router
 from testo_api.routes.history import router as history_router
 from testo_api.routes.runs import router as runs_router
 
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    # Runs left "RUNNING" by a crashed/reloaded process would otherwise sit
+    # stuck forever in the UI history; mark them FAILED so the run list stays honest.
+    from testo_core.run_history import cleanup_orphaned_runs
+
+    try:
+        n = cleanup_orphaned_runs(note="Orphaned by API server restart")
+        if n:
+            logger.warning("Cleaned up %s orphaned RUNNING run(s) on startup.", n)
+    except Exception:
+        logger.debug("orphaned-run cleanup skipped (DB unavailable?)", exc_info=True)
+    yield
+
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="UQO API", version="1.0.0")
+    app = FastAPI(title="UQO API", version="1.0.0", lifespan=_lifespan)
 
     allowed_origins = [origin.strip() for origin in os.getenv("UQO_API_CORS_ORIGINS", "*").split(",") if origin.strip()]
     app.add_middleware(

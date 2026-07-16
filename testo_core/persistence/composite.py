@@ -37,7 +37,7 @@ def composite_backend(*, artifacts_root: Path, db: bool = True) -> _CompositeBac
     if db:
         try:
             from testo_core.persistence.db_backend import DbBackend
-            backends.append(DbBackend())
+            backends.append(DbBackend(artifacts_root))
         except Exception:
             logger.debug("db backend unavailable, skipping", exc_info=True)
     return _CompositeBackend(backends)

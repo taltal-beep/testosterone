@@ -386,6 +386,8 @@ find artifacts -name '*-result.json' | head
 - Match `--artifacts` path if non-default
 - Reporters skipped when no Allure JSON exists (see `run_configured_reporters`)
 
+**Run Detail page shows "No artifacts recorded" / "No reports for this run" despite a passing cycle**: fixed 2026-07-06 — `DbBackend.persist()` never set `snapshot_dir` on the `RunRecord`, so `GET /api/v1/runs/{run_id}/reports` always returned `artifact_links: []`. See [[Report Links and Artifacts Missing Fix - 2026-07-06]]. Native Allure/Behave HTML `static_links` still require a `reporters:` block in `testosterone.yaml` — that part is a config gap, not a bug.
+
 ---
 
 ### Report database / archive failures (exit 3)

@@ -78,16 +78,16 @@ class TestJsonBackend:
 
 
 class TestDbBackend:
-    def test_satisfies_protocol(self) -> None:
-        backend = DbBackend()
+    def test_satisfies_protocol(self, tmp_path: Path) -> None:
+        backend = DbBackend(tmp_path)
         assert isinstance(backend, PersistenceBackend)
 
     @patch("testo_core.db.get_repository")
-    def test_persists_successful_run(self, mock_get_repo: MagicMock) -> None:
+    def test_persists_successful_run(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:
         mock_repo = MagicMock()
         mock_get_repo.return_value = mock_repo
 
-        backend = DbBackend()
+        backend = DbBackend(tmp_path)
         result = _make_plan_result()
         backend.persist(result)
 
@@ -98,11 +98,11 @@ class TestDbBackend:
         assert call_kwargs["metadata"]["source"] == "engine"
 
     @patch("testo_core.db.get_repository")
-    def test_persists_failed_run(self, mock_get_repo: MagicMock) -> None:
+    def test_persists_failed_run(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:
         mock_repo = MagicMock()
         mock_get_repo.return_value = mock_repo
 
-        backend = DbBackend()
+        backend = DbBackend(tmp_path)
         result = _make_plan_result(exit_code=EngineExitCode.DOMAIN_FAILURE)
         backend.persist(result)
 
@@ -110,10 +110,37 @@ class TestDbBackend:
         assert call_kwargs["status"].value == "FAILED"
 
     @patch("testo_core.db.get_repository", side_effect=Exception("no db"))
-    def test_silently_handles_db_error(self, _mock: MagicMock) -> None:
-        backend = DbBackend()
+    def test_silently_handles_db_error(self, _mock: MagicMock, tmp_path: Path) -> None:
+        backend = DbBackend(tmp_path)
         result = _make_plan_result()
         backend.persist(result)
+
+    @patch("testo_core.db.get_repository")
+    def test_sets_local_snapshot_dir_under_orchestrator_root(self, mock_get_repo: MagicMock) -> None:
+        from testo_core.persistence.db_backend import ORCHESTRATOR_ROOT
+
+        mock_repo = MagicMock()
+        mock_get_repo.return_value = mock_repo
+
+        artifacts_root = ORCHESTRATOR_ROOT / "artifacts"
+        backend = DbBackend(artifacts_root)
+        result = _make_plan_result()
+        backend.persist(result)
+
+        metadata = mock_repo.create_run.call_args[1]["metadata"]
+        assert metadata["snapshot_dir"] == "artifacts/smoke"
+
+    @patch("testo_core.db.get_repository")
+    def test_snapshot_dir_none_when_outside_orchestrator_root(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:
+        mock_repo = MagicMock()
+        mock_get_repo.return_value = mock_repo
+
+        backend = DbBackend(tmp_path)
+        result = _make_plan_result()
+        backend.persist(result)
+
+        metadata = mock_repo.create_run.call_args[1]["metadata"]
+        assert metadata["snapshot_dir"] is None
 
 
 class TestCompositeBackend:
