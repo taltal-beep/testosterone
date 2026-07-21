@@ -232,18 +232,27 @@ class CycleExecutionManager:
 
             # Post-run reporters + optional report DB archive (same flow as CLI runner).
             run_id = result.extra.get("run_id")
+            resolved_run_id = run_id if isinstance(run_id, str) else None
             from rich.console import Console
 
-            from testo_core.cli.runner import _maybe_run_configured_reporters  # type: ignore[attr-defined]
+            from testo_core.cli.runner import (  # type: ignore[attr-defined]
+                _maybe_run_configured_reporters,
+                _maybe_snapshot_native_reports,
+            )
 
             _maybe_run_configured_reporters(
                 cfg=cfg,
                 plan=effective_plan,
                 artifacts_root=artifacts_root,
-                run_id=run_id if isinstance(run_id, str) else None,
+                run_id=resolved_run_id,
                 console=Console(),
                 ci=ci,
                 reporter_override=reporter_override,
+            )
+            _maybe_snapshot_native_reports(
+                plan=effective_plan,
+                artifacts_root=artifacts_root,
+                run_id=resolved_run_id,
             )
 
             if persist and report_db:

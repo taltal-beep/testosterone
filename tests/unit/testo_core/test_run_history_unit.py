@@ -75,6 +75,9 @@ def test_list_run_sessions_maps_new_allure_reports_layout(monkeypatch: pytest.Mo
     extent_dir = fake_static_history / "rid-1" / "extent_report"
     extent_dir.mkdir(parents=True)
     (extent_dir / "index.html").write_text("ok", encoding="utf-8")
+    native_dir = fake_static_history / "rid-1" / "native_reports" / "behavex"
+    native_dir.mkdir(parents=True)
+    (native_dir / "index.html").write_text("ok", encoding="utf-8")
 
     sessions = list_run_sessions(limit=5)
     assert sessions
@@ -83,3 +86,4 @@ def test_list_run_sessions_maps_new_allure_reports_layout(monkeypatch: pytest.Mo
     assert links["behave_native"].endswith("history/rid-1/allure_reports/behave_native/index.html")
     assert links["behave"].endswith("history/rid-1/allure_reports/behave/index.html")
     assert links["extent"].endswith("history/rid-1/extent_report/index.html")
+    assert links["behavex-native"].endswith("history/rid-1/native_reports/behavex/index.html")

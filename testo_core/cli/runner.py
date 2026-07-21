@@ -138,13 +138,19 @@ def _execute_one_cycle(
     )
     exit_int = int(result.exit_code)
     run_id = result.extra.get("run_id")
+    resolved_run_id = run_id if isinstance(run_id, str) else None
     _maybe_run_configured_reporters(
         cfg=cfg,
         plan=effective_plan,
         artifacts_root=cfg.defaults.artifacts_root,
-        run_id=run_id if isinstance(run_id, str) else None,
+        run_id=resolved_run_id,
         console=console,
         ci=ci,
+    )
+    _maybe_snapshot_native_reports(
+        plan=effective_plan,
+        artifacts_root=cfg.defaults.artifacts_root,
+        run_id=resolved_run_id,
     )
     _maybe_archive_cycle_report(
         cfg=cfg,
@@ -261,6 +267,51 @@ def _maybe_run_configured_reporters(
         generate_only=True,
         run_report_root=run_report_root,
     )
+
+
+def _maybe_snapshot_native_reports(
+    *,
+    plan: Plan,
+    artifacts_root: Path,
+    run_id: str | None,
+) -> None:
+    """Copy each stage's own native report (if its adapter produces one)
+    under ``STATIC_HISTORY_ROOT/<run_id>/native_reports/<framework>/``.
+
+    Independent of ``reporters:`` config — this just copies an artifact the
+    test framework already wrote (e.g. BehaveX's own HTML report), no Allure
+    CLI or reporters subsystem involved. Best-effort: a missing/unreadable
+    native report for a stage is silently skipped.
+    """
+    if not run_id:
+        return
+
+    import shutil
+
+    from testo_core.frameworks.base import get_adapter
+    from testo_core.reporting.paths import plan_artifacts_dir
+    from testo_core.run_history import STATIC_HISTORY_ROOT
+
+    plan_dir = plan_artifacts_dir(artifacts_root, plan.name)
+    for stage in plan.stages:
+        stage_dir = plan_dir / stage.name
+        try:
+            adapter = get_adapter(stage.framework)
+            native = adapter.native_report(stage_dir)
+        except Exception:
+            continue
+        if native is None or not native.root_dir.is_dir():
+            continue
+
+        dest = STATIC_HISTORY_ROOT / run_id / "native_reports" / stage.framework
+        try:
+            shutil.copytree(native.root_dir, dest, dirs_exist_ok=True)
+            entry = dest / native.entry_relpath
+            index = dest / "index.html"
+            if entry.is_file() and not index.exists():
+                shutil.copy2(entry, index)
+        except OSError:
+            continue
 
 
 def _emit_cycle_trigger_event(*, ci: bool, plan: Plan, tr: TriggerResult) -> None:

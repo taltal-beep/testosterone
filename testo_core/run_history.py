@@ -291,6 +291,14 @@ def list_run_sessions(*, limit: int = 30, db_path: Path | None = None) -> list[R
         extent_index = base / "extent_report" / "index.html"
         if extent_index.is_file():
             links["extent"] = f"history/{r.run_id}/extent_report/index.html"
+        # Each framework's own native report (e.g. BehaveX's own HTML dashboard),
+        # distinct from the Allure-rendered view above — `-native` suffix avoids
+        # colliding with the `allure_reports/<framework>` key of the same name.
+        native_reports_dir = base / "native_reports"
+        if native_reports_dir.is_dir():
+            for fw_dir in sorted(native_reports_dir.iterdir()):
+                if fw_dir.is_dir() and (fw_dir / "index.html").is_file():
+                    links[f"{fw_dir.name}-native"] = f"history/{r.run_id}/native_reports/{fw_dir.name}/index.html"
         # Back-compat: older snapshots (single unified output) — map to pytest view for legacy history.
         if "pytest" not in links and (base / "allure_report" / "index.html").is_file():
             links["pytest"] = f"history/{r.run_id}/allure_report/index.html"

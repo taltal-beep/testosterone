@@ -65,3 +65,16 @@ Live-tested `sample-all-frameworks-stochastic` through the React dashboard (3 st
 ### Not fixed here
 
 ReportPortal (remote launch URL, no local HTML) and TestBeats (webhook + JSON summary, no HTML index) don't fit the `index.html` link-card pattern and weren't touched.
+
+## Follow-up: native per-framework reports (BehaveX), generic adapter hook — 2026-07-21c
+
+Live-checking the "behavex" link above showed Allure's UI rendering BehaveX's results — accurate, but not BehaveX's own report. BehaveX runs with its own `-o <dir>` (`behavex_adapter.py`) producing a separate, self-contained native HTML report (`behave_reports/report.html`, its own "Test Execution Report" UI with screenshots/tags/retry detail) that was never linked anywhere, before or after the fix above.
+
+Considered a `behavex`-specific branch in `run_history.py` (fast) vs. a generic adapter capability (more upfront work, but avoids repeating the exact hardcoded-per-framework mistake just fixed for the next framework that ships its own native report). Went generic:
+
+- `testo_core/frameworks/base.py`: new `NativeReport(root_dir, entry_relpath)` dataclass; `FrameworkAdapter` protocol gains `native_report(stage_dir) -> NativeReport | None`.
+- `PytestAdapter`/`BehaveAdapter.native_report()` return `None` (no native report format); `BehaveXAdapter.native_report()` returns `NativeReport(stage_dir/"behave_reports", "report.html")` when that file exists.
+- `testo_core/cli/runner.py`: new `_maybe_snapshot_native_reports()`, called **unconditionally** (unlike the reporters hook — this just copies an artifact the framework already wrote, no `reporters:` config or Allure CLI involved) from both the CLI and API call sites. For each stage, asks its adapter for `native_report()` and — if present — `shutil.copytree`s the whole bundle to `STATIC_HISTORY_ROOT/<run_id>/native_reports/<framework>/`, then derives an `index.html` from `entry_relpath` if the names differ.
+- `run_history.py`: same dynamic-scan pattern as `allure_reports/` — any `native_reports/<framework>/index.html` becomes `links[f"{framework}-native"]` (suffix avoids colliding with the Allure-rendered key of the same framework name).
+
+Verified live: ran `sample-all-frameworks-stochastic`, Run Detail page showed `behave`, `behavex`, `pytest`, `behavex-native` side by side; opening `behavex-native` rendered BehaveX's actual branded report (title "Test Execution Report", working Filters/Metrics UI, correct relative CSS/JS from the copied `outputs/` bundle) — not Allure's. Full suite: 565 passed (558 + 7 new), 4 skipped, same pre-existing baseline, zero regressions.

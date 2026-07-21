@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from testo_core.frameworks.base import NativeReport
+
 
 def _args_set_explicit_pytest_config(args: list[str]) -> bool:
     """True when the user already chose a pytest config file (do not inject ``-c``)."""
@@ -43,3 +45,7 @@ class PytestAdapter:
         argv.extend(args)
         argv.extend(["--alluredir", str(results_dir.resolve())])
         return argv
+
+    def native_report(self, stage_dir: Path) -> NativeReport | None:
+        del stage_dir  # pytest has no native HTML report of its own
+        return None
