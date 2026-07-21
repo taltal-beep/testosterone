@@ -231,27 +231,20 @@ class CycleExecutionManager:
             )
 
             # Post-run reporters + optional report DB archive (same flow as CLI runner).
-            # The reporters subsystem (config `reporters:` + orchestrate module) is not
-            # part of every build; skip post-run reporting instead of failing the run.
-            config_reporters = getattr(cfg, "reporters", ()) or ()
-            if config_reporters or reporter_override:
-                try:
-                    from testo_core.reporting.reporters.orchestrate import run_configured_reporters
-                except ImportError:
-                    run_configured_reporters = None
+            run_id = result.extra.get("run_id")
+            from rich.console import Console
 
-                if run_configured_reporters is not None:
-                    from rich.console import Console
+            from testo_core.cli.runner import _maybe_run_configured_reporters  # type: ignore[attr-defined]
 
-                    run_configured_reporters(
-                        cfg=cfg,
-                        artifacts_root=artifacts_root,
-                        plan_name=effective_plan.name,
-                        reporter_override=reporter_override,
-                        console=Console(),
-                        ci=ci,
-                        generate_only=True,
-                    )
+            _maybe_run_configured_reporters(
+                cfg=cfg,
+                plan=effective_plan,
+                artifacts_root=artifacts_root,
+                run_id=run_id if isinstance(run_id, str) else None,
+                console=Console(),
+                ci=ci,
+                reporter_override=reporter_override,
+            )
 
             if persist and report_db:
                 from rich.console import Console

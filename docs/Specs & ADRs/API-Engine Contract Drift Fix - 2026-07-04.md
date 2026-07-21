@@ -24,6 +24,6 @@ The fourth failure was environmental: framework adapters build argv with bare to
 
 ## Follow-ups
 
-- Decide whether to merge or discard `cursor/report-infra-e976a` (reporters subsystem + `reporters:` config schema). Until then, UI `reporter_override` requests are accepted but no-op.
+- ~~Decide whether to merge or discard `cursor/report-infra-e976a` (reporters subsystem + `reporters:` config schema).~~ **Resolved 2026-07-21** — hand-ported into `main`, see [[Reporters Subsystem Port - 2026-07-21]].
 - CLI `--fail-fast` flag remains a roadmap item ([[Command Reference]] callout) — the engine now supports it, so wiring the flag is trivial.
 - Engine tests for `fail_fast`/`plan_aborted` referenced in [[QA Strategies]] (LC rows) do not actually exist yet; add them.

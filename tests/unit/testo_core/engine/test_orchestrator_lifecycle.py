@@ -251,6 +251,48 @@ def test_persist_true_hands_result_to_composite_backend(
     assert persisted == [result]
 
 
+def test_persist_attaches_run_id_from_backend_to_result_extra(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = _plan("with-run-id")
+    _stub_executor(monkeypatch, _result)
+
+    class _Backend:
+        def persist(self, result: PlanResult) -> str | None:
+            return "db-run-id-42"
+
+    monkeypatch.setattr(
+        testo_core.persistence, "composite_backend", lambda *, artifacts_root: _Backend()
+    )
+
+    result = orchestrator.run_plan(
+        plan, renderer=_RecordingRenderer(), artifacts_root=tmp_path, persist=True
+    )
+
+    assert result.extra["run_id"] == "db-run-id-42"
+
+
+def test_persist_leaves_extra_unset_when_backend_returns_no_run_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = _plan("no-run-id")
+    _stub_executor(monkeypatch, _result)
+
+    class _Backend:
+        def persist(self, result: PlanResult) -> str | None:
+            return None
+
+    monkeypatch.setattr(
+        testo_core.persistence, "composite_backend", lambda *, artifacts_root: _Backend()
+    )
+
+    result = orchestrator.run_plan(
+        plan, renderer=_RecordingRenderer(), artifacts_root=tmp_path, persist=True
+    )
+
+    assert "run_id" not in result.extra
+
+
 def test_persist_false_writes_no_plan_result_json(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

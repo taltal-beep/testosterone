@@ -36,13 +36,13 @@ class DbBackend:
         except ValueError:
             return None
 
-    def persist(self, result: PlanResult) -> None:
+    def persist(self, result: PlanResult) -> str | None:
         try:
             from testo_core.db import get_repository
 
             repo = get_repository()
             status = RunStatus.COMPLETED if result.exit_code == 0 else RunStatus.FAILED
-            repo.create_run(
+            record = repo.create_run(
                 status=status,
                 metadata={
                     "plan": result.plan_name,
@@ -68,5 +68,7 @@ class DbBackend:
                     "source": "engine",
                 },
             )
+            return str(record.id)
         except Exception:
             logger.debug("db persistence failed for plan %s", result.plan_name, exc_info=True)
+            return None

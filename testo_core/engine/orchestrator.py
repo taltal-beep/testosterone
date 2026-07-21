@@ -7,6 +7,7 @@ concurrent stage execution in a future iteration.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import time
@@ -155,7 +156,11 @@ def run_plan(
         from testo_core.persistence import composite_backend
 
         backend = composite_backend(artifacts_root=artifacts_root)
-        backend.persist(plan_result)
+        run_id = backend.persist(plan_result)
+        if run_id:
+            plan_result = dataclasses.replace(
+                plan_result, extra={**plan_result.extra, "run_id": run_id}
+            )
 
     return plan_result
 

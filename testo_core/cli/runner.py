@@ -7,6 +7,7 @@ instance.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from rich.console import Console
@@ -136,6 +137,15 @@ def _execute_one_cycle(
         persist=persist,
     )
     exit_int = int(result.exit_code)
+    run_id = result.extra.get("run_id")
+    _maybe_run_configured_reporters(
+        cfg=cfg,
+        plan=effective_plan,
+        artifacts_root=cfg.defaults.artifacts_root,
+        run_id=run_id if isinstance(run_id, str) else None,
+        console=console,
+        ci=ci,
+    )
     _maybe_archive_cycle_report(
         cfg=cfg,
         plan=effective_plan,
@@ -204,6 +214,52 @@ def _maybe_archive_cycle_report(
     )
     if rid is not None and not ci:
         console.print(f"[muted]Archived cycle report[/] [bold]{rid}[/]")
+
+
+def _maybe_run_configured_reporters(
+    *,
+    cfg: TestosteroneConfig,
+    plan: Plan,
+    artifacts_root: Path,
+    run_id: str | None,
+    console: Console,
+    ci: bool,
+    reporter_override: Sequence[str] | None = None,
+) -> None:
+    """Run configured HTML reporters (Allure/Extent/ReportPortal/TestBeats) after a cycle.
+
+    Best-effort: the reporters subsystem may not be present in every build
+    (see :mod:`testo_core.reporting.reporters`); skip instead of failing the
+    run. When *run_id* is known (persistence succeeded), Allure's HTML is
+    written directly under ``STATIC_HISTORY_ROOT/<run_id>/allure_report/`` so
+    the Run Detail page's ``GET /api/v1/runs/{run_id}/reports`` can find it.
+    """
+    config_reporters = getattr(cfg, "reporters", ()) or ()
+    if not config_reporters and not reporter_override:
+        return
+
+    try:
+        from testo_core.reporting.reporters.orchestrate import run_configured_reporters
+    except ImportError:
+        return
+
+    out_dir = None
+    if run_id:
+        from testo_core.run_history import STATIC_HISTORY_ROOT
+
+        out_dir = STATIC_HISTORY_ROOT / run_id / "allure_report"
+
+    run_configured_reporters(
+        cfg=cfg,
+        artifacts_root=artifacts_root,
+        plan_name=plan.name,
+        reporter_override=reporter_override,
+        run_id=run_id,
+        console=console,
+        ci=ci,
+        generate_only=True,
+        out_dir=out_dir,
+    )
 
 
 def _emit_cycle_trigger_event(*, ci: bool, plan: Plan, tr: TriggerResult) -> None:

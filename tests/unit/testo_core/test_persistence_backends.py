@@ -113,7 +113,22 @@ class TestDbBackend:
     def test_silently_handles_db_error(self, _mock: MagicMock, tmp_path: Path) -> None:
         backend = DbBackend(tmp_path)
         result = _make_plan_result()
-        backend.persist(result)
+        run_id = backend.persist(result)
+        assert run_id is None
+
+    @patch("testo_core.db.get_repository")
+    def test_returns_persisted_run_id_on_success(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:
+        mock_repo = MagicMock()
+        fake_record = MagicMock()
+        fake_record.id = "abc-123"
+        mock_repo.create_run.return_value = fake_record
+        mock_get_repo.return_value = mock_repo
+
+        backend = DbBackend(tmp_path)
+        result = _make_plan_result()
+        run_id = backend.persist(result)
+
+        assert run_id == "abc-123"
 
     @patch("testo_core.db.get_repository")
     def test_sets_local_snapshot_dir_under_orchestrator_root(self, mock_get_repo: MagicMock) -> None:
@@ -169,3 +184,23 @@ class TestCompositeBackend:
             result = _make_plan_result()
             backend.persist(result)
             assert (tmp_path / "smoke" / "plan_result.json").exists()
+
+    def test_returns_db_backend_run_id(self, tmp_path: Path) -> None:
+        with patch("testo_core.db.get_repository") as mock_get_repo:
+            mock_repo = MagicMock()
+            fake_record = MagicMock()
+            fake_record.id = "run-xyz"
+            mock_repo.create_run.return_value = fake_record
+            mock_get_repo.return_value = mock_repo
+
+            backend = composite_backend(artifacts_root=tmp_path, db=True)
+            result = _make_plan_result()
+            run_id = backend.persist(result)
+
+            assert run_id == "run-xyz"
+
+    def test_returns_none_when_db_disabled(self, tmp_path: Path) -> None:
+        backend = composite_backend(artifacts_root=tmp_path, db=False)
+        result = _make_plan_result()
+        run_id = backend.persist(result)
+        assert run_id is None

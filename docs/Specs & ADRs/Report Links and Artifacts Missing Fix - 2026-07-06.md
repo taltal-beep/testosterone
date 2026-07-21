@@ -27,5 +27,5 @@ Verified via CLI (`testo run --cycle sample-all-frameworks`, repeated) and live 
 
 ## Follow-ups
 
-- `static_links` (native Allure/Behave HTML report links) will stay empty until a `reporters:` block is added to `testosterone.yaml` and the reporters subsystem (see [[API-Engine Contract Drift Fix - 2026-07-04]] follow-ups — status of `cursor/report-infra-e976a`) is merged/enabled.
+- ~~`static_links` (native Allure/Behave HTML report links) will stay empty until a `reporters:` block is added to `testosterone.yaml` and the reporters subsystem ... is merged/enabled.~~ **Resolved 2026-07-21** — see [[Reporters Subsystem Port - 2026-07-21]]. That note also flags a *second*, still-open gap it uncovered: `static/` is never mounted by any FastAPI route, so a browser following a `static_links` URL will 404 even now that the data is populated — not fixed in this change, tracked as an open follow-up there.
 - Consider unifying `ReportArchive` (zip blob, `testo_core/services/report_archive.py`) and `RunRecord` (`testo_core/run_history.py`) — they're two separate tables populated by two separate calls for the same cycle run today; nothing enforces they stay consistent.
