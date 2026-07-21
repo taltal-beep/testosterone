@@ -280,10 +280,17 @@ def list_run_sessions(*, limit: int = 30, db_path: Path | None = None) -> list[R
         links: dict[str, str] = {}
         base = STATIC_HISTORY_ROOT / r.run_id
         # New layout: static/history/<run_id>/allure_reports/<framework>/index.html
-        for fw in ("pytest", "behavex", "behave_native"):
-            p = base / "allure_reports" / fw / "index.html"
-            if p.is_file():
-                links[fw] = f"history/{r.run_id}/allure_reports/{fw}/index.html"
+        # Scanned dynamically (framework key = actual subdir name) rather than a
+        # hardcoded taxonomy, since adapters name their subdirs after `equipment`
+        # (e.g. "behave"), which doesn't match any fixed legacy key set.
+        allure_reports_dir = base / "allure_reports"
+        if allure_reports_dir.is_dir():
+            for fw_dir in sorted(allure_reports_dir.iterdir()):
+                if fw_dir.is_dir() and (fw_dir / "index.html").is_file():
+                    links[fw_dir.name] = f"history/{r.run_id}/allure_reports/{fw_dir.name}/index.html"
+        extent_index = base / "extent_report" / "index.html"
+        if extent_index.is_file():
+            links["extent"] = f"history/{r.run_id}/extent_report/index.html"
         # Back-compat: older snapshots (single unified output) — map to pytest view for legacy history.
         if "pytest" not in links and (base / "allure_report" / "index.html").is_file():
             links["pytest"] = f"history/{r.run_id}/allure_report/index.html"

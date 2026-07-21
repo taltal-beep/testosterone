@@ -26,9 +26,13 @@ class ExtentReporter(BaseReporter):
         if not results.stages:
             return ReporterResult(ok=False, message="no results to export for Extent report.")
 
+        default_dir = (
+            context.run_report_root / "extent_report"
+            if context.run_report_root is not None
+            else context.artifacts_root / "reports" / "extent"
+        )
         output_dir = Path(
-            self._options.get("output_dir")
-            or str(context.artifacts_root / "reports" / "extent")
+            self._options.get("output_dir") or str(default_dir)
         ).expanduser().resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
 

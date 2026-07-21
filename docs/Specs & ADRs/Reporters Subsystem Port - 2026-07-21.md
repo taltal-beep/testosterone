@@ -42,4 +42,26 @@ Rather than generating Allure HTML to `<artifacts_root>/allure-report/` and then
 
 ## Open follow-up (not fixed here)
 
-`testo_api/main.py` mounts no `StaticFiles` route anywhere — `static_links` is now correctly populated by the API (the actual acceptance bar for this change), but a browser following one of those relative URLs (e.g. `history/<run_id>/allure_report/index.html`) will 404 today; nothing serves `static/` over HTTP, and the frontend doesn't prefix the link with the API base URL either. Minimal fix when this is picked up: `app.mount("/history", StaticFiles(directory=STATIC_HISTORY_ROOT), name="history")` in `testo_api/main.py`, plus prefixing `RunDetailPage.tsx`'s `<a href>` with the API base URL.
+~~`testo_api/main.py` mounts no `StaticFiles` route anywhere...~~ **Resolved same day** — see "Follow-up: per-framework links, 404 fix, Extent scoping" below.
+
+## Follow-up: per-framework links, 404 fix, Extent scoping — 2026-07-21
+
+Live-tested `sample-all-frameworks-stochastic` through the React dashboard (3 stages: pytest, native Behave, BehaveX) and found the "Resolved 2026-07-21" state above still only ever surfaced a single link labeled **"pytest"**, regardless of which frameworks actually ran, and clicking it 404'd. Three more root causes, on top of the already-tracked static-mount gap:
+
+1. **Every cycle run was mislabeled "pytest".** `_maybe_run_configured_reporters()` (`testo_core/cli/runner.py`) pointed Allure's `out_dir` at one unified `STATIC_HISTORY_ROOT/<run_id>/allure_report/` (singular) merging all stages together. `list_run_sessions()` only recognized that singular path via its back-compat branch, which unconditionally maps it to `links["pytest"]` — a behave/behavex cycle got the same misleading label.
+2. **Extent could never be linked, and clobbered across runs.** `ExtentReporter.publish()` ignored `context.out_dir` entirely, always writing to the shared `<artifacts_root>/reports/extent/` — not run-scoped, and not under `STATIC_HISTORY_ROOT`, so no run's Extent output was ever individually addressable.
+3. **Hardcoded framework taxonomy.** Even the existing per-framework "new layout" branch only checked a fixed tuple `("pytest", "behavex", "behave_native")` — but the native Behave adapter (`testo_core/frameworks/behave_adapter.py`) names its results subdir `"behave"`, not `"behave_native"`, so it could never have matched.
+
+### Fix
+
+- `ReportContext` (`reporters/base.py`) gained a `run_report_root: Path | None` field — the per-run base dir each reporter derives its own subdir from, alongside (not replacing) the existing single-purpose `out_dir`.
+- `AllureReporter.publish()` now generates **one Allure report per framework** (reusing the already-present-but-previously-unused `CollectedResults.by_framework`) under `run_report_root/allure_reports/<framework>/index.html`, when `run_report_root` is set and no explicit `out_dir` is given. The CLI's single-merged-report path (`testo report`, explicit `out_dir`) is unchanged.
+- `ExtentReporter.publish()` now defaults to `run_report_root/extent_report/` when set, instead of the shared unscoped path.
+- `orchestrate.py` / `cli/runner.py` thread `run_report_root = STATIC_HISTORY_ROOT/<run_id>` through instead of the old singular `out_dir`.
+- `run_history.py`'s `list_run_sessions()` now scans `allure_reports/` dynamically (link key = actual subdir name) instead of a hardcoded 3-key tuple, fixing the `behave`/`behave_native` mismatch for free, plus checks `extent_report/index.html` → `links["extent"]`. The old singular back-compat branch is untouched, so already-persisted historical runs keep their existing (if mislabeled) link.
+- `testo_api/main.py` now mounts `app.mount("/history", StaticFiles(directory=STATIC_HISTORY_ROOT), name="history")` (creating the directory first, since it's `.gitignore`'d and may not exist on a fresh checkout).
+- `frontend/src/lib/api-client.ts` exports `API_BASE`; `RunDetailPage.tsx`'s Report Links card prefixes each href with it.
+
+### Not fixed here
+
+ReportPortal (remote launch URL, no local HTML) and TestBeats (webhook + JSON summary, no HTML index) don't fit the `index.html` link-card pattern and weren't touched.

@@ -25,6 +25,7 @@ class ReportContext:
     inject_history: bool = True
     trend_depth: int = 1
     out_dir: Path | None = None
+    run_report_root: Path | None = None
     host: str = "127.0.0.1"
     port: int = 8080
     open_browser: bool = True

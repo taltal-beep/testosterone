@@ -26,6 +26,7 @@ def run_configured_reporters(
     inject_history: bool = True,
     trend_depth: int = 1,
     out_dir: Path | None = None,
+    run_report_root: Path | None = None,
 ) -> list:
     """Collect artifacts and run all active reporters. No-op when none configured."""
     reporters_tuple = config_reporters if config_reporters is not None else (
@@ -66,6 +67,7 @@ def run_configured_reporters(
         inject_history=inject_history,
         trend_depth=trend_depth,
         out_dir=out_dir,
+        run_report_root=run_report_root,
         open_browser=not ci and not generate_only,
     )
 

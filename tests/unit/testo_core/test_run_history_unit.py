@@ -68,9 +68,18 @@ def test_list_run_sessions_maps_new_allure_reports_layout(monkeypatch: pytest.Mo
     (base / "pytest" / "index.html").write_text("ok", encoding="utf-8")
     (base / "behave_native").mkdir(parents=True)
     (base / "behave_native" / "index.html").write_text("ok", encoding="utf-8")
+    # The real native-Behave adapter names its subdir "behave", not "behave_native" —
+    # the dynamic scan must key on the actual subdir name, not a hardcoded taxonomy.
+    (base / "behave").mkdir(parents=True)
+    (base / "behave" / "index.html").write_text("ok", encoding="utf-8")
+    extent_dir = fake_static_history / "rid-1" / "extent_report"
+    extent_dir.mkdir(parents=True)
+    (extent_dir / "index.html").write_text("ok", encoding="utf-8")
 
     sessions = list_run_sessions(limit=5)
     assert sessions
     links = sessions[0].links_under_static
     assert links["pytest"].endswith("history/rid-1/allure_reports/pytest/index.html")
     assert links["behave_native"].endswith("history/rid-1/allure_reports/behave_native/index.html")
+    assert links["behave"].endswith("history/rid-1/allure_reports/behave/index.html")
+    assert links["extent"].endswith("history/rid-1/extent_report/index.html")

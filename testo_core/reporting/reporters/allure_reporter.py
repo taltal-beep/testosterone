@@ -23,11 +23,6 @@ class AllureReporter(BaseReporter):
         if not results.stages:
             return ReporterResult(ok=False, message="no Allure result directories found.")
 
-        out_dir = (
-            context.out_dir
-            or Path(self._options.get("out_dir", str(context.artifacts_root / "allure-report")))
-        ).expanduser().resolve()
-
         if context.inject_history:
             from testo_core.reporting.history_inject import try_inject_prior_history
 
@@ -38,6 +33,14 @@ class AllureReporter(BaseReporter):
                 enabled=True,
                 trend_depth=context.trend_depth,
             )
+
+        if context.out_dir is None and context.run_report_root is not None:
+            return self._publish_per_framework(results=results, context=context, console=console)
+
+        out_dir = (
+            context.out_dir
+            or Path(self._options.get("out_dir", str(context.artifacts_root / "allure-report")))
+        ).expanduser().resolve()
 
         from testo_core.reporting.allure import AllureCLINotFoundError, generate_html
 
@@ -87,4 +90,38 @@ class AllureReporter(BaseReporter):
             ok=True,
             message=f"Allure dashboard served from {index_path}",
             artifacts=(index_path,),
+        )
+
+    def _publish_per_framework(
+        self,
+        *,
+        results: CollectedResults,
+        context: ReportContext,
+        console: object | None = None,
+    ) -> ReporterResult:
+        """Generate one Allure report per framework under run_report_root/allure_reports/<framework>/."""
+        from testo_core.reporting.allure import AllureCLINotFoundError, generate_html
+
+        base_dir = context.run_report_root / "allure_reports"  # type: ignore[operator]
+        artifacts: list[Path] = []
+        messages: list[str] = []
+        any_ok = False
+        for framework, result_dirs in results.by_framework.items():
+            out_dir = (base_dir / framework).expanduser().resolve()
+            try:
+                outcome = generate_html(result_dirs=result_dirs, out_dir=out_dir)
+            except AllureCLINotFoundError as exc:
+                return ReporterResult(ok=False, message=str(exc))
+            if not outcome.ok:
+                messages.append(f"{framework}: {outcome.message}")
+                continue
+            any_ok = True
+            index_path = outcome.out_dir.resolve() / "index.html"
+            artifacts.append(index_path)
+            messages.append(f"{framework}: {index_path}")
+
+        return ReporterResult(
+            ok=any_ok,
+            message="Allure HTML — " + "; ".join(messages),
+            artifacts=tuple(artifacts),
         )

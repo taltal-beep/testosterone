@@ -10,6 +10,9 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+from testo_core.run_history import STATIC_HISTORY_ROOT
 
 from testo_api.routes.ai import router as ai_router
 from testo_api.routes.analytics import router as analytics_router
@@ -58,6 +61,9 @@ def create_app() -> FastAPI:
     app.include_router(analytics_router)
     app.include_router(dashboard_router)
     app.include_router(health_router)
+
+    STATIC_HISTORY_ROOT.mkdir(parents=True, exist_ok=True)
+    app.mount("/history", StaticFiles(directory=STATIC_HISTORY_ROOT), name="history")
 
     @app.middleware("http")
     async def attach_request_id(request: Request, call_next):  # type: ignore[no-redef]

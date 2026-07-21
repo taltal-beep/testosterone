@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
-import { apiClient } from "../../lib/api-client";
+import { API_BASE, apiClient } from "../../lib/api-client";
 import { Button, Card, KeyValue, PageHeader, Spinner, StatusPill } from "../../components/ui";
 import { formatRunName } from "../../lib/format";
 
@@ -79,7 +79,7 @@ export function RunDetailPage() {
           <ul className="space-y-1 text-sm">
             {Object.entries(reports.static_links).map(([name, url]) => (
               <li key={name}>
-                <a href={url} target="_blank" rel="noreferrer" className="text-brand-300 hover:text-brand-400 hover:underline">
+                <a href={`${API_BASE}/${url}`} target="_blank" rel="noreferrer" className="text-brand-300 hover:text-brand-400 hover:underline">
                   {name}
                 </a>
               </li>

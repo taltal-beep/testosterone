@@ -230,9 +230,10 @@ def _maybe_run_configured_reporters(
 
     Best-effort: the reporters subsystem may not be present in every build
     (see :mod:`testo_core.reporting.reporters`); skip instead of failing the
-    run. When *run_id* is known (persistence succeeded), Allure's HTML is
-    written directly under ``STATIC_HISTORY_ROOT/<run_id>/allure_report/`` so
-    the Run Detail page's ``GET /api/v1/runs/{run_id}/reports`` can find it.
+    run. When *run_id* is known (persistence succeeded), each reporter writes
+    directly under ``STATIC_HISTORY_ROOT/<run_id>/`` (Allure per-framework at
+    ``allure_reports/<framework>/``, Extent at ``extent_report/``) so the Run
+    Detail page's ``GET /api/v1/runs/{run_id}/reports`` can find it.
     """
     config_reporters = getattr(cfg, "reporters", ()) or ()
     if not config_reporters and not reporter_override:
@@ -243,11 +244,11 @@ def _maybe_run_configured_reporters(
     except ImportError:
         return
 
-    out_dir = None
+    run_report_root = None
     if run_id:
         from testo_core.run_history import STATIC_HISTORY_ROOT
 
-        out_dir = STATIC_HISTORY_ROOT / run_id / "allure_report"
+        run_report_root = STATIC_HISTORY_ROOT / run_id
 
     run_configured_reporters(
         cfg=cfg,
@@ -258,7 +259,7 @@ def _maybe_run_configured_reporters(
         console=console,
         ci=ci,
         generate_only=True,
-        out_dir=out_dir,
+        run_report_root=run_report_root,
     )
 
 

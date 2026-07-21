@@ -249,7 +249,7 @@ export interface HealthReadyResponse {
   checks: Record<string, { status: string; detail: string | null }>;
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(`${API_BASE}${path}`, {
