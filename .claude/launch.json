@@ -3,15 +3,16 @@
   "configurations": [
     {
       "name": "FastAPI Backend",
-      "runtimeExecutable": "/tmp/testo-release-gate/bin/python",
-      "runtimeArgs": ["-m", "uvicorn", "testo_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "set -a && . ./.env && set +a && .venv/bin/uvicorn testo_api.main:app --host 0.0.0.0 --port 8000 --reload"],
       "port": 8000
     },
     {
       "name": "React Frontend (Vite)",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
-      "port": 5173
+      "port": 5173,
+      "autoPort": true
     }
   ]
 }

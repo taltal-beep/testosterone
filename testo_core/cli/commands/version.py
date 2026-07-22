@@ -7,9 +7,12 @@ import importlib.metadata as md
 import typer
 
 
-def version() -> None:
+def resolve_version() -> str:
     try:
-        ver = md.version("testo-core")
+        return md.version("testo-core")
     except md.PackageNotFoundError:
-        ver = "0.0.0+source"
-    typer.echo(f"testo {ver}")
+        return "0.0.0+source"
+
+
+def version() -> None:
+    typer.echo(f"testo {resolve_version()}")

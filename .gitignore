@@ -35,6 +35,9 @@ static/allure_reports/
 static/locust_report.html
 static/behave/
 
+# Per-run Allure/reporter HTML served by the Run Detail page's Report Links
+static/history/
+
 # Persisted run history (SQLite + per-run HTML snapshots)
 artifacts/uqo_run_history.sqlite
 artifacts/testo_sandbox.db
@@ -60,6 +63,9 @@ node_modules/
 artifacts/sample-behave/
 artifacts/sample-pytests/
 .testo/
+
+# Local test-suite scratch DBs
+tests/artifacts/
 
 # Local ReportPortal Postgres data volume
 data/
