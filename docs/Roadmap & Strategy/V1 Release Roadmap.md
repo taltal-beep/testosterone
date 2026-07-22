@@ -198,6 +198,8 @@
 
 ## Workstream 6: Documentation & CHANGELOG
 
+**Status (2026-07-01):** 6.1–6.5 complete — `CHANGELOG.md` created at repo root (adopted from `sprint-4/publish-and-document`, extended with commit `#35`), with PR-time enforcement (commitlint + changelog-diff check) and an AI-drafted `[Unreleased]` step on every push to `main`. 6.6–6.9 verified already satisfied — `README.md` has GitHub Action quickstart, GitLab template quickstart, required secrets/variables, and CI troubleshooting sections. See [[Changelog Automation and CI Enforcement Policy]].
+
 **Why:** No CHANGELOG exists. README may lack CI quickstarts. Docs lack "last updated" dates. Release checklists serve as templates but don't record actual sign-offs.
 
 | # | Task | Priority | Effort | Depends On |

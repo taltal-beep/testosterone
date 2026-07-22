@@ -6,8 +6,10 @@ import yaml
 
 
 def test_github_fast_workflow_has_required_gate_command() -> None:
-    payload = yaml.safe_load(Path(".github/workflows/pr-fast.yml").read_text(encoding="utf-8"))
-    job = payload["jobs"]["fast_required"]
+    # The fast-required gate now lives in the consolidated `ci.yml` pipeline
+    # (test job), which replaced the standalone pr-fast.yml workflow.
+    payload = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    job = payload["jobs"]["test"]
     commands = "\n".join(step.get("run", "") for step in job["steps"] if isinstance(step, dict))
     assert 'python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1 --no-cov' in commands
 

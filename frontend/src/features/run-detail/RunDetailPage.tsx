@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
-import { apiClient } from "../../lib/api-client";
+import { API_BASE, apiClient } from "../../lib/api-client";
+import { Button, Card, KeyValue, PageHeader, Spinner, StatusPill } from "../../components/ui";
+import { formatRunName } from "../../lib/format";
 
 export function RunDetailPage() {
   const params = useParams();
@@ -23,64 +25,112 @@ export function RunDetailPage() {
   });
 
   if (!runId) {
-    return <p>Missing run id.</p>;
+    return <p className="text-sm text-danger-400">Missing run id.</p>;
   }
   if (runQuery.isLoading || reportsQuery.isLoading) {
-    return <p>Loading run details...</p>;
+    return (
+      <div className="flex items-center gap-2 text-sm text-ink-300">
+        <Spinner /> Loading run details...
+      </div>
+    );
   }
-  if (runQuery.isError || reportsQuery.isError) {
-    return <p>Failed to load run details.</p>;
+  if (runQuery.isError || reportsQuery.isError || !runQuery.data || !reportsQuery.data) {
+    return <p className="text-sm text-danger-400">Failed to load run details.</p>;
   }
 
+  const run = runQuery.data.run;
+  const reports = reportsQuery.data;
+
   return (
-    <section>
-      <h2>Run Details</h2>
-      <p>Run ID: {runQuery.data.run.run_id}</p>
-      <p>Type: {runQuery.data.run.test_kind}</p>
-      <p>Return code: {runQuery.data.run.returncode}</p>
-      <h3>Report Links</h3>
-      <ul>
-        {Object.entries(reportsQuery.data.static_links).map(([name, url]) => (
-          <li key={name}>
-            <a href={url} target="_blank" rel="noreferrer">
-              {name}
-            </a>
-          </li>
-        ))}
-      </ul>
-      <h3>Artifacts</h3>
-      <ul>
-        {reportsQuery.data.artifact_links.map((artifact) => (
-          <li key={artifact}>{artifact}</li>
-        ))}
-      </ul>
-      <h3>AI Failure Summary</h3>
-      {runQuery.data.run.returncode === 0 ? (
-        <p>Summary only applies to failed runs.</p>
-      ) : aiSummaryQuery.isLoading ? (
-        <p>Loading AI summary...</p>
-      ) : aiSummaryQuery.isError ? (
-        <p>Failed to load AI summary.</p>
-      ) : aiSummaryQuery.data.status === "available" ? (
-        <article>
-          <p>{aiSummaryQuery.data.summary_text}</p>
-          <p>
-            Confidence: {aiSummaryQuery.data.confidence ?? "unknown"} | Model: {aiSummaryQuery.data.model ?? "unknown"}
+    <section className="space-y-4">
+      <PageHeader
+        title={
+          <span className="flex items-center gap-3">
+            <span>{formatRunName(run.cycle, run.created_at)}</span>
+            <StatusPill status={run.status} returncode={run.returncode} />
+          </span>
+        }
+        subtitle="Run Details"
+        actions={
+          <Link to="/runs">
+            <Button variant="secondary" size="sm">
+              Back to runs
+            </Button>
+          </Link>
+        }
+      />
+
+      <Card title="Summary">
+        <KeyValue
+          items={[
+            { label: "Run ID", value: <span className="font-mono text-xs">{run.run_id}</span> },
+            { label: "Type", value: run.test_kind },
+            { label: "Return code", value: <span className="font-mono">{run.returncode}</span> },
+            { label: "Health", value: run.health_pct != null ? `${run.health_pct.toFixed(2)}%` : "n/a" },
+            { label: "Wall duration", value: `${run.wall_duration_ms.toFixed(0)} ms` }
+          ]}
+        />
+      </Card>
+
+      <Card title="Report Links">
+        {Object.keys(reports.static_links).length === 0 ? (
+          <p className="text-sm text-ink-400">No reports for this run.</p>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {Object.entries(reports.static_links).map(([name, url]) => (
+              <li key={name}>
+                <a href={`${API_BASE}/${url}`} target="_blank" rel="noreferrer" className="text-brand-300 hover:text-brand-400 hover:underline">
+                  {name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card title="Artifacts">
+        {reports.artifact_links.length === 0 ? (
+          <p className="text-sm text-ink-400">No artifacts recorded.</p>
+        ) : (
+          <ul className="space-y-1 text-sm text-ink-300">
+            {reports.artifact_links.map((artifact) => (
+              <li key={artifact} className="font-mono text-xs">
+                {artifact}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card title="AI Failure Summary">
+        {run.returncode === 0 ? (
+          <p className="text-sm text-ink-400">Summary only applies to failed runs.</p>
+        ) : aiSummaryQuery.isLoading ? (
+          <p className="text-sm text-ink-300">Loading AI summary...</p>
+        ) : aiSummaryQuery.isError || !aiSummaryQuery.data ? (
+          <p className="text-sm text-danger-400">Failed to load AI summary.</p>
+        ) : aiSummaryQuery.data.status === "available" ? (
+          <article className="space-y-1">
+            <p className="text-sm text-ink-100">{aiSummaryQuery.data.summary_text}</p>
+            <p className="text-xs text-ink-400">
+              Confidence: {aiSummaryQuery.data.confidence ?? "unknown"} | Model: {aiSummaryQuery.data.model ?? "unknown"}
+            </p>
+          </article>
+        ) : (
+          <p className="text-sm text-ink-400">
+            No summary generated ({aiSummaryQuery.data.error_code ?? "not_available"}).
           </p>
-        </article>
-      ) : (
-        <p>No summary generated ({aiSummaryQuery.data.error_code ?? "not_available"}).</p>
-      )}
-      <button
-        type="button"
-        onClick={async () => {
-          await apiClient.generateRunAiSummary(runId, true);
-          await aiSummaryQuery.refetch();
-        }}
-      >
-        Generate AI Summary
-      </button>
-      <Link to="/history">Back to history</Link>
+        )}
+        <Button
+          className="mt-3"
+          onClick={async () => {
+            await apiClient.generateRunAiSummary(runId, true);
+            await aiSummaryQuery.refetch();
+          }}
+        >
+          Generate AI Summary
+        </Button>
+      </Card>
     </section>
   );
 }

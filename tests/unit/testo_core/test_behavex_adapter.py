@@ -22,3 +22,23 @@ def test_behavex_output_dir_is_sibling_of_allure_results(tmp_path: Path) -> None
     oi = argv.index("-o")
     out = Path(argv[oi + 1]).resolve()
     assert out == (tmp_path / "stage" / "behave_reports").resolve()
+
+
+def test_native_report_present_when_report_html_exists(tmp_path: Path) -> None:
+    stage_dir = tmp_path / "stage"
+    reports_dir = stage_dir / "behave_reports"
+    reports_dir.mkdir(parents=True)
+    (reports_dir / "report.html").write_text("<html></html>", encoding="utf-8")
+
+    native = BehaveXAdapter().native_report(stage_dir)
+
+    assert native is not None
+    assert native.root_dir == reports_dir
+    assert native.entry_relpath == "report.html"
+
+
+def test_native_report_none_when_report_html_missing(tmp_path: Path) -> None:
+    stage_dir = tmp_path / "stage"
+    (stage_dir / "behave_reports").mkdir(parents=True)
+
+    assert BehaveXAdapter().native_report(stage_dir) is None

@@ -1,21 +1,27 @@
-"""Thin wrapper around ``allure generate``.
-
-The Allure CLI is optional — if it is missing we surface a structured error
-rather than crashing.  This is the only place that should ``shutil.which``
-for ``allure``.
-"""
+"""Thin wrapper around Allure Report 3 ``generate`` and ``open``."""
 
 from __future__ import annotations
 
-import shutil
-import subprocess
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from testo_core.reporting.allure_cli import (
+    AllureCLINotFoundError,
+    is_allure_available,
+    report_has_index,
+    resolve_allure_command,
+    run_generate,
+    run_open_blocking,
+)
 
-class AllureCLINotFoundError(RuntimeError):
-    """Raised when the ``allure`` CLI is not on ``PATH``."""
+__all__ = [
+    "AllureCLINotFoundError",
+    "AllureGenerateResult",
+    "generate_html",
+    "is_allure_available",
+    "serve_results",
+]
 
 
 @dataclass(frozen=True)
@@ -25,17 +31,14 @@ class AllureGenerateResult:
     message: str
 
 
-def is_allure_available() -> bool:
-    return shutil.which("allure") is not None
-
-
 def generate_html(
     *,
     result_dirs: Sequence[Path],
     out_dir: Path,
     clean: bool = True,
+    single_file: bool = False,
 ) -> AllureGenerateResult:
-    """Invoke ``allure generate`` and capture its result."""
+    """Invoke Allure 3 ``generate`` (or ``awesome --single-file``) and capture its result."""
     if not result_dirs:
         return AllureGenerateResult(
             ok=False,
@@ -44,26 +47,37 @@ def generate_html(
         )
     if not is_allure_available():
         raise AllureCLINotFoundError(
-            "the 'allure' CLI was not found on PATH. Install it from "
-            "https://allurereport.org/docs/install/ or use --format json/junit instead."
+            "the Allure Report 3 CLI was not found. Install Node.js 18+, run "
+            "`npm install` in the repo root, or use --format json/junit instead."
         )
 
     out_dir = out_dir.expanduser().resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
-    argv: list[str] = ["allure", "generate"]
-    if clean:
-        argv.append("--clean")
-    argv.extend(["-o", str(out_dir)])
-    argv.extend(str(p.expanduser().resolve()) for p in result_dirs)
+    try:
+        completed = run_generate(
+            result_dirs=result_dirs,
+            out_dir=out_dir,
+            clean=clean,
+            single_file=single_file,
+        )
+    except AllureCLINotFoundError:
+        raise
+    except FileNotFoundError as exc:
+        raise AllureCLINotFoundError(str(exc)) from exc
 
-    completed = subprocess.run(  # noqa: S603 — argv is built by trusted code
-        argv,
-        check=False,
-        text=True,
-        capture_output=True,
-    )
-    ok = completed.returncode == 0 and (out_dir / "index.html").is_file()
-    msg = completed.stdout.strip() or completed.stderr.strip() or (
+    ok = completed.returncode == 0 and report_has_index(out_dir)
+    msg = (completed.stdout or "").strip() or (completed.stderr or "").strip() or (
         "report generated" if ok else f"allure exited {completed.returncode}"
     )
     return AllureGenerateResult(ok=ok, out_dir=out_dir, message=msg)
+
+
+def serve_results(*, result_dirs: Sequence[Path], port: int = 8080) -> int:
+    """Generate and serve raw result directories via ``allure open`` (blocks until stopped)."""
+    if not result_dirs:
+        return 1
+    if not is_allure_available():
+        raise AllureCLINotFoundError(
+            "the Allure Report 3 CLI was not found. Install Node.js 18+, run "
+            "`npm install` in the repo root, or use --format json/junit instead."
+        )
+    return run_open_blocking(paths=result_dirs, port=port)
