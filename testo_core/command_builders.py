@@ -13,6 +13,7 @@ class TestType(str, Enum):
     PYTEST = "pytest"
     BEHAVEX = "behavex"
     BEHAVE_NATIVE = "behave_native"
+    LOCUST = "locust"
 
 
 @dataclass(frozen=True)

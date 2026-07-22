@@ -94,3 +94,51 @@ def collect_results(
                     )
                 )
     return CollectedResults(artifacts_root=artifacts_root, stages=stages)
+
+
+def collect_results_docker_run(
+    artifacts_root: Path,
+    *,
+    run_id: str | None = None,
+) -> CollectedResults:
+    """Discover Allure dirs from the flat Docker/headless layout.
+
+    Layout::
+
+        <artifacts_root>/allure-results/<framework>/...
+        <artifacts_root>/allure-results/<framework>/<run_id>/...  (optional)
+    """
+    artifacts_root = artifacts_root.expanduser().resolve()
+    allure_root = artifacts_root / "allure-results"
+    if not allure_root.is_dir():
+        return CollectedResults(artifacts_root=artifacts_root, stages=[])
+
+    plan_label = run_id or "docker-run"
+    stages: list[StageCollection] = []
+
+    for framework_dir in sorted(p for p in allure_root.iterdir() if p.is_dir()):
+        framework = framework_dir.name
+        if run_id:
+            scoped = framework_dir / run_id
+            if scoped.is_dir() and any(scoped.glob("*-result.json")):
+                stages.append(
+                    StageCollection(
+                        plan=plan_label,
+                        stage=framework,
+                        framework=framework,
+                        results_dir=scoped,
+                        log_path=None,
+                    )
+                )
+                continue
+        if any(framework_dir.glob("*-result.json")) or any(framework_dir.glob("**/*-result.json")):
+            stages.append(
+                StageCollection(
+                    plan=plan_label,
+                    stage=framework,
+                    framework=framework,
+                    results_dir=framework_dir,
+                    log_path=None,
+                )
+            )
+    return CollectedResults(artifacts_root=artifacts_root, stages=stages)

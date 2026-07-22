@@ -70,7 +70,7 @@ All machine-readable lines go to **stdout** as NDJSON (one JSON object per line)
 {"event":"cycle_trigger","cycle":"sample-pytests","status":"resting","reason":"...","matched":[],"mode":"git"}
 ```
 
-**Dry run skip:**
+**Dry run skip** (roadmap — no `--dry-run` CLI flag exists yet, see [[Command Reference]]):
 
 ```json
 {"event":"dry_run","cycle":"sample-pytests","status":"skipped","reason":"trigger"}
@@ -116,7 +116,7 @@ Emitted by `CIRenderer` and `_NdjsonRecorder`.
 
 When the executor sets an error string (timeout, missing binary):
 
-- `error` may appear on the in-memory result; the NDJSON mirror in `orchestrator` includes `error` when present on `StageResult`.
+- `error` may appear on the in-memory result; the NDJSON mirror in `orchestrator` includes `error` when present on `StageResult`. The mirror also carries `internal_failure` (true only for orchestrator-caught engine exceptions). `CIRenderer` stdout omits both keys.
 
 ### `plan_finished`
 
@@ -132,7 +132,9 @@ When the executor sets an error string (timeout, missing binary):
 }
 ```
 
-### `plan_aborted` (`--fail-fast`)
+### `plan_aborted` (engine `fail_fast`)
+
+Written to the artifact `events.ndjson` when `run_plan(fail_fast=True)` aborts after a failing stage. Reachable today via the API layer (`POST /api/v1/cycles/{cycle}/executions`); the `--fail-fast` CLI flag is a roadmap item.
 
 ```json
 {"event":"plan_aborted","plan":"sample-pytests","reason":"fail_fast","completed_stages":1}
@@ -383,6 +385,8 @@ find artifacts -name '*-result.json' | head
 - Run the cycle first: `testo run --cycle <name>`
 - Match `--artifacts` path if non-default
 - Reporters skipped when no Allure JSON exists (see `run_configured_reporters`)
+
+**Run Detail page shows "No artifacts recorded" / "No reports for this run" despite a passing cycle**: fixed 2026-07-06 — `DbBackend.persist()` never set `snapshot_dir` on the `RunRecord`, so `GET /api/v1/runs/{run_id}/reports` always returned `artifact_links: []`. See [[Report Links and Artifacts Missing Fix - 2026-07-06]]. Native Allure/Behave HTML `static_links` still require a `reporters:` block in `testosterone.yaml` — that part is a config gap, not a bug.
 
 ---
 
