@@ -5,16 +5,54 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "../app/AppShell";
 import { ComparePage } from "../features/compare/ComparePage";
+import { CycleDetailPage } from "../features/cycles/CycleDetailPage";
+import { CyclesPage } from "../features/cycles/CyclesPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { HistoryPage } from "../features/history/HistoryPage";
 import { RunDetailPage } from "../features/run-detail/RunDetailPage";
 
 describe("happy path", () => {
-  it("loads history and opens run details", async () => {
+  it("walks dashboard, cycles, runs, run detail and compare", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((input: RequestInfo | URL) => {
         const url = String(input);
+        if (url.endsWith("/api/v1/cycles")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              items: [
+                {
+                  name: "sample-pytests",
+                  description: "Pytest suite for the sample target repo.",
+                  stage_count: 1,
+                  equipment: ["pytest"]
+                }
+              ],
+              config_path: "/repo/testosterone.yaml"
+            })
+          });
+        }
+        if (url.endsWith("/api/v1/cycles/sample-pytests")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              name: "sample-pytests",
+              description: "Pytest suite for the sample target repo.",
+              stages: [
+                {
+                  name: "pytest-sample",
+                  equipment: "pytest",
+                  target_repo: "sample_target_repo",
+                  args: ["-q", "tests"],
+                  timeout_s: 600,
+                  workers: 4
+                }
+              ],
+              trigger: null
+            })
+          });
+        }
         if (url.includes("/api/v1/dashboard/overview")) {
           return Promise.resolve({
             ok: true,
@@ -173,7 +211,9 @@ describe("happy path", () => {
           element: <AppShell />,
           children: [
             { index: true, element: <DashboardPage /> },
-            { path: "/history", element: <HistoryPage /> },
+            { path: "/cycles", element: <CyclesPage /> },
+            { path: "/cycles/:name", element: <CycleDetailPage /> },
+            { path: "/runs", element: <HistoryPage /> },
             { path: "/compare", element: <ComparePage /> },
             { path: "/runs/:runId", element: <RunDetailPage /> }
           ]
@@ -190,11 +230,20 @@ describe("happy path", () => {
       </QueryClientProvider>
     );
 
-    await waitFor(() => expect(screen.getByText("Dashboard Overview")).toBeInTheDocument());
-    await router.navigate("/history");
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument());
+
+    // Cycle discovery: the list shows what's defined, detail shows the stages.
+    await router.navigate("/cycles");
+    await waitFor(() => expect(screen.getByRole("link", { name: "sample-pytests" })).toBeInTheDocument());
+    expect(screen.getByText("Pytest suite for the sample target repo.")).toBeInTheDocument();
+    await router.navigate("/cycles/sample-pytests");
+    await waitFor(() => expect(screen.getByText("pytest-sample")).toBeInTheDocument());
+    expect(screen.getByTestId("run-panel-form")).toBeInTheDocument();
+
+    await router.navigate("/runs");
     await waitFor(() => expect(screen.getByText("run-1")).toBeInTheDocument());
     await router.navigate("/runs/run-1");
-    await waitFor(() => expect(screen.getByText("Run ID: run-1")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("heading", { name: /run-1/ })).toBeInTheDocument());
     expect(screen.getByText("allure_report.html")).toBeInTheDocument();
     await router.navigate("/compare?current_run_id=run-1&baseline_run_id=run-2");
     await waitFor(() =>

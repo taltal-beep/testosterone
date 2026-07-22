@@ -29,6 +29,7 @@ class StageResult:
     output_tail: str
     timed_out: bool = False
     error: str | None = None
+    internal_failure: bool = False
 
 
 @dataclass(frozen=True)

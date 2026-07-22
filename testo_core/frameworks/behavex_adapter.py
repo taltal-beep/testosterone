@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
+from testo_core.frameworks.base import NativeReport
+
 
 class BehaveXAdapter:
     name: str = "behavex"
@@ -44,6 +46,12 @@ class BehaveXAdapter:
                 ]
             )
         return argv
+
+    def native_report(self, stage_dir: Path) -> NativeReport | None:
+        root_dir = stage_dir / "behave_reports"
+        if not (root_dir / "report.html").is_file():
+            return None
+        return NativeReport(root_dir=root_dir, entry_relpath="report.html")
 
 
 def _strip_output_folder_flags(args: Sequence[str]) -> list[str]:

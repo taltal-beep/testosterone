@@ -17,6 +17,26 @@ export interface ExecutionAccepted {
   summary_url: string;
 }
 
+export interface CycleExecutionRequest {
+  config_path?: string | null;
+  artifacts_root?: string | null;
+  stream?: boolean;
+  persist?: boolean;
+  fail_fast?: boolean;
+  force?: boolean;
+  workers_override?: number | null;
+  report_db?: boolean;
+  async_report_db?: boolean;
+  reporter_override?: string[] | null;
+}
+
+export interface CycleExecutionAccepted {
+  execution_id: string;
+  status: "queued" | "running";
+  events_url: string;
+  summary_url: string;
+}
+
 export interface ExecutionStatus {
   execution_id: string;
   status: "queued" | "running" | "completed" | "failed";
@@ -30,6 +50,7 @@ export interface RunListItem {
   created_at: number;
   returncode: number;
   status: string | null;
+  cycle: string | null;
   health_pct: number | null;
   links_under_static: Record<string, string>;
 }
@@ -81,6 +102,8 @@ export interface DeltaComparisonResponse {
 export interface RunDetailResponse {
   run: {
     run_id: string;
+    status: string | null;
+    cycle: string | null;
     test_kind: string;
     returncode: number;
     created_at: number;
@@ -193,7 +216,40 @@ export interface DashboardOverviewResponse {
   };
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+export interface CycleSummary {
+  name: string;
+  description: string | null;
+  stage_count: number;
+  equipment: string[];
+}
+
+export interface CycleListResponse {
+  items: CycleSummary[];
+  config_path: string | null;
+}
+
+export interface StageSummary {
+  name: string;
+  equipment: string;
+  target_repo: string;
+  args: string[];
+  timeout_s: number | null;
+  workers: number | null;
+}
+
+export interface CycleDetailResponse {
+  name: string;
+  description: string | null;
+  stages: StageSummary[];
+  trigger: { paths: string[]; since_ref: string | null } | null;
+}
+
+export interface HealthReadyResponse {
+  status: "ok" | "degraded";
+  checks: Record<string, { status: string; detail: string | null }>;
+}
+
+export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(`${API_BASE}${path}`, {
@@ -218,8 +274,27 @@ export const apiClient = {
       })
     });
   },
+  createCycleExecution(cycle: string, payload: CycleExecutionRequest): Promise<CycleExecutionAccepted> {
+    return api<CycleExecutionAccepted>(`/api/v1/cycles/${encodeURIComponent(cycle)}/executions`, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  },
   getExecution(executionId: string): Promise<ExecutionStatus> {
     return api<ExecutionStatus>(`/api/v1/executions/${executionId}`);
+  },
+  listCycles(): Promise<CycleListResponse> {
+    return api<CycleListResponse>("/api/v1/cycles");
+  },
+  getCycle(name: string): Promise<CycleDetailResponse> {
+    return api<CycleDetailResponse>(`/api/v1/cycles/${encodeURIComponent(name)}`);
+  },
+  async getHealthReady(): Promise<HealthReadyResponse> {
+    // /health/ready responds 503 when degraded but still carries the check payload.
+    const resp = await fetch(`${API_BASE}/api/v1/health/ready`, {
+      headers: { "Content-Type": "application/json" }
+    });
+    return (await resp.json()) as HealthReadyResponse;
   },
   listRuns(): Promise<{ items: RunListItem[] }> {
     return api<{ items: RunListItem[] }>("/api/v1/runs");
