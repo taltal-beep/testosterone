@@ -1,24 +1,47 @@
 from __future__ import annotations
 
+import logging
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from testo_api.routes.ai import router as ai_router
 from testo_api.routes.analytics import router as analytics_router
+from testo_api.routes.cycles import router as cycles_router
 from testo_api.routes.dashboard import router as dashboard_router
 from testo_api.routes.events import router as events_router
 from testo_api.routes.health import router as health_router
 from testo_api.routes.history import router as history_router
 from testo_api.routes.runs import router as runs_router
+from testo_core.run_history import STATIC_HISTORY_ROOT
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    # Runs left "RUNNING" by a crashed/reloaded process would otherwise sit
+    # stuck forever in the UI history; mark them FAILED so the run list stays honest.
+    from testo_core.run_history import cleanup_orphaned_runs
+
+    try:
+        n = cleanup_orphaned_runs(note="Orphaned by API server restart")
+        if n:
+            logger.warning("Cleaned up %s orphaned RUNNING run(s) on startup.", n)
+    except Exception:
+        logger.debug("orphaned-run cleanup skipped (DB unavailable?)", exc_info=True)
+    yield
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="UQO API", version="1.0.0")
+    app = FastAPI(title="UQO API", version="1.0.0", lifespan=_lifespan)
 
     allowed_origins = [origin.strip() for origin in os.getenv("UQO_API_CORS_ORIGINS", "*").split(",") if origin.strip()]
     app.add_middleware(
@@ -32,10 +55,14 @@ def create_app() -> FastAPI:
     app.include_router(runs_router)
     app.include_router(ai_router)
     app.include_router(events_router)
+    app.include_router(cycles_router)
     app.include_router(history_router)
     app.include_router(analytics_router)
     app.include_router(dashboard_router)
     app.include_router(health_router)
+
+    STATIC_HISTORY_ROOT.mkdir(parents=True, exist_ok=True)
+    app.mount("/history", StaticFiles(directory=STATIC_HISTORY_ROOT), name="history")
 
     @app.middleware("http")
     async def attach_request_id(request: Request, call_next):  # type: ignore[no-redef]

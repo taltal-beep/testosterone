@@ -16,7 +16,7 @@ class GitlabProvisioner:
         self.dry_run = dry_run
 
     @classmethod
-    def from_env(cls) -> "GitlabProvisioner":
+    def from_env(cls) -> GitlabProvisioner:
         token = os.getenv("UQO_E2E_GITLAB_TOKEN", "")
         group_id = os.getenv("UQO_E2E_GITLAB_GROUP_ID", "")
         api_base = os.getenv("UQO_E2E_GITLAB_BASE_URL", "https://gitlab.com/api/v4")

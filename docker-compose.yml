@@ -88,19 +88,20 @@ services:
       minio-init:
         condition: service_completed_successfully
     entrypoint: ["/bin/sh", "-c"]
-    command: |
-      set -eu
-      echo "[allure-sync] configuring MinIO alias..."
-      until mc alias set uqo-minio http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" >/dev/null 2>&1; do
-        sleep 2
-      done
-      echo "[allure-sync] mirroring s3://$${BUCKET_NAME:-uqo-artifacts}/projects -> /app/projects ..."
-      mkdir -p /app/projects
-      # Mirror is idempotent and keeps Allure projects updated from MinIO.
-      while true; do
-        mc mirror --overwrite uqo-minio/"$${BUCKET_NAME:-uqo-artifacts}"/projects /app/projects >/dev/null 2>&1 || true
-        sleep 5
-      done
+    command:
+      - |
+        set -eu
+        echo "[allure-sync] configuring MinIO alias..."
+        until mc alias set uqo-minio http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" >/dev/null 2>&1; do
+          sleep 2
+        done
+        echo "[allure-sync] mirroring s3://$${BUCKET_NAME:-uqo-artifacts}/projects -> /app/projects ..."
+        mkdir -p /app/projects
+        # Mirror is idempotent and keeps Allure projects updated from MinIO.
+        while true; do
+          mc mirror --overwrite uqo-minio/"$${BUCKET_NAME:-uqo-artifacts}"/projects /app/projects >/dev/null 2>&1 || true
+          sleep 5
+        done
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}

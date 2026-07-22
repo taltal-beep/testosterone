@@ -7,11 +7,13 @@ concurrent stage execution in a future iteration.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import time
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping, Protocol
+from typing import Protocol
 
 from testo_core.config.schema import Plan
 from testo_core.engine.events import (
@@ -22,7 +24,7 @@ from testo_core.engine.events import (
     StageStarted,
 )
 from testo_core.engine.executor import run_stage
-from testo_core.engine.exit_codes import EngineExitCode, classify_exit_code
+from testo_core.engine.exit_codes import classify_exit_code
 from testo_core.engine.result import PlanResult, StageResult
 from testo_core.reporting.paths import plan_artifacts_dir
 
@@ -42,12 +44,18 @@ def run_plan(
     artifacts_root: Path | None = None,
     parent_env: Mapping[str, str] | None = None,
     persist: bool = True,
+    fail_fast: bool = False,
 ) -> PlanResult:
     """Execute every stage in ``plan`` sequentially.
 
     When *persist* is ``True``, the :mod:`testo_core.persistence` composite
     backend writes ``plan_result.json`` and (when the DB layer is available)
     upserts a :class:`~testo_core.repository.models.RunRecord`.
+
+    When *fail_fast* is ``True``, a stage finishing with a non-zero returncode
+    aborts the remaining stages: a ``plan_aborted`` NDJSON event is written
+    (see ``docs/CLI Commands/Troubleshooting and Error Codes.md``) before the
+    terminal ``plan_finished`` event.
     """
     artifacts_root = (artifacts_root or Path("artifacts")).expanduser().resolve()
     plan_artifacts = plan_artifacts_dir(artifacts_root, plan.name)
@@ -86,7 +94,7 @@ def run_plan(
                     parent_env=parent_env,
                     on_chunk=on_chunk(stage.name),
                 )
-            except Exception as exc:  # pragma: no cover - defensive
+            except Exception as exc:
                 stage_result = _internal_failure_result(stage=stage, exc=exc)
 
             stage_results.append(stage_result)
@@ -101,12 +109,28 @@ def run_plan(
                     "log_path": str(stage_result.log_path) if stage_result.log_path else None,
                     "timed_out": stage_result.timed_out,
                     "error": stage_result.error,
+                    "internal_failure": stage_result.internal_failure,
                 }
             )
 
+            if fail_fast and stage_result.returncode != 0:
+                recorder.write(
+                    {
+                        "event": "plan_aborted",
+                        "plan": plan.name,
+                        "reason": "fail_fast",
+                        "completed_stages": idx,
+                    }
+                )
+                break
+
         finished_at = time.time()
         rcs = [s.returncode for s in stage_results]
-        exit_code = classify_exit_code(rcs, infra_error=None)
+        exit_code = classify_exit_code(
+            rcs,
+            infra_error=None,
+            internal_failure=any(s.internal_failure for s in stage_results),
+        )
         plan_result = PlanResult(
             plan_name=plan.name,
             started_at=started_at,
@@ -133,7 +157,11 @@ def run_plan(
         from testo_core.persistence import composite_backend
 
         backend = composite_backend(artifacts_root=artifacts_root)
-        backend.persist(plan_result)
+        run_id = backend.persist(plan_result)
+        if run_id:
+            plan_result = dataclasses.replace(
+                plan_result, extra={**plan_result.extra, "run_id": run_id}
+            )
 
     return plan_result
 
@@ -205,6 +233,7 @@ def _internal_failure_result(*, stage, exc: Exception) -> StageResult:  # type: 
         output_tail="",
         timed_out=False,
         error=f"internal error: {exc}",
+        internal_failure=True,
     )
 
 

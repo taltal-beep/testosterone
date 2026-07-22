@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from collections.abc import Generator, Mapping, Sequence
 from pathlib import Path
-from typing import Optional
 
 from testo_core.paths import default_artifacts_root
 from testo_core.runners import LogEvent, RunResult, run_audit_streaming
@@ -20,7 +19,7 @@ class AuditService:
         *,
         target_repo: Path,
         artifacts_root: Path | None = None,
-        parent_env: Optional[Mapping[str, str]] = None,
+        parent_env: Mapping[str, str] | None = None,
         pytest_args: Sequence[str] = (),
         behavex_args: Sequence[str] = (),
         native_behave_args: Sequence[str] = (),

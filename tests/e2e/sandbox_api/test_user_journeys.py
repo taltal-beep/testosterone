@@ -4,7 +4,6 @@ import pytest
 
 from tests._allure_utils import step
 
-
 pytestmark = [pytest.mark.e2e]
 
 

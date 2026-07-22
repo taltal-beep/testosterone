@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable, Generator, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Generator, Iterable, Literal, Sequence
+from typing import Any, Literal
 
 from testo_core.command_builders import RunConfig, TestType
 from testo_core.engine.exit_codes import EngineExitCode, classify_exit_code
 from testo_core.repository.models import RunStatus
-from testo_core.run_history import RunSyncStatus, create_run, record_completed_run, update_run_status
+from testo_core.run_history import (
+    RunSyncStatus,
+    create_run,
+    record_completed_run,
+    update_run_status,
+)
 from testo_core.runners import LogEvent, RunResult, run_streaming
 from testo_core.services.ci_provenance import CIProvenance
 from testo_core.services.multi_run import stream_multi_run

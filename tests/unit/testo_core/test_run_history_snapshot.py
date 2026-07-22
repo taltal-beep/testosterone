@@ -7,7 +7,12 @@ from pathlib import Path
 import pytest
 
 from testo_core.command_builders import BuiltCommand
-from testo_core.run_history import CompletedRunView, RunStatus, record_completed_run, snapshot_files_for_download
+from testo_core.run_history import (
+    CompletedRunView,
+    RunStatus,
+    record_completed_run,
+    snapshot_files_for_download,
+)
 from testo_core.runners import RunResult
 
 

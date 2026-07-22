@@ -5,7 +5,12 @@ import os
 from fastapi import APIRouter, Depends, HTTPException
 
 from testo_api.dependencies import get_ai_settings_store, get_failure_analysis_service
-from testo_api.models import AiConfigStatusResponse, AiConfigUpdateRequest, AiSummaryResponse, GenerateAiSummaryRequest
+from testo_api.models import (
+    AiConfigStatusResponse,
+    AiConfigUpdateRequest,
+    AiSummaryResponse,
+    GenerateAiSummaryRequest,
+)
 from testo_core.services.ai import AiProviderConfig, ProviderMisconfiguredError
 from testo_core.services.ai.integration_settings import InMemoryAiSettingsStore
 from testo_core.services.failure_analysis_service import FailureAnalysisService

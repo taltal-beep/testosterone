@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-import os
-import random
 import hashlib
 import importlib.util
 import json
+import os
+import random
 import re
 import sys
 import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 
@@ -461,7 +461,7 @@ def reset_mock_api_state(monkeypatch: pytest.MonkeyPatch) -> None:
         if isinstance(items, list):
             items.clear()
         if hasattr(m, "NEXT_ID"):
-            setattr(m, "NEXT_ID", 1)
+            m.NEXT_ID = 1
     except Exception:
         # If the sample app is not importable in this environment, unit tests should still run.
         return

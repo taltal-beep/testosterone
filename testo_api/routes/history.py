@@ -4,7 +4,13 @@ import os
 
 from fastapi import APIRouter, HTTPException
 
-from testo_api.models import RunDetail, RunDetailResponse, RunListItem, RunListResponse, RunReportsResponse
+from testo_api.models import (
+    RunDetail,
+    RunDetailResponse,
+    RunListItem,
+    RunListResponse,
+    RunReportsResponse,
+)
 from testo_core.run_history import get_run, list_run_sessions, snapshot_files_for_download
 
 router = APIRouter(prefix="/api/v1", tags=["history"])
@@ -19,6 +25,7 @@ def list_runs(limit: int = 30) -> RunListResponse:
             created_at=s.created_at,
             returncode=s.returncode,
             status=s.status.value if s.status is not None else None,
+            cycle=s.cycle,
             health_pct=s.health_pct,
             total_tests=s.total_tests,
             passed=s.passed,
@@ -45,6 +52,7 @@ def get_run_detail(run_id: str) -> RunDetailResponse:
             started_at=record.started_at,
             finished_at=record.finished_at,
             test_kind=record.test_kind,
+            cycle=record.cycle,
             returncode=record.returncode,
             wall_duration_ms=record.wall_duration_ms,
             metrics_duration_ms=record.metrics_duration_ms,

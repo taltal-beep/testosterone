@@ -8,7 +8,6 @@ chooses what to do with the event (Rich panels, NDJSON line, no-op).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Union
 
 from testo_core.config.schema import Plan, Stage
 from testo_core.engine.result import PlanResult, StageResult
@@ -44,10 +43,6 @@ class PlanFinished:
     result: PlanResult
 
 
-EngineEvent = Union[
-    PlanStarted,
-    StageStarted,
-    StageOutputChunk,
-    StageFinished,
-    PlanFinished,
-]
+EngineEvent = (
+    PlanStarted | StageStarted | StageOutputChunk | StageFinished | PlanFinished
+)

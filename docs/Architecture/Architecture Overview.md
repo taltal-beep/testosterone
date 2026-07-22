@@ -92,8 +92,9 @@ Optional per-cycle **selective execution**: Git diff or filesystem snapshot agai
 
 | Package | Purpose |
 |---------|---------|
-| `testo_api/` | FastAPI `/api/v1` — runs, SSE, report archives |
-| `testo_ui/` | Streamlit dashboard |
+| `testo_api/` | FastAPI `/api/v1` — cycle discovery (`GET /cycles`, `GET /cycles/{cycle}`), runs, SSE, report archives, health probes |
+| `frontend/` | React UI (primary) — cycles-first navigation, see [[Phase 5 UI Redesign - Cycles-First Navigation]] |
+| `testo_ui/` | Streamlit dashboard (legacy fallback) |
 | `testo_core/runners.py` | Legacy **Docker** streaming runner used by UQO headless path |
 | `testo_core/services/` | Headless engine, report archive diff, config DB helpers |
 

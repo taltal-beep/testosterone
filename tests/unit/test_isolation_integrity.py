@@ -10,12 +10,18 @@ These tests intentionally codify the SOLID firewall requirements:
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from testo_core.command_builders import BuiltCommand, RunConfig, TestType
-from testo_core.runners import LogEvent, RunResult, run_audit_streaming, run_native_behave, run_streaming
+from testo_core.runners import (
+    LogEvent,
+    RunResult,
+    run_audit_streaming,
+    run_native_behave,
+    run_streaming,
+)
 
 
 def test_run_streaming_does_not_override_shared_allure_results_dir(tmp_path: Path) -> None:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from testo_api.execution_manager import ExecutionState, ExecutionManager
+from testo_api.execution_manager import ExecutionManager, ExecutionState
 from testo_api.models import CreateExecutionRequest, RunSpecRequest
 from testo_core.command_builders import BuiltCommand
 from testo_core.runners import RunResult

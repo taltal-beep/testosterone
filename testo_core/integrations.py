@@ -7,7 +7,8 @@ from urllib.parse import quote
 
 import requests
 
-from .metrics import RunMetrics, push_influxdb as _push_influx_core
+from .metrics import RunMetrics
+from .metrics import push_influxdb as _push_influx_core
 from .metrics_extractor import ExtractedMetrics, extract_best, to_run_metrics
 from .report_generator import default_report_paths
 

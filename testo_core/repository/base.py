@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from .models import RunRecord, RunStatus
 
@@ -24,11 +24,11 @@ class BaseRunRepository(Protocol):
         self,
         *,
         status: RunStatus = RunStatus.PENDING,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> RunRecord:
         """Insert a new :class:`RunRecord` and return the persisted row (with ``id`` assigned)."""
 
-    def get_run(self, run_id: uuid.UUID | str) -> Optional[RunRecord]:
+    def get_run(self, run_id: uuid.UUID | str) -> RunRecord | None:
         """Return the :class:`RunRecord` for the given id, or ``None`` if missing.
 
         Accepts the orchestrator's external string id; implementations derive a stable
@@ -41,7 +41,7 @@ class BaseRunRepository(Protocol):
         run_id: uuid.UUID | str,
         *,
         status: RunStatus,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> RunRecord:
         """Update status (and shallow-merge ``metadata``) for ``run_id``, or insert if missing.
 

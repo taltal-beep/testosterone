@@ -7,7 +7,6 @@ import pytest
 
 from testo_core.report_generator import compute_system_health_pct, generate_allure_html
 
-
 pytestmark = [pytest.mark.unit]
 
 

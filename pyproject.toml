@@ -22,6 +22,8 @@ dependencies = [
     "PyYAML>=6.0.0",
     "typer>=0.12.0",
     "rich>=13.7.0",
+    "watchdog>=4.0.0",
+    "Jinja2>=3.1.0",
 ]
 
 [project.scripts]
@@ -61,6 +63,9 @@ dev = [
     "pytest-cov>=5.0.0",
     "httpx>=0.27.0",
     "build>=1.2.0",
+    "ruff>=0.15.0",
+    "mypy>=2.1.0",
+    "pre-commit>=4.0.0",
     # The dev profile installs every extra so the test suite covers the full
     # surface area without needing per-test installs.
     "testo-core[ui,api,db,docker,metrics]",
@@ -68,3 +73,34 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["testo_core", "testo_api", "testo_ui"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+# Started as pyflakes (F) + a subset of pycodestyle (E) + import sorting (I);
+# extended with pyupgrade (UP) and bugbear (B). Line-length (E501) is ignored
+# since no autoformatter enforcement is blocking yet (`ruff format --check` in
+# ci.yml is still continue-on-error); tighten once that gate goes blocking.
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    "E501",
+    # Typer/FastAPI both use `Depends(...)`/`typer.Option(...)` as default-arg values —
+    # the idiomatic pattern for both frameworks, used throughout testo_api and the CLI.
+    "B008",
+    # `class Foo(str, Enum)` -> `enum.StrEnum` is a real behavior-adjacent change
+    # (repr/serialization edge cases) affecting enums used pervasively (TestType,
+    # RunStatus); deserves its own tested PR, not a lint-config side effect.
+    "UP042",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# sys.path setup for direct-script execution must precede the local import it enables.
+"testo_core/run_history.py" = ["E402"]
+# dotenv must load before modules that read os.environ at import time.
+"testo_ui/streamlit_app.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true

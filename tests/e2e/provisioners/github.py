@@ -16,7 +16,7 @@ class GithubProvisioner:
         self.dry_run = dry_run
 
     @classmethod
-    def from_env(cls) -> "GithubProvisioner":
+    def from_env(cls) -> GithubProvisioner:
         token = os.getenv("UQO_E2E_GITHUB_TOKEN", "")
         owner = os.getenv("UQO_E2E_GITHUB_OWNER", "")
         dry_run = str(os.getenv("UQO_E2E_EXTERNAL_DRY_RUN", "true")).lower() == "true"

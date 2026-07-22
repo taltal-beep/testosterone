@@ -36,21 +36,15 @@ The backlog below is **inferred technical debt**: exception breadth, dual execut
 
 ### 1. Exit-code contract drift
 
-- [x] **Fixed 2026-06-02** — Timeouts normalize to return code **124** in `executor.py`; orchestrator sets `internal_failure` on engine exceptions and `classify_exit_code(..., internal_failure=True)` maps plan exit to **4**.
+- [x] **Fixed 2026-06-02; re-applied 2026-07-04** — Timeouts normalize to return code **124** in `executor.py`; orchestrator sets `internal_failure` on engine exceptions and `classify_exit_code(..., internal_failure=True)` maps plan exit to **4**. The 2026-06-02 fix was lost in an uncommitted working tree and restored — this time with committed contract tests (`tests/contract/testo_core/test_exit_code_contract.py`, `tests/unit/testo_core/engine/test_executor.py`). See [[Engine Test Suite Rebuild - 2026-07-04]].
 
-**Evidence**
-
-- `testo_core/engine/orchestrator.py` — `_internal_failure_result` sets `returncode=4`
-- `testo_core/engine/exit_codes.py` — `classify_exit_code()` maps any non-zero except `124`/`127` to `DOMAIN_FAILURE` (exit **1**)
-- `testo_core/engine/executor.py` — timeouts set `timed_out=True` but return code from `_terminate()` (e.g. **137**, **-9**), not **124**
-
-**Risk**
+**Risk (historical)**
 
 CI and automation that only check `$?` misclassify infra/timeouts/internal bugs as test failures.
 
-**Recommendation**
+**Remaining**
 
-Normalize in `run_stage` / `classify_exit_code`: emit **124** on timeout, map internal errors to exit **4** at plan level, and add contract tests in `tests/` that assert process exit codes match `timed_out` and `error` fields.
+Signal deaths other than timeout (e.g. SIGKILL rc **137**) still classify as exit **1**; locked as a documented misclassification in the contract tests pending a signal-aware classifier.
 
 ---
 
@@ -171,6 +165,38 @@ Post-run integrations silently skipped after a green test run.
 **Recommendation**
 
 Add `reporters_required: true` config or fail the run with exit **3** when a configured reporter fails; aggregate errors into one Rich panel / NDJSON `reporter_failed` event.
+
+---
+
+### 8a. mypy baseline (43 errors, 14 files) — advisory in CI, not yet blocking
+
+- **Added 2026-07-02** — `mypy` landed in `pyproject.toml` (`[tool.mypy]`) and as an
+  advisory step in `.github/workflows/ci.yml`'s `format` job (`continue-on-error: true`).
+  `ruff check .` is separately clean and blocking in the same job.
+
+**Evidence** (by file, `mypy testo_core`)
+
+| File | Errors | Nature |
+|------|--------|--------|
+| `testo_core/runners.py` | 17 | `callable?[Any, None]` not callable (13×); redefined names; container/context-manager type drift |
+| `testo_core/services/ai/integration_settings.py` | 7 | `dataclasses.replace(**dict[str, object])` can't narrow to the per-field literal/str/int/bool types |
+| `testo_core/cli/commands/report.py` | 3 | `Path \| None` passed where `Path` expected — likely a real missing-None-check |
+| `testo_core/run_history.py`, `repository/report_archive_repository.py`, `repository/models.py`, `repository/factory.py`, `repository/adapters.py` | 2 each | `datetime \| None` attribute access, redefined names, repository adapter return-type union not narrowed |
+| `services/headless_engine.py`, `reporting/exporter.py`, `persistence/composite.py`, `engine/executor.py`, `cli/ui/renderers.py`, `cli/legacy.py` | 1 each | assorted union-narrowing and `object`-typed attribute access |
+
+**Risk**
+
+Low urgency individually (mostly missing `is not None` narrowing / union handling), but
+`report.py`'s `Path | None` cases and `runners.py`'s `callable?` cluster are worth a closer
+look — they're the kind of thing that surfaces as a real `None`/attribute crash at runtime
+under specific flag combinations, not just a type-checker nitpick.
+
+**Recommendation**
+
+Tackle `testo_core/runners.py` first (17 of 43, one file) since it's already flagged as a
+complexity hotspot below. Once the count is near zero, flip the CI step to blocking. Do not
+fix these as a side effect of unrelated PRs — track here and land as its own reviewed
+change per file/cluster.
 
 ---
 

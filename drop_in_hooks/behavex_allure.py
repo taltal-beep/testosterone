@@ -15,9 +15,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from attr import asdict
-
 from allure_commons.model2 import Label, Status, StatusDetails, TestResult, TestStepResult
+from attr import asdict
 
 
 def _map_status(raw: str | None) -> str:

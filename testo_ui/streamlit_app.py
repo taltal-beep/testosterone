@@ -1,13 +1,12 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import queue
 import threading
 import time
-import base64
 from pathlib import Path
-from typing import Optional
 from uuid import uuid4
 
 # Load `.env` before other imports read ``os.environ`` (integrations, secrets).
@@ -22,6 +21,24 @@ except Exception:
 import streamlit as st
 
 from testo_core.command_builders import TestType, coerce_path
+from testo_core.integrations import (
+    auto_push_metrics_if_enabled,
+    integration_status_from_env,
+    push_to_influxdb,
+    push_to_prometheus,
+    test_influxdb_connection,
+    test_prometheus_pushgateway,
+)
+from testo_core.metrics import write_metrics_json
+from testo_core.metrics_extractor import to_run_metrics
+from testo_core.paths import STATIC_BEHAVE_INDEX, STATIC_DIR
+from testo_core.run_history import (
+    RunStatus,
+    cleanup_orphaned_runs,
+    get_run,
+    list_run_sessions,
+    snapshot_files_for_download,
+)
 from testo_core.runners import (
     UQO_AUDIT_HEALTH,
     UQO_AUDIT_PHASE,
@@ -38,25 +55,6 @@ from testo_core.sandbox_api import (
     start_sandbox_if_needed,
     stop_sandbox_if_managed,
 )
-from testo_core.integrations import (
-    auto_push_metrics_if_enabled,
-    integration_status_from_env,
-    push_to_influxdb,
-    push_to_prometheus,
-    test_influxdb_connection,
-    test_prometheus_pushgateway,
-)
-from testo_core.metrics import list_run_history, write_metrics_json
-from testo_core.metrics_extractor import to_run_metrics
-from testo_core.run_history import (
-    RunStatus,
-    cleanup_orphaned_runs,
-    get_run,
-    list_run_sessions,
-    snapshot_files_for_download,
-)
-from testo_core.paths import STATIC_BEHAVE_INDEX
-from testo_core.report_generator import STATIC_ALLURE_HTML, STATIC_ALLURE_INDEX
 from testo_core.services import (
     EngineRequest,
     EngineRunSpec,
@@ -506,7 +504,7 @@ def _apply_run_log_line_to_session(stream: str, line: str) -> None:
 
 
 def _drain_events() -> None:
-    q: Optional[queue.Queue[object]] = st.session_state.events_q
+    q: queue.Queue[object] | None = st.session_state.events_q
     if not q:
         # region agent log
         # If we're "running" but have no queue, the UI will rerun forever with no progress.
@@ -602,7 +600,7 @@ def _streamlit_static_url(relative_under_static: str) -> str:
     return f"{_streamlit_origin()}/app/static/{rel}"
 
 
-def _static_paths_exist() -> tuple[bool, bool]:
+def _static_paths_exist() -> bool:
     return ReportService.static_reports_ready()
 
 
@@ -1082,9 +1080,10 @@ with tab_analytics:
     st.subheader("Analytics")
     st.caption("After a run completes, native HTML is mirrored under `./static/` for Streamlit static serving.")
 
-    has_allure, has_locust = _static_paths_exist()
+    has_allure = _static_paths_exist()
     last_tt = st.session_state.get("last_test_type")
     has_behave = STATIC_BEHAVE_INDEX.is_file()
+    has_locust = (STATIC_DIR / "locust_report.html").is_file()
 
     if st.session_state.get("run_completed") and st.session_state.get("is_audit_mode"):
         hp = st.session_state.get("audit_health_pct")
@@ -1239,11 +1238,11 @@ with tab_history:
                 extra = []
                 extra.append(f"{int(s.passed)}/{int(s.total_tests)} passed")
                 if getattr(s, "failed", None) is not None:
-                    extra.append(f"{int(getattr(s, 'failed'))} failed")
+                    extra.append(f"{int(s.failed)} failed")
                 if getattr(s, "skipped", None) is not None:
-                    extra.append(f"{int(getattr(s, 'skipped'))} skipped")
+                    extra.append(f"{int(s.skipped)} skipped")
                 if getattr(s, "broken", None) is not None:
-                    extra.append(f"{int(getattr(s, 'broken'))} broken")
+                    extra.append(f"{int(s.broken)} broken")
                 summary += " · " + " · ".join(extra)
             if s.health_pct is not None:
                 summary += f" · health={float(s.health_pct):.1f}%"

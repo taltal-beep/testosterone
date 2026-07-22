@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 from testo_core.run_history import CompletedRunView, get_run, get_run_metadata, upsert_run_metadata
 from testo_core.security.redaction import redact_error_message
 from testo_core.services.ai import (
     AiGenerationRequest,
-    AiProviderError,
     AiProviderConfig,
+    AiProviderError,
     ProviderMisconfiguredError,
     ProviderRateLimitError,
     ProviderTimeoutError,

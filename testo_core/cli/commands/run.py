@@ -81,8 +81,8 @@ def run(
 ) -> None:
     """Run a plan end-to-end."""
     # Deferred imports so `testo --help` and `testo plans list` stay light.
-    from testo_core.cli.ui.console import default_console, make_console
     from testo_core.cli.runner import execute_plan_command
+    from testo_core.cli.ui.console import default_console, make_console
 
     console = make_console(plain=True) if ci else default_console()
     exit_code = execute_plan_command(

@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
@@ -38,7 +38,7 @@ class SQLModelRunRepository(BaseRunRepository):
         self,
         *,
         status: RunStatus = RunStatus.PENDING,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> RunRecord:
         rr = RunRecord(status=status, start_time=_utcnow(), metadata_={})
         base_md: dict[str, Any] = {"run_id": str(rr.id), "created_at": float(time.time())}
@@ -52,7 +52,7 @@ class SQLModelRunRepository(BaseRunRepository):
             session.expunge(rr)
         return rr
 
-    def get_run(self, run_id: uuid.UUID | str) -> Optional[RunRecord]:
+    def get_run(self, run_id: uuid.UUID | str) -> RunRecord | None:
         rid = _run_uuid_from_external(run_id)
         with Session(self._engine) as session:
             r = session.get(RunRecord, rid)
@@ -66,7 +66,7 @@ class SQLModelRunRepository(BaseRunRepository):
         run_id: uuid.UUID | str,
         *,
         status: RunStatus,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> RunRecord:
         rid = _run_uuid_from_external(run_id)
         now = _utcnow()

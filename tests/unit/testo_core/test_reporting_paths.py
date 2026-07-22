@@ -10,7 +10,11 @@ from testo_core.engine.exit_codes import EngineExitCode
 from testo_core.reporting.allure import AllureGenerateResult
 from testo_core.reporting.collector import CollectedResults, StageCollection
 from testo_core.reporting.entry import dispatch_report
-from testo_core.reporting.paths import discover_latest_plan_dir, plan_artifacts_dir, relpath_for_display
+from testo_core.reporting.paths import (
+    discover_latest_plan_dir,
+    plan_artifacts_dir,
+    relpath_for_display,
+)
 
 
 def test_relpath_for_display_relative(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

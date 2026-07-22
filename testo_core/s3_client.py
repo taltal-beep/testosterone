@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
 from urllib.parse import quote
 
 from botocore.config import Config
@@ -39,7 +38,7 @@ class ArtifactS3Storage:
     Singleton wrapper around a boto3 S3 client configured for MinIO.
     """
 
-    _instance: Optional["ArtifactS3Storage"] = None
+    _instance: ArtifactS3Storage | None = None
 
     def __init__(self) -> None:
         if getattr(self, "_initialized", False):
@@ -65,7 +64,7 @@ class ArtifactS3Storage:
         self.ensure_bucket_exists(self._bucket)
 
     @classmethod
-    def instance(cls) -> "ArtifactS3Storage":
+    def instance(cls) -> ArtifactS3Storage:
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance

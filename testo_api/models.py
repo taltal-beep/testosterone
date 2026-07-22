@@ -44,7 +44,7 @@ class ExecutionStatusResponse(BaseModel):
         status: Literal["queued", "running", "completed", "failed"],
         summary: EngineSummary | None,
         error: str | None = None,
-    ) -> "ExecutionStatusResponse":
+    ) -> ExecutionStatusResponse:
         payload = summary.to_dict() if summary else None
         run_ids = []
         if payload:
@@ -56,6 +56,69 @@ class ExecutionStatusResponse(BaseModel):
             run_ids=run_ids,
             error=error,
         )
+
+
+class StageSummary(BaseModel):
+    name: str
+    equipment: str
+    target_repo: str
+    args: list[str] = Field(default_factory=list)
+    timeout_s: float | None = None
+    workers: int | None = None
+
+
+class CycleSummary(BaseModel):
+    name: str
+    description: str | None = None
+    stage_count: int
+    equipment: list[str] = Field(default_factory=list)
+
+
+class CycleListResponse(BaseModel):
+    items: list[CycleSummary]
+    config_path: str | None = None
+
+
+class CycleTriggerSummary(BaseModel):
+    paths: list[str] = Field(default_factory=list)
+    since_ref: str | None = None
+
+
+class CycleDetailResponse(BaseModel):
+    name: str
+    description: str | None = None
+    stages: list[StageSummary]
+    trigger: CycleTriggerSummary | None = None
+
+
+class CycleExecutionRequest(BaseModel):
+    config_path: str | None = None
+    artifacts_root: str | None = None
+    stream: bool = False
+    persist: bool = True
+    fail_fast: bool = False
+    force: bool = False
+    workers_override: int | None = None
+    report_db: bool = True
+    async_report_db: bool = False
+    reporter_override: list[str] | None = None
+
+
+class CycleExecutionAcceptedResponse(BaseModel):
+    execution_id: str
+    status: Literal["queued", "running"]
+    events_url: str
+    summary_url: str
+
+
+class CycleExecutionStatusResponse(BaseModel):
+    execution_id: str
+    cycle: str
+    status: Literal["queued", "running", "completed", "failed"]
+    artifacts_root: str | None = None
+    events_path: str | None = None
+    plan_result_path: str | None = None
+    error: str | None = None
 
 
 class ErrorPayload(BaseModel):
@@ -86,6 +149,7 @@ class RunListItem(BaseModel):
     created_at: float
     returncode: int
     status: str | None = None
+    cycle: str | None = None
     health_pct: float | None = None
     total_tests: int | None = None
     passed: int | None = None
@@ -107,6 +171,7 @@ class RunDetail(BaseModel):
     started_at: float
     finished_at: float
     test_kind: str
+    cycle: str | None = None
     returncode: int
     wall_duration_ms: float
     metrics_duration_ms: int | None = None

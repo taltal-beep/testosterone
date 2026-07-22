@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 import subprocess
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Iterable
 
 from testo_core.config.schema import Plan, TestosteroneConfig
 from testo_core.reporting.paths import safe_child_path

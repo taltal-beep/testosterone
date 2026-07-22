@@ -9,7 +9,6 @@ import testo_core.orchestrator as orch
 from testo_core.command_builders import RunConfig, TestType
 from testo_core.specs import BaseRunnerSpec
 
-
 pytestmark = [pytest.mark.unit, pytest.mark.plugin_path, pytest.mark.tier_fast]
 
 

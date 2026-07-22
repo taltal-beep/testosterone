@@ -11,9 +11,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 # Supported frameworks. Add new ones in :mod:`testo_core.frameworks` and append here.
 SUPPORTED_FRAMEWORKS: frozenset[str] = frozenset({"pytest", "behave", "behavex"})
+
+# Supported post-run reporters. Add new ones in :mod:`testo_core.reporting.reporters` and append here.
+SUPPORTED_REPORTER_TYPES: frozenset[str] = frozenset({"allure", "extent", "reportportal", "testbeats"})
 
 
 @dataclass(frozen=True)
@@ -57,6 +59,14 @@ class Stage:
 
 
 @dataclass(frozen=True)
+class ReporterSpec:
+    """One post-run reporter entry from the top-level ``reporters:`` list."""
+
+    type: str
+    options: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
 class Plan:
     """A named sequence of stages executed in order by ``testo run --cycle <name>``."""
 
@@ -73,6 +83,7 @@ class TestosteroneConfig:
     version: int
     defaults: Defaults
     cycles: dict[str, Plan] = field(default_factory=dict)
+    reporters: tuple[ReporterSpec, ...] = ()
     source_path: Path | None = None
 
     @property

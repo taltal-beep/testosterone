@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Literal
+from typing import Literal
 
 from testo_core.run_history import CompletedRunView, get_run
 from testo_core.services.delta_models import (

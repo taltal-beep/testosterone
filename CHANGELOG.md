@@ -9,10 +9,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- `.pre-commit-config.yaml`: local `ruff`, changelog-format, and whitespace/YAML/TOML hooks (`pre-commit install` to enable)
+- `mypy` type-check tooling: `[tool.mypy]` config in `pyproject.toml`, advisory step in `ci.yml`'s `format` job
+- Extended `[tool.ruff.lint]` selection (added `UP`, `B`) and made `ruff check` blocking in `ci.yml` now that the tree is clean
+- `changelog_required` CI gate in `ci.yml`: fails PRs with non-doc changes that don't touch `CHANGELOG.md` (escape hatch: `no-changelog` label)
+- `commitlint` CI check (`.github/workflows/commitlint.yml`, `commitlint.config.js`) enforcing Conventional Commits on PR commit messages
+- `changelog-on-main.yml`: AI-drafted `CHANGELOG.md [Unreleased]` entries on push to `main`, gated by `scripts/check_changelog_format.py` — see `docs/changelog_automation_policy.md` for the review-step tradeoff and required secrets/branch-protection setup
+- `CONTRIBUTING.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/` (bug report, feature request), and `CODEOWNERS`
+- Root-level `CLAUDE.md` pointing any directly-invoked AI agent at `docs/Index.md` and the Agent Context Guide
 - Persistence module with `PersistenceBackend` protocol, JSON and DB backends
 - Single-sourced `EngineExitCode` across modern and legacy execution stacks
 - Contract tests asserting exit code consistency between stacks
 - Execution stack boundary documentation in Architecture Overview
+- `_SENSITIVE_KEY_PATTERN` in `redaction.py` to detect sensitive mapping keys (#35)
+- `_redacted_context_text()` in `failure_context_builder.py` for structured metadata redaction (#35)
+- Allure failure context wiring in `record_completed_run()` for run recording (#35)
 
 ### Changed
 - `--no-persist` / `--persist` CLI flags with clarified semantics
@@ -136,5 +147,5 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-[Unreleased]: https://github.com/taltal-beep/unified-quality-orchestration-reporting-dashboard/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/taltal-beep/unified-quality-orchestration-reporting-dashboard/releases/tag/v0.1.0
+[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/taltal-beep/testosterone/releases/tag/v0.1.0

@@ -8,7 +8,6 @@ import testo_core.integrations as integrations
 from testo_core.metrics import RunMetrics
 from tests.unit.cases.strings import common_string_cases
 
-
 pytestmark = [pytest.mark.unit]
 
 

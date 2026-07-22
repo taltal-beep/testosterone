@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Literal
+from typing import Literal
 
 from testo_core.run_history import CompletedRunView, RunSessionView, get_run, list_run_sessions
-from testo_core.services.delta_models import DeltaClassification, DeltaComparisonResult, MetricDelta
+from testo_core.services.delta_models import DeltaComparisonResult, MetricDelta
 from testo_core.services.delta_service import DeltaComparisonError, DeltaComparisonService
 
 TrendDirection = Literal["up", "down", "flat", "unknown"]

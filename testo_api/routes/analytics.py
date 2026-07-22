@@ -5,8 +5,8 @@ from fastapi import APIRouter, HTTPException
 from testo_api.models import (
     DeltaComparisonMeta,
     DeltaComparisonResponse,
-    DeltaMetricsResponse,
     DeltaMetricNode,
+    DeltaMetricsResponse,
     DeltaPerformanceMetrics,
     DeltaReliabilityMetrics,
     DeltaStatusSummaryResponse,

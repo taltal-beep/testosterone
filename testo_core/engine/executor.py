@@ -22,16 +22,14 @@ import subprocess
 import sys
 import threading
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Callable
 
 from testo_core.config.schema import Stage
 from testo_core.engine.log_buffer import LogBuffer, drain_stream_into_buffer, merged_env
 from testo_core.engine.result import StageResult
 from testo_core.frameworks.base import FrameworkAdapter, get_adapter
 from testo_core.reporting.paths import plan_artifacts_dir, safe_child_path
-
 
 _TERMINATE_GRACE_S: float = 5.0
 _DEFAULT_TAIL_LINES: int = 200
@@ -115,7 +113,10 @@ def run_stage(
         except subprocess.TimeoutExpired:
             timed_out = True
             error = f"stage exceeded timeout_s={stage.timeout_s}"
-            returncode = _terminate(proc)
+            _terminate(proc)
+            # Timeout contract: rc 124 regardless of the signal the process
+            # died from (docs/CLI Commands/Troubleshooting and Error Codes.md).
+            returncode = 124
 
         reader.join(timeout=2.0)
         finished_at = time.time()

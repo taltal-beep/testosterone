@@ -321,7 +321,7 @@ def report_open_archived(
         rid = uuid.UUID(str(report_id).strip())
     except (ValueError, TypeError):
         console.print(f"[fail]invalid report id:[/] {report_id!r}")
-        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT)) from None
 
     try:
         row = get_report_archive_repository().get(rid)

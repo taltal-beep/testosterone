@@ -4,7 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from testo_api.dependencies import get_execution_manager
 from testo_api.execution_manager import ExecutionManager
-from testo_api.models import CreateExecutionRequest, ExecutionAcceptedResponse, ExecutionStatusResponse
+from testo_api.models import (
+    CreateExecutionRequest,
+    ExecutionAcceptedResponse,
+    ExecutionStatusResponse,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["runs"])
 

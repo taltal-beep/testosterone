@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any
 
 from testo_core.command_builders import RunConfig
-from testo_core.runners import LogEvent, RunResult, UQO_DONE_MARKER
+from testo_core.runners import UQO_DONE_MARKER, LogEvent, RunResult
+
 
 @dataclass(frozen=True)
 class MultiRunState:

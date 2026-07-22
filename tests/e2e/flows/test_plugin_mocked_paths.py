@@ -7,7 +7,6 @@ from tests.e2e.flows.flow_scenario import FlowContext, FlowScenario
 from tests.e2e.provisioners.mock_github import MockGithubProvisioner
 from tests.e2e.provisioners.mock_gitlab import MockGitlabProvisioner
 
-
 pytestmark = [pytest.mark.tier_heavy, pytest.mark.plugin_path]
 
 

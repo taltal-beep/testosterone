@@ -342,7 +342,17 @@ Metrics pushes are best-effort. They do not change the run result.
 
 ## CI/CD (recommended)
 
-- **Lint + unit tests**: run Python linters/tests on PRs.
+- **Lint + unit tests**: `.github/workflows/ci.yml`'s `format` job runs on every PR — `ruff check .` (blocking), `ruff format --check` (advisory), `mypy testo_core` (advisory, see `docs/Testing Workflows/Technical Debt Tracker.md`) — followed by the `test` job's fast pytest tier. Run locally before pushing:
+  ```bash
+  pip install -e ".[dev]"
+  ruff check .
+  mypy testo_core
+  ```
+- **Pre-commit hooks**: catches the same `ruff`/changelog-format checks locally before you push, plus basic whitespace/YAML/TOML hygiene. One-time setup:
+  ```bash
+  pip install -e ".[dev]"
+  pre-commit install
+  ```
 - **Docker smoke**: `docker compose up -d` + run a sandbox test + verify:
   - orphan cleanup works (force-kill Streamlit mid-run; restart; run is `FAILED`)
   - timeout works (plugin that sleeps forever; container killed; run is `FAILED`)
@@ -488,4 +498,3 @@ Release gate: `docs/release_checklist_phase4_ai.md`.
 - Classification labels: `regression`, `improvement`, `neutral`, `unknown`.
 
 Unified dashboard release gate is documented in [`docs/release_checklist_phase3_unified_dashboard.md`](docs/release_checklist_phase3_unified_dashboard.md).
-

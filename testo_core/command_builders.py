@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import os
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Mapping, Sequence
 
 
 class TestType(str, Enum):
@@ -13,6 +12,7 @@ class TestType(str, Enum):
     PYTEST = "pytest"
     BEHAVEX = "behavex"
     BEHAVE_NATIVE = "behave_native"
+    LOCUST = "locust"
 
 
 @dataclass(frozen=True)

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import requests
 import pytest
+import requests
 
 from tests._allure_utils import step
-
 
 pytestmark = [pytest.mark.integration]
 
