@@ -31,7 +31,7 @@ from testo_core.integrations import (
 )
 from testo_core.metrics import write_metrics_json
 from testo_core.metrics_extractor import to_run_metrics
-from testo_core.paths import STATIC_BEHAVE_INDEX
+from testo_core.paths import STATIC_BEHAVE_INDEX, STATIC_DIR
 from testo_core.run_history import (
     RunStatus,
     cleanup_orphaned_runs,
@@ -600,7 +600,7 @@ def _streamlit_static_url(relative_under_static: str) -> str:
     return f"{_streamlit_origin()}/app/static/{rel}"
 
 
-def _static_paths_exist() -> tuple[bool, bool]:
+def _static_paths_exist() -> bool:
     return ReportService.static_reports_ready()
 
 
@@ -1080,9 +1080,10 @@ with tab_analytics:
     st.subheader("Analytics")
     st.caption("After a run completes, native HTML is mirrored under `./static/` for Streamlit static serving.")
 
-    has_allure, has_locust = _static_paths_exist()
+    has_allure = _static_paths_exist()
     last_tt = st.session_state.get("last_test_type")
     has_behave = STATIC_BEHAVE_INDEX.is_file()
+    has_locust = (STATIC_DIR / "locust_report.html").is_file()
 
     if st.session_state.get("run_completed") and st.session_state.get("is_audit_mode"):
         hp = st.session_state.get("audit_health_pct")

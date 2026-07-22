@@ -85,3 +85,8 @@ Deliverables:
 Exit criteria:
 - Stable operations under concurrent users, with predictable resource usage and clean teardown.
 
+
+---
+
+> [!note] Superseded in part (2026-07-04)
+> The Phase 3 route map (`/runner`, `/history`, `/execution`) was reorganized by the Phase 5 UI redesign: cycles-first navigation, cycle discovery endpoints, and a consolidated Run panel. Old routes redirect. See [[Phase 5 UI Redesign - Cycles-First Navigation]].
