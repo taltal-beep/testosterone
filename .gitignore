@@ -11,6 +11,9 @@ venv/
 uqo_history.db
 testo_history.db
 
+# Generated sandbox DB from the test suite (tests/artifacts/)
+tests/artifacts/*.db
+
 # Cursor IDE local state (debug logs, plans, rules, etc.)
 .cursor/
 
@@ -32,6 +35,9 @@ static/allure_reports/
 static/locust_report.html
 static/behave/
 
+# Per-run Allure/reporter HTML served by the Run Detail page's Report Links
+static/history/
+
 # Persisted run history (SQLite + per-run HTML snapshots)
 artifacts/uqo_run_history.sqlite
 artifacts/testo_sandbox.db
@@ -49,4 +55,18 @@ logs/
 # Frontend workspace artifacts
 frontend/node_modules/
 frontend/dist/
+
+# Root Node tooling (Allure CLI, commitlint)
+node_modules/
+
+# Local sample-cycle run output (testo run --cycle sample-*)
+artifacts/sample-behave/
+artifacts/sample-pytests/
+.testo/
+
+# Local test-suite scratch DBs
+tests/artifacts/
+
+# Local ReportPortal Postgres data volume
+data/
 

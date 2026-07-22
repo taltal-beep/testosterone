@@ -36,21 +36,15 @@ The backlog below is **inferred technical debt**: exception breadth, dual execut
 
 ### 1. Exit-code contract drift
 
-- [x] **Fixed 2026-06-02** — Timeouts normalize to return code **124** in `executor.py`; orchestrator sets `internal_failure` on engine exceptions and `classify_exit_code(..., internal_failure=True)` maps plan exit to **4**.
+- [x] **Fixed 2026-06-02; re-applied 2026-07-04** — Timeouts normalize to return code **124** in `executor.py`; orchestrator sets `internal_failure` on engine exceptions and `classify_exit_code(..., internal_failure=True)` maps plan exit to **4**. The 2026-06-02 fix was lost in an uncommitted working tree and restored — this time with committed contract tests (`tests/contract/testo_core/test_exit_code_contract.py`, `tests/unit/testo_core/engine/test_executor.py`). See [[Engine Test Suite Rebuild - 2026-07-04]].
 
-**Evidence**
-
-- `testo_core/engine/orchestrator.py` — `_internal_failure_result` sets `returncode=4`
-- `testo_core/engine/exit_codes.py` — `classify_exit_code()` maps any non-zero except `124`/`127` to `DOMAIN_FAILURE` (exit **1**)
-- `testo_core/engine/executor.py` — timeouts set `timed_out=True` but return code from `_terminate()` (e.g. **137**, **-9**), not **124**
-
-**Risk**
+**Risk (historical)**
 
 CI and automation that only check `$?` misclassify infra/timeouts/internal bugs as test failures.
 
-**Recommendation**
+**Remaining**
 
-Normalize in `run_stage` / `classify_exit_code`: emit **124** on timeout, map internal errors to exit **4** at plan level, and add contract tests in `tests/` that assert process exit codes match `timed_out` and `error` fields.
+Signal deaths other than timeout (e.g. SIGKILL rc **137**) still classify as exit **1**; locked as a documented misclassification in the contract tests pending a signal-aware classifier.
 
 ---
 

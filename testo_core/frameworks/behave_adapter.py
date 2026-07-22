@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from testo_core.frameworks.base import NativeReport
+
 
 class BehaveAdapter:
     name: str = "behave"
@@ -41,3 +43,7 @@ class BehaveAdapter:
             features = (target_repo.expanduser().resolve() / "features").resolve()
             argv.append(str(features))
         return argv
+
+    def native_report(self, stage_dir: Path) -> NativeReport | None:
+        del stage_dir  # native Behave has no HTML report of its own (Allure only)
+        return None

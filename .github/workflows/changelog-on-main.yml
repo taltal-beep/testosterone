@@ -1,0 +1,84 @@
+name: changelog-on-main
+
+# Drafts a CHANGELOG.md [Unreleased] entry for every push to main, using Claude
+# to summarize the pushed commits, then commits the result straight back to
+# main. There is deliberately no PR/review step here (see
+# docs/changelog_automation_policy.md for why). Loop prevention relies on
+# three independent layers: `paths-ignore` below, the actor guard on the job,
+# and the `[skip ci]` marker in the bot's own commit message. If you ever
+# touch one of those, re-verify the other two still hold.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "CHANGELOG.md"
+
+permissions:
+  contents: write
+
+jobs:
+  update_changelog:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Default GITHUB_TOKEN can't push past branch protection on main;
+          # this secret must be a PAT/App token for an identity allowed to
+          # bypass "require pull request before merging" on this repo.
+          token: ${{ secrets.CHANGELOG_BOT_TOKEN }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name "testo-changelog-bot"
+          git config user.email "actions@users.noreply.github.com"
+
+      - name: Collect pushed commit range
+        run: |
+          git log --stat "${{ github.event.before }}..${{ github.event.after }}" > /tmp/commit_range.txt
+          cat /tmp/commit_range.txt
+
+      # NOTE: verify this is still the current action name/tag at merge time -
+      # this is anthropics' lower-level "base" action (no PR/branch management
+      # of its own), which is what we want since git commit/push is handled
+      # explicitly by this workflow below.
+      - name: Draft changelog entry with Claude
+        uses: anthropics/claude-code-base-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Read /tmp/commit_range.txt - it contains `git log --stat` output for the
+            commit(s) just pushed to main. Summarize any user-facing change (features,
+            fixes, breaking changes) into CHANGELOG.md under the existing
+            "## [Unreleased]" heading, following the Keep a Changelog format already
+            used in that file (### Added / ### Changed / ### Fixed / ### Removed
+            subsections, as needed). Do not create a new version heading. Do not touch
+            any file other than CHANGELOG.md. If none of the commits are user-facing
+            (e.g. pure test/CI/refactor changes with no behavior change), leave
+            CHANGELOG.md unmodified rather than inventing an entry.
+          claude_args: |
+            --allowedTools "Read,Edit,Bash(git log:*),Bash(git diff:*)"
+            --max-turns 6
+
+      - name: Check whether Claude changed CHANGELOG.md
+        id: diff
+        run: |
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate CHANGELOG.md format
+        if: steps.diff.outputs.changed == 'true'
+        run: python3 scripts/check_changelog_format.py
+
+      - name: Commit and push
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git add CHANGELOG.md
+          git commit -m "docs: update changelog [skip ci]"
+          git push origin HEAD:main

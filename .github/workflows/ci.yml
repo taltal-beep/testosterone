@@ -1,0 +1,101 @@
+name: ci
+
+# Unified CI/CD pipeline: format -> test -> deploy
+#
+# Stages:
+#   format     ruff lint + format check (gates everything below)
+#   test       fast required pytest suite (folds in the old pr-fast workflow)
+#   deploy     builds the distributable wheel on a published release
+#
+# Code review is handled by a local pre-push hook (.claude/settings.json),
+# not by CI -- see 990be121 for why the earlier CI-based review was dropped.
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+# Cancel superseded runs on the same ref so we never pay for stale test runs.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    name: format (ruff)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install ruff
+        run: python -m pip install --upgrade ruff
+      # NOTE: non-blocking during rollout so an unlinted file can't brick the
+      # whole pipeline. Annotations still appear on the PR. Once the tree is
+      # clean, remove `continue-on-error` to make this a hard gate.
+      - name: Ruff lint
+        continue-on-error: true
+        run: ruff check --output-format=github .
+      - name: Ruff format check
+        continue-on-error: true
+        run: ruff format --check --diff .
+
+  test:
+    name: test (fast required)
+    needs: format
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run fast required suite
+        run: python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1 --no-cov
+      - name: Upload diagnostics artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-test-artifacts
+          path: |
+            .artifacts/e2e/**
+            **/*.log
+            **/*summary*.json
+            **/*api*.json
+            **/*.png
+
+  deploy:
+    name: deploy (build wheel)
+    needs: test
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build distribution
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+      # Real publishing (PyPI via OIDC trusted publishing, Docker image to GHCR)
+      # is handled by the Sprint 4 publish workflows from PR #38. Wire those in
+      # here as additional steps/jobs once that PR lands on main.
