@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- Root-level `CLAUDE.md` pointing any directly-invoked AI agent at `docs/Index.md` and the Agent Context Guide
 - Persistence module with `PersistenceBackend` protocol, JSON and DB backends
 - Single-sourced `EngineExitCode` across modern and legacy execution stacks
 - Contract tests asserting exit code consistency between stacks
