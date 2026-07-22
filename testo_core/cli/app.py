@@ -15,7 +15,7 @@ app = typer.Typer(
     name="testo",
     help="Testosterone — unified quality orchestration CLI.",
     no_args_is_help=True,
-    add_completion=False,
+    add_completion=True,
     pretty_exceptions_show_locals=False,
 )
 
