@@ -21,6 +21,29 @@ app = typer.Typer(
 )
 
 
+def _version_callback(show_version: bool) -> None:
+    if not show_version:
+        return
+    from testo_core.cli.commands.version import resolve_version
+
+    typer.echo(f"testo {resolve_version()}")
+    raise typer.Exit()
+
+
+@app.callback()
+def _main(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        "-v",
+        callback=_version_callback,
+        is_eager=True,
+        help="Show the testo-core version and exit.",
+    ),
+) -> None:
+    """Testosterone — unified quality orchestration CLI."""
+
+
 def _register_commands() -> None:
     """Wire every subcommand at module load time without importing heavy modules.
 
