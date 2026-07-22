@@ -11,6 +11,7 @@ Engineering specs and architecture decision records. **Implementation truth** is
 | BYOK AI | [[Phase 4 BYOK and Failure Analysis]] |
 | UI redesign (cycles-first) | [[Phase 5 UI Redesign - Cycles-First Navigation]] |
 | Allure 2 → 3 migration | [[Allure 3 Migration Plan]] |
+| Restore `doctor`/`clean`/`watch`/`init` CLI commands | [[Restore doctor, clean, watch, init CLI commands]] |
 | Changelog automation & CI enforcement | [[Changelog Automation and CI Enforcement Policy]] |
 | Historical backlog | [[Historical - General Task Forward 2.0]] |
 | Superseded Phase 1 plan | [[Archive/SUPERSEDED Phase-1 Foundation Plan]] |
