@@ -35,3 +35,7 @@ def test_pytest_adapter_skips_inject_when_user_passes_c(tmp_path: Path) -> None:
         workers=4,
     )
     assert argv[1:3] == ["-c", "/other/pytest.ini"]
+
+
+def test_pytest_adapter_has_no_native_report(tmp_path: Path) -> None:
+    assert PytestAdapter().native_report(tmp_path) is None

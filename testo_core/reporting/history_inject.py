@@ -34,33 +34,41 @@ def try_inject_prior_history(
     plan_name: str | None,
     console: Console | None,
     enabled: bool,
+    trend_depth: int = 1,
 ) -> None:
-    """Best-effort: unpack latest prior archive for ``plan_name`` and merge ``history`` folders."""
+    """Best-effort: unpack prior archive(s) for ``plan_name`` and merge ``history`` folders."""
     if not enabled or not plan_name:
         return
+    depth = max(1, int(trend_depth))
     try:
         from testo_core.db import get_report_archive_repository
 
         repo = get_report_archive_repository()
-        rows = repo.list_recent_for_cycle(cycle_name=plan_name, limit=2)
+        rows = repo.list_recent_for_cycle(cycle_name=plan_name, limit=depth + 1)
         if len(rows) < 2:
             return
-        src_row = rows[1]
+        prior_rows = list(reversed(rows[1 : 1 + depth]))
 
-        with tempfile.TemporaryDirectory(prefix="testo-history-") as td:
-            tmp = Path(td)
-            extract_archive_to_plan_dir(
-                zip_bytes=src_row.artifact_bytes,
-                dest_artifacts_root=tmp,
-                plan_name=plan_name,
+        results = collect_results(artifacts_root, plan_name=plan_name)
+        copied_any = False
+        for src_row in prior_rows:
+            with tempfile.TemporaryDirectory(prefix="testo-history-") as td:
+                tmp = Path(td)
+                extract_archive_to_plan_dir(
+                    zip_bytes=src_row.artifact_bytes,
+                    dest_artifacts_root=tmp,
+                    plan_name=plan_name,
+                )
+                prior_root = tmp / plan_name
+                if not prior_root.is_dir():
+                    continue
+                copied_any = (
+                    any(_copy_matching_history(prior_root, st.results_dir) for st in results.stages) or copied_any
+                )
+
+        if console and copied_any:
+            console.print(
+                f"[dim]Injected Allure history from up to {depth} prior archived run(s) (trends).[/]"
             )
-            prior_root = tmp / plan_name
-            if not prior_root.is_dir():
-                return
-            results = collect_results(artifacts_root, plan_name=plan_name)
-            copied = any(_copy_matching_history(prior_root, st.results_dir) for st in results.stages)
-
-        if console and copied:
-            console.print("[dim]Injected Allure history from a prior archived run (trends).[/]")
     except Exception:
         logger.debug("Allure history injection skipped", exc_info=True)

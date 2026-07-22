@@ -17,12 +17,17 @@ class _CompositeBackend:
     def __init__(self, backends: list[object]) -> None:
         self._backends = backends
 
-    def persist(self, result: PlanResult) -> None:
+    def persist(self, result: PlanResult) -> str | None:
+        run_id: str | None = None
         for backend in self._backends:
             try:
-                backend.persist(result)  # type: ignore[union-attr]
+                outcome = backend.persist(result)  # type: ignore[union-attr]
             except Exception:
                 logger.debug("backend %s failed", type(backend).__name__, exc_info=True)
+                continue
+            if isinstance(outcome, str) and outcome:
+                run_id = outcome
+        return run_id
 
 
 def composite_backend(*, artifacts_root: Path, db: bool = True) -> _CompositeBackend:
@@ -37,7 +42,7 @@ def composite_backend(*, artifacts_root: Path, db: bool = True) -> _CompositeBac
     if db:
         try:
             from testo_core.persistence.db_backend import DbBackend
-            backends.append(DbBackend())
+            backends.append(DbBackend(artifacts_root))
         except Exception:
             logger.debug("db backend unavailable, skipping", exc_info=True)
     return _CompositeBackend(backends)

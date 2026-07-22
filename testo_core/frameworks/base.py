@@ -7,8 +7,18 @@ sees the protocol; framework-specific knobs stay encapsulated.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
+
+
+@dataclass(frozen=True)
+class NativeReport:
+    """A framework's own report bundle: a directory to copy wholesale, plus
+    the relative path to its entry HTML file within that directory."""
+
+    root_dir: Path
+    entry_relpath: str
 
 
 class FrameworkAdapter(Protocol):
@@ -29,6 +39,12 @@ class FrameworkAdapter(Protocol):
         workers: int,
     ) -> list[str]:
         """Return the argv that should be passed to :class:`subprocess.Popen`."""
+        ...
+
+    def native_report(self, stage_dir: Path) -> NativeReport | None:
+        """This framework's own native report, if it produces one distinct
+        from its Allure JSON export. ``None`` for frameworks with no native
+        report format of their own."""
         ...
 
 
