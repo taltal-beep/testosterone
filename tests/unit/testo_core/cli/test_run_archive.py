@@ -22,7 +22,12 @@ from typer.testing import CliRunner
 
 import testo_core.services.report_archive as report_archive
 from testo_core.cli.app import app
-from tests.fixtures.engine import stage_spec, use_echo_adapter, write_minimal_config, write_multi_stage_config
+from tests.fixtures.engine import (
+    stage_spec,
+    use_echo_adapter,
+    write_minimal_config,
+    write_multi_stage_config,
+)
 
 pytestmark = [pytest.mark.unit, pytest.mark.tier_fast]
 

@@ -15,7 +15,6 @@ import pytest
 from testo_core.config.schema import Stage
 from testo_core.engine.executor import run_stage
 from tests.fixtures.engine import (
-    EchoAdapter,
     HangAdapter,
     MissingBinaryAdapter,
     use_adapter,

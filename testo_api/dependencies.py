@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from testo_api.execution_manager import ExecutionManager
 from testo_api.cycle_execution_manager import CycleExecutionManager
+from testo_api.execution_manager import ExecutionManager
 from testo_core.services.ai.integration_settings import InMemoryAiSettingsStore
 from testo_core.services.failure_analysis_service import FailureAnalysisService
 

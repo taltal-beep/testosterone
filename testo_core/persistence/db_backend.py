@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from testo_core.engine.result import PlanResult
-from testo_core.repository.models import RunStatus
 from testo_core.reporting.paths import plan_artifacts_dir
+from testo_core.repository.models import RunStatus
 
 logger = logging.getLogger(__name__)
 

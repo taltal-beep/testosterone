@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from testo_core.reporting.allure_results import parse_collected_results
 from testo_core.reporting.collector import CollectedResults
 from testo_core.reporting.exporter import write_json_summary

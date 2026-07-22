@@ -6,10 +6,10 @@ import os
 from collections.abc import Sequence
 
 from testo_core.config.resolver import _interpolate
-from testo_core.config.schema import ReporterSpec, SUPPORTED_REPORTER_TYPES
+from testo_core.config.schema import SUPPORTED_REPORTER_TYPES, ReporterSpec
 from testo_core.reporting.collector import CollectedResults
-from testo_core.reporting.reporters.base import BaseReporter, ReportContext, ReporterResult
 from testo_core.reporting.reporters.allure_reporter import AllureReporter
+from testo_core.reporting.reporters.base import BaseReporter, ReportContext, ReporterResult
 from testo_core.reporting.reporters.extent_reporter import ExtentReporter
 from testo_core.reporting.reporters.reportportal_reporter import ReportPortalReporter
 from testo_core.reporting.reporters.testbeats_reporter import TestBeatsReporter

@@ -15,8 +15,9 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 import pytest
 import yaml

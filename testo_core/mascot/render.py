@@ -23,26 +23,29 @@ def frame_to_ansi(frame: Frame, palette: dict[str, str] = PALETTE) -> str:
     if len(rows) % 2:
         rows.append("." * width)
     lines = []
-    for top, bottom in zip(rows[0::2], rows[1::2]):
+    for top, bottom in zip(rows[0::2], rows[1::2], strict=True):
         line = []
-        for tc, bc in zip(top, bottom):
+        for tc, bc in zip(top, bottom, strict=True):
             tcol, bcol = palette.get(tc), palette.get(bc)
             if tcol is None and bcol is None:
                 line.append(f"{RESET} ")
                 continue
             parts = []
             if tcol:
-                parts.append("38;2;%d;%d;%d" % _hex_rgb(tcol))
+                r, g, b = _hex_rgb(tcol)
+                parts.append(f"38;2;{r};{g};{b}")
             else:
                 parts.append("39")
             if bcol:
-                parts.append("48;2;%d;%d;%d" % _hex_rgb(bcol))
+                r, g, b = _hex_rgb(bcol)
+                parts.append(f"48;2;{r};{g};{b}")
             else:
                 parts.append("49")
             glyph = "▀" if tcol else "▄"
             if tcol is None:
                 # only bottom colored: draw lower half-block with fg=bottom
-                parts = ["38;2;%d;%d;%d" % _hex_rgb(bcol), "49"]
+                r, g, b = _hex_rgb(bcol)
+                parts = [f"38;2;{r};{g};{b}", "49"]
             line.append("\x1b[" + ";".join(parts) + "m" + glyph)
         lines.append("".join(line) + RESET)
     return "\n".join(lines)
