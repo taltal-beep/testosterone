@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,8 @@ from testo_core.cli.app import app
 from tests.fixtures.engine import write_minimal_config
 
 pytestmark = [pytest.mark.unit, pytest.mark.tier_fast]
+
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def test_help_lists_core_commands(cli_runner: CliRunner) -> None:
@@ -29,11 +32,12 @@ def test_version_command(cli_runner: CliRunner) -> None:
 def test_run_help_documents_implemented_flags(cli_runner: CliRunner) -> None:
     result = cli_runner.invoke(app, ["run", "--help"])
     assert result.exit_code == 0
+    plain_output = _ANSI_ESCAPE.sub("", result.output)
     for flag in ("--cycle", "--config", "--stream", "--ci", "--workers", "--force"):
-        assert flag in result.output
+        assert flag in plain_output
     # Roadmap flags must not be advertised until they exist.
     for flag in ("--tag", "--fail-fast", "--dry-run", "--reporter"):
-        assert flag not in result.output
+        assert flag not in plain_output
 
 
 def test_cycles_list_shows_configured_cycles(cli_runner: CliRunner, tmp_path: Path) -> None:
