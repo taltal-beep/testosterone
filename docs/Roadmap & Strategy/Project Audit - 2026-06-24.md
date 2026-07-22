@@ -93,6 +93,14 @@ All 4 planned delivery phases are **implemented in code**. The project is featur
 | Draft | 16 |
 | **Total** | **17** |
 
+> **Update — 2026-07-01:** The 4 non-draft PRs open as of this date (#31, #35, #38, #39) were triaged and resolved:
+> - [PR #35](https://github.com/taltal-beep/testosterone/pull/35) (sensitive-key redaction & failure context wiring) — merged as-is, checks were clean.
+> - [PR #38](https://github.com/taltal-beep/testosterone/pull/38) (Sprint 4 — persistence module, publish pipelines, CHANGELOG, full Obsidian vault restore) — rebased onto main, 401 fast-tier tests passing, merged.
+> - [PR #31](https://github.com/taltal-beep/testosterone/pull/31) (CI-based Claude AI code review via `claude-cr.yml`) — **closed, not merged.** Superseded by commit `990be121` (merged via #37) which had already replaced CI-based review with a local `PrePush` git hook (`.claude/settings.json`) after the original `claude-cr.yml` "referenced a non-existent action, blocked all PRs."
+> - [PR #39](https://github.com/taltal-beep/testosterone/pull/39) (unified `format → test → deploy` CI pipeline, replacing `pr-fast.yml`) — kept the pipeline consolidation, **dropped its `ai-review` job** (a second, independently-built attempt at CI-based review, same conflict as #31) to avoid duplicating the local pre-push hook. Rebased, tests green, merged.
+>
+> Net effect: code review on this repo is local-only (pre-push hook), by design — not CI-enforced. The 7 draft PRs (#11, #14, #15, #17, #18, #19, #20) were left untouched; drafts are intentionally out of scope for this pass. A new PR (#41, from a separate concurrent session) landed changelog/commitlint automation shortly after — not covered by this audit update.
+
 #### Draft PR Breakdown
 
 | Category | Count | PRs |
@@ -108,10 +116,11 @@ All 4 planned delivery phases are **implemented in code**. The project is featur
 
 | Workflow | Trigger | Timeout | Status |
 |----------|---------|---------|--------|
-| `pr-fast.yml` | All PRs | 12 min | Active |
+| `pr-fast.yml` | All PRs | 12 min | Superseded 2026-07-01 by `ci.yml` (see update note above) |
 | `pr-heavy.yml` | `e2e-heavy` label / manual | 30 min | Active |
 | `release-gate.yml` | Manual only | 45 min | Active |
 | `nightly-external.yml` | Scheduled | — | Active |
+| `ci.yml` | PRs + push to `main` + release | format 8min / test 12min / deploy 10min | Active — replaced `pr-fast.yml`; no `ai-review` job (see update note above) |
 
 **Missing:** No `publish.yml` (PyPI) or `docker-publish.yml` (container registry).
 

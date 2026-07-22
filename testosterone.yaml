@@ -6,6 +6,8 @@ defaults:
   artifacts_root: artifacts
   timeout_s: 600
   workers: 4
+reporters:
+  - type: allure
 cycles:
   sample-pytests:
     description: Pytest suite for the sample target repo (regular pytest + Allure).

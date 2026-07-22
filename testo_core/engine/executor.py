@@ -115,7 +115,10 @@ def run_stage(
         except subprocess.TimeoutExpired:
             timed_out = True
             error = f"stage exceeded timeout_s={stage.timeout_s}"
-            returncode = _terminate(proc)
+            _terminate(proc)
+            # Timeout contract: rc 124 regardless of the signal the process
+            # died from (docs/CLI Commands/Troubleshooting and Error Codes.md).
+            returncode = 124
 
         reader.join(timeout=2.0)
         finished_at = time.time()

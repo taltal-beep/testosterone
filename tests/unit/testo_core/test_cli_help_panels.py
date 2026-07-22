@@ -13,7 +13,7 @@ def test_help_output_is_grouped_into_documented_panels() -> None:
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
 
-    for panel in ("Run and report", "Config", "Diagnostics", "About"):
+    for panel in ("Run and report", "Config", "Diagnostics", "Maintenance", "About"):
         assert panel in result.output, f"missing panel: {panel}"
 
 

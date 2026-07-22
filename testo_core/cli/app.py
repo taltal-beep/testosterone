@@ -27,13 +27,17 @@ def _register_commands() -> None:
     Each handler does its own deferred imports (engine, frameworks, DB), so
     only the lightweight Typer + Rich surface is loaded here.
     """
+    from testo_core.cli.commands import clean as clean_mod
     from testo_core.cli.commands import config as config_cmd
     from testo_core.cli.commands import config_db as config_db_cmd
     from testo_core.cli.commands import diff_cli as diff_cli_mod
+    from testo_core.cli.commands import doctor as doctor_mod
+    from testo_core.cli.commands import init_cmd as init_cmd_mod
     from testo_core.cli.commands import plans as cycles_cmd
     from testo_core.cli.commands import report as report_cmd
     from testo_core.cli.commands import run as run_cmd
     from testo_core.cli.commands import version as version_cmd
+    from testo_core.cli.commands import watch as watch_mod
 
     app.command(
         name="run",
@@ -89,6 +93,26 @@ def _register_commands() -> None:
         help="Print testo-core version.",
         rich_help_panel="About",
     )(version_cmd.version)
+    app.command(
+        name="doctor",
+        help="Health check: config load, DB probe, CLIs on PATH.",
+        rich_help_panel="Maintenance",
+    )(doctor_mod.doctor)
+    app.command(
+        name="clean",
+        help="Remove artifacts/temp; optional Docker prune (``--yes``, ``--docker``).",
+        rich_help_panel="Maintenance",
+    )(clean_mod.clean)
+    app.command(
+        name="watch",
+        help="Watch files and re-run a cycle (``--cycle`` required).",
+        rich_help_panel="Maintenance",
+    )(watch_mod.watch)
+    app.command(
+        name="init",
+        help="Interactive wizard for testosterone.yaml (non-interactive: ``testo config init``).",
+        rich_help_panel="Maintenance",
+    )(init_cmd_mod.wizard)
 
 
 _register_commands()
