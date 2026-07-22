@@ -348,6 +348,11 @@ Metrics pushes are best-effort. They do not change the run result.
   ruff check .
   mypy testo_core
   ```
+- **Pre-commit hooks**: catches the same `ruff`/changelog-format checks locally before you push, plus basic whitespace/YAML/TOML hygiene. One-time setup:
+  ```bash
+  pip install -e ".[dev]"
+  pre-commit install
+  ```
 - **Docker smoke**: `docker compose up -d` + run a sandbox test + verify:
   - orphan cleanup works (force-kill Streamlit mid-run; restart; run is `FAILED`)
   - timeout works (plugin that sleeps forever; container killed; run is `FAILED`)
@@ -493,4 +498,3 @@ Release gate: `docs/release_checklist_phase4_ai.md`.
 - Classification labels: `regression`, `improvement`, `neutral`, `unknown`.
 
 Unified dashboard release gate is documented in [`docs/release_checklist_phase3_unified_dashboard.md`](docs/release_checklist_phase3_unified_dashboard.md).
-

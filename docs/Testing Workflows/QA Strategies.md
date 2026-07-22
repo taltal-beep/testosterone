@@ -271,11 +271,11 @@ The repo’s own QA lives under `tests/`. The **modern `testo run` execution pat
 
 | Path | Focus |
 |------|--------|
-| `tests/fixtures/engine/` | YAML builders (`write_minimal_config`, `write_multi_stage_config`, `write_tagged_cycles_config`), `EchoAdapter`, `NoopRenderer`, `parse_ndjson`, `assert_ndjson_events`, `scripts/echo.py` + `scripts/hang.py` |
-| `tests/unit/testo_core/engine/` | `classify_exit_code`, `LogBuffer`, `run_stage`, `run_plan`, lifecycle/state (`test_orchestrator_lifecycle.py`) |
-| `tests/unit/testo_core/cli/` | Exit codes (`test_run_exit_codes.py`), archive (`test_run_archive.py`), flags (`test_run_flags.py`), CI NDJSON (`test_run_ci_ndjson.py`), config discovery, smokes |
-| `tests/integration/testo_core/engine/` | Real subprocess smoke via `echo.py` (no Docker) |
-| `tests/contract/testo_core/` | Formal `EngineExitCode` 0–4 contract (`test_exit_code_contract.py`) + legacy CLI contracts |
+| `tests/fixtures/engine/` | YAML builders (`write_minimal_config`, `write_multi_stage_config`, `write_cycles_config`), adapters (`EchoAdapter`, `HangAdapter`, `MissingBinaryAdapter`), `NoopRenderer`, `parse_ndjson`, `assert_ndjson_events`, `read_artifact_events`, `scripts/echo.py` + `scripts/hang.py` |
+| `tests/unit/testo_core/engine/` | `classify_exit_code` (`test_exit_codes.py`), `LogBuffer` (`test_log_buffer.py`), `run_stage` (`test_executor.py`), `run_plan` fail-fast (`test_orchestrator.py`) + lifecycle/state (`test_orchestrator_lifecycle.py`) |
+| `tests/unit/testo_core/cli/` | Exit codes (`test_run_exit_codes.py`), archive (`test_run_archive.py`), flags (`test_run_flags.py`), CI NDJSON (`test_run_ci_ndjson.py`), config discovery (`test_config_discovery.py`), smokes (`test_cli_commands_smoke.py`) |
+| `tests/integration/testo_core/engine/` | Real subprocess smoke via `echo.py` (no Docker) — `test_subprocess_smoke.py` |
+| `tests/contract/testo_core/` | Formal `EngineExitCode` 0–4 contract (`test_exit_code_contract.py`), canonical-import identity (`test_exit_code_consolidation.py`) + legacy CLI contracts |
 | `tests/unit/testo_core/` (legacy) | Headless/UQO path, reporters, triggers, archives |
 | `tests/integration/` | Sandbox API, fuller paths |
 | `tests/contract/` | Packaging, CI wrapper contracts |
@@ -290,37 +290,46 @@ The repo’s own QA lives under `tests/`. The **modern `testo run` execution pat
 | EC-01 | Framework failure (rc≠0, not 124/127) | 1 | `test_run_exit_codes.py` |
 | EC-02 | Config/CLI validation | 2 | `test_run_exit_codes.py`, `test_config_discovery.py` |
 | EC-03a | Missing binary (127) | 3 | `test_executor.py`, `test_run_exit_codes.py` |
-| EC-03b | Stage timeout (124, `timed_out`) | 3 | `test_executor.py`, `test_run_exit_codes.py`, `test_orchestrator_lifecycle.py` |
-| EC-03c–e | Sync/async archive failure, CI archive | 3 | `test_run_archive.py`, `test_run_exit_codes.py` |
-| EC-04 | `internal_failure` / empty returncodes | 4 | `test_orchestrator.py`, `test_run_exit_codes.py`, `test_exit_code_contract.py` |
+| EC-03b | Stage timeout (124, `timed_out`) | 3 | `test_executor.py`, `test_run_exit_codes.py`, `test_orchestrator_lifecycle.py`, `test_run_ci_ndjson.py` |
+| EC-03c–e | Sync/async archive failure escalates exit | 3 | **Gap (roadmap)** — archiving is best-effort today; the current no-escalation behavior is locked in `test_run_archive.py` |
+| EC-04 | `internal_failure` / empty returncodes | 4 | `test_orchestrator_lifecycle.py`, `test_run_exit_codes.py`, `test_exit_code_contract.py` |
 | EC-05 | Trigger resting (no stages) | 0 | `test_run_exit_codes.py` |
-| EC-06 | `max(plan_exit, archive_exit)` | 3 | `test_run_archive.py` |
-| EC-07 | Raw rc=4 without `internal_failure` → domain | 1 | `test_exit_code_contract.py` |
+| EC-06 | `max(plan_exit, archive_exit)` | 3 | **Gap (roadmap)** — see EC-03c–e |
+| EC-07 | Raw rc=4 without `internal_failure` → domain | 1 | `test_exit_code_contract.py`, `test_exit_codes.py` |
 
 #### B. CLI flags
 
+> [!note] Roadmap flags
+> `--tag`, `--fail-fast`, `--dry-run` and `--reporter` are **not implemented CLI flags** (see the correction note in [[Command Reference]]). The engine already supports `fail_fast` (exposed via the API layer); the CLI flags remain roadmap items. Rows below marked *Gap* become testable once the flags land.
+
 | ID | Scenario | Test location |
 |----|----------|---------------|
-| CLI-01–03 | Missing `--cycle`, dry-run, `--cycle all --fail-fast` | `test_run_exit_codes.py` |
-| CLI-04 | `--cycle all --tag` filtering | `test_run_flags.py`, `test_run_exit_codes.py` |
-| CLI-05–09 | `--workers`, `--stream`, `--reporter`, `--no-report-db`, `--async-report-db` | `test_run_flags.py`, `test_run_archive.py` |
-| CLI-10 | `--ci` forces sync archive | `test_run_archive.py` |
+| CLI-01 | Missing `--cycle` (multi-cycle config → 2; single cycle → runs it) | `test_run_exit_codes.py` |
+| CLI-02 | `--dry-run` | **Gap (roadmap flag)** |
+| CLI-03 | `--cycle all --fail-fast` | **Gap (roadmap flag)** — engine `fail_fast` covered by `test_orchestrator.py` |
+| CLI-04 | `--cycle all --tag` filtering | **Gap (roadmap flag)** — rejection as usage error locked in `test_run_flags.py` |
+| CLI-05–06 | `--workers`, `--stream` (+ renderer selection) | `test_run_flags.py` |
+| CLI-07 | `--reporter` override | **Gap (roadmap flag)** |
+| CLI-08–09 | `--no-report-db`, `--async-report-db` | `test_run_archive.py` |
+| CLI-10 | `--ci` forces sync archive | **Gap (roadmap)** — `--ci --async-report-db` still archives on a background thread today |
+| CLI-11 | `--cycle all` sorted order + worst exit code, `--force`, `--no-persist` | `test_run_flags.py`, `test_run_exit_codes.py` |
 
 #### C. Lifecycle & state
 
 | ID | Scenario | Test location |
 |----|----------|---------------|
-| LC-01–06 | Artifacts, NDJSON, fail-fast, `plan_result.json` | `test_orchestrator.py`, `test_orchestrator_lifecycle.py` |
-| LC-07–08 | Reporters post-run, trigger snapshot | `test_run_flags.py` |
+| LC-01–06 | Artifacts, NDJSON, fail-fast, `plan_result.json` | Fail-fast + `plan_aborted`: `test_orchestrator.py`. Full event order, field contract, persistence hand-off, `plan_result.json` schema: `test_orchestrator_lifecycle.py` |
+| LC-07–08 | Report archive post-run, trigger snapshot | `test_run_archive.py` (archive), `test_run_flags.py` (snapshot only after a green triggered run) |
 | ST-01–08 | Logs, env carry-over, Allure wipe, NDJSON fields | `test_executor.py`, `test_log_buffer.py`, `test_orchestrator_lifecycle.py` |
 
 #### D. CI NDJSON (`--ci`)
 
 | Event | Test location |
 |-------|---------------|
-| `error`, `dry_run_stage`, `cycle_trigger`, `plan_started`, `stage_finished`, `plan_finished` | `test_run_ci_ndjson.py` |
-| `plan_aborted` (artifact `events.ndjson`) | `test_run_ci_ndjson.py` |
-| `error` on timeout (artifact mirror; stdout has `timed_out`) | `test_run_ci_ndjson.py` |
+| `error`, `cycle_trigger`, `plan_started`, `stage_started`, `stage_finished`, `plan_finished` | `test_run_ci_ndjson.py` |
+| `dry_run` / `dry_run_stage` | **Gap** — no `--dry-run` flag yet (see section B) |
+| `plan_aborted` (artifact `events.ndjson`) | Engine-level: `test_orchestrator.py` — no CLI surface until `--fail-fast` lands |
+| `error` on timeout (artifact mirror; stdout has `timed_out` + rc 124, no `error` key) | `test_run_ci_ndjson.py` |
 
 #### E. Integration smoke
 
@@ -376,8 +385,8 @@ pytest tests/unit/testo_core/engine tests/unit/testo_core/cli -q
 
 | Workflow | Command | When |
 |----------|---------|------|
-| [`.github/workflows/pr-fast.yml`](../../.github/workflows/pr-fast.yml) | `pytest -m "tier_fast and not quarantined" --no-cov` | Every PR; engine unit + contract tests auto-marked `tier_fast` |
-| [`.github/workflows/pr-heavy.yml`](../../.github/workflows/pr-heavy.yml) | `pytest -m "tier_heavy and not tier_external"` | Optional PR deep suite; includes `tests/integration/testo_core/engine/` |
+| [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) (`test` job) | `pytest -m "tier_fast and not quarantined" --no-cov` | Every PR; engine unit + contract tests auto-marked `tier_fast` (folds in the old pr-fast workflow) |
+| [`.github/workflows/pr-heavy.yml`](../../.github/workflows/pr-heavy.yml) | `pytest -m "tier_heavy and not tier_external"` | Optional PR deep suite; `test_subprocess_smoke.py` is marked `tier_heavy` explicitly (it also runs in the fast tier — it is deterministic and ~1s) |
 | [`.github/workflows/nightly-external.yml`](../../.github/workflows/nightly-external.yml) | `pytest -m "tier_external and cleanup_required"` | Nightly / release |
 
 Install step in CI: `pip install -e ".[dev]"`.
@@ -385,6 +394,7 @@ Install step in CI: `pip install -e ".[dev]"`.
 ### Notes
 
 - Tests **lock current exit-code behavior**, including known misclassifications documented in [[Troubleshooting and Error Codes#Classification logic]] (e.g. SIGKILL rc=137 → exit **1**); fixing those is a separate refactor.
+- 2026-07-04: the suite was rebuilt after the original files were lost uncommitted, and two documented contract pieces were restored in the engine at the same time: stage timeouts now normalise to `returncode=124` (previously the raw signal code leaked through, classifying timeouts as exit 1), and `classify_exit_code` gained the `internal_failure` flag so orchestrator-caught exceptions exit **4** instead of **1**. See [[Engine Test Suite Rebuild - 2026-07-04]].
 - `CIRenderer` stdout omits `error` on `stage_finished`; the artifact `events.ndjson` mirror includes it — tests assert both surfaces where relevant.
 - Legacy `uqo run` / `HeadlessEngineService` coverage remains in `test_cli_run.py` and `test_headless_engine.py`.
 - Use [[Command Reference]] for operator-facing commands; this section is for contributors validating engine changes.
