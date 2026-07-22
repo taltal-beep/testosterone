@@ -5,9 +5,10 @@ import os
 import sys
 import threading
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator, Literal
+from typing import Literal
 from uuid import uuid4
 
 from testo_core.config.loader import discover_and_load
@@ -15,7 +16,6 @@ from testo_core.config.resolver import resolve_plan, resolve_stages_for_plan
 from testo_core.config.schema import Plan, Stage
 from testo_core.engine.orchestrator import run_plan
 from testo_core.triggers import evaluate_cycle_trigger
-
 
 CycleExecutionStatus = Literal["queued", "running", "completed", "failed"]
 
@@ -258,7 +258,9 @@ class CycleExecutionManager:
             if persist and report_db:
                 from rich.console import Console
 
-                from testo_core.cli.runner import _maybe_archive_cycle_report  # type: ignore[attr-defined]
+                from testo_core.cli.runner import (
+                    _maybe_archive_cycle_report,  # type: ignore[attr-defined]
+                )
 
                 _maybe_archive_cycle_report(
                     cfg=cfg,
@@ -323,7 +325,7 @@ def iter_sse_from_ndjson_file(
     *,
     events_path: Path,
     start_offset_bytes: int,
-    is_done: "callable[[], bool]",
+    is_done: callable[[], bool],
     poll_interval_s: float = 0.2,
 ) -> Iterator[str]:
     """

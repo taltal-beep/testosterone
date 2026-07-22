@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from testo_core.repository.models import ReportArchive
 from testo_core.reporting.paths import plan_artifacts_dir
+from testo_core.repository.models import ReportArchive
 
 
 def _case_key(data: dict[str, Any]) -> str:

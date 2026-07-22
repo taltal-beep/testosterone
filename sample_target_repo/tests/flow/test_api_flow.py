@@ -13,10 +13,9 @@ import types
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+import mock_api
 import pytest
 from starlette.testclient import TestClient
-
-import mock_api
 
 
 async def _no_sleep(*_args: Any, **_kwargs: Any) -> None:

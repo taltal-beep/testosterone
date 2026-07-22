@@ -168,6 +168,38 @@ Add `reporters_required: true` config or fail the run with exit **3** when a con
 
 ---
 
+### 8a. mypy baseline (43 errors, 14 files) — advisory in CI, not yet blocking
+
+- **Added 2026-07-02** — `mypy` landed in `pyproject.toml` (`[tool.mypy]`) and as an
+  advisory step in `.github/workflows/ci.yml`'s `format` job (`continue-on-error: true`).
+  `ruff check .` is separately clean and blocking in the same job.
+
+**Evidence** (by file, `mypy testo_core`)
+
+| File | Errors | Nature |
+|------|--------|--------|
+| `testo_core/runners.py` | 17 | `callable?[Any, None]` not callable (13×); redefined names; container/context-manager type drift |
+| `testo_core/services/ai/integration_settings.py` | 7 | `dataclasses.replace(**dict[str, object])` can't narrow to the per-field literal/str/int/bool types |
+| `testo_core/cli/commands/report.py` | 3 | `Path \| None` passed where `Path` expected — likely a real missing-None-check |
+| `testo_core/run_history.py`, `repository/report_archive_repository.py`, `repository/models.py`, `repository/factory.py`, `repository/adapters.py` | 2 each | `datetime \| None` attribute access, redefined names, repository adapter return-type union not narrowed |
+| `services/headless_engine.py`, `reporting/exporter.py`, `persistence/composite.py`, `engine/executor.py`, `cli/ui/renderers.py`, `cli/legacy.py` | 1 each | assorted union-narrowing and `object`-typed attribute access |
+
+**Risk**
+
+Low urgency individually (mostly missing `is not None` narrowing / union handling), but
+`report.py`'s `Path | None` cases and `runners.py`'s `callable?` cluster are worth a closer
+look — they're the kind of thing that surfaces as a real `None`/attribute crash at runtime
+under specific flag combinations, not just a type-checker nitpick.
+
+**Recommendation**
+
+Tackle `testo_core/runners.py` first (17 of 43, one file) since it's already flagged as a
+complexity hotspot below. Once the count is near zero, flip the CI step to blocking. Do not
+fix these as a side effect of unrelated PRs — track here and land as its own reviewed
+change per file/cluster.
+
+---
+
 ### 9. Git trigger fallback is silent
 
 **Evidence**

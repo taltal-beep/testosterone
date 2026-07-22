@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-
-from testo_core.command_builders import RunConfig, TestType, build_command
 from unittest.mock import patch
 
+from testo_core.command_builders import RunConfig, TestType, build_command
 from testo_core.runners import run_native_behave, validate_target_repo
 
 

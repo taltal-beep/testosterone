@@ -12,10 +12,9 @@ from collections.abc import Iterator
 from typing import Any
 
 import jwt
+import mock_api
 import pytest
 from fastapi import HTTPException
-
-import mock_api
 from mock_api import (
     JWT_ALG,
     JWT_SECRET,

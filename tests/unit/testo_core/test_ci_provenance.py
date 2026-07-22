@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from testo_core.services.ci_provenance import CIProvenance, detect_ci_environment, detect_ci_provenance
+from testo_core.services.ci_provenance import (
+    CIProvenance,
+    detect_ci_environment,
+    detect_ci_provenance,
+)
 
 
 def test_detect_ci_provenance_github() -> None:

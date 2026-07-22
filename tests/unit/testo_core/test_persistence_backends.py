@@ -6,14 +6,12 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from testo_core.engine.exit_codes import EngineExitCode
 from testo_core.engine.result import PlanResult, StageResult
 from testo_core.persistence.backend import PersistenceBackend
-from testo_core.persistence.json_backend import JsonBackend
-from testo_core.persistence.db_backend import DbBackend
 from testo_core.persistence.composite import composite_backend
+from testo_core.persistence.db_backend import DbBackend
+from testo_core.persistence.json_backend import JsonBackend
 
 
 def _make_plan_result(

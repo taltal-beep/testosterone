@@ -6,8 +6,9 @@ Keeps :mod:`testo_core.db_config` free of full plan-schema imports.
 from __future__ import annotations
 
 import tomllib
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 from urllib.parse import quote_plus
 
 import yaml

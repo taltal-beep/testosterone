@@ -10,10 +10,9 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import pytest
-from starlette.testclient import TestClient
-
 from mock_api import app
 from random_fail import roll_fail
+from starlette.testclient import TestClient
 
 
 @pytest.fixture

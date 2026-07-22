@@ -18,8 +18,9 @@ single anonymous plan called ``default``.
 from __future__ import annotations
 
 import tomllib
+from collections.abc import Mapping
 from pathlib import Path, PureWindowsPath
-from typing import Any, Mapping
+from typing import Any
 
 import yaml
 
@@ -34,7 +35,6 @@ from testo_core.config.schema import (
     Stage,
     TestosteroneConfig,
 )
-
 
 _DEFAULT_PLAN_NAME = "default"
 

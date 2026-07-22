@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import JSON, Column, LargeBinary
 from sqlalchemy.dialects.postgresql import JSONB
@@ -40,8 +40,8 @@ class RunRecord(SQLModel, table=True):
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
     status: RunStatus = Field(default=RunStatus.PENDING, index=True)
-    start_time: Optional[datetime] = Field(default=None)
-    end_time: Optional[datetime] = Field(default=None)
+    start_time: datetime | None = Field(default=None)
+    end_time: datetime | None = Field(default=None)
     metadata_: dict[str, Any] = Field(
         default_factory=dict,
         sa_column=Column("metadata", _METADATA_JSON_COL, nullable=False),
@@ -67,20 +67,20 @@ class ReportArchive(SQLModel, table=True):
         sa_column=Column("summary_json", _METADATA_JSON_COL, nullable=False),
     )
     artifact_bytes: bytes = Field(sa_column=Column("artifact_bytes", LargeBinary, nullable=False))
-    total_tests: Optional[int] = Field(default=None, index=True)
-    passed: Optional[int] = Field(default=None)
-    failed: Optional[int] = Field(default=None)
-    broken: Optional[int] = Field(default=None)
-    skipped: Optional[int] = Field(default=None)
-    unknown: Optional[int] = Field(
+    total_tests: int | None = Field(default=None, index=True)
+    passed: int | None = Field(default=None)
+    failed: int | None = Field(default=None)
+    broken: int | None = Field(default=None)
+    skipped: int | None = Field(default=None)
+    unknown: int | None = Field(
         default=None,
         description="Sum of Allure unknown-status counts across per-stage result trees.",
     )
-    allure_duration_ms: Optional[int] = Field(
+    allure_duration_ms: int | None = Field(
         default=None,
         description="Sum of per-result-tree duration spans from *-result.json timestamps.",
     )
-    plan_duration_ms: Optional[int] = Field(
+    plan_duration_ms: int | None = Field(
         default=None,
         index=True,
         description="Wall time from plan_result.json duration_s when present.",

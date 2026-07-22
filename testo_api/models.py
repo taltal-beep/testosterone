@@ -44,7 +44,7 @@ class ExecutionStatusResponse(BaseModel):
         status: Literal["queued", "running", "completed", "failed"],
         summary: EngineSummary | None,
         error: str | None = None,
-    ) -> "ExecutionStatusResponse":
+    ) -> ExecutionStatusResponse:
         payload = summary.to_dict() if summary else None
         run_ids = []
         if payload:

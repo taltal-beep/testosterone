@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from testo_core.services.ai import AiProviderConfig, build_ai_provider

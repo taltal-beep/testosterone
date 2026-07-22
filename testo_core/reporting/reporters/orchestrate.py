@@ -6,7 +6,10 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from testo_core.config.schema import TestosteroneConfig
-from testo_core.reporting.collector import CollectedResults, collect_results, collect_results_docker_run
+from testo_core.reporting.collector import (
+    collect_results,
+    collect_results_docker_run,
+)
 from testo_core.reporting.reporters.base import ReportContext, ReportLayout
 from testo_core.reporting.reporters.factory import ReporterFactory
 

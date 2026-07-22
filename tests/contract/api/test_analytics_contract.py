@@ -4,7 +4,11 @@ from fastapi.testclient import TestClient
 
 from testo_api.main import create_app
 from testo_core.services.delta_models import DeltaComparisonResult, DeltaStatusSummary, MetricDelta
-from testo_core.services.delta_service import IncompatibleRunDataError, InvalidRunIdError, RunNotFoundComparisonError
+from testo_core.services.delta_service import (
+    IncompatibleRunDataError,
+    InvalidRunIdError,
+    RunNotFoundComparisonError,
+)
 
 
 def _fake_result() -> DeltaComparisonResult:

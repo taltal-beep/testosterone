@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 
 from testo_core.command_builders import BuiltCommand, RunConfig, TestType
-from testo_core.runners import LogEvent, RunResult, UQO_DONE_MARKER
+from testo_core.runners import UQO_DONE_MARKER, LogEvent, RunResult
 from testo_core.services.multi_run import advance_after_run_result, stream_multi_run
 
 

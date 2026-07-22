@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-
-from testo_core.report_generator import ReportServer, default_report_paths, url_for
 from unittest.mock import patch
 
+from testo_core.report_generator import ReportServer, default_report_paths, url_for
 from testo_core.runners import LogEvent, RunResult, run_native_behave
 
 

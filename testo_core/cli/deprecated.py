@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import sys
 
-
 _NOTICE = (
     "[testo] The 'uqo' command is deprecated and will be removed in a future release. "
     "Use 'testo' instead.\n"

@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import shutil
+from pathlib import Path
 
 import typer
 
 from testo_core.engine.exit_codes import EngineExitCode
-
 
 app = typer.Typer(help="Validate or scaffold a testosterone.yaml.", no_args_is_help=True)
 

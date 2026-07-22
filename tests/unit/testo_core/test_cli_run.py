@@ -12,10 +12,10 @@ from testo_core.services.ci_provenance import CIProvenance
 from testo_core.services.headless_engine import (
     ConfigValidationError,
     EngineEvent,
-    InfrastructureRuntimeError,
     EngineRunRecord,
     EngineRunSpec,
     EngineSummary,
+    InfrastructureRuntimeError,
 )
 
 
@@ -245,7 +245,7 @@ def test_cli_stream_json_outputs_ndjson(monkeypatch, capsys, tmp_path: Path) -> 
 
     monkeypatch.setattr(cli, "HeadlessEngineService", FakeEngine)
     code = cli.main(["run", "--config", "ok.yaml", "--ci", "--stream-json"])
-    out_lines = [l for l in capsys.readouterr().out.splitlines() if l.strip()]
+    out_lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
 
     assert code == 0
     assert len(out_lines) == 3
@@ -282,7 +282,7 @@ def test_cli_stream_json_always_emits_final_summary(monkeypatch, capsys, tmp_pat
 
     monkeypatch.setattr(cli, "HeadlessEngineService", FakeEngine)
     code = cli.main(["run", "--config", "ok.yaml", "--stream-json"])
-    out_lines = [l for l in capsys.readouterr().out.splitlines() if l.strip()]
+    out_lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
     summary = json.loads(out_lines[-1])
 
     assert code == 0

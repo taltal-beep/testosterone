@@ -11,7 +11,6 @@ from tests.e2e.provisioners.gitlab import GitlabProvisioner
 from tests.e2e.verifiers.cleanup_audit import assert_no_cleanup_failures
 from tests.e2e.verifiers.provider_status import ProviderStatusVerifier
 
-
 pytestmark = [
     pytest.mark.tier_external,
     pytest.mark.cleanup_required,

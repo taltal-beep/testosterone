@@ -4,8 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from testo_core.command_builders import RunConfig, TestType, build_command, coerce_path, ensure_dir, stringify_argv
-from testo_core.command_builders import _strip_behavex_output_folder_args
+from testo_core.command_builders import (
+    RunConfig,
+    TestType,
+    _strip_behavex_output_folder_args,
+    build_command,
+    coerce_path,
+    ensure_dir,
+    stringify_argv,
+)
 
 
 def test_build_behavex_includes_formatter_and_parallel_defaults(tmp_path: Path) -> None:

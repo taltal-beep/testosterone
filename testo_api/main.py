@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
@@ -12,16 +12,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from testo_core.run_history import STATIC_HISTORY_ROOT
-
 from testo_api.routes.ai import router as ai_router
 from testo_api.routes.analytics import router as analytics_router
-from testo_api.routes.dashboard import router as dashboard_router
 from testo_api.routes.cycles import router as cycles_router
+from testo_api.routes.dashboard import router as dashboard_router
 from testo_api.routes.events import router as events_router
 from testo_api.routes.health import router as health_router
 from testo_api.routes.history import router as history_router
 from testo_api.routes.runs import router as runs_router
+from testo_core.run_history import STATIC_HISTORY_ROOT
 
 logger = logging.getLogger(__name__)
 

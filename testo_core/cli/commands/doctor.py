@@ -119,8 +119,9 @@ def doctor(
 
     if db_url:
         try:
-            from sqlalchemy import create_engine, text
             from urllib.parse import urlparse
+
+            from sqlalchemy import create_engine, text
         except ImportError:
             table.add_row("Database", "[dim]SKIP[/]", "install testo-core[db] for SQLAlchemy probe")
         else:

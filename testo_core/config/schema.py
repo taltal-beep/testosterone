@@ -11,7 +11,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 # Supported frameworks. Add new ones in :mod:`testo_core.frameworks` and append here.
 SUPPORTED_FRAMEWORKS: frozenset[str] = frozenset({"pytest", "behave", "behavex"})
 

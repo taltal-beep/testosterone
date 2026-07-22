@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 from testo_core.config.loader import load_config
-from testo_core.config.schema import CycleTrigger
 from testo_core.triggers import (
     evaluate_cycle_trigger,
     path_matches_trigger_glob,

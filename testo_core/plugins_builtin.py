@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Built-in Pluggy hooks for the UQO orchestrator.
 
@@ -7,8 +5,10 @@ This module intentionally provides "no-op" default behavior so the engine can ru
 without any user drop-in plugins installed.
 """
 
+from __future__ import annotations
+
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
 
 from testo_core.command_builders import RunConfig
 from testo_core.specs import hookimpl

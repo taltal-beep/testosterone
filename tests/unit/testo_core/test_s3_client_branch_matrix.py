@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -8,7 +7,6 @@ import pytest
 from botocore.exceptions import ClientError
 
 import testo_core.s3_client as s3
-
 
 pytestmark = [pytest.mark.unit]
 

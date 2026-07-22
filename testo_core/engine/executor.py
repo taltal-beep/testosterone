@@ -22,16 +22,14 @@ import subprocess
 import sys
 import threading
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Callable
 
 from testo_core.config.schema import Stage
 from testo_core.engine.log_buffer import LogBuffer, drain_stream_into_buffer, merged_env
 from testo_core.engine.result import StageResult
 from testo_core.frameworks.base import FrameworkAdapter, get_adapter
 from testo_core.reporting.paths import plan_artifacts_dir, safe_child_path
-
 
 _TERMINATE_GRACE_S: float = 5.0
 _DEFAULT_TAIL_LINES: int = 200

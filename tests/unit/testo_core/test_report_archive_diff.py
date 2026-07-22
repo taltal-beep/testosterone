@@ -6,8 +6,6 @@ import json
 import uuid
 from pathlib import Path
 
-import pytest
-
 from testo_core.repository.models import ReportArchive
 from testo_core.services.report_archive import build_cycle_zip_bytes
 from testo_core.services.report_archive_diff import diff_archives, parse_archive_uuid

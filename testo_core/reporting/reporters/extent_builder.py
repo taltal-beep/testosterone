@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -37,7 +37,7 @@ def render_dashboard(
 
     html = template.render(
         run_title=run_title,
-        generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        generated_at=datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC"),
         overall_status="PASS" if aggregate.overall_passed else "FAIL",
         total=aggregate.total,
         passed=aggregate.passed,

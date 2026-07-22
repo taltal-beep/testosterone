@@ -8,13 +8,12 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 MOCK_HOST = "0.0.0.0"
 MOCK_PORT = 8000
 MOCK_BASE_URL = f"http://127.0.0.1:{MOCK_PORT}"
 
-_PROC: Optional[subprocess.Popen[bytes]] = None
+_PROC: subprocess.Popen[bytes] | None = None
 
 
 def orchestrator_root() -> Path:

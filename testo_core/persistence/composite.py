@@ -36,7 +36,6 @@ def composite_backend(*, artifacts_root: Path, db: bool = True) -> _CompositeBac
     Always includes :class:`JsonBackend`.  Includes :class:`DbBackend` when
     *db* is ``True`` and the repository layer is importable.
     """
-    from testo_core.persistence.json_backend import JsonBackend
 
     backends: list[object] = [JsonBackend(artifacts_root)]
     if db:

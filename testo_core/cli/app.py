@@ -11,7 +11,6 @@ import sys
 
 import typer
 
-
 app = typer.Typer(
     name="testo",
     help="Testosterone — unified quality orchestration CLI.",

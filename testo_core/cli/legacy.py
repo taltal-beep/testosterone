@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import Any
 
 from testo_core.services import (
+    SCHEMA_VERSION,
     ConfigValidationError,
     EngineExitCode,
     EngineRequest,
-    SCHEMA_VERSION,
     HeadlessEngineService,
     load_run_specs_from_yaml,
     resolve_ghost_mode,
@@ -78,7 +78,7 @@ def _event_to_ndjson(event_payload: Any) -> dict[str, Any]:
             "ts": float(event_payload.ts),
         }
     if hasattr(event_payload, "returncode") and hasattr(event_payload, "command"):
-        command = getattr(event_payload, "command")
+        command = event_payload.command
         env = getattr(command, "env", {})
         run_id = env.get("UQO_AUDIT_RUN_ID") or env.get("UQO_RUN_ID")
         return {
@@ -146,7 +146,9 @@ def _run_command(args: argparse.Namespace) -> int:
                     payload = summary.to_dict()
                     missing_keys = [k for k in SUMMARY_SCHEMA_KEYS if k not in payload]
                     if missing_keys:
-                        raise RuntimeError(f"Engine summary missing required key(s): {', '.join(missing_keys)}")
+                        raise RuntimeError(
+                            f"Engine summary missing required key(s): {', '.join(missing_keys)}"
+                        ) from stop
                     _write_json_stdout(payload)
                 return int(summary.exit_code)
     except ConfigValidationError as exc:

@@ -6,7 +6,6 @@ import json
 
 from behave import given, then, when
 from fastapi.testclient import TestClient
-
 from mock_api import app
 
 

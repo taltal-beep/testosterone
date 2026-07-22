@@ -20,9 +20,9 @@ import socket
 import socketserver
 import subprocess
 import threading
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
 
 def find_free_port(host: str = "127.0.0.1") -> int:

@@ -9,12 +9,11 @@ from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
+from testo_api.models import CreateExecutionRequest
 from testo_core.command_builders import TestType
 from testo_core.runners import LogEvent, RunResult
 from testo_core.security.redaction import redact_error_message
 from testo_core.services import EngineRequest, EngineRunSpec, HeadlessEngineService
-
-from testo_api.models import CreateExecutionRequest
 
 if False:  # pragma: no cover - type checking only
     from testo_core.services.failure_analysis_service import FailureAnalysisService
@@ -51,7 +50,7 @@ class ExecutionManager:
     def __init__(
         self,
         *,
-        failure_analysis_service: "FailureAnalysisService | None" = None,
+        failure_analysis_service: FailureAnalysisService | None = None,
     ) -> None:
         self._engine = HeadlessEngineService()
         self._failure_analysis_service = failure_analysis_service

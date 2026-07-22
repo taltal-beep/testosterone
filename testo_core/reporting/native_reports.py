@@ -16,7 +16,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from testo_core.reporting.paths import discover_latest_plan_dir, plan_artifacts_dir, relpath_for_display
+from testo_core.reporting.paths import (
+    discover_latest_plan_dir,
+    plan_artifacts_dir,
+    relpath_for_display,
+)
 
 
 def ensure_behavex_report_html(stage_dir: Path) -> Path | None:

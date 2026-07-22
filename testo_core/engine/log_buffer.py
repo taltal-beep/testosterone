@@ -21,10 +21,9 @@ from __future__ import annotations
 import os
 import threading
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import IO, Iterable
-
+from typing import IO
 
 DEFAULT_RING_BYTES: int = 64 * 1024  # 64 KiB
 _READ_CHUNK_BYTES: int = 4096

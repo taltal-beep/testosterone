@@ -7,7 +7,11 @@ from pathlib import Path
 
 from testo_core.command_builders import BuiltCommand
 from testo_core.runners import LogEvent, RunResult
-from testo_core.services.event_drain import RunLogLine, apply_completed_multi_run, iter_drained_queue_items
+from testo_core.services.event_drain import (
+    RunLogLine,
+    apply_completed_multi_run,
+    iter_drained_queue_items,
+)
 
 
 def _minimal_run_result() -> RunResult:

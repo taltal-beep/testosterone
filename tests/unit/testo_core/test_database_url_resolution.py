@@ -12,7 +12,7 @@ from testo_core.config.database_section import (
     extract_database_url_from_mapping,
     merge_database_url_yaml,
 )
-from testo_core.db_config import resolve_database_url, reset_engine_cache
+from testo_core.db_config import reset_engine_cache, resolve_database_url
 
 
 def test_extract_database_url_from_mapping() -> None:

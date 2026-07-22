@@ -22,8 +22,8 @@ from .paths import (
     STATIC_BEHAVE_INDEX,
     STATIC_DIR,
     allure_report_dir,
-    allure_cli_input_directories,
 )
+
 
 def _flatten_allure_result_json(*, root: Path) -> int:
     """

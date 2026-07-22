@@ -10,9 +10,9 @@ import sys
 import threading
 import time
 import uuid
+from collections.abc import Generator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Generator, Mapping, Optional, Sequence
 
 try:
     import docker
@@ -20,7 +20,6 @@ except Exception:  # pragma: no cover - optional dependency/import-time daemon f
     docker = None
 
 from .command_builders import BuiltCommand, RunConfig, TestType, build_command
-from .paths import default_artifacts_root
 from .report_generator import (
     collect_behavex_native_report,
     compute_system_health_pct,
@@ -202,7 +201,7 @@ def _run_in_ephemeral_container_streaming(
     cmd: BuiltCommand,
     cfg_timeout_s: float | None,
     cfg_heartbeat_s: float,
-    emit: "callable[[str, str], None]",
+    emit: callable[[str, str], None],
     log_path: Path,
 ) -> tuple[int, float, float]:
     """
@@ -460,7 +459,7 @@ class RunResult:
 def run_streaming(
     cfg: RunConfig,
     *,
-    parent_env: Optional[Mapping[str, str]] = None,
+    parent_env: Mapping[str, str] | None = None,
     artifacts_root: Path | None = None,
     prepare_allure: bool = True,
     emit_done_marker: bool = True,
@@ -630,7 +629,7 @@ def run_audit_streaming(
     *,
     target_repo: Path,
     artifacts_root: Path | None = None,
-    parent_env: Optional[Mapping[str, str]] = None,
+    parent_env: Mapping[str, str] | None = None,
     pytest_args: Sequence[str] = (),
     behavex_args: Sequence[str] = (),
     native_behave_args: Sequence[str] = (),
@@ -706,7 +705,7 @@ def run_audit_streaming(
         except StopIteration as e:
             rr = e.value
             if rr is None:
-                raise RuntimeError("audit phase returned no RunResult")
+                raise RuntimeError("audit phase returned no RunResult") from e
             phase_returncodes.append(int(rr.returncode))
             last_cmd = rr.command
 
@@ -825,7 +824,7 @@ def run_native_behave(
     *,
     target_repo: Path,
     artifacts_root: Path | None = None,
-    parent_env: Optional[Mapping[str, str]] = None,
+    parent_env: Mapping[str, str] | None = None,
     behave_args: Sequence[str] = (),
     extra_env: Mapping[str, str] | None = None,
     run_id: str | None = None,

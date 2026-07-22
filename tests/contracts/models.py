@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -38,11 +38,11 @@ class AdminResponse(StrictModel):
 class ItemModel(StrictModel):
     id: int
     name: str
-    meta: Dict[str, Any]
+    meta: dict[str, Any]
 
 
 class ItemsListResponse(StrictModel):
-    items: List[ItemModel]
+    items: list[ItemModel]
 
 
 class GetItemResponse(StrictModel):
@@ -61,7 +61,7 @@ class DeleteItemResponse(StrictModel):
 
 class SubmitResponse(StrictModel):
     received: bool
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
 
 
 class UploadResponse(StrictModel):

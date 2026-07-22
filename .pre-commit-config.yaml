@@ -1,0 +1,43 @@
+# Local git hooks — not to be confused with drop_in_hooks/ (pytest/behave
+# test-framework plugin hooks, a completely different thing). Install once:
+#   pip install -e ".[dev]"
+#   pre-commit install
+#
+# Runs only on staged/changed files by default (`git commit`), not the whole
+# repo — but exclude vendored/archived content explicitly so an incidental
+# touch to one of these paths doesn't drag unrelated reformatting along.
+exclude: |
+  (?x)^(
+    artifacts/.* |
+    docs/\.obsidian/themes/.* |
+    frontend/node_modules/.* |
+    frontend/dist/.* |
+    dist/.* |
+    node_modules/.*
+  )$
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: check-merge-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.0
+    hooks:
+      - id: ruff-check
+        args: ["--fix"]
+
+  - repo: local
+    hooks:
+      - id: check-changelog-format
+        name: Validate CHANGELOG.md format
+        entry: python3 scripts/check_changelog_format.py
+        language: system
+        files: ^CHANGELOG\.md$
+        pass_filenames: false

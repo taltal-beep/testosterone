@@ -9,13 +9,13 @@ SQLAlchemy / Docker / Streamlit until a consumer actually touches them.
 
 from __future__ import annotations
 
-from importlib.metadata import PackageNotFoundError, version as pkg_version
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as pkg_version
 from typing import Any
 
 # Narrow, fast-loading facade for the new CLI-first world.
 from testo_core.config import Plan, Stage, TestosteroneConfig  # noqa: F401
 from testo_core.engine.exit_codes import EngineExitCode  # noqa: F401
-
 
 # Legacy names that used to be re-exported eagerly from this module.  Each
 # entry maps the exported attribute to its real module path.  PEP 562

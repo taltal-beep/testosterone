@@ -8,7 +8,6 @@ import typer
 
 from testo_core.engine.exit_codes import EngineExitCode
 
-
 app = typer.Typer(help="Inspect cycles defined in the config.", no_args_is_help=True)
 
 
@@ -22,10 +21,11 @@ def list_plans(
     ),
 ) -> None:
     """List every cycle defined in the resolved configuration."""
-    from testo_core.cli.ui.console import default_console
-    from testo_core.config.loader import discover_and_load
-    from testo_core.config.errors import ConfigError
     from rich.table import Table
+
+    from testo_core.cli.ui.console import default_console
+    from testo_core.config.errors import ConfigError
+    from testo_core.config.loader import discover_and_load
 
     console = default_console()
     try:
@@ -54,11 +54,12 @@ def show_plan(
     ),
 ) -> None:
     """Pretty-print one resolved cycle."""
-    from testo_core.cli.ui.console import default_console
-    from testo_core.config.loader import discover_and_load
-    from testo_core.config.errors import ConfigError, PlanNotFoundError
-    from testo_core.config.resolver import resolve_plan
     from rich.table import Table
+
+    from testo_core.cli.ui.console import default_console
+    from testo_core.config.errors import ConfigError, PlanNotFoundError
+    from testo_core.config.loader import discover_and_load
+    from testo_core.config.resolver import resolve_plan
 
     console = default_console()
     try:

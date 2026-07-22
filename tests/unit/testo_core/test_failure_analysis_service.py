@@ -5,13 +5,13 @@ import pytest
 from testo_core.repository.models import RunStatus
 from testo_core.run_history import CompletedRunView
 from testo_core.services.ai import AiGenerationResult, ProviderUnavailableError
+from testo_core.services.ai.integration_settings import InMemoryAiSettingsStore
 from testo_core.services.ai.provider_base import (
     AiGenerationRequest,
     AiProviderError,
     ProviderRateLimitError,
     ProviderTimeoutError,
 )
-from testo_core.services.ai.integration_settings import InMemoryAiSettingsStore
 from testo_core.services.failure_analysis_service import FailureAnalysisService
 
 

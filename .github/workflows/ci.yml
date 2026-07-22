@@ -3,7 +3,7 @@ name: ci
 # Unified CI/CD pipeline: format -> test -> deploy
 #
 # Stages:
-#   format               ruff lint + format check (gates everything below)
+#   format               ruff lint (blocking) + ruff format check + mypy (both advisory)
 #   test                 fast required pytest suite (folds in the old pr-fast workflow)
 #   changelog_required    PR-only: fails if non-doc changes don't touch CHANGELOG.md
 #                          (escape hatch: 'no-changelog' PR label)
@@ -38,17 +38,27 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install ruff
-        run: python -m pip install --upgrade ruff
-      # NOTE: non-blocking during rollout so an unlinted file can't brick the
-      # whole pipeline. Annotations still appear on the PR. Once the tree is
-      # clean, remove `continue-on-error` to make this a hard gate.
+      - name: Install ruff + mypy
+        run: python -m pip install --upgrade ruff mypy
+      # Tree is clean under [tool.ruff.lint] (select E,F,I,UP,B) as of this
+      # change, so this is now a hard gate. `ruff format --check` stays
+      # non-blocking below -- 149 files would need reformatting, a much
+      # bigger, separate change.
       - name: Ruff lint
-        continue-on-error: true
         run: ruff check --output-format=github .
+      # NOTE: non-blocking -- 149 files are not yet `ruff format`-clean.
+      # Annotations still appear on the PR. Adopting `ruff format` repo-wide
+      # is a deliberate, separate change (large diff); remove
+      # `continue-on-error` once that lands.
       - name: Ruff format check
         continue-on-error: true
         run: ruff format --check --diff .
+      # Advisory only -- 43 pre-existing errors across 14 files, tracked in
+      # docs/Testing Workflows/Technical Debt Tracker.md. Flip to blocking
+      # once that backlog is cleared.
+      - name: mypy (advisory)
+        continue-on-error: true
+        run: mypy testo_core
 
   test:
     name: test (fast required)

@@ -11,11 +11,10 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Mapping
+from collections.abc import Mapping
 
 from testo_core.config.errors import PlanNotFoundError
 from testo_core.config.schema import Plan, Stage, TestosteroneConfig
-
 
 _ENV_PATTERN = re.compile(r"\$\{env:(?P<name>[A-Za-z_][A-Za-z0-9_]*)(?::-(?P<default>[^}]*))?\}")
 

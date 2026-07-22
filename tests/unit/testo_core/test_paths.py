@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from testo_core.paths import (
     ALLURE_FRAMEWORK_RESULT_SUBDIRS,
     allure_cli_input_directories,

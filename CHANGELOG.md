@@ -9,6 +9,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- `.pre-commit-config.yaml`: local `ruff`, changelog-format, and whitespace/YAML/TOML hooks (`pre-commit install` to enable)
+- `mypy` type-check tooling: `[tool.mypy]` config in `pyproject.toml`, advisory step in `ci.yml`'s `format` job
+- Extended `[tool.ruff.lint]` selection (added `UP`, `B`) and made `ruff check` blocking in `ci.yml` now that the tree is clean
 - `changelog_required` CI gate in `ci.yml`: fails PRs with non-doc changes that don't touch `CHANGELOG.md` (escape hatch: `no-changelog` label)
 - `commitlint` CI check (`.github/workflows/commitlint.yml`, `commitlint.config.js`) enforcing Conventional Commits on PR commit messages
 - `changelog-on-main.yml`: AI-drafted `CHANGELOG.md [Unreleased]` entries on push to `main`, gated by `scripts/check_changelog_format.py` — see `docs/changelog_automation_policy.md` for the review-step tradeoff and required secrets/branch-protection setup

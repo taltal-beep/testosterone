@@ -4,7 +4,13 @@ import os
 
 from fastapi import APIRouter, HTTPException
 
-from testo_api.models import RunDetail, RunDetailResponse, RunListItem, RunListResponse, RunReportsResponse
+from testo_api.models import (
+    RunDetail,
+    RunDetailResponse,
+    RunListItem,
+    RunListResponse,
+    RunReportsResponse,
+)
 from testo_core.run_history import get_run, list_run_sessions, snapshot_files_for_download
 
 router = APIRouter(prefix="/api/v1", tags=["history"])

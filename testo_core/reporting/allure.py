@@ -10,7 +10,6 @@ from testo_core.reporting.allure_cli import (
     AllureCLINotFoundError,
     is_allure_available,
     report_has_index,
-    resolve_allure_command,
     run_generate,
     run_open_blocking,
 )

@@ -31,7 +31,7 @@ def _require_bearer(auth: str | None) -> dict[str, Any]:
     try:
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
     except Exception:
-        raise HTTPException(status_code=401, detail="invalid token")
+        raise HTTPException(status_code=401, detail="invalid token") from None
 
 
 @dataclass

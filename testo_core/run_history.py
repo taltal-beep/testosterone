@@ -7,10 +7,11 @@ import sys
 import tempfile
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 ORCHESTRATOR_ROOT = Path(__file__).resolve().parents[1]
 # When executed as a script (`python testo_core/run_history.py`), ensure imports like `testo_core.*` work.
@@ -18,14 +19,16 @@ if str(ORCHESTRATOR_ROOT) not in sys.path:
     sys.path.insert(0, str(ORCHESTRATOR_ROOT))
 
 from testo_core.db import get_repository
-from testo_core.db_config import create_db_and_tables, get_engine  # get_engine: back-compat re-export
+from testo_core.db_config import (  # get_engine: back-compat re-export
+    create_db_and_tables,
+)
 from testo_core.metrics import parse_allure_results_dir
 from testo_core.paths import (
     STATIC_ALLURE_HTML,
     STATIC_BEHAVE_DIR,
 )
-from testo_core.runners import RunResult
 from testo_core.repository.models import RunRecord, RunStatus
+from testo_core.runners import RunResult
 from testo_core.s3_client import get_artifact_s3
 
 logger = logging.getLogger(__name__)
@@ -68,7 +71,7 @@ def _utcnow() -> datetime:
     return datetime.now(tz=UTC)
 
 
-def create_run(*, status: RunStatus = RunStatus.PENDING, metadata: Optional[dict[str, Any]] = None) -> uuid.UUID:
+def create_run(*, status: RunStatus = RunStatus.PENDING, metadata: dict[str, Any] | None = None) -> uuid.UUID:
     """
     Initializes a new record in the DB.
 
@@ -78,7 +81,7 @@ def create_run(*, status: RunStatus = RunStatus.PENDING, metadata: Optional[dict
     return rr.id
 
 
-def update_run_status(run_id: uuid.UUID | str, status: RunStatus, metadata: Optional[dict[str, Any]] = None) -> None:
+def update_run_status(run_id: uuid.UUID | str, status: RunStatus, metadata: dict[str, Any] | None = None) -> None:
     """
     Updates an existing record (or creates it if missing).
     """
@@ -515,7 +518,11 @@ def _upload_allure_html_report_to_s3(*, run_id: str, artifacts_root: Path, test_
         return 0
 
     try:
-        from testo_core.reporting.allure_cli import AllureCLINotFoundError, report_has_index, run_generate
+        from testo_core.reporting.allure_cli import (
+            AllureCLINotFoundError,
+            report_has_index,
+            run_generate,
+        )
     except ImportError:
         return 0
 

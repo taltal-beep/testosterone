@@ -7,7 +7,6 @@ from fastapi.testclient import TestClient
 
 from testo_api.main import create_app
 
-
 CONFIG_YAML = """\
 version: 1
 defaults:

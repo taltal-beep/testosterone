@@ -18,7 +18,6 @@ from tests.contracts.models import (
     UploadResponse,
 )
 
-
 pytestmark = [pytest.mark.contract]
 
 
