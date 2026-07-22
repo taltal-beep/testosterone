@@ -3,9 +3,11 @@ name: ci
 # Unified CI/CD pipeline: format -> test -> deploy
 #
 # Stages:
-#   format     ruff lint + format check (gates everything below)
-#   test       fast required pytest suite (folds in the old pr-fast workflow)
-#   deploy     builds the distributable wheel on a published release
+#   format               ruff lint + format check (gates everything below)
+#   test                 fast required pytest suite (folds in the old pr-fast workflow)
+#   changelog_required    PR-only: fails if non-doc changes don't touch CHANGELOG.md
+#                          (escape hatch: 'no-changelog' PR label)
+#   deploy               builds the distributable wheel on a published release
 #
 # Code review is handled by a local pre-push hook (.claude/settings.json),
 # not by CI -- see 990be121 for why the earlier CI-based review was dropped.
@@ -75,6 +77,33 @@ jobs:
             **/*summary*.json
             **/*api*.json
             **/*.png
+
+  changelog_required:
+    name: changelog required
+    if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'no-changelog')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require CHANGELOG.md update
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          changed_files=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          echo "Changed files:"
+          echo "$changed_files"
+          if echo "$changed_files" | grep -q '^CHANGELOG.md$'; then
+            echo "CHANGELOG.md was updated."
+            exit 0
+          fi
+          non_doc_changes=$(echo "$changed_files" | grep -vE '^(docs/|\.github/|.*\.md$)' || true)
+          if [ -z "$non_doc_changes" ]; then
+            echo "No non-doc changes in this PR; CHANGELOG.md update not required."
+            exit 0
+          fi
+          echo "::error::This PR changes code but does not update CHANGELOG.md. Add an entry under [Unreleased], or apply the 'no-changelog' label if this change doesn't warrant one."
+          exit 1
 
   deploy:
     name: deploy (build wheel)
