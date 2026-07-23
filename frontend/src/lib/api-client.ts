@@ -107,6 +107,38 @@ export interface DeltaComparisonResponse {
     unknown: string[];
   };
   highlights: string[];
+  stage_deltas: DeltaStageDelta[];
+}
+
+export interface DeltaStageDelta {
+  stage_name: string;
+  framework: string | null;
+  baseline_total_tests: number | null;
+  current_total_tests: number | null;
+  baseline_passed: number | null;
+  current_passed: number | null;
+  baseline_health_pct: number | null;
+  current_health_pct: number | null;
+  health_pct_delta: number | null;
+  classification: DeltaClassification;
+}
+
+export type CaseChangeKind = "added" | "removed" | "regression" | "fix" | "status_change";
+
+export interface DeltaCaseChange {
+  key: string;
+  name: string;
+  group: string;
+  baseline_status: string | null;
+  current_status: string | null;
+  kind: CaseChangeKind;
+  duration_delta_ms: number | null;
+}
+
+export interface DeltaCaseChangesResponse {
+  current_run_id: string;
+  baseline_run_id: string;
+  changes: DeltaCaseChange[];
 }
 
 export interface StageHealth {
@@ -349,6 +381,13 @@ export const apiClient = {
       baseline_run_id: baselineRunId
     });
     return api<DeltaComparisonResponse>(`/api/v1/analytics/delta?${params.toString()}`);
+  },
+  getDeltaCaseChanges(currentRunId: string, baselineRunId: string): Promise<DeltaCaseChangesResponse> {
+    const params = new URLSearchParams({
+      current_run_id: currentRunId,
+      baseline_run_id: baselineRunId
+    });
+    return api<DeltaCaseChangesResponse>(`/api/v1/analytics/delta/cases?${params.toString()}`);
   },
   getDashboardOverview(recentLimit = 5): Promise<DashboardOverviewResponse> {
     return api<DashboardOverviewResponse>(`/api/v1/dashboard/overview?recent_limit=${recentLimit}`);

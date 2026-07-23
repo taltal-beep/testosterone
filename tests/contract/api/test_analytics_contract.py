@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from testo_api.main import create_app
-from testo_core.services.delta_models import DeltaComparisonResult, DeltaStatusSummary, MetricDelta
+from testo_core.services.delta_models import DeltaComparisonResult, DeltaStatusSummary, MetricDelta, StageDelta
 from testo_core.services.delta_service import (
     IncompatibleRunDataError,
     InvalidRunIdError,
@@ -159,11 +159,125 @@ def test_analytics_delta_contract_success(monkeypatch) -> None:  # noqa: ANN001
     resp = client.get("/api/v1/analytics/delta?current_run_id=run-2&baseline_run_id=run-1")
     assert resp.status_code == 200
     payload = resp.json()
-    assert set(payload.keys()) == {"comparison", "metrics", "status_summary", "highlights"}
+    assert set(payload.keys()) == {"comparison", "metrics", "status_summary", "highlights", "stage_deltas"}
     assert payload["comparison"]["current_run_id"] == "run-2"
     assert set(payload["metrics"].keys()) == {"reliability", "performance"}
     assert payload["metrics"]["reliability"]["failed"]["classification"] == "regression"
     assert payload["metrics"]["performance"]["wall_duration_ms"]["classification"] == "improvement"
+    assert payload["stage_deltas"] == []
+
+
+def test_analytics_delta_contract_includes_stage_deltas(monkeypatch) -> None:  # noqa: ANN001
+    from dataclasses import replace
+
+    result_with_stages = replace(
+        _fake_result(),
+        stage_deltas=(
+            StageDelta(
+                stage_name="pytest-sample",
+                framework="pytest",
+                baseline_total_tests=10,
+                current_total_tests=10,
+                baseline_passed=10,
+                current_passed=8,
+                baseline_health_pct=100.0,
+                current_health_pct=80.0,
+                health_pct_delta=-20.0,
+                classification="regression",
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        "testo_api.routes.analytics.DeltaComparisonService.compare_runs",
+        lambda self, **_: result_with_stages,
+    )
+    client = TestClient(create_app())
+    resp = client.get("/api/v1/analytics/delta?current_run_id=run-2&baseline_run_id=run-1")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["stage_deltas"] == [
+        {
+            "stage_name": "pytest-sample",
+            "framework": "pytest",
+            "baseline_total_tests": 10,
+            "current_total_tests": 10,
+            "baseline_passed": 10,
+            "current_passed": 8,
+            "baseline_health_pct": 100.0,
+            "current_health_pct": 80.0,
+            "health_pct_delta": -20.0,
+            "classification": "regression",
+        }
+    ]
+
+
+def test_analytics_delta_cases_contract(monkeypatch) -> None:  # noqa: ANN001
+    from testo_core.repository.models import RunStatus
+    from testo_core.run_history import CompletedRunView
+    from testo_core.services.report_archive_diff import CaseChange
+
+    def _fake_run(*, run_id: str):
+        return CompletedRunView(
+            run_id=run_id,
+            status=RunStatus.COMPLETED,
+            created_at=1.0,
+            started_at=1.0,
+            finished_at=2.0,
+            test_kind="pytest",
+            returncode=0,
+            wall_duration_ms=1000.0,
+            metrics_duration_ms=900,
+            total_tests=2,
+            passed=2,
+            failed=0,
+            broken=0,
+            skipped=0,
+            avg_case_ms=100.0,
+            health_pct=100.0,
+            target_repo="/tmp/repo",
+            snapshot_dir="runs/x/artifacts",
+            audit_json=None,
+        )
+
+    monkeypatch.setattr("testo_api.routes.analytics.get_run", _fake_run)
+    monkeypatch.setattr(
+        "testo_api.routes.analytics.diff_run_snapshots",
+        lambda **_: [
+            CaseChange(
+                key="a",
+                name="test_a",
+                group="pkg",
+                baseline_status="passed",
+                current_status="failed",
+                kind="regression",
+                duration_delta_ms=5,
+            )
+        ],
+    )
+    client = TestClient(create_app())
+    resp = client.get("/api/v1/analytics/delta/cases?current_run_id=run-2&baseline_run_id=run-1")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["current_run_id"] == "run-2"
+    assert payload["baseline_run_id"] == "run-1"
+    assert payload["changes"] == [
+        {
+            "key": "a",
+            "name": "test_a",
+            "group": "pkg",
+            "baseline_status": "passed",
+            "current_status": "failed",
+            "kind": "regression",
+            "duration_delta_ms": 5,
+        }
+    ]
+
+
+def test_analytics_delta_cases_missing_run(monkeypatch) -> None:  # noqa: ANN001
+    monkeypatch.setattr("testo_api.routes.analytics.get_run", lambda *, run_id: None)
+    client = TestClient(create_app())
+    resp = client.get("/api/v1/analytics/delta/cases?current_run_id=missing&baseline_run_id=run-1")
+    assert resp.status_code == 404
 
 
 def test_analytics_delta_invalid_id(monkeypatch) -> None:  # noqa: ANN001

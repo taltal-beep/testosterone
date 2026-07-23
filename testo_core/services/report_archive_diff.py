@@ -90,25 +90,12 @@ class CaseChange:
     duration_delta_ms: int | None
 
 
-def diff_archives(*, baseline: ReportArchive, current: ReportArchive, tmp: Path) -> tuple[list[CaseChange], dict[str, Any]]:
-    """Extract both zips under ``tmp`` and return case-level changes plus metrics row dict."""
-    from testo_core.services.report_archive import extract_archive_to_plan_dir
+def diff_case_maps(base_cases: dict[str, dict[str, Any]], cur_cases: dict[str, dict[str, Any]]) -> list[CaseChange]:
+    """Match two ``_load_cases()`` maps by key and classify each case's change.
 
-    extract_archive_to_plan_dir(
-        zip_bytes=baseline.artifact_bytes,
-        dest_artifacts_root=tmp / "a",
-        plan_name=baseline.cycle_name,
-    )
-    extract_archive_to_plan_dir(
-        zip_bytes=current.artifact_bytes,
-        dest_artifacts_root=tmp / "b",
-        plan_name=current.cycle_name,
-    )
-    base_root = plan_artifacts_dir(tmp / "a", baseline.cycle_name)
-    cur_root = plan_artifacts_dir(tmp / "b", current.cycle_name)
-    base_cases = _load_cases(base_root)
-    cur_cases = _load_cases(cur_root)
-
+    Shared by both ``diff_archives`` (ReportArchive zips, ``testo diff``) and
+    ``run_snapshot_diff.diff_run_snapshots`` (live run snapshot dirs, the API).
+    """
     changes: list[CaseChange] = []
     all_keys = sorted(set(base_cases) | set(cur_cases))
     for key in all_keys:
@@ -151,6 +138,28 @@ def diff_archives(*, baseline: ReportArchive, current: ReportArchive, tmp: Path)
                     duration_delta_ms=delta,
                 )
             )
+    return changes
+
+
+def diff_archives(*, baseline: ReportArchive, current: ReportArchive, tmp: Path) -> tuple[list[CaseChange], dict[str, Any]]:
+    """Extract both zips under ``tmp`` and return case-level changes plus metrics row dict."""
+    from testo_core.services.report_archive import extract_archive_to_plan_dir
+
+    extract_archive_to_plan_dir(
+        zip_bytes=baseline.artifact_bytes,
+        dest_artifacts_root=tmp / "a",
+        plan_name=baseline.cycle_name,
+    )
+    extract_archive_to_plan_dir(
+        zip_bytes=current.artifact_bytes,
+        dest_artifacts_root=tmp / "b",
+        plan_name=current.cycle_name,
+    )
+    base_root = plan_artifacts_dir(tmp / "a", baseline.cycle_name)
+    cur_root = plan_artifacts_dir(tmp / "b", current.cycle_name)
+    base_cases = _load_cases(base_root)
+    cur_cases = _load_cases(cur_root)
+    changes = diff_case_maps(base_cases, cur_cases)
 
     metrics = {
         "baseline_id": str(baseline.id),

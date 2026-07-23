@@ -34,6 +34,22 @@ class DeltaStatusSummary:
 
 
 @dataclass(frozen=True)
+class StageDelta:
+    """Per-stage health comparison, matched by stage name (no archive I/O)."""
+
+    stage_name: str
+    framework: str | None
+    baseline_total_tests: int | None
+    current_total_tests: int | None
+    baseline_passed: int | None
+    current_passed: int | None
+    baseline_health_pct: float | None
+    current_health_pct: float | None
+    health_pct_delta: float | None
+    classification: DeltaClassification
+
+
+@dataclass(frozen=True)
 class DeltaComparisonResult:
     current_run_id: str
     baseline_run_id: str
@@ -42,4 +58,5 @@ class DeltaComparisonResult:
     metrics: tuple[MetricDelta, ...]
     status_summary: DeltaStatusSummary
     highlights: tuple[str, ...]
+    stage_deltas: tuple[StageDelta, ...] = ()
 

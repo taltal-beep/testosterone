@@ -264,11 +264,41 @@ class DeltaStatusSummaryResponse(BaseModel):
     unknown: list[str] = Field(default_factory=list)
 
 
+class DeltaStageDelta(BaseModel):
+    stage_name: str
+    framework: str | None = None
+    baseline_total_tests: int | None = None
+    current_total_tests: int | None = None
+    baseline_passed: int | None = None
+    current_passed: int | None = None
+    baseline_health_pct: float | None = None
+    current_health_pct: float | None = None
+    health_pct_delta: float | None = None
+    classification: Literal["regression", "improvement", "neutral", "unknown"]
+
+
 class DeltaComparisonResponse(BaseModel):
     comparison: DeltaComparisonMeta
     metrics: DeltaMetricsResponse
     status_summary: DeltaStatusSummaryResponse
     highlights: list[str] = Field(default_factory=list)
+    stage_deltas: list[DeltaStageDelta] = Field(default_factory=list)
+
+
+class DeltaCaseChange(BaseModel):
+    key: str
+    name: str
+    group: str
+    baseline_status: str | None = None
+    current_status: str | None = None
+    kind: Literal["added", "removed", "regression", "fix", "status_change"]
+    duration_delta_ms: int | None = None
+
+
+class DeltaCaseChangesResponse(BaseModel):
+    current_run_id: str
+    baseline_run_id: str
+    changes: list[DeltaCaseChange] = Field(default_factory=list)
 
 
 class DashboardHeadlineKpis(BaseModel):

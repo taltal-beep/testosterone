@@ -11,6 +11,7 @@ from testo_core.services.delta_models import (
     DeltaDirection,
     DeltaStatusSummary,
     MetricDelta,
+    StageDelta,
 )
 
 
@@ -83,6 +84,7 @@ class DeltaComparisonService:
         deltas = tuple(self._build_metric_delta(policy=policy, current=current, baseline=baseline) for policy in self._METRIC_POLICY)
         summary = self._build_status_summary(deltas)
         highlights = self._build_highlights(deltas)
+        stage_deltas = self._build_stage_deltas(current=current, baseline=baseline)
         return DeltaComparisonResult(
             current_run_id=cur_id,
             baseline_run_id=base_id,
@@ -91,6 +93,7 @@ class DeltaComparisonService:
             metrics=deltas,
             status_summary=summary,
             highlights=highlights,
+            stage_deltas=stage_deltas,
         )
 
     def _validate_run_id(self, run_id: str, *, label: str) -> str:
@@ -158,6 +161,48 @@ class DeltaComparisonService:
             direction=policy.direction,
             unit=policy.unit,
         )
+
+    def _build_stage_deltas(
+        self,
+        *,
+        current: CompletedRunView,
+        baseline: CompletedRunView,
+    ) -> tuple[StageDelta, ...]:
+        """Match stages by name across the two runs -- reuses stage_health already
+        loaded on each `CompletedRunView`, no archive extraction needed."""
+
+        current_by_name = {str(s.get("name")): s for s in current.stage_health if s.get("name")}
+        baseline_by_name = {str(s.get("name")): s for s in baseline.stage_health if s.get("name")}
+        names = sorted(set(current_by_name) | set(baseline_by_name))
+
+        deltas: list[StageDelta] = []
+        for name in names:
+            cur_stage = current_by_name.get(name)
+            base_stage = baseline_by_name.get(name)
+            cur_health = self._to_float(cur_stage.get("health_pct")) if cur_stage else None
+            base_health = self._to_float(base_stage.get("health_pct")) if base_stage else None
+
+            health_delta: float | None = None
+            classification: DeltaClassification = "unknown"
+            if cur_health is not None and base_health is not None:
+                health_delta = cur_health - base_health
+                classification = self._classify(absolute_delta=health_delta, direction="higher_is_better")
+
+            deltas.append(
+                StageDelta(
+                    stage_name=name,
+                    framework=(cur_stage or base_stage or {}).get("framework"),
+                    baseline_total_tests=(base_stage or {}).get("total_tests"),
+                    current_total_tests=(cur_stage or {}).get("total_tests"),
+                    baseline_passed=(base_stage or {}).get("passed"),
+                    current_passed=(cur_stage or {}).get("passed"),
+                    baseline_health_pct=base_health,
+                    current_health_pct=cur_health,
+                    health_pct_delta=health_delta,
+                    classification=classification,
+                )
+            )
+        return tuple(deltas)
 
     def _build_status_summary(self, deltas: tuple[MetricDelta, ...]) -> DeltaStatusSummary:
         regressions: list[str] = []

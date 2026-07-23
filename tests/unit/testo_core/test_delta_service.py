@@ -25,6 +25,7 @@ def _view(
     wall_duration_ms: float = 1000.0,
     metrics_duration_ms: int | None = 900,
     avg_case_ms: float | None = 100.0,
+    stage_health: list[dict] | None = None,
 ) -> CompletedRunView:
     return CompletedRunView(
         run_id=run_id,
@@ -46,6 +47,7 @@ def _view(
         target_repo="/tmp/repo",
         snapshot_dir=None,
         audit_json=None,
+        stage_health=stage_health or [],
     )
 
 
@@ -138,4 +140,61 @@ def test_compare_runs_raises_when_run_missing() -> None:
     service = _service({"baseline": _view(run_id="baseline")})
     with pytest.raises(RunNotFoundComparisonError):
         service.compare_runs(current_run_id="current", baseline_run_id="baseline")
+
+
+def test_compare_runs_matches_stage_deltas_by_name() -> None:
+    service = _service(
+        {
+            "current": _view(
+                run_id="current",
+                stage_health=[
+                    {"name": "pytest-sample", "framework": "pytest", "total_tests": 10, "passed": 8, "health_pct": 80.0}
+                ],
+            ),
+            "baseline": _view(
+                run_id="baseline",
+                stage_health=[
+                    {"name": "pytest-sample", "framework": "pytest", "total_tests": 10, "passed": 10, "health_pct": 100.0}
+                ],
+            ),
+        }
+    )
+    result = service.compare_runs(current_run_id="current", baseline_run_id="baseline")
+
+    assert len(result.stage_deltas) == 1
+    stage = result.stage_deltas[0]
+    assert stage.stage_name == "pytest-sample"
+    assert stage.health_pct_delta == -20.0
+    assert stage.classification == "regression"
+
+
+def test_compare_runs_stage_delta_unknown_when_stage_missing_on_one_side() -> None:
+    service = _service(
+        {
+            "current": _view(
+                run_id="current",
+                stage_health=[{"name": "new-stage", "total_tests": 5, "passed": 5, "health_pct": 100.0}],
+            ),
+            "baseline": _view(run_id="baseline", stage_health=[]),
+        }
+    )
+    result = service.compare_runs(current_run_id="current", baseline_run_id="baseline")
+
+    assert len(result.stage_deltas) == 1
+    stage = result.stage_deltas[0]
+    assert stage.stage_name == "new-stage"
+    assert stage.baseline_health_pct is None
+    assert stage.current_health_pct == 100.0
+    assert stage.classification == "unknown"
+
+
+def test_compare_runs_no_stage_deltas_when_no_stage_health() -> None:
+    service = _service(
+        {
+            "current": _view(run_id="current"),
+            "baseline": _view(run_id="baseline"),
+        }
+    )
+    result = service.compare_runs(current_run_id="current", baseline_run_id="baseline")
+    assert result.stage_deltas == ()
 
