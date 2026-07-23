@@ -2,13 +2,22 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { DashboardTrendIndicator, apiClient } from "../../lib/api-client";
-import { Badge, Card, PageHeader, Spinner, StatusPill } from "../../components/ui";
+import { Badge, Card, HealthBar, PageHeader, Spinner, StatusPill } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
+
+const RECENT_RUNS_REFRESH_MS = 15_000;
 
 export function DashboardPage() {
   const overviewQuery = useQuery({
     queryKey: ["dashboard-overview"],
     queryFn: () => apiClient.getDashboardOverview(6)
+  });
+  // Polled on its own, lighter-weight cadence so recent activity stays fresh
+  // without recomputing the full overview (rollups/trends) on every tick.
+  const recentRunsQuery = useQuery({
+    queryKey: ["dashboard-recent-runs"],
+    queryFn: () => apiClient.getDashboardRecentRuns(8),
+    refetchInterval: RECENT_RUNS_REFRESH_MS
   });
 
   if (overviewQuery.isLoading) {
@@ -26,7 +35,7 @@ export function DashboardPage() {
   if (!data) {
     return <p className="text-sm text-ink-300">No dashboard data available.</p>;
   }
-  const recentRuns = data.recent_runs ?? [];
+  const recentRuns = recentRunsQuery.data?.items ?? data.recent_runs ?? [];
   const latestRunId = data.headline_kpis?.latest_run_id;
 
   // First-run experience: nothing has ever executed, so guide instead of showing n/a walls.
@@ -114,21 +123,24 @@ export function DashboardPage() {
         ) : (
           <ul className="divide-y divide-ink-800">
             {recentRuns.map((run) => (
-              <li key={run.run_id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
-                <div className="flex items-center gap-3">
-                  <StatusPill status={run.status ?? "unknown"} returncode={run.returncode} />
-                  <Link to={run.run_detail_url} className="font-mono text-brand-300 hover:text-brand-400 hover:underline">
-                    {run.run_id}
-                  </Link>
-                </div>
-                <div className="flex items-center gap-3 text-xs text-ink-400">
-                  <span>health {formatPct(run.health_pct)}</span>
-                  {run.compare_url ? (
-                    <Link to={run.compare_url} className="text-brand-300 hover:underline">
-                      compare
+              <li key={run.run_id} className="space-y-1.5 py-2.5 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <StatusPill status={run.status ?? "unknown"} returncode={run.returncode} />
+                    <Link to={run.run_detail_url} className="font-mono text-brand-300 hover:text-brand-400 hover:underline">
+                      {run.run_id}
                     </Link>
-                  ) : null}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-ink-400">
+                    <span>health {formatPct(run.health_pct)}</span>
+                    {run.compare_url ? (
+                      <Link to={run.compare_url} className="text-brand-300 hover:underline">
+                        compare
+                      </Link>
+                    ) : null}
+                  </div>
                 </div>
+                <HealthBar healthPct={run.health_pct} className="max-w-xs" />
               </li>
             ))}
           </ul>

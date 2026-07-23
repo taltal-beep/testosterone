@@ -37,6 +37,16 @@ export interface CycleExecutionAccepted {
   summary_url: string;
 }
 
+export interface CycleExecutionStatus {
+  execution_id: string;
+  cycle: string;
+  status: "queued" | "running" | "completed" | "failed";
+  artifacts_root: string | null;
+  events_path: string | null;
+  plan_result_path: string | null;
+  error: string | null;
+}
+
 export interface ExecutionStatus {
   execution_id: string;
   status: "queued" | "running" | "completed" | "failed";
@@ -294,6 +304,9 @@ export const apiClient = {
   },
   getExecution(executionId: string): Promise<ExecutionStatus> {
     return api<ExecutionStatus>(`/api/v1/executions/${executionId}`);
+  },
+  getCycleExecutionStatus(executionId: string): Promise<CycleExecutionStatus> {
+    return api<CycleExecutionStatus>(`/api/v1/cycle-executions/${executionId}`);
   },
   listCycles(): Promise<CycleListResponse> {
     return api<CycleListResponse>("/api/v1/cycles");

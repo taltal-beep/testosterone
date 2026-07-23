@@ -110,6 +110,21 @@ export function RunPanel({ initialCycle, lockCycle = false }: RunPanelProps) {
     unsubscribeRef.current = null;
   }
 
+  async function resolvePhaseFromStatus(executionId: string) {
+    try {
+      const status = await apiClient.getCycleExecutionStatus(executionId);
+      setPhase((current) => {
+        if (current !== "running" && current !== "starting") return current;
+        if (status.status === "completed") return "passed";
+        if (status.status === "failed") return "failed";
+        return current;
+      });
+      if (status.error) setErrorMessage(status.error);
+    } catch {
+      setPhase((current) => (current === "running" || current === "starting" ? "failed" : current));
+    }
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!cycle) return;
@@ -142,9 +157,10 @@ export function RunPanel({ initialCycle, lockCycle = false }: RunPanelProps) {
       unsubscribeRef.current = subscribeToCycleExecutionEvents(created.events_url, {
         onEvent: applyEvent,
         onError: () => {
-          // EventSource fires error on normal server close too; only fail if still mid-run.
-          setPhase((current) => (current === "running" || current === "starting" ? "failed" : current));
           stopStream();
+          // EventSource fires error on normal server close too. Rather than assume
+          // failure, poll the execution's own status endpoint for the real outcome.
+          void resolvePhaseFromStatus(created.execution_id);
         }
       });
     } catch (err) {

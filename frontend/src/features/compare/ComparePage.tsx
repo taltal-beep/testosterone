@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { DeltaMetricNode, apiClient } from "../../lib/api-client";
+import { StackedBar, type StackedBarSegment } from "../../components/ui";
 
 const RELIABILITY_ORDER: Array<{ key: keyof ReturnType<typeof getReliabilityMetrics>; label: string }> = [
   { key: "total_tests", label: "Total Tests" },
@@ -104,6 +105,24 @@ export function ComparePage() {
           </p>
 
           <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
+            <h3 className="mb-3 text-sm font-semibold text-ink-100">Outcome Mix</h3>
+            <div className="space-y-3">
+              <div>
+                <p className="mb-1 text-xs font-medium text-ink-400">
+                  Baseline ({payload.comparison.baseline_run_id})
+                </p>
+                <StackedBar segments={outcomeSegments(getReliabilityMetrics(payload), "baseline_value")} />
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium text-ink-400">
+                  Current ({payload.comparison.current_run_id})
+                </p>
+                <StackedBar segments={outcomeSegments(getReliabilityMetrics(payload), "current_value")} />
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
             <h3 className="mb-2 text-sm font-semibold text-ink-100">Reliability</h3>
             <ul className="space-y-1 text-sm text-ink-300">
               {RELIABILITY_ORDER.map(({ key, label }) => (
@@ -179,6 +198,18 @@ function formatMetricValue(value: number | null, unit: DeltaMetricNode["unit"]):
 
 function getReliabilityMetrics(payload: Awaited<ReturnType<typeof apiClient.getDeltaComparison>>) {
   return payload.metrics.reliability;
+}
+
+function outcomeSegments(
+  reliability: ReturnType<typeof getReliabilityMetrics>,
+  field: "current_value" | "baseline_value"
+): StackedBarSegment[] {
+  return [
+    { label: "Passed", value: reliability.passed[field] ?? 0, colorClass: "bg-success-400" },
+    { label: "Failed", value: reliability.failed[field] ?? 0, colorClass: "bg-danger-400" },
+    { label: "Broken", value: reliability.broken[field] ?? 0, colorClass: "bg-danger-300" },
+    { label: "Skipped", value: reliability.skipped[field] ?? 0, colorClass: "bg-warn-400" }
+  ];
 }
 
 function getPerformanceMetrics(payload: Awaited<ReturnType<typeof apiClient.getDeltaComparison>>) {
