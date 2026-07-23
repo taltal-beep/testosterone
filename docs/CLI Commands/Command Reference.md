@@ -167,6 +167,8 @@ Rich terminal diff of metrics and (for full diff) extracted Allure deltas. Requi
 
 Prefer **`testo report compare`** for Rich diff plus Allure visual comparison pipeline.
 
+Note: this operates on `ReportArchive` UUIDs (`testo report list`), a separate id space from run-history `run_id`s — see [[Architecture Overview#Persistence]]. The React Compare page (`GET /api/v1/analytics/delta` + `/analytics/delta/cases`) reaches equivalent per-stage and per-test detail by `run_id` instead, per [[Delta Comparison Policy]].
+
 ---
 
 ## `testo doctor`

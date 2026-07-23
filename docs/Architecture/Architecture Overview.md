@@ -175,6 +175,13 @@ A `composite_backend()` factory fans out to both; individual backend failures ne
 
 **Service-level** (`testo_core/repository/`): Dialect-agnostic adapters selected by `DATABASE_URL` / `database.url` (SQLite default, PostgreSQL/MySQL for teams with existing infra). Used by the headless engine, API layer, and report archive system. Rationale: [[Repository Pattern - Database-Agnostic Refactor]]. Factory: `testo_core/db.py` → `get_repository()`.
 
+**Two separate, unlinked id spaces** — easy to conflate, worth calling out explicitly (found while building per-test diff for the API, see [[CLI-UI Parity - Pyramid, Graphs, Deep Diff - 2026-07-23]]):
+
+- **Run-history runs** (`RunRecord` / `CompletedRunView`, `run_history.py`): one row per `testo run --cycle` execution, keyed by `run_id`. This is what the dashboard, history, run detail, and delta/compare pages all use (`/api/v1/runs/{run_id}`, `/api/v1/analytics/delta`). Carries `stage_health`, `snapshot_dir` (the run's own raw artifact tree, local or S3).
+- **Report archives** (`ReportArchive`, `testo_core/repository/report_archive_repository.py`): one row per `testo report list/open/diff` archive, a zipped Allure snapshot keyed by its own UUID (`report_id`), with **no `run_id` column linking it back** to the run that produced it. Populated separately via `_maybe_archive_cycle_report()` in `testo_core/cli/runner.py`.
+
+Code that needs per-test data for a *run_id* (not a *report_id*) should extract from `CompletedRunView.snapshot_dir` (via `snapshot_files_for_download()`), not attempt to resolve a `ReportArchive` row — there isn't one to resolve to. See `testo_core/services/run_snapshot_diff.py` for the pattern.
+
 ## Related operational docs
 
 - Release gates: [[Release Management/README]]
