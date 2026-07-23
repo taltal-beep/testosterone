@@ -73,3 +73,51 @@ def test_runs_and_details_contract(monkeypatch) -> None:  # noqa: ANN001
     assert reports_resp.status_code == 200
     reports_payload = reports_resp.json()
     assert set(reports_payload.keys()) == {"allure_server_url", "static_links", "artifact_links"}
+
+
+def test_run_pyramid_contract(monkeypatch) -> None:  # noqa: ANN001
+    monkeypatch.setattr(
+        "testo_api.routes.history.get_run",
+        lambda run_id: CompletedRunView(  # noqa: ARG005
+            run_id="run-1",
+            status=RunStatus.COMPLETED,
+            created_at=1.0,
+            started_at=1.0,
+            finished_at=2.0,
+            test_kind="pytest",
+            returncode=0,
+            wall_duration_ms=1000.0,
+            metrics_duration_ms=1000,
+            total_tests=10,
+            passed=10,
+            failed=0,
+            broken=0,
+            skipped=0,
+            avg_case_ms=100.0,
+            health_pct=100.0,
+            target_repo="/tmp/repo",
+            snapshot_dir="runs/run-1/artifacts",
+            audit_json=None,
+            cycle=None,  # no cycle -> skip config lookup, tests still bucket to "unit" default
+            stage_health=[{"name": "pytest-sample", "total_tests": 10}],
+        ),
+    )
+
+    client = TestClient(create_app())
+    resp = client.get("/api/v1/runs/run-1/pyramid")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload == {
+        "unit": 10,
+        "integration": 0,
+        "e2e": 0,
+        "shape": "irregular",
+        "message": "Non-ideal tier ordering",
+    }
+
+
+def test_run_pyramid_contract_missing_run(monkeypatch) -> None:  # noqa: ANN001
+    monkeypatch.setattr("testo_api.routes.history.get_run", lambda run_id: None)  # noqa: ARG005
+    client = TestClient(create_app())
+    resp = client.get("/api/v1/runs/does-not-exist/pyramid")
+    assert resp.status_code == 404

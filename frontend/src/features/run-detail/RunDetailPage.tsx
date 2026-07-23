@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
 import { API_BASE, apiClient } from "../../lib/api-client";
-import { Badge, Button, Card, KeyValue, PageHeader, Spinner, StatusPill } from "../../components/ui";
+import { Badge, Button, Card, KeyValue, PageHeader, Spinner, StatusPill, TestPyramid } from "../../components/ui";
 import { formatRunName } from "../../lib/format";
 
 export function RunDetailPage() {
@@ -23,6 +23,11 @@ export function RunDetailPage() {
   const aiSummaryQuery = useQuery({
     queryKey: ["run-ai-summary", runId],
     queryFn: () => apiClient.getRunAiSummary(runId),
+    enabled: Boolean(runId)
+  });
+  const pyramidQuery = useQuery({
+    queryKey: ["run-pyramid", runId],
+    queryFn: () => apiClient.getRunPyramid(runId),
     enabled: Boolean(runId)
   });
 
@@ -90,12 +95,22 @@ export function RunDetailPage() {
         )}
       </Card>
 
+      <Card title="Test Pyramid">
+        {pyramidQuery.isLoading ? (
+          <p className="text-sm text-ink-300">Loading test pyramid...</p>
+        ) : pyramidQuery.isError || !pyramidQuery.data ? (
+          <p className="text-sm text-danger-400">Failed to load test pyramid.</p>
+        ) : (
+          <TestPyramid {...pyramidQuery.data} />
+        )}
+      </Card>
+
       <Card title="Stage Health">
-        {run.stage_health.length === 0 ? (
+        {(run.stage_health ?? []).length === 0 ? (
           <p className="text-sm text-ink-400">Per-stage breakdown not available for this run.</p>
         ) : (
           <ul className="space-y-2 text-sm">
-            {run.stage_health.map((stage) => (
+            {(run.stage_health ?? []).map((stage) => (
               <li key={stage.name} className="flex items-center justify-between gap-2">
                 <span className="text-ink-100">
                   {stage.name}

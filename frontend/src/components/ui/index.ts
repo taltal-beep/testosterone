@@ -9,3 +9,4 @@ export { Spinner } from "./Spinner";
 export { KeyValue } from "./KeyValue";
 export { StackedBar, HealthBar } from "./StackedBar";
 export type { StackedBarSegment } from "./StackedBar";
+export { TestPyramid } from "./TestPyramid";

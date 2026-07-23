@@ -136,6 +136,16 @@ export interface RunDetailResponse {
   };
 }
 
+export type PyramidShape = "healthy" | "top_heavy" | "mid_bulge" | "irregular";
+
+export interface RunPyramidResponse {
+  unit: number;
+  integration: number;
+  e2e: number;
+  shape: PyramidShape;
+  message: string;
+}
+
 export interface AiConfigStatus {
   enabled: boolean;
   configured: boolean;
@@ -329,6 +339,9 @@ export const apiClient = {
   },
   getRunReports(runId: string): Promise<{ static_links: Record<string, string>; artifact_links: string[] }> {
     return api<{ static_links: Record<string, string>; artifact_links: string[] }>(`/api/v1/runs/${runId}/reports`);
+  },
+  getRunPyramid(runId: string): Promise<RunPyramidResponse> {
+    return api<RunPyramidResponse>(`/api/v1/runs/${runId}/pyramid`);
   },
   getDeltaComparison(currentRunId: string, baselineRunId: string): Promise<DeltaComparisonResponse> {
     const params = new URLSearchParams({

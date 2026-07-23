@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
@@ -9,9 +10,12 @@ from testo_api.models import (
     RunDetailResponse,
     RunListItem,
     RunListResponse,
+    RunPyramidResponse,
     RunReportsResponse,
     StageHealth,
 )
+from testo_core.config.errors import ConfigError
+from testo_core.config.loader import discover_and_load
 from testo_core.run_history import get_run, list_run_sessions, snapshot_files_for_download
 
 router = APIRouter(prefix="/api/v1", tags=["history"])
@@ -106,4 +110,37 @@ def get_run_reports(run_id: str) -> RunReportsResponse:
         allure_server_url=allure_url,
         static_links=session.links_under_static,
         artifact_links=artifact_links,
+    )
+
+
+@router.get("/runs/{run_id}/pyramid", response_model=RunPyramidResponse)
+def get_run_pyramid(run_id: str, config_path: str | None = None) -> RunPyramidResponse:
+    """Unit/integration/e2e tier composition for a run (UI/API parity with ``testo report pyramid``)."""
+    from testo_core.reporting.pyramid_data import build_pyramid_model
+    from testo_core.reporting.pyramid_viz import classify_shape
+
+    record = get_run(run_id=run_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+
+    stages: tuple = ()
+    if record.cycle:
+        try:
+            cfg = discover_and_load(
+                config_path=Path(config_path).expanduser().resolve() if config_path else None
+            )
+        except ConfigError as exc:
+            raise HTTPException(status_code=503, detail=f"config error: {exc}") from exc
+        plan = cfg.cycles.get(record.cycle)
+        if plan is not None:
+            stages = plan.stages
+
+    model = build_pyramid_model(record, stages)
+    shape, message = classify_shape(model)
+    return RunPyramidResponse(
+        unit=model.unit,
+        integration=model.integration,
+        e2e=model.e2e,
+        shape=shape.value,
+        message=message,
     )

@@ -211,6 +211,14 @@ class RunReportsResponse(BaseModel):
     artifact_links: list[str] = Field(default_factory=list)
 
 
+class RunPyramidResponse(BaseModel):
+    unit: int
+    integration: int
+    e2e: int
+    shape: Literal["healthy", "top_heavy", "mid_bulge", "irregular"]
+    message: str
+
+
 class DeltaMetricNode(BaseModel):
     current_value: float | None = None
     baseline_value: float | None = None
