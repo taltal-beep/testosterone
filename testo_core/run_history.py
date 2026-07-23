@@ -8,7 +8,7 @@ import tempfile
 import time
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -115,6 +115,7 @@ class CompletedRunView:
     snapshot_dir: str | None
     audit_json: str | None
     cycle: str | None = None
+    stage_health: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _is_s3_snapshot_prefix(snapshot_dir: str | None) -> bool:
@@ -668,6 +669,7 @@ def _completed_view_from_record(r: RunRecord) -> CompletedRunView | None:
         target_repo=str(md["target_repo"]) if md.get("target_repo") else None,
         snapshot_dir=str(md["snapshot_dir"]) if md.get("snapshot_dir") else None,
         audit_json=str(md["audit_json"]) if md.get("audit_json") else None,
+        stage_health=[s for s in md.get("stages") or [] if isinstance(s, dict)],
     )
 
 

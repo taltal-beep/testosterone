@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from testo_core.engine.exit_codes import EngineExitCode
 from testo_core.engine.result import PlanResult, StageResult
 from testo_core.persistence.backend import PersistenceBackend
@@ -17,6 +19,7 @@ from testo_core.persistence.json_backend import JsonBackend
 def _make_plan_result(
     plan_name: str = "smoke",
     exit_code: EngineExitCode = EngineExitCode.SUCCESS,
+    artifacts_dir: Path = Path("artifacts/smoke"),
 ) -> PlanResult:
     stage = StageResult(
         stage_name="api",
@@ -26,7 +29,7 @@ def _make_plan_result(
         finished_at=1002.5,
         duration_s=2.5,
         log_path=Path("artifacts/smoke/api.log"),
-        artifacts_dir=Path("artifacts/smoke"),
+        artifacts_dir=artifacts_dir,
         command=("pytest", "-q"),
         output_tail="1 passed",
         timed_out=False,
@@ -40,6 +43,12 @@ def _make_plan_result(
         aggregate_returncode=stage.returncode,
         exit_code=exit_code,
     )
+
+
+def _write_allure_result(results_dir: Path, name: str, status: str) -> None:
+    results_dir.mkdir(parents=True, exist_ok=True)
+    payload = {"name": name, "fullName": name, "status": status, "start": 0, "stop": 1}
+    (results_dir / f"{name}-result.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
 class TestJsonBackend:
@@ -74,6 +83,39 @@ class TestJsonBackend:
         result = _make_plan_result()
         backend.persist(result)
 
+    def test_health_pct_is_real_pass_rate_not_binary_returncode(self, tmp_path: Path) -> None:
+        """A stage subprocess can exit non-zero (one test failed) while most
+        tests in it passed — health_pct must reflect the real pass rate
+        (2/3 = 66.67%), not the binary 0% a returncode-only estimate gives."""
+        stage_dir = tmp_path / "stage" / "api"
+        results_dir = stage_dir / "allure-results" / "pytest"
+        _write_allure_result(results_dir, "test_one", "passed")
+        _write_allure_result(results_dir, "test_two", "passed")
+        _write_allure_result(results_dir, "test_three", "failed")
+
+        backend = JsonBackend(tmp_path)
+        result = _make_plan_result(exit_code=EngineExitCode.DOMAIN_FAILURE, artifacts_dir=stage_dir)
+        backend.persist(result)
+
+        data = json.loads((tmp_path / "smoke" / "plan_result.json").read_text())
+        stage = data["stages"][0]
+        assert stage["total_tests"] == 3
+        assert stage["passed"] == 2
+        assert stage["failed"] == 1
+        assert stage["health_pct"] == pytest.approx(66.666, abs=0.01)
+        assert data["health_pct"] == pytest.approx(66.666, abs=0.01)
+        assert data["total_tests"] == 3
+        assert data["passed"] == 2
+
+    def test_health_pct_falls_back_to_binary_estimate_when_no_allure_results(self, tmp_path: Path) -> None:
+        backend = JsonBackend(tmp_path)
+        result = _make_plan_result(exit_code=EngineExitCode.DOMAIN_FAILURE)
+        backend.persist(result)
+
+        data = json.loads((tmp_path / "smoke" / "plan_result.json").read_text())
+        assert data["stages"][0]["total_tests"] == 0
+        assert data["health_pct"] == 0.0
+
 
 class TestDbBackend:
     def test_satisfies_protocol(self, tmp_path: Path) -> None:
@@ -94,6 +136,28 @@ class TestDbBackend:
         assert call_kwargs["status"].value == "COMPLETED"
         assert call_kwargs["metadata"]["plan"] == "smoke"
         assert call_kwargs["metadata"]["source"] == "engine"
+
+    @patch("testo_core.db.get_repository")
+    def test_health_pct_is_real_pass_rate_not_binary_returncode(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:
+        mock_repo = MagicMock()
+        mock_get_repo.return_value = mock_repo
+
+        stage_dir = tmp_path / "stage" / "api"
+        results_dir = stage_dir / "allure-results" / "pytest"
+        _write_allure_result(results_dir, "test_one", "passed")
+        _write_allure_result(results_dir, "test_two", "passed")
+        _write_allure_result(results_dir, "test_three", "failed")
+
+        backend = DbBackend(tmp_path)
+        result = _make_plan_result(exit_code=EngineExitCode.DOMAIN_FAILURE, artifacts_dir=stage_dir)
+        backend.persist(result)
+
+        metadata = mock_repo.create_run.call_args[1]["metadata"]
+        stage = metadata["stages"][0]
+        assert stage["total_tests"] == 3
+        assert stage["passed"] == 2
+        assert stage["health_pct"] == pytest.approx(66.666, abs=0.01)
+        assert metadata["health_pct"] == pytest.approx(66.666, abs=0.01)
 
     @patch("testo_core.db.get_repository")
     def test_persists_failed_run(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:

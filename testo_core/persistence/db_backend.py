@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from testo_core.engine.result import PlanResult
+from testo_core.persistence.health import compute_stage_health
 from testo_core.reporting.paths import plan_artifacts_dir
 from testo_core.repository.models import RunStatus
 
@@ -42,6 +43,13 @@ class DbBackend:
 
             repo = get_repository()
             status = RunStatus.COMPLETED if result.exit_code == 0 else RunStatus.FAILED
+
+            stage_health, health_pct = compute_stage_health(result, self._artifacts_root)
+            if health_pct is None and result.stages:
+                passed_stages = sum(1 for s in result.stages if s.returncode == 0)
+                health_pct = 100.0 * passed_stages / len(result.stages)
+            stage_health_by_name = {h["name"]: h for h in stage_health}
+
             record = repo.create_run(
                 status=status,
                 metadata={
@@ -61,9 +69,16 @@ class DbBackend:
                             "framework": s.framework,
                             "returncode": s.returncode,
                             "duration_s": s.duration_s,
+                            **{k: v for k, v in stage_health_by_name.get(s.stage_name, {}).items() if k != "name"},
                         }
                         for s in result.stages
                     ],
+                    "health_pct": health_pct,
+                    "total_tests": sum(h["total_tests"] for h in stage_health) if stage_health else None,
+                    "passed": sum(h["passed"] for h in stage_health) if stage_health else None,
+                    "failed": sum(h["failed"] for h in stage_health) if stage_health else None,
+                    "broken": sum(h["broken"] for h in stage_health) if stage_health else None,
+                    "skipped": sum(h["skipped"] for h in stage_health) if stage_health else None,
                     "snapshot_dir": self._local_snapshot_dir(result.plan_name),
                     "source": "engine",
                 },

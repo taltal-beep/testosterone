@@ -1,13 +1,15 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
 import { API_BASE, apiClient } from "../../lib/api-client";
-import { Button, Card, KeyValue, PageHeader, Spinner, StatusPill } from "../../components/ui";
+import { Badge, Button, Card, KeyValue, PageHeader, Spinner, StatusPill } from "../../components/ui";
 import { formatRunName } from "../../lib/format";
 
 export function RunDetailPage() {
   const params = useParams();
   const runId = params.runId ?? "";
+  const [artifactsExpanded, setArtifactsExpanded] = useState(false);
   const runQuery = useQuery({
     queryKey: ["run", runId],
     queryFn: () => apiClient.getRun(runId),
@@ -88,18 +90,59 @@ export function RunDetailPage() {
         )}
       </Card>
 
-      <Card title="Artifacts">
-        {reports.artifact_links.length === 0 ? (
-          <p className="text-sm text-ink-400">No artifacts recorded.</p>
+      <Card title="Stage Health">
+        {run.stage_health.length === 0 ? (
+          <p className="text-sm text-ink-400">Per-stage breakdown not available for this run.</p>
         ) : (
-          <ul className="space-y-1 text-sm text-ink-300">
-            {reports.artifact_links.map((artifact) => (
-              <li key={artifact} className="font-mono text-xs">
-                {artifact}
+          <ul className="space-y-2 text-sm">
+            {run.stage_health.map((stage) => (
+              <li key={stage.name} className="flex items-center justify-between gap-2">
+                <span className="text-ink-100">
+                  {stage.name}
+                  {stage.framework ? <span className="ml-2 text-xs text-ink-400">{stage.framework}</span> : null}
+                </span>
+                <span className="flex items-center gap-2">
+                  {stage.total_tests != null && (
+                    <span className="text-xs text-ink-400">
+                      {stage.passed ?? 0}/{stage.total_tests}
+                    </span>
+                  )}
+                  <Badge tone={stage.health_pct == null ? "neutral" : stage.health_pct >= 100 ? "success" : stage.health_pct > 0 ? "warn" : "danger"}>
+                    {stage.health_pct != null ? `${stage.health_pct.toFixed(2)}%` : "n/a"}
+                  </Badge>
+                </span>
               </li>
             ))}
           </ul>
         )}
+      </Card>
+
+      <Card
+        title={
+          <button
+            type="button"
+            onClick={() => setArtifactsExpanded((expanded) => !expanded)}
+            className="flex items-center gap-2 text-sm font-semibold text-ink-100"
+          >
+            <span className={`transition-transform ${artifactsExpanded ? "rotate-90" : ""}`}>
+              &#9656;
+            </span>
+            Artifacts
+          </button>
+        }
+      >
+        {artifactsExpanded &&
+          (reports.artifact_links.length === 0 ? (
+            <p className="text-sm text-ink-400">No artifacts recorded.</p>
+          ) : (
+            <ul className="space-y-1 text-sm text-ink-300">
+              {reports.artifact_links.map((artifact) => (
+                <li key={artifact} className="font-mono text-xs">
+                  {artifact}
+                </li>
+              ))}
+            </ul>
+          ))}
       </Card>
 
       <Card title="AI Failure Summary">

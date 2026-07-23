@@ -99,6 +99,17 @@ export interface DeltaComparisonResponse {
   highlights: string[];
 }
 
+export interface StageHealth {
+  name: string;
+  framework: string | null;
+  total_tests: number | null;
+  passed: number | null;
+  failed: number | null;
+  broken: number | null;
+  skipped: number | null;
+  health_pct: number | null;
+}
+
 export interface RunDetailResponse {
   run: {
     run_id: string;
@@ -111,6 +122,7 @@ export interface RunDetailResponse {
     finished_at: number;
     wall_duration_ms: number;
     health_pct: number | null;
+    stage_health: StageHealth[];
   };
 }
 

@@ -142,6 +142,30 @@ For each stage in order:
 - Emit `PlanFinished`; write `plan_finished` NDJSON.
 - Best-effort `plan_result.json` via `_try_persist()` (JSON snapshot; full DB persistence is not wired here yet).
 
+### Health % computation
+
+Both persistence backends (`testo_core/persistence/db_backend.py`,
+`testo_core/persistence/json_backend.py`) call
+`testo_core/persistence/health.py::compute_stage_health()` before writing the
+run record. It re-parses each stage's Allure result JSON (via
+`testo_core.reporting.allure_results.parse_collected_results`, the same
+machinery the Extent/ReportPortal/TestBeats reporters use) to get real
+per-test `passed`/`failed`/`broken`/`skipped`/`total` counts:
+
+- **Per-stage `health_pct`** — `passed / total * 100` for that stage's own
+  Allure results, stored on each entry in the persisted `stages` metadata.
+- **Overall run `health_pct`** — a single weighted pass rate: sum of `passed`
+  across every stage divided by the sum of `total` across every stage (not an
+  average of the per-stage percentages). This is what the Run Detail page's
+  Summary card and the Dashboard/Runs list health figures show.
+- **Fallback** — if no stage produced any parseable Allure results (empty
+  `total` everywhere), the overall figure falls back to the older binary
+  estimate (`passed_stages / len(stages) * 100`, i.e. did each stage
+  subprocess exit `0`) so a run with no Allure output still gets an
+  approximate health instead of a bare 0%. Runs persisted before this change
+  only have that binary estimate — `stage_health` is empty for them, and the
+  frontend shows "Per-stage breakdown not available for this run."
+
 ---
 
 ## Subprocess execution (`run_stage`)

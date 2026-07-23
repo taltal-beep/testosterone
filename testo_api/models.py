@@ -164,6 +164,17 @@ class RunListResponse(BaseModel):
     next_cursor: str | None = None
 
 
+class StageHealth(BaseModel):
+    name: str
+    framework: str | None = None
+    total_tests: int | None = None
+    passed: int | None = None
+    failed: int | None = None
+    broken: int | None = None
+    skipped: int | None = None
+    health_pct: float | None = None
+
+
 class RunDetail(BaseModel):
     run_id: str
     status: str | None = None
@@ -185,6 +196,7 @@ class RunDetail(BaseModel):
     target_repo: str | None = None
     snapshot_dir: str | None = None
     audit_json: str | None = None
+    stage_health: list[StageHealth] = Field(default_factory=list)
 
 
 class RunDetailResponse(BaseModel):

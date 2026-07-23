@@ -10,6 +10,7 @@ from testo_api.models import (
     RunListItem,
     RunListResponse,
     RunReportsResponse,
+    StageHealth,
 )
 from testo_core.run_history import get_run, list_run_sessions, snapshot_files_for_download
 
@@ -66,6 +67,19 @@ def get_run_detail(run_id: str) -> RunDetailResponse:
             target_repo=record.target_repo,
             snapshot_dir=record.snapshot_dir,
             audit_json=record.audit_json,
+            stage_health=[
+                StageHealth(
+                    name=str(s.get("name")),
+                    framework=s.get("framework"),
+                    total_tests=s.get("total_tests"),
+                    passed=s.get("passed"),
+                    failed=s.get("failed"),
+                    broken=s.get("broken"),
+                    skipped=s.get("skipped"),
+                    health_pct=s.get("health_pct"),
+                )
+                for s in record.stage_health
+            ],
         ),
         metrics=None,
         sync=None,
