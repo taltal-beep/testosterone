@@ -14,6 +14,16 @@ from pathlib import Path
 # Supported frameworks. Add new ones in :mod:`testo_core.frameworks` and append here.
 SUPPORTED_FRAMEWORKS: frozenset[str] = frozenset({"pytest", "behave", "behavex"})
 
+# Test-pyramid tiers a stage's tests are counted under. See `pyramid_data.py`.
+SUPPORTED_TIERS: frozenset[str] = frozenset({"unit", "integration", "e2e"})
+
+# Default tier per framework when a stage doesn't set 'tier' explicitly.
+DEFAULT_TIER_BY_FRAMEWORK: dict[str, str] = {
+    "pytest": "unit",
+    "behave": "integration",
+    "behavex": "e2e",
+}
+
 # Supported post-run reporters. Add new ones in :mod:`testo_core.reporting.reporters` and append here.
 SUPPORTED_REPORTER_TYPES: frozenset[str] = frozenset({"allure", "extent", "reportportal", "testbeats"})
 
@@ -56,6 +66,7 @@ class Stage:
     timeout_s: float | None = 600.0
     if_expr: str | None = None
     extra_env: tuple[tuple[str, str], ...] = ()
+    tier: str = "unit"
 
 
 @dataclass(frozen=True)

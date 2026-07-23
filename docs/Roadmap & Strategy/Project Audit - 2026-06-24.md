@@ -25,7 +25,8 @@ All 4 planned delivery phases are **implemented in code**. The project is featur
 | Config engine (`testo_core/config/`) | `loader.py`, `schema.py`, `resolver.py`, `database_section.py`, `errors.py` | Mature |
 | Orchestration engine (`testo_core/engine/`) | `orchestrator.py`, `executor.py`, `events.py`, `exit_codes.py`, `result.py`, `log_buffer.py` | Mature |
 | Framework adapters (`testo_core/frameworks/`) | `pytest_adapter.py`, `behave_adapter.py`, `behavex_adapter.py`, `base.py` | Mature |
-| Reporting pipeline (`testo_core/reporting/`) | Allure (3 modules), collector, exporter, native reports, pyramid viz, server | Mature |
+| Reporting pipeline (`testo_core/reporting/`) | Allure (3 modules), collector, exporter, native reports, server | Mature |
+| Test pyramid (`testo_core/reporting/pyramid_viz.py`, `pyramid_data.py`) | ASCII renderer + tier aggregation, wired into `testo report pyramid RUN_ID` (2026-07-23) | Mature — was orphaned/unwired before this date, see "CLI-UI Parity" ADR |
 | Reporters (`testo_core/reporting/reporters/`) | `allure_reporter.py`, `extent_reporter.py`, `testbeats_reporter.py`, `reportportal_reporter.py`, `factory.py` | Mature |
 | Repository layer (`testo_core/repository/`) | `base.py`, `adapters.py`, `models.py`, `factory.py`, `report_archive_repository.py` | Mature |
 | Services (`testo_core/services/`) | `headless_engine.py`, `dashboard_service.py`, `delta_service.py`, `failure_analysis_service.py`, AI providers | Mature |

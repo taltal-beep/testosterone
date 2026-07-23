@@ -353,3 +353,53 @@ def report_open_archived(
             inject_history=False,
         )
     raise typer.Exit(code=int(exit_code))
+
+
+@report_app.command("pyramid", help="Render the unit/integration/e2e test pyramid for a completed run.")
+def report_pyramid(
+    run_id: str = typer.Argument(
+        ...,
+        metavar="RUN_ID",
+        help="Completed run id (same id shown in the dashboard/history views).",
+    ),
+    config: Path = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="Path to a testosterone.yaml file (defaults to discovery).",
+    ),
+) -> None:
+    from testo_core.cli.ui.console import default_console
+    from testo_core.config.errors import ConfigError
+    from testo_core.config.loader import discover_and_load
+    from testo_core.reporting.pyramid_data import build_pyramid_model
+    from testo_core.reporting.pyramid_viz import classify_shape, render_pyramid_lines
+    from testo_core.run_history import get_run
+
+    console = default_console()
+    run = get_run(run_id=run_id)
+    if run is None:
+        console.print(f"[fail]no run found with id[/] {run_id!r}")
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+
+    stages: tuple[Any, ...] = ()
+    if run.cycle:
+        try:
+            cfg = discover_and_load(config_path=config)
+        except ConfigError as exc:
+            console.print(f"[fail]config error:[/] {exc}")
+            raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT)) from exc
+        plan = cfg.cycles.get(run.cycle)
+        if plan is not None:
+            stages = plan.stages
+
+    model = build_pyramid_model(run, stages)
+    shape, message = classify_shape(model)
+    console.print(f"[title]Test Pyramid[/] — {run_id} ({run.cycle or 'unknown cycle'})")
+    for line in render_pyramid_lines(model):
+        console.print(line)
+    console.print(
+        f"unit={model.unit} integration={model.integration} e2e={model.e2e} "
+        f"shape={shape.value} — {message}"
+    )
+    raise typer.Exit(code=0)

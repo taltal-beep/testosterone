@@ -26,8 +26,10 @@ import yaml
 
 from testo_core.config.errors import ConfigDiscoveryError, ConfigValidationError
 from testo_core.config.schema import (
+    DEFAULT_TIER_BY_FRAMEWORK,
     SUPPORTED_FRAMEWORKS,
     SUPPORTED_REPORTER_TYPES,
+    SUPPORTED_TIERS,
     CycleTrigger,
     Defaults,
     Plan,
@@ -343,6 +345,17 @@ def _parse_stage(*, stage_raw: Mapping[str, Any], defaults: Defaults, config_dir
         raise ConfigValidationError(f"stage {name!r}: 'if' must be a string.")
 
     extra_env = _normalise_env(stage_raw.get("extra_env")) or defaults.extra_env
+
+    tier_raw = stage_raw.get("tier")
+    if tier_raw is None:
+        tier = DEFAULT_TIER_BY_FRAMEWORK.get(framework, "unit")
+    else:
+        tier = str(tier_raw).strip().lower()
+        if tier not in SUPPORTED_TIERS:
+            raise ConfigValidationError(
+                f"stage {name!r} has unsupported tier {tier!r}; supported: {sorted(SUPPORTED_TIERS)}"
+            )
+
     return Stage(
         name=name,
         framework=framework,
@@ -352,6 +365,7 @@ def _parse_stage(*, stage_raw: Mapping[str, Any], defaults: Defaults, config_dir
         timeout_s=timeout_s,
         if_expr=if_expr,
         extra_env=extra_env,
+        tier=tier,
     )
 
 

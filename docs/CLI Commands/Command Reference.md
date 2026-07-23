@@ -78,6 +78,7 @@ testo report open --id <uuid>
 testo report compare
 testo report native
 testo report native flow-tests --no-open
+testo report pyramid <run-id>
 ```
 
 ### Default callback options
@@ -106,6 +107,7 @@ testo report native flow-tests --no-open
 | `testo report open --id <uuid>` | Extract archive and regenerate/serve Allure |
 | `testo report compare` | Rich diff + Allure comparison (optional baseline/current UUIDs) |
 | `testo report native [ROUTINE]` | List or open BehaveX/pytest native HTML under stage dirs |
+| `testo report pyramid RUN_ID [-c CONFIG]` | ASCII unit/integration/e2e test pyramid for a completed run (`run_id`, not the archive UUID); stage→tier comes from each stage's `tier:` in `testosterone.yaml` (default inferred from `equipment`: pytest→unit, behave→integration, behavex→e2e). See [[Architecture Overview#Test pyramid]]. |
 
 ---
 
