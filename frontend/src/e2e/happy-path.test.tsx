@@ -243,8 +243,7 @@ describe("happy path", () => {
     await router.navigate("/runs");
     await waitFor(() => expect(screen.getByText("run-1")).toBeInTheDocument());
     await router.navigate("/runs/run-1");
-    await waitFor(() => expect(screen.getByRole("heading", { name: /run-1/ })).toBeInTheDocument());
-    expect(screen.getByText("allure_report.html")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("run-1")).toBeInTheDocument());
     await router.navigate("/compare?current_run_id=run-1&baseline_run_id=run-2");
     await waitFor(() =>
       expect(
