@@ -62,6 +62,8 @@ node_modules/
 # Local sample-cycle run output (testo run --cycle sample-*)
 artifacts/sample-behave/
 artifacts/sample-pytests/
+artifacts/sample-all-frameworks/
+artifacts/sample-all-frameworks-stochastic/
 .testo/
 
 # Local test-suite scratch DBs
