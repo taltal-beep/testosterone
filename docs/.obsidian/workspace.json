@@ -11,13 +11,30 @@
             "id": "39e520578665ca74",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "Roadmap & Strategy/V1 Release Roadmap.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "V1 Release Roadmap"
+            }
+          },
+          {
+            "id": "b5fb87610bc8946f",
+            "type": "leaf",
+            "state": {
+              "type": "release-notes",
+              "state": {
+                "currentVersion": "1.13.7"
+              },
+              "icon": "lucide-book-up",
+              "title": "Release Notes 1.13.7"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -74,7 +91,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 325.5
+    "width": 325.5,
+    "collapsed": true
   },
   "right": {
     "id": "bc7b39c739378435",
@@ -176,9 +194,20 @@
       "bases:Create new base": false
     }
   },
-  "active": "32f6803fe17cca7b",
+  "active": "b5fb87610bc8946f",
   "lastOpenFiles": [
+    "Index.md",
+    "Roadmap & Strategy/Publish Readiness Assessment - 2026-07-24.md",
+    "Specs & ADRs/CLI-UI Parity - Pyramid, Graphs, Deep Diff - 2026-07-23.md",
+    "changelog_automation_policy.md",
+    "Testing Workflows/Engine Test Suite Rebuild - 2026-07-04.md",
+    "Specs & ADRs/Restore doctor, clean, watch, init CLI commands.md",
+    "Specs & ADRs/Reporters Subsystem Port - 2026-07-21.md",
+    "Specs & ADRs/Report Links and Artifacts Missing Fix - 2026-07-06.md",
+    "Specs & ADRs/Phase 5 UI Redesign - Cycles-First Navigation.md",
+    "Specs & ADRs/Mascot Pixel Animation Set.md",
     "Specs & ADRs/Changelog Automation and CI Enforcement Policy.md",
+    "Specs & ADRs/API-Engine Contract Drift Fix - 2026-07-04.md",
     "Processes & Guides/Publishing to PyPI.md",
     "Processes & Guides/Publishing Docker Images.md",
     "Processes & Guides/Phase 3 UI Migration Milestones.md",
@@ -195,18 +224,7 @@
     "Specs & ADRs/Allure 3 Migration Plan.md",
     "Specs & ADRs",
     "Roadmap & Strategy/V1 Release Roadmap.md",
-    "Roadmap & Strategy/UQO Engineering Hub.md",
-    "Roadmap & Strategy/Project Audit - 2026-06-24.md",
-    "Roadmap & Strategy/Product Roadmap.md",
     "Roadmap & Strategy",
-    "Release Management/Release Checklist - Phase 4 AI and Failure Analysis.md",
-    "Release Management/Release Checklist - Phase 3 Unified Dashboard.md",
-    "Release Management/Release Checklist - Phase 3 Frontend Migration.md",
-    "Release Management/Release Checklist - Phase 3 Delta Engine.md",
-    "Release Management/Release Checklist - Phase 2 Runner Image.md",
-    "Release Management/Release Checklist - Phase 2 Ghost Mode.md",
-    "Release Management/Release Checklist - Phase 2 CI Integrations.md",
-    "Release Management/Release Checklist - Phase 1 Foundation.md",
     "Prompts & Snippets",
     "Processes & Guides",
     "CLI Commands",

@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from testo_core.reporting.pyramid_viz import PyramidModel, PyramidShape, classify_shape, render_pyramid_lines
+from testo_core.reporting.pyramid_viz import (
+    PyramidModel,
+    PyramidShape,
+    classify_shape,
+    render_pyramid_lines,
+)
 
 
 def test_classify_shape_healthy() -> None:

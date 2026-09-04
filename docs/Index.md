@@ -24,6 +24,7 @@ This vault is the map of content for the project. Start here, then drill into th
 | V1 release task breakdown | [[V1 Release Roadmap]] |
 | Project audit (2026-06-24) | [[Project Audit - 2026-06-24]] |
 | Publish readiness (2026-07-24) | [[Publish Readiness Assessment - 2026-07-24]] |
+| **Active: v1.0.0 publish plan (2026-09-05)** | [[v1.0.0 Publish Execution Plan - 2026-09-05]] |
 | Report links/artifacts always empty, fix (2026-07-06) | [[Report Links and Artifacts Missing Fix - 2026-07-06]] |
 | Reporters subsystem hand-ported into main (2026-07-21) | [[Reporters Subsystem Port - 2026-07-21]] |
 | Engineering hub | [[UQO Engineering Hub]] |

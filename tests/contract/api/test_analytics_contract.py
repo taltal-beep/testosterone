@@ -3,7 +3,12 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from testo_api.main import create_app
-from testo_core.services.delta_models import DeltaComparisonResult, DeltaStatusSummary, MetricDelta, StageDelta
+from testo_core.services.delta_models import (
+    DeltaComparisonResult,
+    DeltaStatusSummary,
+    MetricDelta,
+    StageDelta,
+)
 from testo_core.services.delta_service import (
     IncompatibleRunDataError,
     InvalidRunIdError,

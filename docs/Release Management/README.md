@@ -1,5 +1,7 @@
 # Release Management
 
+> **Active execution plan:** [[v1.0.0 Publish Execution Plan - 2026-09-05]] — the working checklist for shipping v1.0.0 to PyPI, GHCR, and JFrog Artifactory.
+
 Ordered go/no-go checklists for each delivery phase. Operational commands and pass criteria live in each checklist; strategy context is in [[Product Roadmap]].
 
 | Phase | Checklists |
