@@ -4,6 +4,9 @@ Streamlit is awkward to launch programmatically — the standard idiom is to
 shell out to ``streamlit run <path-to-app.py>``.  This wrapper resolves the
 packaged ``streamlit_app.py`` so users can simply run ``testo-ui`` from any
 directory.
+
+The Streamlit surface is deprecated in favour of the React frontend and is
+scheduled for removal in v1.1; the entry-point prints a notice on stderr.
 """
 
 from __future__ import annotations
@@ -13,8 +16,16 @@ from pathlib import Path
 
 _APP_PATH = Path(__file__).with_name("streamlit_app.py")
 
+_NOTICE = (
+    "[testo] The 'testo-ui' Streamlit interface is deprecated and will be removed "
+    "in v1.1. Use the React frontend instead (see docs/Processes & Guides/"
+    "Streamlit to React Migration Guide.md).\n"
+)
+
 
 def main(argv: list[str] | None = None) -> int:
+    sys.stderr.write(_NOTICE)
+    sys.stderr.flush()
     try:
         from streamlit.web import cli as stcli  # type: ignore[import-not-found]
     except ModuleNotFoundError:

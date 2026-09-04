@@ -3,10 +3,14 @@
 UQO is a **production-oriented test orchestration system** that runs plugin-driven quality checks inside **ephemeral Docker containers**, persists run state to **Postgres**, stores artifacts in **MinIO (S3)**, and renders per-run **Allure Server** reports.
 
 This repo ships both:
-- a Streamlit UI (`app.py`) for interactive execution/history
-- a headless CLI (`uqo`) for CI-friendly automation
+- a headless CLI (`testo`) for CI-friendly automation
 - a FastAPI backend adapter (`testo_api`) with typed `/api/v1` JSON endpoints
-- a React frontend (`frontend/`) for dashboard parity migration
+- a React frontend (`frontend/`) — the official UI
+- a Streamlit UI (`app.py`, `testo-ui`) — **deprecated, removal in v1.1**
+
+> **Deprecated surfaces:** the `uqo` CLI alias (use `testo`) and the Streamlit UI
+> (use the React frontend). Both still work in v1.0 and print a notice on stderr.
+> See `docs/Processes & Guides/Streamlit to React Migration Guide.md`.
 
 ## What you get
 

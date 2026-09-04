@@ -8,6 +8,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+_Nothing yet._
+
+---
+
+## [1.0.0] - 2026-09-05
+
+First public release. Published to PyPI (`testo-core`), GHCR (`testo-runner`), and JFrog Artifactory.
+
+### Deprecated
+- `testo-ui` / Streamlit interface: prints a deprecation notice on stderr and is scheduled for removal in v1.1. The React frontend (`frontend/`) is the official UI.
+- `uqo` CLI alias: continues to forward to `testo`; removal in a future release.
+
 ### Added
 - `.pre-commit-config.yaml`: local `ruff`, changelog-format, and whitespace/YAML/TOML hooks (`pre-commit install` to enable)
 - `mypy` type-check tooling: `[tool.mypy]` config in `pyproject.toml`, advisory step in `ci.yml`'s `format` job
@@ -147,5 +159,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/taltal-beep/testosterone/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/taltal-beep/testosterone/releases/tag/v0.1.0
