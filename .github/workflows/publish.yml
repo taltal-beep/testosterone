@@ -18,6 +18,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Resolve version from tag
+        id: version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -39,7 +45,7 @@ jobs:
       - name: Verify install from Test PyPI
         run: |
           sleep 30
-          python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ testo-core==${{ github.event.release.tag_name }}
+          python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ testo-core==${{ steps.version.outputs.version }}
           testo --version
 
   pypi:
@@ -51,6 +57,12 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Resolve version from tag
+        id: version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@v5
         with:
@@ -71,5 +83,5 @@ jobs:
       - name: Verify install from PyPI
         run: |
           sleep 30
-          python -m pip install testo-core==${{ github.event.release.tag_name }}
+          python -m pip install testo-core==${{ steps.version.outputs.version }}
           testo --version

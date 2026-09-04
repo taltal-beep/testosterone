@@ -51,6 +51,7 @@ This vault is the map of content for the project. Start here, then drill into th
 | ReportPortal local | [[ReportPortal Local Setup Guide]] |
 | Allure 2 → 3 migration | [[Allure 3 Migration Plan]] |
 | PyPI publishing | [[Publishing to PyPI]] |
+| JFrog Artifactory publishing | [[Publishing to Artifactory]] |
 | Docker image publishing | [[Publishing Docker Images]] |
 | Prompts | [[AI Prompt Engineering Lab]] |
 
