@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- `equipment: command`: run any test runner (Jest, Playwright, Maestro, `go test`, ...) as a stage. `args` is the full argv
+- Stage key `junit_xml` (glob or list, relative to `target_repo`): JUnit XML written by the stage is converted into Allure results after it exits, so non-Allure runners count in summaries, health % and every reporter (`testo_core/reporting/junit_import.py`)
 - `artifactory-publish.yml`: mirrors the release to JFrog Artifactory (PyPI + Docker repos), inert until `ARTIFACTORY_URL` is set — see `docs/Processes & Guides/Publishing to Artifactory.md`
 
 ### Fixed

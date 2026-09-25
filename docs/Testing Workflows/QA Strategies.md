@@ -42,6 +42,25 @@ cycles:
 
 **Multi-framework cycle:** `sample-all-frameworks` chains pytest → native Behave → BehaveX on `sample_target_repo`.
 
+**Any other runner (`equipment: command`):** `args` is the whole command. Point `junit_xml` at the JUnit report it writes, and the results show up like a pytest stage's:
+
+```yaml
+      - name: app-unit
+        equipment: command
+        target_repo: ClientApp
+        args: ["npx", "jest", "--ci", "--reporters=default", "--reporters=jest-junit"]
+        junit_xml: junit.xml            # string or list of globs, relative to target_repo
+        tier: unit
+      - name: app-e2e
+        equipment: command
+        target_repo: ClientApp
+        args: ["npx", "playwright", "test"]
+        junit_xml: ["test-results/*.xml"]
+        tier: e2e
+```
+
+Validation: a `command` stage needs `args`, and `junit_xml` patterns must be relative and stay inside `target_repo`. `junit_xml` also works on pytest/Behave stages.
+
 **Post-run reporters** (global `reporters:` block) run after all stages complete — Allure HTML, Extent dashboard, ReportPortal upload, TestBeats Slack/Teams preview.
 
 Validate before running:

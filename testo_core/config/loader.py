@@ -188,6 +188,7 @@ def _build_legacy_runs_config(
                 "args": run.get("cli_args") or run.get("args"),
                 "timeout_s": run.get("timeout_s"),
                 "extra_env": run.get("extra_env"),
+                "junit_xml": run.get("junit_xml"),
             },
             defaults=defaults,
             config_dir=config_dir,
@@ -356,6 +357,29 @@ def _parse_stage(*, stage_raw: Mapping[str, Any], defaults: Defaults, config_dir
                 f"stage {name!r} has unsupported tier {tier!r}; supported: {sorted(SUPPORTED_TIERS)}"
             )
 
+    junit_raw = stage_raw.get("junit_xml")
+    if junit_raw is None:
+        junit_xml: tuple[str, ...] = ()
+    elif isinstance(junit_raw, str) and junit_raw.strip():
+        junit_xml = (junit_raw.strip(),)
+    elif isinstance(junit_raw, list) and junit_raw and all(isinstance(p, str) and p.strip() for p in junit_raw):
+        junit_xml = tuple(p.strip() for p in junit_raw)
+    else:
+        raise ConfigValidationError(
+            f"stage {name!r}: 'junit_xml' must be a non-empty string or list of glob patterns."
+        )
+    for pattern in junit_xml:
+        if Path(pattern).is_absolute() or ".." in Path(pattern).parts:
+            raise ConfigValidationError(
+                f"stage {name!r}: 'junit_xml' patterns must be relative to target_repo "
+                f"and stay inside it (got {pattern!r})."
+            )
+
+    if framework == "command" and not args:
+        raise ConfigValidationError(
+            f"stage {name!r}: framework 'command' needs 'args' (the full command to run)."
+        )
+
     return Stage(
         name=name,
         framework=framework,
@@ -366,6 +390,7 @@ def _parse_stage(*, stage_raw: Mapping[str, Any], defaults: Defaults, config_dir
         if_expr=if_expr,
         extra_env=extra_env,
         tier=tier,
+        junit_xml=junit_xml,
     )
 
 

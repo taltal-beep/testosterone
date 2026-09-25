@@ -35,6 +35,37 @@ _TERMINATE_GRACE_S: float = 5.0
 _DEFAULT_TAIL_LINES: int = 200
 
 
+def _import_junit(stage: Stage, *, results_dir: Path, log_path: Path, started_at: float) -> None:
+    """Post-stage hook: turn the stage's JUnit XML into Allure results.
+
+    Best-effort by design (like the BehaveX report hook): the process exit
+    code already decides pass/fail, so a missing or malformed report is
+    logged to ``run.log`` rather than raised.
+    """
+    from testo_core.reporting.junit_import import import_junit_reports
+
+    try:
+        imported = import_junit_reports(
+            target_repo=stage.target_repo,
+            patterns=stage.junit_xml,
+            results_dir=results_dir,
+            tool=stage.name,
+            not_before=started_at,
+        )
+        lines = [
+            f"[testo] junit_xml: imported {imported.tests} test(s) "
+            f"from {len(imported.files)} file(s) matching {list(stage.junit_xml)}"
+        ]
+        lines += [f"[testo] junit_xml: skipped malformed report {err}" for err in imported.errors]
+    except Exception as exc:  # noqa: BLE001 — never let reporting fail a stage
+        lines = [f"[testo] junit_xml: import failed: {exc}"]
+    try:
+        with log_path.open("a", encoding="utf-8") as log:
+            log.write("\n".join(lines) + "\n")
+    except OSError:
+        pass
+
+
 def run_stage(
     stage: Stage,
     *,
@@ -129,6 +160,9 @@ def run_stage(
             ensure_behavex_report_html(stage_root)
         except Exception:
             pass
+
+    if stage.junit_xml:
+        _import_junit(stage, results_dir=results_dir, log_path=log_path, started_at=started_at)
 
     duration = max(0.0, finished_at - started_at)
     return StageResult(

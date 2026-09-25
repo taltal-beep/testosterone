@@ -8,11 +8,13 @@ the orchestrator uses to lay out per-stage Allure result trees.
 from testo_core.frameworks.base import FrameworkAdapter, get_adapter
 from testo_core.frameworks.behave_adapter import BehaveAdapter
 from testo_core.frameworks.behavex_adapter import BehaveXAdapter
+from testo_core.frameworks.command_adapter import CommandAdapter
 from testo_core.frameworks.pytest_adapter import PytestAdapter
 
 __all__ = [
     "BehaveAdapter",
     "BehaveXAdapter",
+    "CommandAdapter",
     "FrameworkAdapter",
     "PytestAdapter",
     "get_adapter",
