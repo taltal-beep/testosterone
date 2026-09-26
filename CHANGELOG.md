@@ -15,6 +15,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `publish.yml`: post-publish verification installed `testo-core==v1.0.0` from the raw git tag, which is not a valid version specifier; the leading `v` is now stripped
 - `docker-publish.yml`: Trivy scan and verify steps referenced an image tag that never existed (`docker/metadata-action` strips the `v`); both now use the resolved metadata version
 - `docker-publish.yml`: the `latest` tag was gated on `is_default_branch`, which is never true for a release event, so `latest` would never have been published
+- `.gitattributes`: GitHub reported the repository as HTML because the generated 3.2 MB `artifacts/allure-report/index.html` outweighed all authored Python and TypeScript; generated and vendored paths are now excluded from language statistics
 
 ---
 

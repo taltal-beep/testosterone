@@ -1,0 +1,15 @@
+# Keep GitHub's language statistics representative of the code we actually write.
+#
+# artifacts/ holds generated Allure output. A single generated file,
+# artifacts/allure-report/index.html, is 3.2 MB -- larger than all of the
+# Python (1.18 MB) and TypeScript (156 KB) combined. Linguist counts bytes, so
+# without this the repository is labelled "HTML" on GitHub and the language bar
+# misrepresents the project to anyone skimming it.
+artifacts/** linguist-generated=true
+
+# Obsidian vault configuration and themes that ride along with docs/.
+# Not our code, and several theme.css files run to megabytes.
+docs/.obsidian/** linguist-vendored=true
+
+# Lockfiles are dependency state, not authored source.
+frontend/package-lock.json linguist-generated=true
