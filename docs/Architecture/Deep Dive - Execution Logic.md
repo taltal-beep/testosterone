@@ -182,7 +182,7 @@ artifacts/<cycle>/<stage>/
 
 Steps:
 
-1. `get_adapter(stage.framework)` → `PytestAdapter` | `BehaveAdapter` | `BehaveXAdapter`
+1. `get_adapter(stage.framework)` → `PytestAdapter` | `BehaveAdapter` | `BehaveXAdapter` | `CommandAdapter` (argv = `stage.args` verbatim)
 2. `adapter.build_argv(target_repo, results_dir, stage_args, workers)`
 3. `merged_env(parent_env, stage.extra_env)` plus injected vars:
    - `UQO_SHARED_ALLURE_RESULTS_DIR` → Allure output dir
@@ -205,6 +205,8 @@ subprocess.Popen(argv, cwd=target_repo, stdout=PIPE, stderr=STDOUT)
 ### Post-stage hook
 
 For `behavex`, `ensure_behavex_report_html(stage_root)` runs best-effort (exceptions swallowed).
+
+For any stage with `junit_xml` globs (typically `equipment: command`), `_import_junit` converts the matching JUnit XML (only files inside `target_repo`, only files written since the stage started) into one Allure `*-result.json` per `<testcase>` in `allure-results/<framework>/`: `<failure>` → failed, `<error>` → broken, `<skipped>` → skipped, otherwise passed. It is best-effort, like the BehaveX hook. The process exit code still decides the stage result, and the import outcome (count, or malformed files skipped) is appended to `run.log` as `[testo] junit_xml: ...`.
 
 ---
 

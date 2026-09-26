@@ -66,4 +66,8 @@ def get_adapter(framework: str) -> FrameworkAdapter:
         from testo_core.frameworks.behavex_adapter import BehaveXAdapter
 
         return BehaveXAdapter()
+    if framework == "command":
+        from testo_core.frameworks.command_adapter import CommandAdapter
+
+        return CommandAdapter()
     raise ValueError(f"Unsupported framework: {framework!r}")

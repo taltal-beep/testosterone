@@ -73,6 +73,7 @@ Each **equipment** name maps to an adapter implementing `FrameworkAdapter`:
 - `pytest` → `PytestAdapter`
 - `behave` → `BehaveAdapter`
 - `behavex` → `BehaveXAdapter`
+- `command` → `CommandAdapter`: any other runner (Jest, Playwright, Maestro, `go test`, ...). `args` is the whole argv. The stage's `junit_xml` globs are converted into Allure results after it exits (`testo_core/reporting/junit_import.py`), so the stage counts in summaries, health % and every reporter. See [[Command Adapter and JUnit Import - 2026-09-25]].
 
 Adapters build `argv`, set Allure output under `allure-results/<framework>/`, and run in `stage.target_repo` as cwd.
 

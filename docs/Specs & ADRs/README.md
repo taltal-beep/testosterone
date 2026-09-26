@@ -13,6 +13,7 @@ Engineering specs and architecture decision records. **Implementation truth** is
 | Allure 2 → 3 migration | [[Allure 3 Migration Plan]] |
 | Restore `doctor`/`clean`/`watch`/`init` CLI commands | [[Restore doctor, clean, watch, init CLI commands]] |
 | Changelog automation & CI enforcement | [[Changelog Automation and CI Enforcement Policy]] |
+| `command` equipment + JUnit → Allure import (any runner as a stage) | [[Command Adapter and JUnit Import - 2026-09-25]] |
 | Historical backlog | [[Historical - General Task Forward 2.0]] |
 | Superseded Phase 1 plan | [[Archive/SUPERSEDED Phase-1 Foundation Plan]] |
 

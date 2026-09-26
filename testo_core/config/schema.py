@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 # Supported frameworks. Add new ones in :mod:`testo_core.frameworks` and append here.
-SUPPORTED_FRAMEWORKS: frozenset[str] = frozenset({"pytest", "behave", "behavex"})
+SUPPORTED_FRAMEWORKS: frozenset[str] = frozenset({"pytest", "behave", "behavex", "command"})
 
 # Test-pyramid tiers a stage's tests are counted under. See `pyramid_data.py`.
 SUPPORTED_TIERS: frozenset[str] = frozenset({"unit", "integration", "e2e"})
@@ -22,6 +22,9 @@ DEFAULT_TIER_BY_FRAMEWORK: dict[str, str] = {
     "pytest": "unit",
     "behave": "integration",
     "behavex": "e2e",
+    # Any other runner (Jest, Playwright, Maestro, go test, ...): the stage's
+    # ``args`` are the whole argv; results come in through ``junit_xml``.
+    "command": "unit",
 }
 
 # Supported post-run reporters. Add new ones in :mod:`testo_core.reporting.reporters` and append here.
@@ -67,6 +70,11 @@ class Stage:
     if_expr: str | None = None
     extra_env: tuple[tuple[str, str], ...] = ()
     tier: str = "unit"
+    # Glob patterns (relative to ``target_repo``) of JUnit XML reports the stage
+    # writes. After the stage they are converted into Allure ``*-result.json``
+    # files in the stage's results dir, so non-Allure runners count in the
+    # summaries, health % and reports like any other stage.
+    junit_xml: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
