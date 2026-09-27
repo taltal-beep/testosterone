@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -46,6 +47,12 @@ class BehaveXAdapter:
                 ]
             )
         return argv
+
+    def extra_env(self) -> dict[str, str]:
+        # BehaveX points ``TEMP`` at ``<output>/temp``; Python's ``tempfile`` then puts the
+        # multiprocessing manager's socket there, which overflows the ~108-char AF_UNIX path
+        # limit for most checkouts. ``TMPDIR`` wins over ``TEMP``, so pin it to the system temp.
+        return {"TMPDIR": tempfile.gettempdir()}
 
     def native_report(self, stage_dir: Path) -> NativeReport | None:
         root_dir = stage_dir / "behave_reports"
