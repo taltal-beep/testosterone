@@ -8,20 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-### Added
-- `equipment: command`: run any test runner (Jest, Playwright, Maestro, `go test`, ...) as a stage. `args` is the full argv
-- Stage key `junit_xml` (glob or list, relative to `target_repo`): JUnit XML written by the stage is converted into Allure results after it exits, so non-Allure runners count in summaries, health % and every reporter (`testo_core/reporting/junit_import.py`)
-- `artifactory-publish.yml`: mirrors the release to JFrog Artifactory (PyPI + Docker repos), inert until `ARTIFACTORY_URL` is set — see `docs/Processes & Guides/Publishing to Artifactory.md`
-
-### Fixed
-- `publish.yml`: post-publish verification installed `testo-core==v1.0.0` from the raw git tag, which is not a valid version specifier; the leading `v` is now stripped
-- `docker-publish.yml`: Trivy scan and verify steps referenced an image tag that never existed (`docker/metadata-action` strips the `v`); both now use the resolved metadata version
-- `docker-publish.yml`: the `latest` tag was gated on `is_default_branch`, which is never true for a release event, so `latest` would never have been published
-- `.gitattributes`: GitHub reported the repository as HTML because the generated 3.2 MB `artifacts/allure-report/index.html` outweighed all authored Python and TypeScript; generated and vendored paths are now excluded from language statistics
-
 ---
 
-## [1.0.0] - 2026-09-05
+## [1.0.0] - 2026-09-27
 
 First public release. Published to PyPI (`testo-core`), GHCR (`testo-runner`), and JFrog Artifactory.
 
@@ -45,6 +34,9 @@ First public release. Published to PyPI (`testo-core`), GHCR (`testo-runner`), a
 - `_SENSITIVE_KEY_PATTERN` in `redaction.py` to detect sensitive mapping keys (#35)
 - `_redacted_context_text()` in `failure_context_builder.py` for structured metadata redaction (#35)
 - Allure failure context wiring in `record_completed_run()` for run recording (#35)
+- `equipment: command`: run any test runner (Jest, Playwright, Maestro, `go test`, ...) as a stage. `args` is the full argv
+- Stage key `junit_xml` (glob or list, relative to `target_repo`): JUnit XML written by the stage is converted into Allure results after it exits, so non-Allure runners count in summaries, health % and every reporter (`testo_core/reporting/junit_import.py`)
+- `artifactory-publish.yml`: mirrors the release to JFrog Artifactory (PyPI + Docker repos), inert until `ARTIFACTORY_URL` is set — see `docs/Processes & Guides/Publishing to Artifactory.md`
 
 ### Changed
 - `--no-persist` / `--persist` CLI flags with clarified semantics
@@ -55,6 +47,11 @@ First public release. Published to PyPI (`testo-core`), GHCR (`testo-runner`), a
 - Sprint 2 release gate execution across all 4 phases
 - Contract test assertion mismatch (`--plan` vs `--cycle`)
 - Allure CLI unit test mock for `resolve_allure_command`
+- `publish.yml`: post-publish verification installed `testo-core==v1.0.0` from the raw git tag, which is not a valid version specifier; the leading `v` is now stripped
+- `docker-publish.yml`: Trivy scan and verify steps referenced an image tag that never existed (`docker/metadata-action` strips the `v`); both now use the resolved metadata version
+- `docker-publish.yml`: the `latest` tag was gated on `is_default_branch`, which is never true for a release event, so `latest` would never have been published
+- `.gitattributes`: GitHub reported the repository as HTML because the generated 3.2 MB `artifacts/allure-report/index.html` outweighed all authored Python and TypeScript; generated and vendored paths are now excluded from language statistics
+- `Dockerfile.testo-runner`: the image ran as root, which fails the release workflow's blocking Trivy config scan (DS002, HIGH); it now runs as an unprivileged `testo` user, and the entrypoint is `testo` instead of the deprecated `uqo` alias
 
 ---
 

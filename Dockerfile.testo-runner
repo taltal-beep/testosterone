@@ -32,7 +32,11 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
 
 WORKDIR /workspace
 COPY --from=builder /dist/*.whl /tmp/
-RUN python -m pip install /tmp/*.whl && rm -rf /tmp/*.whl
+RUN python -m pip install /tmp/*.whl && rm -rf /tmp/*.whl && \
+    useradd --create-home --uid 10001 testo && \
+    chown testo:testo /workspace
 
-ENTRYPOINT ["uqo"]
+USER testo
+
+ENTRYPOINT ["testo"]
 CMD ["run", "--help"]
