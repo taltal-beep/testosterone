@@ -9,6 +9,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Fixed
+- Cycle health: a cycle whose stage failed without producing any results (e.g. crashed at startup) reported the pass rate of the other stages, often 100%; it now falls back to the share of stages that passed
+- "Compare latest two" (Runs page and dashboard) and the dashboard trends compared the latest run with whatever ran before it, even from another cycle; the baseline is now the previous run of the same cycle
+- `README.md`: the UI quickstart ran `streamlit run app.py` (no such file) and never mentioned the root `npm install` Allure HTML reports need; it now starts the API and React UI
 - `equipment: behavex`: every BehaveX stage failed at startup with `OSError: AF_UNIX path too long`, because BehaveX points `TEMP` at its output folder and the multiprocessing socket landed there; the adapter now pins `TMPDIR` to the system temp dir
 - Run detail, dashboard and compare showed a wall duration of 0 ms for every cycle run; engine-sourced records store `duration_s`, which the history view now falls back to
 

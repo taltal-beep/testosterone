@@ -90,6 +90,19 @@ class DashboardOverview:
     data_freshness: DashboardDataFreshness
 
 
+_BASELINE_SEARCH_WINDOW = 20
+
+
+def _previous_same_cycle(sessions: list[RunSessionView], index: int) -> RunSessionView | None:
+    """Next older session of the same cycle as ``sessions[index]`` (newest-first list).
+
+    Comparing runs of different cycles reports every test of the other cycle as removed,
+    so baselines are only ever picked from the same cycle.
+    """
+    cycle = sessions[index].cycle
+    return next((s for s in sessions[index + 1 :] if s.cycle == cycle), None)
+
+
 class DashboardService:
     def __init__(
         self,
@@ -111,7 +124,9 @@ class DashboardService:
     def get_overview(self, *, recent_limit: int = 5) -> DashboardOverview:
         if recent_limit <= 0:
             raise ValueError("recent_limit must be greater than zero.")
-        source_limit = max(2, recent_limit)
+        # Look further back than the rows shown so the latest run can find a baseline
+        # from its own cycle even when other cycles ran in between.
+        source_limit = max(_BASELINE_SEARCH_WINDOW, recent_limit)
         sessions = self._run_sessions_loader(source_limit)
         generated_at = time.time()
 
@@ -128,8 +143,9 @@ class DashboardService:
             notes.append("no_runs_available")
 
         baseline_run = None
-        if len(sessions) > 1:
-            baseline_run = self._run_lookup(sessions[1].run_id)
+        baseline_session = _previous_same_cycle(sessions, 0) if sessions else None
+        if baseline_session is not None:
+            baseline_run = self._run_lookup(baseline_session.run_id)
             if baseline_run is None:
                 degraded = True
                 notes.append("baseline_run_details_missing")
@@ -266,10 +282,9 @@ class DashboardService:
     @staticmethod
     def _build_recent_run(*, index: int, session: RunSessionView, sessions: list[RunSessionView]) -> DashboardRecentRun:
         compare_url = None
-        if index + 1 < len(sessions):
-            compare_url = (
-                f"/compare?current_run_id={session.run_id}&baseline_run_id={sessions[index + 1].run_id}"
-            )
+        baseline = _previous_same_cycle(sessions, index)
+        if baseline is not None:
+            compare_url = f"/compare?current_run_id={session.run_id}&baseline_run_id={baseline.run_id}"
         return DashboardRecentRun(
             run_id=session.run_id,
             created_at=session.created_at,

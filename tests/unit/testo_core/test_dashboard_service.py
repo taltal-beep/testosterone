@@ -39,7 +39,9 @@ def _completed(
     )
 
 
-def _session(*, run_id: str, created_at: float, returncode: int, status: RunStatus) -> RunSessionView:
+def _session(
+    *, run_id: str, created_at: float, returncode: int, status: RunStatus, cycle: str | None = None
+) -> RunSessionView:
     return RunSessionView(
         run_id=run_id,
         created_at=created_at,
@@ -54,6 +56,7 @@ def _session(*, run_id: str, created_at: float, returncode: int, status: RunStat
         links_under_static={
             "behavex": "/history/run-x/allure_reports/behavex/index.html",
         },
+        cycle=cycle,
     )
 
 
@@ -105,3 +108,33 @@ def test_dashboard_recent_runs_validates_limit() -> None:
     service = DashboardService(run_sessions_loader=lambda limit: [], run_lookup=lambda _: None)
     with pytest.raises(ValueError):
         service.get_recent_runs(limit=0)
+
+
+def test_dashboard_baseline_and_compare_links_stay_within_the_same_cycle() -> None:
+    sessions = [
+        _session(run_id="a-2", created_at=3.0, returncode=0, status=RunStatus.COMPLETED, cycle="a"),
+        _session(run_id="b-1", created_at=2.0, returncode=0, status=RunStatus.COMPLETED, cycle="b"),
+        _session(run_id="a-1", created_at=1.0, returncode=0, status=RunStatus.COMPLETED, cycle="a"),
+    ]
+    completed = {
+        s.run_id: _completed(run_id=s.run_id, health_pct=100.0, failed=0, wall_duration_ms=1000.0) for s in sessions
+    }
+    looked_up: list[str] = []
+
+    def _lookup(run_id: str) -> CompletedRunView:
+        looked_up.append(run_id)
+        return completed[run_id]
+
+    service = DashboardService(
+        run_sessions_loader=lambda limit: sessions[:limit],
+        run_lookup=_lookup,
+        delta_service_factory=lambda: DeltaComparisonService(run_lookup=_lookup),
+    )
+    overview = service.get_overview()
+
+    assert looked_up[:2] == ["a-2", "a-1"]
+    assert [r.compare_url for r in overview.recent_runs] == [
+        "/compare?current_run_id=a-2&baseline_run_id=a-1",
+        None,
+        None,
+    ]
