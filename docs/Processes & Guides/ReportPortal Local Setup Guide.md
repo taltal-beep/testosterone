@@ -67,7 +67,16 @@ export REPORTPORTAL_TOKEN=testo-local-validation_ERERERERQRGBEREREREREV2jef5txhX
 testo run --cycle sample-pytests
 ```
 
-[`testosterone.yaml`](../testosterone.yaml) already sets `endpoint`, `project`, and defaults the token to the same value if the env var is unset.
+The default [`testosterone.yaml`](../testosterone.yaml) only enables the `allure` reporter. Add a `reportportal` entry under `reporters:` to send results to the local stack:
+
+```yaml
+reporters:
+  - type: allure
+  - type: reportportal
+    endpoint: http://localhost:8080
+    project: superadmin_personal
+    token: ${env:REPORTPORTAL_TOKEN:-testo-local-validation_ERERERERQRGBEREREREREV2jef5txhXfGyP3Fw17h7wSbX5dgz7RhFB1P7mNawIW}
+```
 
 Success indicators:
 
