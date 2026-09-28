@@ -42,3 +42,11 @@ def test_native_report_none_when_report_html_missing(tmp_path: Path) -> None:
     (stage_dir / "behave_reports").mkdir(parents=True)
 
     assert BehaveXAdapter().native_report(stage_dir) is None
+
+
+def test_extra_env_pins_tmpdir_to_system_temp() -> None:
+    """BehaveX sets ``TEMP`` to its long output folder; ``TMPDIR`` must override it so
+    multiprocessing sockets stay under the AF_UNIX path limit."""
+    import tempfile
+
+    assert BehaveXAdapter().extra_env() == {"TMPDIR": tempfile.gettempdir()}

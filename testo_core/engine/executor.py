@@ -97,6 +97,10 @@ def run_stage(
     env.setdefault("UQO_LAST_TEST_TYPE", stage.framework)
     env.setdefault("UQO_ARTIFACTS_ROOT", str(artifacts_root.expanduser().resolve()))
     env["UQO_SHARED_ALLURE_RESULTS_DIR"] = str(results_dir)
+    adapter_env = getattr(adapter, "extra_env", None)
+    if adapter_env is not None:
+        for key, value in adapter_env().items():
+            env.setdefault(key, value)
 
     started_at = time.time()
     returncode: int

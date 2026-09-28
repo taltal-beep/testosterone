@@ -633,6 +633,20 @@ def _returncode_from_metadata(md: dict[str, Any]) -> int:
     return 0
 
 
+def _wall_duration_ms_from_metadata(md: dict[str, Any]) -> float:
+    """``DbBackend.persist`` (engine-sourced runs) writes ``duration_s`` but no
+    ``wall_duration_ms``; the legacy headless runner writes ``wall_duration_ms`` directly.
+    """
+    if md.get("wall_duration_ms") is not None:
+        return float(md["wall_duration_ms"])
+    if md.get("duration_s") is not None:
+        return max(0.0, float(md["duration_s"]) * 1000.0)
+    started, finished = md.get("started_at"), md.get("finished_at")
+    if started is not None and finished is not None:
+        return max(0.0, (float(finished) - float(started)) * 1000.0)
+    return 0.0
+
+
 def _health_pct_from_metadata(md: dict[str, Any]) -> float | None:
     if md.get("health_pct") is not None:
         return float(md["health_pct"])
@@ -657,7 +671,7 @@ def _completed_view_from_record(r: RunRecord) -> CompletedRunView | None:
         test_kind=str(md.get("test_kind") or "unknown"),
         cycle=str(md["plan"]) if md.get("plan") else None,
         returncode=_returncode_from_metadata(md),
-        wall_duration_ms=float(md.get("wall_duration_ms") or 0.0),
+        wall_duration_ms=_wall_duration_ms_from_metadata(md),
         metrics_duration_ms=int(md["metrics_duration_ms"]) if md.get("metrics_duration_ms") is not None else None,
         total_tests=int(md["total_tests"]) if md.get("total_tests") is not None else None,
         passed=int(md["passed"]) if md.get("passed") is not None else None,
