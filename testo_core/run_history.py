@@ -355,10 +355,12 @@ def record_completed_run(
 
     ar = artifacts_root.expanduser().resolve()
     results_dir = ar / "allure-results"
+    scoped_results_dir: Path | None = None
     if not rr.audit_mode:
         scoped_results = env.get("UQO_SHARED_ALLURE_RESULTS_DIR")
         if scoped_results:
             results_dir = Path(scoped_results).expanduser().resolve()
+            scoped_results_dir = results_dir
     m = None
     try:
         if results_dir.is_dir():
@@ -405,6 +407,7 @@ def record_completed_run(
             run_id=str(run_id),
             artifacts_root=ar,
             test_kind=str(test_kind),
+            scoped_results_dir=scoped_results_dir,
         )
 
     snapshot_attempts, snapshot_error = _run_with_retry(_snapshot_op)
@@ -488,7 +491,12 @@ def allure_report_url_for_run(run_id: str) -> str:
     return f"{base}/reports/{run_id}/index.html"
 
 
-def _collect_allure_input_dirs(*, artifacts_root: Path, test_kind: str) -> list[Path]:
+def _collect_allure_input_dirs(
+    *,
+    artifacts_root: Path,
+    test_kind: str,
+    scoped_results_dir: Path | None = None,
+) -> list[Path]:
     ar = artifacts_root.expanduser().resolve()
     src_root = (ar / "allure-results").resolve()
     if not src_root.is_dir():
@@ -500,13 +508,24 @@ def _collect_allure_input_dirs(*, artifacts_root: Path, test_kind: str) -> list[
             if p.is_dir():
                 include_dirs.append(p)
     else:
-        p = (src_root / str(test_kind)).resolve()
+        # Non-audit runs write to a run-scoped directory (``<framework>/<run_id>``);
+        # prefer it so uploads never pick up stale results from earlier runs.
+        if scoped_results_dir is not None:
+            p = scoped_results_dir.expanduser().resolve()
+        else:
+            p = (src_root / str(test_kind)).resolve()
         if p.is_dir():
             include_dirs.append(p)
     return include_dirs
 
 
-def _upload_allure_html_report_to_s3(*, run_id: str, artifacts_root: Path, test_kind: str) -> int:
+def _upload_allure_html_report_to_s3(
+    *,
+    run_id: str,
+    artifacts_root: Path,
+    test_kind: str,
+    scoped_results_dir: Path | None = None,
+) -> int:
     """Generate Allure 3 HTML locally and upload to ``reports/<run_id>/`` in MinIO."""
     try:
         storage = get_artifact_s3()
@@ -514,7 +533,11 @@ def _upload_allure_html_report_to_s3(*, run_id: str, artifacts_root: Path, test_
         logger.warning("Allure HTML upload skipped (MinIO not configured): %s", exc)
         return 0
 
-    include_dirs = _collect_allure_input_dirs(artifacts_root=artifacts_root, test_kind=test_kind)
+    include_dirs = _collect_allure_input_dirs(
+        artifacts_root=artifacts_root,
+        test_kind=test_kind,
+        scoped_results_dir=scoped_results_dir,
+    )
     if not include_dirs:
         return 0
 
@@ -565,7 +588,13 @@ def _upload_allure_html_report_to_s3(*, run_id: str, artifacts_root: Path, test_
     return int(uploaded)
 
 
-def _upload_allure_results_to_s3(*, run_id: str, artifacts_root: Path, test_kind: str) -> int:
+def _upload_allure_results_to_s3(
+    *,
+    run_id: str,
+    artifacts_root: Path,
+    test_kind: str,
+    scoped_results_dir: Path | None = None,
+) -> int:
     """
     Upload raw Allure JSON (optional, for debugging) and generated HTML to MinIO.
 
@@ -577,7 +606,11 @@ def _upload_allure_results_to_s3(*, run_id: str, artifacts_root: Path, test_kind
         logger.warning("Raw Allure results upload skipped (MinIO not configured): %s", exc)
         return 0
 
-    include_dirs = _collect_allure_input_dirs(artifacts_root=artifacts_root, test_kind=test_kind)
+    include_dirs = _collect_allure_input_dirs(
+        artifacts_root=artifacts_root,
+        test_kind=test_kind,
+        scoped_results_dir=scoped_results_dir,
+    )
     if not include_dirs:
         return 0
 
@@ -585,6 +618,7 @@ def _upload_allure_results_to_s3(*, run_id: str, artifacts_root: Path, test_kind
         run_id=run_id,
         artifacts_root=artifacts_root,
         test_kind=test_kind,
+        scoped_results_dir=scoped_results_dir,
     )
 
     prefix = f"projects/{run_id}/results"
