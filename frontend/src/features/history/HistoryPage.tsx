@@ -24,6 +24,9 @@ export function HistoryPage() {
   }
 
   const items = runsQuery.data?.items ?? [];
+  // Baseline must come from the same cycle; comparing different cycles reports every test as removed.
+  const latest = items[0];
+  const baseline = latest ? items.slice(1).find((run) => run.cycle === latest.cycle) : undefined;
 
   return (
     <section>
@@ -31,8 +34,8 @@ export function HistoryPage() {
         title="Runs"
         subtitle="Every archived cycle run, newest first."
         actions={
-          items.length >= 2 ? (
-            <Link to={`/compare?current_run_id=${items[0].run_id}&baseline_run_id=${items[1].run_id}`}>
+          latest && baseline ? (
+            <Link to={`/compare?current_run_id=${latest.run_id}&baseline_run_id=${baseline.run_id}`}>
               <Button variant="secondary" size="sm">
                 Compare latest two
               </Button>

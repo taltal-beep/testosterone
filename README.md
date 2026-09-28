@@ -65,7 +65,8 @@ docker compose ps
 ```
 
 Useful endpoints:
-- **Streamlit UI**: `http://localhost:8501` (started below)
+- **React UI**: `http://localhost:5173` (started below)
+- **API**: `http://localhost:8000/api/v1` (started below)
 - **MinIO Console**: `http://localhost:9001`
 - **Allure Server**: `http://localhost:5050`
 
@@ -74,9 +75,18 @@ Useful endpoints:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-streamlit run app.py
+pip install -r requirements.txt   # editable install with every extra, incl. the API
+npm install                       # repo root: Allure 3 CLI, needed for Allure HTML reports
+npm --prefix frontend install
+
+# two terminals
+uvicorn testo_api.main:app --host 0.0.0.0 --port 8000 --reload
+npm --prefix frontend run dev     # http://localhost:5173
 ```
+
+A bare `pip install -e .` is not enough for the UI: the API needs the `api` extra (`pip install -e ".[api]"`).
+Without `DATABASE_URL` or Postgres env vars the API uses a local SQLite file; without MinIO credentials the health dot shows "Degraded" (S3 artifact upload is off).
+The deprecated Streamlit UI still starts with `testo-ui`.
 
 Phase 3 transitional UI mode (default `dual`):
 
@@ -92,14 +102,6 @@ The `testo` CLI reads `testosterone.yaml` and runs a named **cycle** (top-level 
 
 - **BehaveX dependency**: `behavex` is already included as a runtime dependency in `pyproject.toml`. You can verify the executable is available with:
   - `testo config validate --check-executables`
-
-Start the new backend + frontend in parallel:
-
-```bash
-uvicorn testo_api.main:app --host 0.0.0.0 --port 8000 --reload
-npm --prefix frontend install
-npm --prefix frontend run dev
-```
 
 ### 5) Execute your first test
 
