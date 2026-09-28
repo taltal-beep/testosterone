@@ -8,7 +8,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- Local ReportPortal stack files that the ReportPortal Local Setup Guide already referenced but were missing: `docker-compose-rp.yml`, `scripts/reportportal-local.sh`, and `infra/reportportal/` (API key seed)
+- Unit tests for the Extent, ReportPortal and TestBeats reporters, the reporter factory, and reporter config parsing
+
 ### Fixed
+- MinIO Allure uploads (raw results and generated HTML) read the whole framework folder instead of the run's own results directory, so a run's report could include stale results from earlier runs
 - `equipment: behavex`: every BehaveX stage failed at startup with `OSError: AF_UNIX path too long`, because BehaveX points `TEMP` at its output folder and the multiprocessing socket landed there; the adapter now pins `TMPDIR` to the system temp dir
 - Run detail, dashboard and compare showed a wall duration of 0 ms for every cycle run; engine-sourced records store `duration_s`, which the history view now falls back to
 

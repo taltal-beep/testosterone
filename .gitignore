@@ -72,3 +72,6 @@ tests/artifacts/
 # Local ReportPortal Postgres data volume
 data/
 
+
+# ReportPortal local stack Postgres data
+data/reportportal/postgres/
