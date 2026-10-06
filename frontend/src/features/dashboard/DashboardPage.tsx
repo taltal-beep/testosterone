@@ -111,7 +111,6 @@ export function DashboardPage() {
               <li className="text-ink-400">Compare view unavailable</li>
             )}
             <li className="text-ink-300">{reportLink("Allure report", data.report_links?.allure ?? { url: null, state: "unknown" })}</li>
-            <li className="text-ink-300">{reportLink("Locust report", data.report_links?.locust ?? { url: null, state: "unknown" })}</li>
             <li className="text-ink-300">{reportLink("Behave report", data.report_links?.behave ?? { url: null, state: "unknown" })}</li>
           </ul>
         </Card>

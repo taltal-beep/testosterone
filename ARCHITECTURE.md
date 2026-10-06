@@ -1,13 +1,105 @@
-# Unified Quality Orchestration & Reporting Dashboard — Architecture
+# Testosterone — Architecture
 
-UQO is a shared-engine test orchestration system with adapter surfaces for Streamlit UI, FastAPI API, React frontend, and a headless CLI. It builds framework-specific commands, runs them in one-off Docker containers, persists run history in Postgres, stores report artifacts in MinIO, and exposes per-run Allure reports through Allure Docker Service.
+Testosterone (`testo-core`) is a config-driven test orchestrator. You describe test **cycles** in `testosterone.yaml`; each cycle is a list of **stages**, and each stage runs one test framework (pytest, Behave, BehaveX, or any command that writes JUnit XML). Testo runs the stages, collects every result into Allure format, writes run history, and produces reports. The same engine is driven from a CLI, a REST API, and a React dashboard.
 
-## Design goals
+This file is the map of the system as it is today. Deeper notes live in the docs vault: start at [docs/Index.md](docs/Index.md), then [Architecture Overview](docs/Architecture/Architecture%20Overview.md) and [Deep Dive - Execution Logic](docs/Architecture/Deep%20Dive%20-%20Execution%20Logic.md). Known structural debt is tracked in [Technical Debt Tracker](docs/Testing%20Workflows/Technical%20Debt%20Tracker.md).
 
-- **Single pane of glass**: run Pytest, BehaveX, native Behave, Locust, or the multi-framework audit workflow from one UI.
-- **Target-repo isolation**: users provide a target repository path; execution happens in an ephemeral container with the orchestrator repo mounted at `/app`.
-- **Unified reporting**: framework outputs are routed under `artifacts/allure-results/<framework>/` and mirrored to static/S3-backed views.
-- **Operational resilience**: startup cleanup marks orphaned `RUNNING` records as `FAILED`, and each container has a hard timeout via `UQO_CONTAINER_TIMEOUT_S`.
+## System diagram
+
+```mermaid
+flowchart TB
+    subgraph surfaces["Entry points"]
+        CLI["testo CLI<br/>(Typer)"]
+        UI["React dashboard<br/>frontend/ (Vite)"]
+        API["REST API<br/>testo_api/ (FastAPI, /api/v1)"]
+        LEG["Deprecated: uqo CLI,<br/>Streamlit testo_ui/"]
+    end
+
+    UI -- "HTTP + SSE" --> API
+
+    subgraph core["testo_core (the library)"]
+        CFG["config/<br/>load + resolve testosterone.yaml"]
+        UC["services/cycle_run.py<br/>CycleRunService: trigger → run → report → archive"]
+        ENG["engine/<br/>orchestrator.run_plan → executor.run_stage"]
+        FW["frameworks/<br/>pytest · behave · behavex · command"]
+        REP["reporting/<br/>Allure · Extent · ReportPortal · TestBeats"]
+        PER["persistence/<br/>JSON + DB backends"]
+        REPO["repository/<br/>SQLModel run + report-archive repos"]
+        SVC["services/<br/>dashboard · delta · AI failure analysis"]
+        HE["services/headless_engine.py<br/>+ runners.py (Docker)<br/>legacy stack"]
+    end
+
+    CLI --> UC
+    API -- "cycle executions" --> UC
+    API -- "dashboard, compare, history" --> SVC
+    API -- "/executions (legacy)" --> HE
+    LEG --> HE
+
+    UC --> CFG
+    UC --> ENG
+    UC --> REP
+    ENG --> FW
+    ENG --> PER
+    PER --> REPO
+    SVC --> REPO
+    HE --> REPO
+
+    FW -- "subprocess per stage" --> TARGET[("Target repo<br/>tests")]
+    ENG --> ART[("artifacts/cycle/stage/<br/>run.log · allure-results · events.ndjson")]
+    REPO --> DB[("SQLite / Postgres / MySQL")]
+    HE --> S3[("MinIO (S3) +<br/>Allure Docker Service")]
+```
+
+The CLI and the API are thin adapters over the same `CycleRunService`; they differ only in how they render progress.
+
+## Layers
+
+| Layer | Package | Responsibility |
+| --- | --- | --- |
+| Entry points | `testo_core/cli/`, `testo_api/`, `frontend/` | Parse input, render output. The CLI is Typer with lazy command registration so `testo --help` stays fast. The API is FastAPI with one router per resource. The React app talks only to `/api/v1`. |
+| Configuration | `testo_core/config/` | `loader.py` finds and parses `testosterone.yaml`, `schema.py` defines `TestosteroneConfig`, `Plan` (a cycle) and `Stage`, and `resolver.py` applies defaults and `${env:…}` interpolation. |
+| Engine | `testo_core/engine/` | `orchestrator.run_plan()` runs stages in order and emits typed events (written to `events.ndjson`). `executor.run_stage()` spawns one subprocess per stage with a timeout and tees `run.log`. `exit_codes.py` is the single source of the 0–4 exit-code contract. |
+| Framework adapters | `testo_core/frameworks/` | One `FrameworkAdapter` per `equipment` value. Each builds argv and says where Allure results land. `command` runs any argv and converts its JUnit XML into Allure results. |
+| Reporting | `testo_core/reporting/` | Collects per-stage Allure results and generates reports. `reporters/` holds pluggable reporters selected by the `reporters:` block in config. |
+| Persistence | `testo_core/persistence/`, `testo_core/repository/` | `PersistenceBackend` protocol with JSON and DB implementations fanned out by a composite backend. The DB side goes through a `BaseRunRepository` protocol backed by SQLModel, so SQLite, Postgres and MySQL all work. |
+| Application services | `testo_core/services/` | `cycle_run.py` (`CycleRunService`) is the "run a cycle" use case shared by the CLI and the API: trigger gate, engine, reporters, report archive. The rest are read-side use cases over run history: dashboard KPIs and trends, run-to-run delta comparison, and bring-your-own-key AI failure summaries (`services/ai/`, OpenAI and Anthropic providers). |
+
+Dependency direction is outer to inner: entry points depend on `testo_core`; nothing in `testo_core` imports `testo_api`, `frontend` or Streamlit. Heavy dependencies (SQLAlchemy, Docker, FastAPI, Streamlit) are optional extras, and `import testo_core` loads none of them.
+
+## How a cycle runs
+
+1. `testo run --cycle sample-pytests` (or `POST /api/v1/cycles/{cycle}/executions` from the dashboard).
+2. Config is discovered, validated and resolved into a `Plan` with its `Stage`s.
+3. If the cycle has a `trigger:`, it is evaluated first and can skip the run.
+4. `run_plan()` executes each stage. The adapter builds the command, the executor runs it in the stage's `target_repo` and streams events (`stage_started`, `log`, `stage_finished`, …) to a renderer: Rich panels on a terminal, NDJSON with `--ci`, or Server-Sent Events for the dashboard.
+5. Results land in `artifacts/<cycle>/<stage>/`, and a `plan_result.json` summarises the cycle.
+6. The persistence backend writes run history (JSON always, DB when configured).
+7. Configured reporters run, and the report archive stores the cycle for later diffing.
+8. The process exits with a contract exit code: `0` passed, `1` tests failed, `2` bad config, `3` infrastructure failure, `4` internal error.
+
+## Design decisions
+
+- **Config as the contract.** Cycles live in version-controlled YAML, so CI, the CLI and the dashboard all run exactly the same thing.
+- **Host subprocesses by default.** The modern engine runs frameworks directly on the host. Docker execution belongs to the legacy stack and the published `testo-runner` image.
+- **Sequential stages.** Stages run in order on purpose, which keeps logs, events and exit codes deterministic. Parallelism stays inside a framework (for example BehaveX `--workers`).
+- **Allure as the common result format.** Every adapter, including the generic `command` adapter via JUnit import, produces Allure results, so every reporter works for every framework.
+- **One typed contract from Pydantic to React.** `testo_api/models.py` is the only place the HTTP contract is written. `scripts/export_openapi.py` exports FastAPI's OpenAPI schema to `frontend/openapi.json`, and `openapi-typescript` generates `frontend/src/lib/api-schema.ts` from it. CI fails if either file is stale or `tsc` finds a mismatch, so a backend change that breaks the UI fails the build instead of the browser.
+- **Events, not callbacks.** The engine emits typed events and a renderer decides the output. That is how the same run feeds a terminal, a CI log and a browser.
+- **Protocols at the seams.** Framework adapters, persistence backends, repositories, reporters and AI providers are each a small `Protocol` with swappable implementations.
+
+## Known structural debt
+
+These are the main places where the code does not yet match the layering above. They are listed here so the picture is honest; the plan for each lives in the [Technical Debt Tracker](docs/Testing%20Workflows/Technical%20Debt%20Tracker.md).
+
+- **Two execution stacks.** The modern engine (`engine/` + `frameworks/`) and the legacy stack (`services/headless_engine.py` + `runners.py` + `run_history.py`, Docker-based) both exist. The deprecated `uqo` CLI, the Streamlit UI and the API's `/executions` routes still use the legacy one.
+- **Overlapping persistence modules.** `persistence/`, `repository/`, `db.py`/`db_config.py` and the 900-line `run_history.py` all touch run storage.
+- **Unused plugin layer.** The Pluggy hook system (`orchestrator.py`, `specs.py`, `plugins_builtin.py`) is exported publicly but no runner calls it.
+
+---
+
+# Legacy UQO platform (Docker runner)
+
+Everything below describes the original UQO stack, which is still shipped for the deprecated `uqo` CLI, the Streamlit UI and the API's `/api/v1/executions` routes. New work should target the engine described above.
 
 ## Runtime services
 
@@ -19,13 +111,13 @@ UQO is a shared-engine test orchestration system with adapter surfaces for Strea
 - **Allure Docker Service (`uqo-allure`)**: renders `projects/<run_id>/reports/latest/index.html`.
 - **Allure sync (`uqo-allure-sync`)**: continuously mirrors `s3://<bucket>/projects` into Allure's `/app/projects`.
 
-The Streamlit UI (`streamlit run app.py`), FastAPI (`uvicorn testo_api.main:app ...`), React frontend (`npm --prefix frontend run dev`), and CLI (`uqo run ...`) run on the host, not in Compose.
+The Streamlit UI (`testo-ui`), FastAPI (`uvicorn testo_api.main:app ...`), React frontend (`npm --prefix frontend run dev`), and CLI (`uqo run ...`) run on the host, not in Compose.
 
-## Source map
+## Legacy source map
 
 ```text
 .
-├── app.py                         # Streamlit UI, worker startup, history/report tabs
+├── testo_ui/                      # Deprecated Streamlit UI (`testo-ui`)
 ├── testo_api/                       # FastAPI adapter (JSON/SSE routes, execution manager)
 ├── frontend/                      # React dashboard consuming /api/v1 contracts
 ├── docker-compose.yml             # Postgres, MinIO, Allure, MinIO-to-Allure sync
@@ -33,7 +125,7 @@ The Streamlit UI (`streamlit run app.py`), FastAPI (`uvicorn testo_api.main:app 
 │   ├── command_builders.py         # RunConfig, TestType, framework argv/env builders
 │   ├── runners.py                  # Ephemeral Docker execution, audit workflow, log streaming
 │   ├── run_history.py              # Postgres models, snapshots, S3 upload, history views
-│   ├── cli.py                      # Headless CLI adapter (`uqo run`)
+│   ├── cli/legacy.py               # Headless CLI adapter (`uqo run`)
 │   ├── s3_client.py                # MinIO/S3 client and public object URLs
 │   ├── report_generator.py         # Local Allure/static report generation and sync
 │   ├── result_management.py        # Per-run result archive/cleanup
@@ -49,7 +141,7 @@ The Streamlit UI (`streamlit run app.py`), FastAPI (`uvicorn testo_api.main:app 
 
 Runtime output directories such as `artifacts/`, `logs/`, and `static/` are generated by runs and are not source-controlled API surfaces.
 
-## Execution flow
+## Legacy execution flow
 
 1. A host adapter (Streamlit, FastAPI, or CLI) builds run specs and calls `HeadlessEngineService`.
 2. The engine validates inputs, creates Postgres run row(s) with `status=RUNNING`, and maps requests into `RunConfig`:
@@ -163,7 +255,7 @@ Each phase writes to `artifacts/allure-results/<framework>/`. A non-zero phase i
 - Core source of truth: `testo_core/services/delta_service.py`.
 - Delta endpoint: `GET /api/v1/analytics/delta?current_run_id=...&baseline_run_id=...`.
 - Frontend adapter: `frontend/src/features/compare/ComparePage.tsx` with API wiring in `frontend/src/lib/api-client.ts`.
-- Deterministic direction/classification policy table: `docs/delta_comparison_policy.md`.
+- Deterministic direction/classification policy table: [Delta Comparison Policy](docs/Release%20Management/Delta%20Comparison%20Policy.md).
 
 ## Unified dashboard architecture
 
@@ -228,7 +320,7 @@ The current Streamlit workflow uses the built-in `TestType` command builders. Cu
 
 ## Operational notes
 
-- Start infrastructure with `docker compose up -d` and verify `docker compose ps` before launching Streamlit.
+- Start infrastructure with `docker compose up -d` and verify `docker compose ps` before launching the legacy stack.
 - The execution container uses Docker network `uqo-net`; Compose must be running so the network exists.
 - If Allure links 404 immediately after a run, wait for the 5-second `allure-sync` mirror loop, then check that MinIO contains `projects/<run_id>/results/` and `uqo-allure-sync` is healthy.
 - If history downloads or S3 snapshots are missing, verify `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `BUCKET_NAME`, and optionally `MINIO_PUBLIC_BASE_URL`.
