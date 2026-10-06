@@ -1,53 +1,39 @@
-name: UQO Run
-description: Run Unified Quality Orchestration via uqo CLI.
+name: Testosterone Run
+description: Run a Testosterone cycle via `testo run --ci`.
 inputs:
   config-path:
-    description: Path to the UQO YAML config file.
-    required: true
-  ci-mode:
-    description: Enable strict CI machine-output mode.
-    required: false
-    default: "true"
-  ghost-mode:
-    description: Ghost mode override (`auto`, `true`, or `false`).
-    required: false
-    default: "auto"
-  stream-json:
-    description: Emit NDJSON stream before final summary.
-    required: false
-    default: "false"
-  persist:
-    description: Persist run metadata to configured repository backend.
-    required: false
-    default: "true"
-  runner-image:
-    description: Optional runner image reference used by UQO execution engine.
+    description: Path to testosterone.yaml (empty = discovery from the workspace root).
     required: false
     default: ""
-  runner-prebuilt:
-    description: Prebuilt runner mode (`auto`, `true`, `false`) for runtime dependency install behavior.
+  cycle:
+    description: Cycle to run (empty = the only cycle in the config; `all` = every cycle).
     required: false
-    default: "auto"
+    default: ""
+  ci-mode:
+    description: Emit NDJSON events on stdout (`testo run --ci`).
+    required: false
+    default: "true"
+  persist:
+    description: Persist plan_result.json and the run history record.
+    required: false
+    default: "true"
   python-version:
-    description: Python version used to run UQO.
+    description: Python version used to run testo.
     required: false
     default: "3.11"
 outputs:
   exit_code:
-    description: UQO process exit code.
-    value: ${{ steps.run_uqo.outputs.exit_code }}
-  run_id:
-    description: First run ID from summary payload.
-    value: ${{ steps.run_uqo.outputs.run_id }}
+    description: testo process exit code.
+    value: ${{ steps.run_testo.outputs.exit_code }}
   summary_json:
-    description: Final summary JSON object string.
-    value: ${{ steps.run_uqo.outputs.summary_json }}
+    description: Final `plan_finished` (or `error`) NDJSON event as a JSON string.
+    value: ${{ steps.run_testo.outputs.summary_json }}
   summary_path:
-    description: Absolute path to saved summary JSON file.
-    value: ${{ steps.run_uqo.outputs.summary_path }}
+    description: Absolute path to the saved summary JSON file.
+    value: ${{ steps.run_testo.outputs.summary_path }}
   status:
     description: Normalized status string from exit code.
-    value: ${{ steps.run_uqo.outputs.status }}
+    value: ${{ steps.run_testo.outputs.status }}
 runs:
   using: composite
   steps:
@@ -55,20 +41,17 @@ runs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ inputs.python-version }}
-    - name: Install UQO
+    - name: Install testo
       shell: bash
       run: |
         python -m pip install --upgrade pip
         python -m pip install testo-core
-    - name: Run UQO
-      id: run_uqo
+    - name: Run testo
+      id: run_testo
       shell: bash
       run: |
-        python "${{ github.action_path }}/run_uqo_action.py" \
+        python "${{ github.action_path }}/run_testo_action.py" \
           --config-path "${{ inputs.config-path }}" \
+          --cycle "${{ inputs.cycle }}" \
           --ci-mode "${{ inputs.ci-mode }}" \
-          --ghost-mode "${{ inputs.ghost-mode }}" \
-          --stream-json "${{ inputs.stream-json }}" \
-          --persist "${{ inputs.persist }}" \
-          --runner-image "${{ inputs.runner-image }}" \
-          --runner-prebuilt "${{ inputs.runner-prebuilt }}"
+          --persist "${{ inputs.persist }}"

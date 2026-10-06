@@ -120,9 +120,8 @@ Debounced filesystem events call `testo run` repeatedly; useful for fast feedbac
 |-----------|--------|
 | `testo run --ci` | NDJSON on stdout for parsers |
 | `testo run --no-persist` / `--no-report-db` | Lighter CI without DB |
-| `uqo run --config …` | Legacy ghost/JSON contract (see `ARCHITECTURE.md`) |
-| GitHub Action | `integrations/github-action/run_uqo_action.py` |
-| `testo-api` | HTTP trigger + SSE log stream |
+| GitHub Action / GitLab template | `integrations/github-action/`, `ci/gitlab/testo.gitlab-ci.yml` — both wrap `testo run --ci` |
+| `testo-api` | `POST /cycles/{cycle}/executions` or `POST /adhoc-executions` + SSE event stream |
 
 ---
 
@@ -143,7 +142,7 @@ Debounced filesystem events call `testo run` repeatedly; useful for fast feedbac
 5. **`--fail-fast`** — aborts remaining stages (and `run --cycle all` aborts remaining cycles).
 6. **Exit classification** — `classify_exit_code()` maps stage return codes to `EngineExitCode`.
 
-**Not the default for `testo run`:** Docker-isolated execution (`testo_core/runners.py`) remains for the UQO platform path (compose stack, MinIO, Allure Server).
+There is no other execution path: the API (cycle and ad-hoc executions) and the CI wrappers all reach `run_plan()` through `CycleRunService`. The Docker-based `runners.py` stack was removed in v1.1.
 
 ---
 
@@ -224,7 +223,7 @@ testo run --cycle sample-pytests --dry-run --ci
 
 Emits `dry_run_stage` objects with `argv`, `cwd`, `framework` without executing.
 
-**Ghost mode (CI):** When running in a CI environment, prefer `testo run --ci` or rely on auto-detection so the CLI stays non-interactive: NDJSON or summary JSON on stdout, optional persistence to DB/S3, and enriched metadata (`trigger_source=ci`, `execution_mode=ghost`, provider ids). Override with `--ghost` / `--no-ghost`. Wrappers: [[CI-CD Pipeline Setup]]. Release gate: [[Release Checklist - Phase 2 Ghost Mode]].
+**CI:** use `testo run --ci` so the CLI stays non-interactive (NDJSON on stdout, `plan_finished` last). Run records written in CI carry `ci_provider`, `ci_pipeline_id`, `ci_job_id`, `ci_commit_sha` and `ci_ref_name` (detected from the CI environment by `DbBackend`). Wrappers: [[CI-CD Pipeline Setup]].
 
 ---
 
@@ -294,8 +293,9 @@ The repo’s own QA lives under `tests/`. The **modern `testo run` execution pat
 | `tests/unit/testo_core/engine/` | `classify_exit_code` (`test_exit_codes.py`), `LogBuffer` (`test_log_buffer.py`), `run_stage` (`test_executor.py`), `run_plan` fail-fast (`test_orchestrator.py`) + lifecycle/state (`test_orchestrator_lifecycle.py`) |
 | `tests/unit/testo_core/cli/` | Exit codes (`test_run_exit_codes.py`), archive (`test_run_archive.py`), flags (`test_run_flags.py`), CI NDJSON (`test_run_ci_ndjson.py`), config discovery (`test_config_discovery.py`), smokes (`test_cli_commands_smoke.py`) |
 | `tests/integration/testo_core/engine/` | Real subprocess smoke via `echo.py` (no Docker) — `test_subprocess_smoke.py` |
-| `tests/contract/testo_core/` | Formal `EngineExitCode` 0–4 contract (`test_exit_code_contract.py`), canonical-import identity (`test_exit_code_consolidation.py`) + legacy CLI contracts |
-| `tests/unit/testo_core/` (legacy) | Headless/UQO path, reporters, triggers, archives |
+| `tests/contract/testo_core/` | Formal `EngineExitCode` 0–4 contract (`test_exit_code_contract.py`) |
+| `tests/unit/testo_core/` | Cycle-run service, persistence (incl. failure context), reporters, triggers, archives |
+| `tests/unit/test_cycle_execution_manager.py`, `tests/contract/api/` | API executions (cycle + ad-hoc) through the engine |
 | `tests/integration/` | Sandbox API, fuller paths |
 | `tests/contract/` | Packaging, CI wrapper contracts |
 
@@ -415,7 +415,6 @@ Install step in CI: `pip install -e ".[dev]"`.
 - Tests **lock current exit-code behavior**, including known misclassifications documented in [[Troubleshooting and Error Codes#Classification logic]] (e.g. SIGKILL rc=137 → exit **1**); fixing those is a separate refactor.
 - 2026-07-04: the suite was rebuilt after the original files were lost uncommitted, and two documented contract pieces were restored in the engine at the same time: stage timeouts now normalise to `returncode=124` (previously the raw signal code leaked through, classifying timeouts as exit 1), and `classify_exit_code` gained the `internal_failure` flag so orchestrator-caught exceptions exit **4** instead of **1**. See [[Engine Test Suite Rebuild - 2026-07-04]].
 - `CIRenderer` stdout omits `error` on `stage_finished`; the artifact `events.ndjson` mirror includes it — tests assert both surfaces where relevant.
-- Legacy `uqo run` / `HeadlessEngineService` coverage remains in `test_cli_run.py` and `test_headless_engine.py`.
 - Use [[Command Reference]] for operator-facing commands; this section is for contributors validating engine changes.
 
 ## Related operational docs

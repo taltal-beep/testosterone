@@ -166,3 +166,28 @@ def test_plan_with_no_enabled_stages_raises(tmp_path: Path, monkeypatch: pytest.
 
     with pytest.raises(NoStagesEnabledError):
         CycleRunService().run(cfg=cfg, plan=plan, renderer=NoopRenderer())
+
+
+def test_single_stage_plan_wraps_one_framework_call(tmp_path: Path) -> None:
+    plan = cycle_run_mod.single_stage_plan(
+        framework="behave",
+        target_repo=tmp_path,
+        args=["features/smoke.feature"],
+        timeout_s=30.0,
+        extra_env={"B": "2", "A": "1"},
+    )
+
+    assert plan.name == "adhoc"
+    assert plan.trigger is None
+    (stage,) = plan.stages
+    assert stage.framework == "behave"
+    assert stage.target_repo == tmp_path.resolve()
+    assert stage.args == ("features/smoke.feature",)
+    assert stage.timeout_s == 30.0
+    assert stage.extra_env == (("A", "1"), ("B", "2"))
+    assert stage.tier == "integration"
+
+
+def test_single_stage_plan_keeps_the_default_timeout(tmp_path: Path) -> None:
+    (stage,) = cycle_run_mod.single_stage_plan(framework="pytest", target_repo=tmp_path).stages
+    assert stage.timeout_s == 600.0

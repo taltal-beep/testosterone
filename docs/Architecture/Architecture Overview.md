@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Testo is a **config-driven test orchestration CLI** built around a small, sequential **engine** and **framework adapters**. Heavy dependencies (database, Docker runner for legacy UQO paths) are optional extras; the default `testo run` path executes frameworks as **host subprocesses**.
+Testo is a **config-driven test orchestration CLI** built around a small, sequential **engine** and **framework adapters**. Heavy dependencies (database, API) are optional extras; every run executes frameworks as **host subprocesses**, whether it starts from the CLI, the API or a CI wrapper.
 
 See also: [[Index]], [[Command Reference]], [[QA Strategies]].
 
@@ -14,7 +14,8 @@ testo_core/config/     discover_and_load → resolve_plan / resolve_stages
        │
        ▼
 testo_core/cli/runner   execute_plan_command (picks renderer, prints trigger/archive messages)
-       │                (the API's cycle_execution_manager is the other caller)
+       │                (the API's cycle_execution_manager is the other caller,
+       │                 for named cycles and ad-hoc single_stage_plan() runs)
        ▼
 testo_core/services/cycle_run   CycleRunService.run (trigger gate, reporters, archive)
        │
@@ -62,7 +63,7 @@ Cycles are defined under `cycles:` in YAML (legacy key `plans:` is still accepte
 |--------|------|
 | `orchestrator.py` | `run_plan()` — iterates stages, emits events, writes `events.ndjson` |
 | `executor.py` | `run_stage()` — spawns subprocess, timeouts, `run.log` tee |
-| `exit_codes.py` | `EngineExitCode` taxonomy (0–4) — single source for both engine and headless stacks |
+| `exit_codes.py` | `EngineExitCode` taxonomy (0–4) — the single exit-code contract for every surface |
 | `result.py` | `StageResult`, `PlanResult` aggregates |
 
 `testo_core/persistence/` provides the `PersistenceBackend` protocol used by the orchestrator (JSON + DB backends, composite fanout). See **Persistence** below.
@@ -96,13 +97,13 @@ Optional per-cycle **selective execution**: Git diff or filesystem snapshot agai
 
 | Package | Purpose |
 |---------|---------|
-| `testo_api/` | FastAPI `/api/v1` — cycle discovery (`GET /cycles`, `GET /cycles/{cycle}`), runs, SSE, report archives, health probes |
-| `frontend/` | React UI (primary) — cycles-first navigation, see [[Phase 5 UI Redesign - Cycles-First Navigation]] |
-| `testo_ui/` | Streamlit dashboard (legacy fallback) |
-| `testo_core/runners.py` | Legacy **Docker** streaming runner used by UQO headless path |
-| `testo_core/services/` | `cycle_run.py` (the cycle use case shared by CLI and API), headless engine, report archive diff, config DB helpers |
+| `testo_api/` | FastAPI `/api/v1` — cycle discovery (`GET /cycles`, `GET /cycles/{cycle}`), cycle and ad-hoc executions with SSE, runs, analytics, AI summaries, health probes |
+| `frontend/` | React UI — cycles-first navigation plus Quick Run, see [[Phase 5 UI Redesign - Cycles-First Navigation]] |
+| `testo_core/services/` | `cycle_run.py` (the run use case shared by CLI and API), dashboard, delta, AI failure analysis, report archive diff |
 
-Modern **`testo run`** does not require Docker; the compose stack in `docker-compose.yml` supports the full UQO reporting platform (Postgres, MinIO, Allure Server) when those extras are enabled.
+Until v1.1 a second, Docker-based execution stack (`HeadlessEngineService` → `runners.py`) and a Streamlit UI shipped beside these; see [[Deep Dive - Execution Logic#Removed: the UQO headless / Docker path]].
+
+**`testo run`** does not require Docker. `docker-compose.yml` provides Postgres for team setups, plus MinIO and Allure Server, which only serve report snapshots of runs recorded before v1.1.
 
 ### Official documentation
 
@@ -173,11 +174,11 @@ Two persistence layers exist, each at a different abstraction level:
 **Engine-level** (`testo_core/persistence/`): Called by `orchestrator.run_plan()` after a cycle completes. Uses a `PersistenceBackend` protocol with two built-in backends:
 
 - `JsonBackend` — writes `plan_result.json` to the artifacts tree (always active).
-- `DbBackend` — upserts a `RunRecord` via the repository layer (active when DB extras are installed).
+- `DbBackend` — upserts a `RunRecord` via the repository layer (active when DB extras are installed), including failure evidence for failed runs (`persistence/failure_context.py`) and CI provenance when run in CI.
 
 A `composite_backend()` factory fans out to both; individual backend failures never fail the run. Controlled by `--no-persist`.
 
-**Service-level** (`testo_core/repository/`): Dialect-agnostic adapters selected by `DATABASE_URL` / `database.url` (SQLite default, PostgreSQL/MySQL for teams with existing infra). Used by the headless engine, API layer, and report archive system. Rationale: [[Repository Pattern - Database-Agnostic Refactor]]. Factory: `testo_core/db.py` → `get_repository()`.
+**Service-level** (`testo_core/repository/`): Dialect-agnostic adapters selected by `DATABASE_URL` / `database.url` (SQLite default, PostgreSQL/MySQL for teams with existing infra). Used by `DbBackend`, the API read side (`run_history.py`), and the report archive system. Rationale: [[Repository Pattern - Database-Agnostic Refactor]]. Factory: `testo_core/db.py` → `get_repository()`.
 
 **Two separate, unlinked id spaces** — easy to conflate, worth calling out explicitly (found while building per-test diff for the API, see [[CLI-UI Parity - Pyramid, Graphs, Deep Diff - 2026-07-23]]):
 
@@ -190,5 +191,5 @@ Code that needs per-test data for a *run_id* (not a *report_id*) should extract 
 
 - Release gates: [[Release Management/README]]
 - CI & ghost mode: [[CI-CD Pipeline Setup]], [[QA Strategies#CI and streaming output]]
-- Migration & local setup: [[Streamlit to React Migration Guide]], [[ReportPortal Local Setup Guide]]
+- Local setup: [[ReportPortal Local Setup Guide]]; UI history: [[Streamlit to React Migration Guide]] (completed)
 - Phased strategy: [[Product Roadmap]]

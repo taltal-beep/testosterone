@@ -10,7 +10,7 @@ You are assisting an engineer on the Testo CLI orchestration project. To save to
 * **CI/CD & Ghost Mode:** `[[CI-CD Pipeline Setup]]`, `[[QA Strategies#CI and streaming output]]`
 * **Reporting Integrations:** `[[ReportPortal Local Setup Guide]]`, `[[QA Strategies#How results are logged and surfaced]]`, `[[Command Reference]]` (reporter types section)
 * **E2E Validation:** `[[E2E Harness Operations Guide]]`
-* **UI Migration:** `[[Streamlit to React Migration Guide]]`
+* **UI:** React frontend only (`frontend/`); the Streamlit migration is complete — `[[Streamlit to React Migration Guide]]` is historical.
 * **Delta Semantics:** `[[Delta Comparison Policy]]`
 * **Engineering Debt:** `[[Technical Debt Tracker]]`
 * **Prompts / AI Experiments:** `[[AI Prompt Engineering Lab]]`

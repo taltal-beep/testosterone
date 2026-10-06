@@ -1,27 +1,26 @@
-# UQO GitHub Action
+# Testosterone GitHub Action
 
-This composite action is a thin wrapper around the stable CLI contract:
+This composite action is a thin wrapper around the CLI contract:
 
-`uqo run --config <path> --ci [--ghost|--no-ghost]`
+`testo run [--config <path>] [--cycle <name>] --ci [--no-persist]`
+
+It runs one cycle on the host runner, echoes the NDJSON event stream to the
+job log, and exposes the final `plan_finished` event as step outputs.
 
 ## Inputs
 
-- `config-path` (required): path to UQO YAML config
-- `ci-mode` (optional, default `true`)
-- `ghost-mode` (optional, default `auto`; `true` -> `--ghost`, `false` -> `--no-ghost`)
-- `stream-json` (optional, default `false`)
-- `persist` (optional, default `true`)
-- `runner-image` (optional, default empty; maps to `UQO_RUNNER_IMAGE`)
-- `runner-prebuilt` (optional, default `auto`; maps to `UQO_RUNNER_PREBUILT`)
+- `config-path` (optional, default empty): path to `testosterone.yaml`; empty means discovery
+- `cycle` (optional, default empty): cycle name; empty runs the only cycle, `all` runs every cycle
+- `ci-mode` (optional, default `true`): NDJSON on stdout
+- `persist` (optional, default `true`): write `plan_result.json` and the run history record
 - `python-version` (optional, default `3.11`)
 
 ## Outputs
 
-- `exit_code`
-- `run_id`
-- `summary_json`
-- `summary_path`
-- `status`
+- `exit_code` (`0`–`4`, see `docs/CLI Commands/Troubleshooting and Error Codes.md`)
+- `status` (`success`, `failure`, `invalid_input`, `infra_failure`, `internal_error`)
+- `summary_json`: the final `plan_finished` (or `error`) NDJSON event
+- `summary_path`: the same JSON saved under `$RUNNER_TEMP/testo-summary.json`
 
 ## Usage
 
@@ -31,12 +30,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ariel-evn/uqo-action@v1
+      - uses: taltal-beep/testosterone/integrations/github-action@v1
         with:
-          config-path: ./.uqo/load-test.yaml
-          runner-image: docker.io/ariel-evn/uqo-runner:v1
-          runner-prebuilt: true
+          cycle: sample-pytests
 ```
+
+## Migrating from the v1.0 `uqo` action
+
+The v1.0 inputs `ghost-mode`, `stream-json`, `runner-image` and `runner-prebuilt`
+drove the removed headless/Docker runner and are gone; `testo run --ci` already
+streams NDJSON and runs stages as host subprocesses. Use `Dockerfile.testo-runner`
+as the job container if you want a pinned image. The `run_id` output is gone too:
+it read the old summary JSON, which `testo run` does not emit.
 
 ## Versioning and pinning policy
 

@@ -7,9 +7,8 @@ import type { components } from "./api-schema";
 
 type Schemas = components["schemas"];
 
-export type ExecutionRequest = Schemas["CreateExecutionRequest"];
-export type ExecutionAccepted = Schemas["ExecutionAcceptedResponse"];
-export type ExecutionStatus = Schemas["ExecutionStatusResponse"];
+export type AdhocExecutionRequest = Schemas["AdhocExecutionRequest"];
+export type AdhocFramework = AdhocExecutionRequest["framework"];
 
 export type CycleExecutionRequest = Schemas["CycleExecutionRequest"];
 export type CycleExecutionAccepted = Schemas["CycleExecutionAcceptedResponse"];
@@ -59,25 +58,17 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const apiClient = {
-  createExecution(payload: ExecutionRequest): Promise<ExecutionAccepted> {
-    return api<ExecutionAccepted>("/api/v1/executions", {
-      method: "POST",
-      body: JSON.stringify({
-        persist: true,
-        trigger_source: "ui",
-        ci_mode: false,
-        ...payload
-      })
-    });
-  },
   createCycleExecution(cycle: string, payload: CycleExecutionRequest): Promise<CycleExecutionAccepted> {
     return api<CycleExecutionAccepted>(`/api/v1/cycles/${encodeURIComponent(cycle)}/executions`, {
       method: "POST",
       body: JSON.stringify(payload)
     });
   },
-  getExecution(executionId: string): Promise<ExecutionStatus> {
-    return api<ExecutionStatus>(`/api/v1/executions/${executionId}`);
+  createAdhocExecution(payload: AdhocExecutionRequest): Promise<CycleExecutionAccepted> {
+    return api<CycleExecutionAccepted>("/api/v1/adhoc-executions", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
   },
   getCycleExecutionStatus(executionId: string): Promise<CycleExecutionStatus> {
     return api<CycleExecutionStatus>(`/api/v1/cycle-executions/${executionId}`);

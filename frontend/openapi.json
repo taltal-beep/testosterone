@@ -1,6 +1,95 @@
 {
   "components": {
     "schemas": {
+      "AdhocExecutionRequest": {
+        "description": "Run one framework directly, without a cycle in ``testosterone.yaml``.",
+        "properties": {
+          "args": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Args",
+            "type": "array"
+          },
+          "artifacts_root": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifacts Root"
+          },
+          "config_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Path"
+          },
+          "extra_env": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Env"
+          },
+          "framework": {
+            "enum": [
+              "pytest",
+              "behave",
+              "behavex",
+              "command"
+            ],
+            "title": "Framework",
+            "type": "string"
+          },
+          "persist": {
+            "default": true,
+            "title": "Persist",
+            "type": "boolean"
+          },
+          "report_db": {
+            "default": true,
+            "title": "Report Db",
+            "type": "boolean"
+          },
+          "target_repo": {
+            "title": "Target Repo",
+            "type": "string"
+          },
+          "timeout_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout S"
+          }
+        },
+        "required": [
+          "framework",
+          "target_repo"
+        ],
+        "title": "AdhocExecutionRequest",
+        "type": "object"
+      },
       "AiConfigStatusResponse": {
         "properties": {
           "api_key_env_var": {
@@ -274,38 +363,6 @@
           "error_code"
         ],
         "title": "AiSummaryResponse",
-        "type": "object"
-      },
-      "CreateExecutionRequest": {
-        "properties": {
-          "ci_mode": {
-            "default": false,
-            "title": "Ci Mode",
-            "type": "boolean"
-          },
-          "persist": {
-            "default": true,
-            "title": "Persist",
-            "type": "boolean"
-          },
-          "runs": {
-            "items": {
-              "$ref": "#/components/schemas/RunSpecRequest"
-            },
-            "title": "Runs",
-            "type": "array"
-          },
-          "trigger_source": {
-            "const": "ui",
-            "default": "ui",
-            "title": "Trigger Source",
-            "type": "string"
-          }
-        },
-        "required": [
-          "runs"
-        ],
-        "title": "CreateExecutionRequest",
         "type": "object"
       },
       "CycleDetailResponse": {
@@ -1521,95 +1578,6 @@
         "title": "DeltaStatusSummaryResponse",
         "type": "object"
       },
-      "ExecutionAcceptedResponse": {
-        "properties": {
-          "events_url": {
-            "title": "Events Url",
-            "type": "string"
-          },
-          "execution_id": {
-            "title": "Execution Id",
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "running"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "summary_url": {
-            "title": "Summary Url",
-            "type": "string"
-          }
-        },
-        "required": [
-          "execution_id",
-          "status",
-          "events_url",
-          "summary_url"
-        ],
-        "title": "ExecutionAcceptedResponse",
-        "type": "object"
-      },
-      "ExecutionStatusResponse": {
-        "properties": {
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "execution_id": {
-            "title": "Execution Id",
-            "type": "string"
-          },
-          "run_ids": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Run Ids",
-            "type": "array"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "running",
-              "completed",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Summary"
-          }
-        },
-        "required": [
-          "execution_id",
-          "status",
-          "summary",
-          "run_ids",
-          "error"
-        ],
-        "title": "ExecutionStatusResponse",
-        "type": "object"
-      },
       "GenerateAiSummaryRequest": {
         "properties": {
           "force_refresh": {
@@ -2177,61 +2145,6 @@
         "title": "RunReportsResponse",
         "type": "object"
       },
-      "RunSpecRequest": {
-        "properties": {
-          "cli_args": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Cli Args",
-            "type": "array"
-          },
-          "extra_env": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Extra Env"
-          },
-          "target_repo": {
-            "title": "Target Repo",
-            "type": "string"
-          },
-          "test_type": {
-            "enum": [
-              "pytest",
-              "behavex",
-              "behave_native"
-            ],
-            "title": "Test Type",
-            "type": "string"
-          },
-          "timeout_s": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Timeout S"
-          }
-        },
-        "required": [
-          "test_type",
-          "target_repo"
-        ],
-        "title": "RunSpecRequest",
-        "type": "object"
-      },
       "StageHealth": {
         "properties": {
           "broken": {
@@ -2432,6 +2345,48 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/adhoc-executions": {
+      "post": {
+        "description": "Run one framework directly as a one-stage ``adhoc`` cycle.\n\nSame engine, persistence and event stream as a named cycle: progress and\nstatus live under ``/cycle-executions/{execution_id}``.",
+        "operationId": "create_adhoc_execution_api_v1_adhoc_executions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdhocExecutionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleExecutionAcceptedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Adhoc Execution",
+        "tags": [
+          "cycles"
+        ]
+      }
+    },
     "/api/v1/ai/config": {
       "put": {
         "operationId": "update_ai_config_api_v1_ai_config_put",
@@ -2923,129 +2878,6 @@
         "summary": "Get Dashboard Recent Runs",
         "tags": [
           "dashboard"
-        ]
-      }
-    },
-    "/api/v1/executions": {
-      "post": {
-        "operationId": "create_execution_api_v1_executions_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateExecutionRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExecutionAcceptedResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Execution",
-        "tags": [
-          "runs"
-        ]
-      }
-    },
-    "/api/v1/executions/{execution_id}": {
-      "get": {
-        "operationId": "get_execution_api_v1_executions__execution_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "execution_id",
-            "required": true,
-            "schema": {
-              "title": "Execution Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExecutionStatusResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Execution",
-        "tags": [
-          "runs"
-        ]
-      }
-    },
-    "/api/v1/executions/{execution_id}/events": {
-      "get": {
-        "operationId": "stream_execution_events_api_v1_executions__execution_id__events_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "execution_id",
-            "required": true,
-            "schema": {
-              "title": "Execution Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Stream Execution Events",
-        "tags": [
-          "events"
         ]
       }
     },

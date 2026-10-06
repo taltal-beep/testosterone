@@ -1,7 +1,8 @@
 """Run one cycle end to end: trigger gate, engine, reporters, report archive.
 
-This is the application-layer use case behind ``testo run`` and
-``POST /api/v1/cycles/{cycle}/executions``. Both entry points call
+This is the application-layer use case behind ``testo run``,
+``POST /api/v1/cycles/{cycle}/executions`` and ``POST /api/v1/adhoc-executions``
+(a one-stage cycle built by :func:`single_stage_plan`). All of them call
 :meth:`CycleRunService.run` and only differ in how they present progress:
 the engine streams events to the *renderer* they pass in, and the few
 non-engine moments (trigger verdict, archive result) go to an optional
@@ -13,6 +14,8 @@ Rich console for their progress lines.
 
 from __future__ import annotations
 
+import dataclasses
+import logging
 import shutil
 import threading
 from collections.abc import Mapping, Sequence
@@ -21,10 +24,18 @@ from pathlib import Path
 from typing import Any, Protocol
 from uuid import UUID
 
-from testo_core.config.errors import ConfigError
+from testo_core.config.errors import ConfigError, ConfigValidationError
 from testo_core.config.resolver import resolve_stages_for_plan
-from testo_core.config.schema import Plan, Stage, TestosteroneConfig
+from testo_core.config.schema import (
+    DEFAULT_TIER_BY_FRAMEWORK,
+    SUPPORTED_FRAMEWORKS,
+    Plan,
+    Stage,
+    TestosteroneConfig,
+)
 from testo_core.triggers import TriggerResult, evaluate_cycle_trigger, persist_trigger_snapshot
+
+logger = logging.getLogger(__name__)
 
 
 class NoStagesEnabledError(ConfigError):
@@ -141,6 +152,7 @@ class CycleRunService:
             reporter_override=opts.reporter_override,
         )
         snapshot_native_reports(plan=effective_plan, artifacts_root=artifacts_root, run_id=run_id)
+        push_metrics(plan=effective_plan, artifacts_root=artifacts_root, run_id=run_id)
         if opts.persist and opts.report_db:
             self._archive_cycle_report(
                 artifacts_root=artifacts_root,
@@ -183,6 +195,43 @@ class CycleRunService:
             self._listener.report_archived(None, background=True)
             return
         self._listener.report_archived(_job(), background=False)
+
+
+ADHOC_PLAN_NAME = "adhoc"
+
+
+def single_stage_plan(
+    *,
+    framework: str,
+    target_repo: Path,
+    args: Sequence[str] = (),
+    timeout_s: float | None = None,
+    extra_env: Mapping[str, str] | None = None,
+) -> Plan:
+    """Wrap one framework invocation in a one-stage plan named ``adhoc``.
+
+    Lets a caller run a framework directly (no ``testosterone.yaml`` cycle)
+    while still going through the engine, persistence and reporters.
+    Raises :class:`ConfigValidationError` for an unknown framework or a
+    missing target directory.
+    """
+    if framework not in SUPPORTED_FRAMEWORKS:
+        allowed = ", ".join(sorted(SUPPORTED_FRAMEWORKS))
+        raise ConfigValidationError(f"unknown framework {framework!r}; expected one of: {allowed}")
+    repo = Path(target_repo).expanduser().resolve()
+    if not repo.is_dir():
+        raise ConfigValidationError(f"target_repo is not a directory: {repo}")
+    stage = Stage(
+        name=framework,
+        framework=framework,
+        target_repo=repo,
+        args=tuple(args),
+        extra_env=tuple(sorted((extra_env or {}).items())),
+        tier=DEFAULT_TIER_BY_FRAMEWORK.get(framework, "unit"),
+    )
+    if timeout_s is not None:
+        stage = dataclasses.replace(stage, timeout_s=timeout_s)
+    return Plan(name=ADHOC_PLAN_NAME, description=f"Ad-hoc {framework} run", stages=(stage,))
 
 
 def apply_workers_override(
@@ -258,6 +307,16 @@ def run_configured_reporters_for_cycle(
         generate_only=True,
         run_report_root=run_report_root,
     )
+
+
+def push_metrics(*, plan: Plan, artifacts_root: Path, run_id: str | None) -> None:
+    """Push the cycle's test KPIs to InfluxDB / Prometheus when configured (best-effort, logged)."""
+    from testo_core.integrations import push_run_metrics_if_configured
+    from testo_core.reporting.paths import plan_artifacts_dir
+
+    results_root = plan_artifacts_dir(artifacts_root, plan.name)
+    for target, ok, message in push_run_metrics_if_configured(results_root=results_root, run_id=run_id):
+        logger.log(logging.INFO if ok else logging.WARNING, "metrics push %s: %s", target, message)
 
 
 def snapshot_native_reports(*, plan: Plan, artifacts_root: Path, run_id: str | None) -> None:

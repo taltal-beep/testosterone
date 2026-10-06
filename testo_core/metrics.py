@@ -96,7 +96,7 @@ def list_run_history(*, archive_root: Path, current_results_dir: Path | None = N
     """
     Best-effort: build a history list from archived results folders + current results.
 
-    Archive folders are created by testo_core/result_management.py as:
+    Archive folders (written by the pre-v1.1 headless runner) look like:
       <archive_root>/<timestamp>_<run_id>/
     """
     archive_root = archive_root.expanduser().resolve()

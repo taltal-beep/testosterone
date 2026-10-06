@@ -1,4 +1,4 @@
-name: UQO Minimal
+name: Testosterone Minimal
 on:
   push:
     branches:
@@ -8,6 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ariel-evn/uqo-action@v1
+      - uses: taltal-beep/testosterone/integrations/github-action@v1
         with:
-          config-path: ./.uqo/config.yaml
+          cycle: sample-pytests

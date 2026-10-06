@@ -4,6 +4,29 @@
  */
 
 export interface paths {
+    "/api/v1/adhoc-executions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Adhoc Execution
+         * @description Run one framework directly as a one-stage ``adhoc`` cycle.
+         *
+         *     Same engine, persistence and event stream as a named cycle: progress and
+         *     status live under ``/cycle-executions/{execution_id}``.
+         */
+        post: operations["create_adhoc_execution_api_v1_adhoc_executions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ai/config": {
         parameters: {
             query?: never;
@@ -204,57 +227,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/executions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create Execution */
-        post: operations["create_execution_api_v1_executions_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/executions/{execution_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Execution */
-        get: operations["get_execution_api_v1_executions__execution_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/executions/{execution_id}/events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Stream Execution Events */
-        get: operations["stream_execution_events_api_v1_executions__execution_id__events_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/health/live": {
         parameters: {
             query?: never;
@@ -398,6 +370,41 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AdhocExecutionRequest
+         * @description Run one framework directly, without a cycle in ``testosterone.yaml``.
+         */
+        AdhocExecutionRequest: {
+            /** Args */
+            args?: string[];
+            /** Artifacts Root */
+            artifacts_root?: string | null;
+            /** Config Path */
+            config_path?: string | null;
+            /** Extra Env */
+            extra_env?: {
+                [key: string]: string;
+            } | null;
+            /**
+             * Framework
+             * @enum {string}
+             */
+            framework: "pytest" | "behave" | "behavex" | "command";
+            /**
+             * Persist
+             * @default true
+             */
+            persist?: boolean;
+            /**
+             * Report Db
+             * @default true
+             */
+            report_db?: boolean;
+            /** Target Repo */
+            target_repo: string;
+            /** Timeout S */
+            timeout_s?: number | null;
+        };
         /** AiConfigStatusResponse */
         AiConfigStatusResponse: {
             /** Api Key Env Var */
@@ -510,27 +517,6 @@ export interface components {
             status: "available" | "no_summary_generated";
             /** Summary Text */
             summary_text: string | null;
-        };
-        /** CreateExecutionRequest */
-        CreateExecutionRequest: {
-            /**
-             * Ci Mode
-             * @default false
-             */
-            ci_mode?: boolean;
-            /**
-             * Persist
-             * @default true
-             */
-            persist?: boolean;
-            /** Runs */
-            runs: components["schemas"]["RunSpecRequest"][];
-            /**
-             * Trigger Source
-             * @default ui
-             * @constant
-             */
-            trigger_source?: "ui";
         };
         /** CycleDetailResponse */
         CycleDetailResponse: {
@@ -887,38 +873,6 @@ export interface components {
             /** Unknown */
             unknown: string[];
         };
-        /** ExecutionAcceptedResponse */
-        ExecutionAcceptedResponse: {
-            /** Events Url */
-            events_url: string;
-            /** Execution Id */
-            execution_id: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "queued" | "running";
-            /** Summary Url */
-            summary_url: string;
-        };
-        /** ExecutionStatusResponse */
-        ExecutionStatusResponse: {
-            /** Error */
-            error: string | null;
-            /** Execution Id */
-            execution_id: string;
-            /** Run Ids */
-            run_ids: string[];
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "queued" | "running" | "completed" | "failed";
-            /** Summary */
-            summary: {
-                [key: string]: unknown;
-            } | null;
-        };
         /** GenerateAiSummaryRequest */
         GenerateAiSummaryRequest: {
             /**
@@ -1082,24 +1036,6 @@ export interface components {
                 [key: string]: string;
             };
         };
-        /** RunSpecRequest */
-        RunSpecRequest: {
-            /** Cli Args */
-            cli_args?: string[];
-            /** Extra Env */
-            extra_env?: {
-                [key: string]: string;
-            } | null;
-            /** Target Repo */
-            target_repo: string;
-            /**
-             * Test Type
-             * @enum {string}
-             */
-            test_type: "pytest" | "behavex" | "behave_native";
-            /** Timeout S */
-            timeout_s?: number | null;
-        };
         /** StageHealth */
         StageHealth: {
             /** Broken */
@@ -1156,6 +1092,39 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    create_adhoc_execution_api_v1_adhoc_executions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdhocExecutionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleExecutionAcceptedResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_ai_config_api_v1_ai_config_put: {
         parameters: {
             query?: never;
@@ -1483,101 +1452,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardRecentRunsResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_execution_api_v1_executions_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateExecutionRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ExecutionAcceptedResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_execution_api_v1_executions__execution_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                execution_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ExecutionStatusResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    stream_execution_events_api_v1_executions__execution_id__events_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                execution_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

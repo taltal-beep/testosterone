@@ -5,19 +5,28 @@ import os
 import sys
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 from uuid import UUID, uuid4
 
+from testo_core.config.errors import ConfigDiscoveryError
 from testo_core.config.loader import discover_and_load
 from testo_core.config.resolver import resolve_plan
-from testo_core.config.schema import Plan
-from testo_core.services.cycle_run import CycleRunOptions, CycleRunService
+from testo_core.config.schema import Defaults, Plan, TestosteroneConfig
+from testo_core.services.cycle_run import (
+    ADHOC_PLAN_NAME,
+    CycleRunOptions,
+    CycleRunService,
+    single_stage_plan,
+)
 from testo_core.triggers import TriggerResult
 
 CycleExecutionStatus = Literal["queued", "running", "completed", "failed"]
+
+# Resolves (config, plan) on the worker thread, so config errors surface as a failed execution.
+PlanLoader = Callable[[], tuple[TestosteroneConfig, Plan]]
 
 
 @dataclass
@@ -89,7 +98,8 @@ class CycleExecutionManager:
     """
     Manage plan/cycle executions using the modern engine lifecycle:
 
-    - `discover_and_load` config discovery + `resolve_plan`
+    - `discover_and_load` config discovery + `resolve_plan` (a named cycle), or
+      `single_stage_plan` (an ad-hoc run of one framework, see `create_adhoc_execution`)
     - `CycleRunService.run()`, the same use case as `testo run`: trigger gate
       (`cycle_trigger` NDJSON event), `orchestrator.run_plan()` writing durable NDJSON
       into `artifacts/<cycle>/events.ndjson`, reporters and the report archive
@@ -118,8 +128,93 @@ class CycleExecutionManager:
         stream: bool = False,
         ci: bool = True,
     ) -> CycleExecutionState:
+        def load_plan() -> tuple[TestosteroneConfig, Plan]:
+            cfg = discover_and_load(config_path=config_path)
+            return cfg, resolve_plan(cfg, plan_name=cycle)
+
+        return self._start(
+            cycle=str(cycle),
+            load_plan=load_plan,
+            artifacts_root_override=artifacts_root_override,
+            persist=persist,
+            force=force,
+            fail_fast=fail_fast,
+            reporter_override=reporter_override,
+            report_db=report_db,
+            async_report_db=async_report_db,
+            workers_override=workers_override,
+            stream=stream,
+            ci=ci,
+        )
+
+    def create_adhoc_execution(
+        self,
+        *,
+        framework: str,
+        target_repo: Path,
+        args: Sequence[str] = (),
+        timeout_s: float | None = None,
+        extra_env: Mapping[str, str] | None = None,
+        config_path: Path | None = None,
+        artifacts_root_override: Path | None = None,
+        persist: bool = True,
+        report_db: bool = True,
+    ) -> CycleExecutionState:
+        """Run one framework directly, as a one-stage ``adhoc`` cycle.
+
+        Validates the stage up front (``ConfigValidationError``). Defaults and
+        reporters come from the discovered config when there is one.
+        """
+        plan = single_stage_plan(
+            framework=framework,
+            target_repo=target_repo,
+            args=args,
+            timeout_s=timeout_s,
+            extra_env=extra_env,
+        )
+
+        def load_plan() -> tuple[TestosteroneConfig, Plan]:
+            try:
+                cfg = discover_and_load(config_path=config_path)
+            except ConfigDiscoveryError:
+                if config_path is not None:
+                    raise
+                cfg = TestosteroneConfig(version=1, defaults=Defaults())
+            return cfg, plan
+
+        return self._start(
+            cycle=ADHOC_PLAN_NAME,
+            load_plan=load_plan,
+            artifacts_root_override=artifacts_root_override,
+            persist=persist,
+            force=False,
+            fail_fast=False,
+            reporter_override=None,
+            report_db=report_db,
+            async_report_db=False,
+            workers_override=None,
+            stream=True,
+            ci=True,
+        )
+
+    def _start(
+        self,
+        *,
+        cycle: str,
+        load_plan: PlanLoader,
+        artifacts_root_override: Path | None,
+        persist: bool,
+        force: bool,
+        fail_fast: bool,
+        reporter_override: list[str] | None,
+        report_db: bool,
+        async_report_db: bool,
+        workers_override: int | None,
+        stream: bool,
+        ci: bool,
+    ) -> CycleExecutionState:
         execution_id = str(uuid4())
-        state = CycleExecutionState(execution_id=execution_id, cycle=str(cycle), created_at=time.time())
+        state = CycleExecutionState(execution_id=execution_id, cycle=cycle, created_at=time.time())
 
         with self._states_lock:
             existing = self._active_by_cycle.get(str(cycle))
@@ -132,7 +227,7 @@ class CycleExecutionManager:
             target=self._run_execution,
             args=(
                 state,
-                config_path,
+                load_plan,
                 artifacts_root_override,
                 persist,
                 force,
@@ -164,7 +259,7 @@ class CycleExecutionManager:
     def _run_execution(
         self,
         state: CycleExecutionState,
-        config_path: Path | None,
+        load_plan: PlanLoader,
         artifacts_root_override: Path | None,
         persist: bool,
         force: bool,
@@ -180,8 +275,7 @@ class CycleExecutionManager:
             with state.lock:
                 state.status = "running"
 
-            cfg = discover_and_load(config_path=config_path)
-            plan = resolve_plan(cfg, plan_name=state.cycle)
+            cfg, plan = load_plan()
             artifacts_root = (artifacts_root_override or cfg.defaults.artifacts_root).expanduser().resolve()
             plan_artifacts = (artifacts_root / plan.name).resolve()
             events_path = plan_artifacts / "events.ndjson"
@@ -269,7 +363,7 @@ def iter_sse_from_ndjson_file(
     *,
     events_path: Path,
     start_offset_bytes: int,
-    is_done: callable[[], bool],
+    is_done: Callable[[], bool],
     poll_interval_s: float = 0.2,
 ) -> Iterator[str]:
     """

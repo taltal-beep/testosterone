@@ -28,7 +28,7 @@ rg 'TODO|FIXME|HACK' \
 | `tests/` | **None** |
 | `artifacts/`, `reports/` | Vendored JS only (e.g. Bootstrap) — **ignore** |
 
-The backlog below is **inferred technical debt**: exception breadth, dual execution stacks, exit-code drift, and documented future work in module docstrings.
+The backlog below is **inferred technical debt**: exception breadth, (formerly) dual execution stacks, exit-code drift, and documented future work in module docstrings.
 
 ---
 
@@ -50,9 +50,10 @@ Signal deaths other than timeout (e.g. SIGKILL rc **137**) still classify as exi
 
 ### 2. Dual execution stacks
 
-- [x] **Partially resolved 2026-06-25** — `EngineExitCode` and `classify_exit_code` are now single-sourced in `engine/exit_codes.py`; headless engine imports and re-exports. Remaining: `RunBackend` protocol extraction (P3, post-v1.0).
+- [x] **Partially resolved 2026-06-25** — `EngineExitCode` and `classify_exit_code` single-sourced in `engine/exit_codes.py`.
+- [x] **Resolved 2026-10-06** — the legacy stack was removed instead of being put behind a `RunBackend` protocol: `HeadlessEngineService`, `runners.py`, `command_builders.py`, the pluggy `orchestrator.py`/`specs.py`, the legacy `uqo run --config` CLI, the API's `ExecutionManager` + `/api/v1/executions`, and the Streamlit UI. Its unique features moved onto the engine path (ad-hoc runs, CI provenance, failure context, metrics push). See [[Deep Dive - Execution Logic#Removed: the UQO headless / Docker path]].
 
-**Evidence**
+**Evidence (before)**
 
 | Modern | Legacy |
 |--------|--------|
@@ -60,13 +61,9 @@ Signal deaths other than timeout (e.g. SIGKILL rc **137**) still classify as exi
 | `testo_core/engine/executor.py` | `testo_core/runners.py` (Docker streaming) |
 | `testo run` | `uqo run` |
 
-**Risk** (mitigated)
+**Remaining**
 
-Exit code drift is eliminated. Behavioral drift between run backends remains but is bounded by contract tests (`test_exit_code_consolidation.py`).
-
-**Recommendation**
-
-Long-term: extract a shared `RunBackend` protocol with host and Docker implementations.
+`run_history.py` still reads pre-v1.1 records (per-framework `test_kind`, MinIO snapshot prefixes). Once those records age out it can drop the S3 read path.
 
 ---
 

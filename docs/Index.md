@@ -46,7 +46,7 @@ This vault is the map of content for the project. Start here, then drill into th
 | Topic | Note |
 |-------|------|
 | CI integrations | [[CI-CD Pipeline Setup]] |
-| Streamlit → React | [[Streamlit to React Migration Guide]] |
+| Streamlit → React (completed in v1.1) | [[Streamlit to React Migration Guide]] |
 | E2E harness | [[E2E Harness Operations Guide]] |
 | ReportPortal local | [[ReportPortal Local Setup Guide]] |
 | Allure 2 → 3 migration | [[Allure 3 Migration Plan]] |
@@ -59,8 +59,8 @@ This vault is the map of content for the project. Start here, then drill into th
 
 - Configuration file: `testosterone.yaml` at repo root — [[Command Reference#`testo config`]], [[QA Strategies#Defining work in `testosterone.yaml`]]
 - Sample cycles: `sample-pytests`, `sample-behave`, `behavex-flow-tests` in `testosterone.yaml`
-- Headless legacy entry: `uqo` (deprecated alias; prefer `testo`)
-- Optional surfaces: Streamlit UI (`testo-ui`), FastAPI (`testo-api`) — same engine, different adapters
+- Deprecated alias: `uqo` (forwards to `testo`)
+- Optional surfaces: FastAPI (`testo-api`) + React frontend (`frontend/`) — same `CycleRunService` as the CLI
 
 ## Typical flows
 
@@ -83,7 +83,6 @@ For CI-style machine output, use `testo run --ci` (NDJSON on stdout). See [[QA S
 | ReportPortal API | https://reportportal.io/docs/api-development/ |
 | Docker Engine | https://docs.docker.com/engine/ |
 | Docker Compose | https://docs.docker.com/compose/ |
-| Streamlit | https://docs.streamlit.io/ |
 | React | https://react.dev/ |
 
 ## Related reading in-repo
