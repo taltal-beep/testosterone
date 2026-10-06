@@ -1,9 +1,7 @@
 """Exception taxonomy for the configuration layer.
 
-These are deliberately separate from the engine's
-:class:`testo_core.services.headless_engine.ConfigValidationError` so that
-``testo_core.config`` can be imported without pulling in the engine.  The CLI
-layer surfaces both with the same exit code (2 — invalid input).
+``testo_core.config`` defines its own errors so it can be imported without
+pulling in the engine. The CLI maps them to exit code 2 (invalid input).
 """
 
 from __future__ import annotations
