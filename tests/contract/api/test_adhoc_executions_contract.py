@@ -77,14 +77,18 @@ def test_create_adhoc_execution_rejects_unknown_framework() -> None:
 
 def test_create_adhoc_execution_maps_invalid_stage_to_400() -> None:
     manager = _FakeManager(error=ConfigValidationError("target_repo is not a directory: /nope"))
-    resp = _client(manager).post("/api/v1/adhoc-executions", json={"framework": "pytest", "target_repo": "/nope"})
+    resp = _client(manager).post(
+        "/api/v1/adhoc-executions", json={"framework": "pytest", "target_repo": "/nope"}
+    )
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "invalid_input"
 
 
 def test_create_adhoc_execution_conflicts_while_another_adhoc_runs() -> None:
     manager = _FakeManager(error=RuntimeError("cycle 'adhoc' already running (execution_id=x)"))
-    resp = _client(manager).post("/api/v1/adhoc-executions", json={"framework": "pytest", "target_repo": "."})
+    resp = _client(manager).post(
+        "/api/v1/adhoc-executions", json={"framework": "pytest", "target_repo": "."}
+    )
     assert resp.status_code == 409
 
 

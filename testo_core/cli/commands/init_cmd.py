@@ -37,7 +37,9 @@ def wizard(
     workers = int(typer.prompt("Default workers", default="4"))
     timeout_s = int(typer.prompt("Default timeout_s", default="600"))
     cycle_name = typer.prompt("First cycle name", default="smoke")
-    db_url = typer.prompt("database.url (optional, leave empty to skip)", default="", show_default=False)
+    db_url = typer.prompt(
+        "database.url (optional, leave empty to skip)", default="", show_default=False
+    )
     db_block = ""
     if str(db_url).strip():
         db_block = f"database:\n  url: {json.dumps(str(db_url).strip())}\n\n"

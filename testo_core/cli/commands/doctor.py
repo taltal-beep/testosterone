@@ -98,7 +98,9 @@ def doctor(
     if docker_path:
         table.add_row("Docker CLI", "[ok]PASS[/]", docker_path)
     else:
-        table.add_row("Docker CLI", "[warn]WARN[/]", "`docker` not on PATH (optional for some workflows)")
+        table.add_row(
+            "Docker CLI", "[warn]WARN[/]", "`docker` not on PATH (optional for some workflows)"
+        )
 
     legacy_java = shutil.which("allure")
     if legacy_java and allure_status.startswith("[warn]"):
@@ -114,7 +116,9 @@ def doctor(
         from testo_core.config.database_section import database_url_from_discovered_config
 
         anchor = cfg.source_path.parent.expanduser().resolve() if cfg.source_path else Path.cwd()
-        db_url = (os.environ.get("DATABASE_URL") or "").strip() or database_url_from_discovered_config(cwd=anchor)
+        db_url = (
+            os.environ.get("DATABASE_URL") or ""
+        ).strip() or database_url_from_discovered_config(cwd=anchor)
         db_url = db_url or None
 
     if db_url:

@@ -16,8 +16,16 @@ def _load_wrapper_module():
 
 
 def test_action_contract_has_required_inputs_outputs() -> None:
-    payload = yaml.safe_load(Path("integrations/github-action/action.yml").read_text(encoding="utf-8"))
-    assert set(payload["inputs"].keys()) == {"config-path", "cycle", "ci-mode", "persist", "python-version"}
+    payload = yaml.safe_load(
+        Path("integrations/github-action/action.yml").read_text(encoding="utf-8")
+    )
+    assert set(payload["inputs"].keys()) == {
+        "config-path",
+        "cycle",
+        "ci-mode",
+        "persist",
+        "python-version",
+    }
     assert set(payload["outputs"].keys()) == {"exit_code", "summary_json", "summary_path", "status"}
 
 

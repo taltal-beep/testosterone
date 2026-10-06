@@ -96,7 +96,11 @@ def summary_reports(
     console = default_console()
     repo = get_report_archive_repository()
     cycle_key = cycle.strip() if cycle else None
-    rows = repo.list_recent_for_cycle(cycle_name=cycle_key, limit=2) if cycle_key else repo.list_recent(limit=2)
+    rows = (
+        repo.list_recent_for_cycle(cycle_name=cycle_key, limit=2)
+        if cycle_key
+        else repo.list_recent(limit=2)
+    )
     if len(rows) < 2:
         console.print("[fail]Need at least two archived runs in the database for ``summary``.[/]")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))

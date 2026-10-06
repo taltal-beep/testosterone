@@ -27,7 +27,9 @@ class MetricsService:
         return write_metrics_json(metrics, out_path=out_path)
 
     @staticmethod
-    def list_run_history(*, archive_root: Path, current_results_dir: Path | None = None) -> list[RunMetrics]:
+    def list_run_history(
+        *, archive_root: Path, current_results_dir: Path | None = None
+    ) -> list[RunMetrics]:
         return list_run_history(archive_root=archive_root, current_results_dir=current_results_dir)
 
     @staticmethod

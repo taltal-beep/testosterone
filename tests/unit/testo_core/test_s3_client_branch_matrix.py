@@ -114,4 +114,3 @@ def test_public_url_for_key_quotes_key(monkeypatch: pytest.MonkeyPatch) -> None:
     st = s3.ArtifactS3Storage()
     url = st.public_url_for_key("a b/c")
     assert url == "http://minio.local/uqo-artifacts/a%20b/c"
-

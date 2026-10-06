@@ -33,4 +33,3 @@ def test_stop_sandbox_kills_on_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sa, "_PROC", proc)
     sa.stop_sandbox_if_managed()
     proc.kill.assert_called_once()
-

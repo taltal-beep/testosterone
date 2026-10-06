@@ -96,7 +96,10 @@ def test_adapter_runs_args_verbatim(tmp_path: Path) -> None:
     assert isinstance(adapter, CommandAdapter)
     assert adapter.results_subdir() == "command"
     argv = adapter.build_argv(
-        target_repo=tmp_path, results_dir=tmp_path / "r", stage_args=("npx", "jest", "--ci"), workers=8
+        target_repo=tmp_path,
+        results_dir=tmp_path / "r",
+        stage_args=("npx", "jest", "--ci"),
+        workers=8,
     )
     assert argv == ["npx", "jest", "--ci"]
     assert adapter.native_report(tmp_path) is None
@@ -133,10 +136,17 @@ def test_junit_cases_become_allure_results(tmp_path: Path) -> None:
     # sequential timing within the suite
     assert by_name["rejects masked resend"]["start"] == by_name["masks numbers"]["stop"]
     labels = {lbl["name"]: lbl["value"] for lbl in failed["labels"]}
-    assert labels == {"suite": "payout", "testClass": "payout rules", "framework": "jest", "language": "junit"}
+    assert labels == {
+        "suite": "payout",
+        "testClass": "payout rules",
+        "framework": "jest",
+        "language": "junit",
+    }
     # stable history id per test, so trends line up across runs
     again = tmp_path / "again"
-    import_junit_reports(target_repo=tmp_path, patterns=("reports/*.xml",), results_dir=again, tool="jest")
+    import_junit_reports(
+        target_repo=tmp_path, patterns=("reports/*.xml",), results_dir=again, tool="jest"
+    )
     assert {r["historyId"] for r in _results(again)} == {r["historyId"] for r in _results(out)}
 
 
@@ -144,7 +154,9 @@ def test_bare_testsuite_root_without_timestamp(tmp_path: Path) -> None:
     (tmp_path / "one.xml").write_text(
         '<testsuite name="s"><testcase name="t" time="bad"/></testsuite>', encoding="utf-8"
     )
-    imported = import_junit_reports(target_repo=tmp_path, patterns=("*.xml",), results_dir=tmp_path / "r")
+    imported = import_junit_reports(
+        target_repo=tmp_path, patterns=("*.xml",), results_dir=tmp_path / "r"
+    )
     (result,) = _results(tmp_path / "r")
     assert imported.tests == 1
     assert result["status"] == "passed" and result["stop"] == result["start"]
@@ -161,11 +173,16 @@ def test_malformed_stale_and_escaping_files_are_skipped(tmp_path: Path) -> None:
     import os
 
     os.utime(stale, (old, old))
-    (tmp_path / "outside.xml").write_text('<testsuite><testcase name="x"/></testsuite>', encoding="utf-8")
+    (tmp_path / "outside.xml").write_text(
+        '<testsuite><testcase name="x"/></testsuite>', encoding="utf-8"
+    )
     (repo / "link.xml").symlink_to(tmp_path / "outside.xml")
 
     imported = import_junit_reports(
-        target_repo=repo, patterns=("*.xml",), results_dir=tmp_path / "r", not_before=time.time() - 60
+        target_repo=repo,
+        patterns=("*.xml",),
+        results_dir=tmp_path / "r",
+        not_before=time.time() - 60,
     )
     assert imported.tests == 0
     assert [e.split(":")[0] for e in imported.errors] == ["broken.xml"]
@@ -237,7 +254,12 @@ def test_import_crash_is_logged(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(junit_import, "import_junit_reports", boom)
     repo = tmp_path / "repo"
     repo.mkdir()
-    stage = Stage(name="s", framework="command", target_repo=repo,
-                  args=(sys.executable, "-c", "pass"), junit_xml=("*.xml",))
+    stage = Stage(
+        name="s",
+        framework="command",
+        target_repo=repo,
+        args=(sys.executable, "-c", "pass"),
+        junit_xml=("*.xml",),
+    )
     run_stage(stage, plan_name="p", artifacts_root=tmp_path / "a")
     assert "import failed: disk full" in (tmp_path / "a" / "p" / "s" / "run.log").read_text()

@@ -43,6 +43,4 @@ class PlanFinished:
     result: PlanResult
 
 
-EngineEvent = (
-    PlanStarted | StageStarted | StageOutputChunk | StageFinished | PlanFinished
-)
+EngineEvent = PlanStarted | StageStarted | StageOutputChunk | StageFinished | PlanFinished

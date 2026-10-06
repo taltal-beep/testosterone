@@ -37,7 +37,9 @@ class _ArchiveSpy:
         self.calls: list[dict[str, Any]] = []
         self.called = threading.Event()
 
-    def __call__(self, *, artifacts_root: Path, plan_name: str, exit_code_override: int | None = None) -> None:
+    def __call__(
+        self, *, artifacts_root: Path, plan_name: str, exit_code_override: int | None = None
+    ) -> None:
         self.calls.append(
             {
                 "artifacts_root": Path(artifacts_root),

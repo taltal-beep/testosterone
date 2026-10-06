@@ -40,11 +40,12 @@ def main() -> int:
     # If a repo-level categories.json exists, copy it into the results dir for Allure CLI pickup.
     src_categories = root / "allure" / "categories.json"
     if src_categories.exists():
-        (results_dir / "categories.json").write_text(src_categories.read_text(encoding="utf-8"), encoding="utf-8")
+        (results_dir / "categories.json").write_text(
+            src_categories.read_text(encoding="utf-8"), encoding="utf-8"
+        )
 
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

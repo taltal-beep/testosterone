@@ -16,8 +16,12 @@ def test_start_report_server_starts_thread(tmp_path: Path) -> None:
     mock_httpd = MagicMock()
     mock_thread = MagicMock()
 
-    with patch("testo_core.report_generator.http.server.ThreadingHTTPServer", return_value=mock_httpd):
-        with patch("testo_core.report_generator.threading.Thread", return_value=mock_thread) as thread_cls:
+    with patch(
+        "testo_core.report_generator.http.server.ThreadingHTTPServer", return_value=mock_httpd
+    ):
+        with patch(
+            "testo_core.report_generator.threading.Thread", return_value=mock_thread
+        ) as thread_cls:
             srv = start_report_server(report_dir=root, port=9123)
     assert srv.port == 9123
     thread_cls.assert_called_once()

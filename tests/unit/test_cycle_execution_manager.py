@@ -28,11 +28,15 @@ def _wait(state: CycleExecutionState, timeout_s: float = 20.0) -> None:
         time.sleep(0.05)
 
 
-def test_execution_runs_cycle_and_writes_events(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_execution_runs_cycle_and_writes_events(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     adapter = use_echo_adapter(monkeypatch)
     config = write_minimal_config(tmp_path)
 
-    state = CycleExecutionManager().create_execution(cycle="smoke", config_path=config, report_db=False)
+    state = CycleExecutionManager().create_execution(
+        cycle="smoke", config_path=config, report_db=False
+    )
     _wait(state)
 
     assert state.status == "completed", state.error

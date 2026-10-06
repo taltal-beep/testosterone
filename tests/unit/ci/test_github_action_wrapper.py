@@ -18,12 +18,25 @@ def _load_wrapper_module():
 def test_build_command_includes_expected_flags() -> None:
     module = _load_wrapper_module()
     cmd = module.build_command(config_path="config.yml", cycle="smoke", ci_mode=True, persist=False)
-    assert cmd == ["testo", "run", "--config", "config.yml", "--cycle", "smoke", "--ci", "--no-persist"]
+    assert cmd == [
+        "testo",
+        "run",
+        "--config",
+        "config.yml",
+        "--cycle",
+        "smoke",
+        "--ci",
+        "--no-persist",
+    ]
 
 
 def test_build_command_omits_empty_config_and_cycle() -> None:
     module = _load_wrapper_module()
-    assert module.build_command(config_path="", cycle="", ci_mode=True, persist=True) == ["testo", "run", "--ci"]
+    assert module.build_command(config_path="", cycle="", ci_mode=True, persist=True) == [
+        "testo",
+        "run",
+        "--ci",
+    ]
 
 
 def test_extract_summary_uses_last_plan_finished_line() -> None:
@@ -49,12 +62,19 @@ def test_extract_summary_falls_back_to_process_exit_code() -> None:
 
 def test_main_writes_outputs_and_summary_file(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
     module = _load_wrapper_module()
-    plan_finished = {"event": "plan_finished", "plan": "smoke", "exit_code": 1, "aggregate_returncode": 1}
+    plan_finished = {
+        "event": "plan_finished",
+        "plan": "smoke",
+        "exit_code": 1,
+        "aggregate_returncode": 1,
+    }
     captured_cmd: list[str] = []
 
     def fake_run(cmd, **_kwargs):  # noqa: ANN001
         captured_cmd.extend(cmd)
-        return subprocess.CompletedProcess(args=cmd, returncode=1, stdout=json.dumps(plan_finished) + "\n", stderr="")
+        return subprocess.CompletedProcess(
+            args=cmd, returncode=1, stdout=json.dumps(plan_finished) + "\n", stderr=""
+        )
 
     output_file = tmp_path / "github_output.txt"
     monkeypatch.setattr(module.subprocess, "run", fake_run)
@@ -65,7 +85,11 @@ def test_main_writes_outputs_and_summary_file(tmp_path: Path, monkeypatch) -> No
     assert code == 1
     assert captured_cmd == ["testo", "run", "--cycle", "smoke", "--ci"]
 
-    kv = dict(line.split("=", 1) for line in output_file.read_text(encoding="utf-8").splitlines() if "=" in line)
+    kv = dict(
+        line.split("=", 1)
+        for line in output_file.read_text(encoding="utf-8").splitlines()
+        if "=" in line
+    )
     assert kv["exit_code"] == "1"
     assert kv["status"] == "failure"
     assert json.loads(kv["summary_json"])["plan"] == "smoke"

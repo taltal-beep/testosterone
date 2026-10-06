@@ -72,9 +72,9 @@ line-length = 100
 
 [tool.ruff.lint]
 # Started as pyflakes (F) + a subset of pycodestyle (E) + import sorting (I);
-# extended with pyupgrade (UP) and bugbear (B). Line-length (E501) is ignored
-# since no autoformatter enforcement is blocking yet (`ruff format --check` in
-# ci.yml is still continue-on-error); tighten once that gate goes blocking.
+# extended with pyupgrade (UP) and bugbear (B). Line-length (E501) is ignored:
+# `ruff format` (blocking in CI) wraps code, and the lines it leaves long are
+# strings and comments it deliberately does not split.
 select = ["E", "F", "I", "UP", "B"]
 ignore = [
     "E501",

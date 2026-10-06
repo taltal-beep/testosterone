@@ -33,4 +33,3 @@ def test_write_metrics_json_roundtrip(tmp_path: Path) -> None:
     )
     out = write_metrics_json(m, out_path=tmp_path / "m.json")
     assert out.read_text(encoding="utf-8").count("total_tests") >= 1
-

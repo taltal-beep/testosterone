@@ -18,7 +18,11 @@ from testo_core.security.redaction import redact_text
 
 
 def failed_cases_from_allure(
-    *, results_dir: Path, max_cases: int = 20, message_max_chars: int = 2000, trace_max_chars: int = 4000
+    *,
+    results_dir: Path,
+    max_cases: int = 20,
+    message_max_chars: int = 2000,
+    trace_max_chars: int = 4000,
 ) -> tuple[list[dict[str, Any]], str | None]:
     """Collect failed/broken cases from an Allure ``results_dir``.
 
@@ -56,7 +60,9 @@ def failed_cases_from_allure(
     return cases, trace_excerpt
 
 
-def failure_metadata(result: PlanResult, *, max_cases: int = 20, log_tail_chars: int = 4000) -> dict[str, Any]:
+def failure_metadata(
+    result: PlanResult, *, max_cases: int = 20, log_tail_chars: int = 4000
+) -> dict[str, Any]:
     """Run-metadata keys describing why *result* failed; ``{}`` when it passed.
 
     Keys (each only when there is evidence for it): ``failure_context``

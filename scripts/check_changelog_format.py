@@ -4,7 +4,9 @@ import re
 import sys
 from pathlib import Path
 
-VERSION_HEADING_RE = re.compile(r"^## \[(?P<version>[^\]]+)\](?: - (?P<date>\d{4}-\d{2}-\d{2}))?\s*$")
+VERSION_HEADING_RE = re.compile(
+    r"^## \[(?P<version>[^\]]+)\](?: - (?P<date>\d{4}-\d{2}-\d{2}))?\s*$"
+)
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -37,7 +39,9 @@ def check(path: Path) -> list[str]:
         for line in f:
             m = VERSION_HEADING_RE.match(line)
             if m and m.group("version") != "Unreleased" and not m.group("date"):
-                errors.append(f"Version heading '{m.group('version')}' is missing a YYYY-MM-DD date")
+                errors.append(
+                    f"Version heading '{m.group('version')}' is missing a YYYY-MM-DD date"
+                )
 
     return errors
 

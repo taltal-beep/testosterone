@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from testo_core.config.resolver import _interpolate
 from testo_core.config.schema import SUPPORTED_REPORTER_TYPES, ReporterSpec
@@ -13,6 +14,9 @@ from testo_core.reporting.reporters.base import BaseReporter, ReportContext, Rep
 from testo_core.reporting.reporters.extent_reporter import ExtentReporter
 from testo_core.reporting.reporters.reportportal_reporter import ReportPortalReporter
 from testo_core.reporting.reporters.testbeats_reporter import TestBeatsReporter
+
+if TYPE_CHECKING:
+    from rich.console import Console
 
 _REPORTER_REGISTRY: dict[str, type[BaseReporter]] = {
     "allure": AllureReporter,
@@ -76,7 +80,7 @@ class ReporterFactory:
         *,
         results: CollectedResults,
         context: ReportContext,
-        console: object | None = None,
+        console: Console | None = None,
     ) -> list[ReporterResult]:
         """Run reporters: Allure first (sequential), then others in parallel."""
         if not reporters:

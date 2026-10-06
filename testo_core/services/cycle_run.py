@@ -315,7 +315,9 @@ def push_metrics(*, plan: Plan, artifacts_root: Path, run_id: str | None) -> Non
     from testo_core.reporting.paths import plan_artifacts_dir
 
     results_root = plan_artifacts_dir(artifacts_root, plan.name)
-    for target, ok, message in push_run_metrics_if_configured(results_root=results_root, run_id=run_id):
+    for target, ok, message in push_run_metrics_if_configured(
+        results_root=results_root, run_id=run_id
+    ):
         logger.log(logging.INFO if ok else logging.WARNING, "metrics push %s: %s", target, message)
 
 

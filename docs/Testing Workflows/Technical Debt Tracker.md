@@ -165,16 +165,29 @@ Add `reporters_required: true` config or fail the run with exit **3** when a con
 
 ---
 
-### 8a. mypy baseline (43 errors, 14 files) — advisory in CI, not yet blocking
+### 8a. mypy baseline — ✅ resolved 2026-10-06, blocking in CI
 
-- **Added 2026-07-02** — `mypy` landed in `pyproject.toml` (`[tool.mypy]`) and as an
-  advisory step in `.github/workflows/ci.yml`'s `format` job (`continue-on-error: true`).
-  `ruff check .` is separately clean and blocking in the same job.
+- **Added 2026-07-02** — `mypy` landed in `pyproject.toml` (`[tool.mypy]`) as an advisory
+  step in `ci.yml`'s `format` job. By 2026-10-06 the baseline had grown to 59 errors in 24 files.
+- **Resolved 2026-10-06** — `mypy testo_core` is clean and blocking; `ruff format --check`
+  is blocking too, after a one-time repo-wide `ruff format`.
 
-**Evidence** (by file, `mypy testo_core`)
+What the fixes were:
 
-| File | Errors | Nature |
-|------|--------|--------|
+| Cluster | Fix |
+|---------|-----|
+| Reporters typed `console: object` and silenced every `.print` with `type: ignore` | Typed as `rich.console.Console \| None` |
+| `reporting/allure_delta_transform.py`, `allure_history_serve.py`, `allure_summary_widgets.py` imported functions that no longer exist (the modules could not be imported at all) and nothing called them | Deleted as dead code |
+| `cli/commands/report.py` passed `Path \| None` where `Path` was required | Narrowed before use |
+| SQLModel `order_by(Model.col.desc())` on `datetime` columns | `col(Model.col).desc()` |
+| `dataclasses.replace(**dict[str, object])`, `int(object)`, `list[object]` passed to Rich, untyped context-manager slot, composite backend typed `list[object]` | Correct annotations or `isinstance` narrowing |
+| Legacy Docker stack (`runners.py`, `services/headless_engine.py`, `cli/legacy.py`, 19 errors) | Excluded via `[[tool.mypy.overrides]]` because the modules are being removed; delete the override with them |
+
+Still open: `mypy testo_api` reports 22 errors, mostly in `cycle_execution_manager.py` and
+`routes/ai.py`. Fix those once the CycleRunService refactor and the legacy-stack removal
+have landed (both rewrite those files), then add `testo_api` to the CI step.
+
+------|--------|--------|
 | `testo_core/runners.py` | 17 | `callable?[Any, None]` not callable (13×); redefined names; container/context-manager type drift |
 | `testo_core/services/ai/integration_settings.py` | 7 | `dataclasses.replace(**dict[str, object])` can't narrow to the per-field literal/str/int/bool types |
 | `testo_core/cli/commands/report.py` | 3 | `Path \| None` passed where `Path` expected — likely a real missing-None-check |

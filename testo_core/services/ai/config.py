@@ -49,4 +49,6 @@ class AiProviderConfig:
         key = os.getenv(self.resolved_api_key_env_var(), "")
         if key:
             return key
-        raise ProviderMisconfiguredError(f"Environment API key is missing: {self.resolved_api_key_env_var()}")
+        raise ProviderMisconfiguredError(
+            f"Environment API key is missing: {self.resolved_api_key_env_var()}"
+        )

@@ -54,8 +54,12 @@ class DeltaComparisonService:
         _MetricPolicy("skipped", "Skipped tests", "reliability", "lower_is_better", "tests"),
         _MetricPolicy("health_pct", "Health percentage", "reliability", "higher_is_better", "pct"),
         _MetricPolicy("wall_duration_ms", "Wall duration", "performance", "lower_is_better", "ms"),
-        _MetricPolicy("metrics_duration_ms", "Metrics duration", "performance", "lower_is_better", "ms"),
-        _MetricPolicy("avg_case_ms", "Average case duration", "performance", "lower_is_better", "ms"),
+        _MetricPolicy(
+            "metrics_duration_ms", "Metrics duration", "performance", "lower_is_better", "ms"
+        ),
+        _MetricPolicy(
+            "avg_case_ms", "Average case duration", "performance", "lower_is_better", "ms"
+        ),
     )
 
     def __init__(
@@ -82,7 +86,10 @@ class DeltaComparisonService:
                 f"{current.test_kind!r} vs {baseline.test_kind!r}."
             )
 
-        deltas = tuple(self._build_metric_delta(policy=policy, current=current, baseline=baseline) for policy in self._METRIC_POLICY)
+        deltas = tuple(
+            self._build_metric_delta(policy=policy, current=current, baseline=baseline)
+            for policy in self._METRIC_POLICY
+        )
         summary = self._build_status_summary(deltas)
         highlights = self._build_highlights(deltas)
         stage_deltas = self._build_stage_deltas(current=current, baseline=baseline)
@@ -114,9 +121,19 @@ class DeltaComparisonService:
         baseline_value = self._to_float(getattr(baseline, policy.key, None))
 
         if current_value is None:
-            return self._unknown_delta(policy=policy, current=current_value, baseline=baseline_value, reason="missing_current_metric")
+            return self._unknown_delta(
+                policy=policy,
+                current=current_value,
+                baseline=baseline_value,
+                reason="missing_current_metric",
+            )
         if baseline_value is None:
-            return self._unknown_delta(policy=policy, current=current_value, baseline=baseline_value, reason="missing_baseline_metric")
+            return self._unknown_delta(
+                policy=policy,
+                current=current_value,
+                baseline=baseline_value,
+                reason="missing_baseline_metric",
+            )
 
         absolute_delta = current_value - baseline_value
         relative_delta_pct: float | None = None
@@ -187,7 +204,9 @@ class DeltaComparisonService:
             classification: DeltaClassification = "unknown"
             if cur_health is not None and base_health is not None:
                 health_delta = cur_health - base_health
-                classification = self._classify(absolute_delta=health_delta, direction="higher_is_better")
+                classification = self._classify(
+                    absolute_delta=health_delta, direction="higher_is_better"
+                )
 
             deltas.append(
                 StageDelta(
@@ -228,7 +247,12 @@ class DeltaComparisonService:
 
     def _build_highlights(self, deltas: tuple[MetricDelta, ...]) -> tuple[str, ...]:
         ranked = sorted(
-            [d for d in deltas if d.classification in {"regression", "improvement"} and d.absolute_delta is not None],
+            [
+                d
+                for d in deltas
+                if d.classification in {"regression", "improvement"}
+                and d.absolute_delta is not None
+            ],
             key=lambda d: abs(d.absolute_delta or 0.0),
             reverse=True,
         )
@@ -258,4 +282,3 @@ class DeltaComparisonService:
         if direction == "higher_is_better":
             return "improvement" if absolute_delta > 0 else "regression"
         return "improvement" if absolute_delta < 0 else "regression"
-

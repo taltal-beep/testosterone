@@ -79,6 +79,4 @@ def _contains(argv: list[str], flag: str) -> bool:
 
 
 def _has_formatter(argv: list[str]) -> bool:
-    return any(
-        arg in ("-f", "--formatter") or arg.startswith("--formatter=") for arg in argv
-    )
+    return any(arg in ("-f", "--formatter") or arg.startswith("--formatter=") for arg in argv)

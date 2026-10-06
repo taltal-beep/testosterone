@@ -77,7 +77,11 @@ def config_db(
         u = username or typer.prompt("Username")
         pw = password or typer.prompt("Password", hide_input=True)
         dbn = database or typer.prompt("Database name")
-        sch = schema if schema is not None else typer.prompt("PostgreSQL schema (optional)", default="")
+        sch = (
+            schema
+            if schema is not None
+            else typer.prompt("PostgreSQL schema (optional)", default="")
+        )
         sch = sch.strip() or None
         resolved_url = build_postgresql_url(
             host=str(h).strip(),

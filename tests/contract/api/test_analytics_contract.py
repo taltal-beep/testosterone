@@ -164,7 +164,13 @@ def test_analytics_delta_contract_success(monkeypatch) -> None:  # noqa: ANN001
     resp = client.get("/api/v1/analytics/delta?current_run_id=run-2&baseline_run_id=run-1")
     assert resp.status_code == 200
     payload = resp.json()
-    assert set(payload.keys()) == {"comparison", "metrics", "status_summary", "highlights", "stage_deltas"}
+    assert set(payload.keys()) == {
+        "comparison",
+        "metrics",
+        "status_summary",
+        "highlights",
+        "stage_deltas",
+    }
     assert payload["comparison"]["current_run_id"] == "run-2"
     assert set(payload["metrics"].keys()) == {"reliability", "performance"}
     assert payload["metrics"]["reliability"]["failed"]["classification"] == "regression"
@@ -289,7 +295,9 @@ def test_analytics_delta_invalid_id(monkeypatch) -> None:  # noqa: ANN001
     def _raise_invalid(self, **kwargs):  # noqa: ANN001, ARG001
         raise InvalidRunIdError("current_run_id must be a non-empty string.")
 
-    monkeypatch.setattr("testo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_invalid)
+    monkeypatch.setattr(
+        "testo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_invalid
+    )
     client = TestClient(create_app())
     resp = client.get("/api/v1/analytics/delta?current_run_id=&baseline_run_id=run-1")
     assert resp.status_code == 400
@@ -301,7 +309,9 @@ def test_analytics_delta_run_not_found(monkeypatch) -> None:  # noqa: ANN001
     def _raise_not_found(self, **kwargs):  # noqa: ANN001, ARG001
         raise RunNotFoundComparisonError("missing")
 
-    monkeypatch.setattr("testo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_not_found)
+    monkeypatch.setattr(
+        "testo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_not_found
+    )
     client = TestClient(create_app())
     resp = client.get("/api/v1/analytics/delta?current_run_id=run-2&baseline_run_id=missing")
     assert resp.status_code == 404
@@ -313,10 +323,11 @@ def test_analytics_delta_incompatible_data(monkeypatch) -> None:  # noqa: ANN001
     def _raise_incompatible(self, **kwargs):  # noqa: ANN001, ARG001
         raise IncompatibleRunDataError("Cannot compare runs with different test kinds.")
 
-    monkeypatch.setattr("testo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_incompatible)
+    monkeypatch.setattr(
+        "testo_api.routes.analytics.DeltaComparisonService.compare_runs", _raise_incompatible
+    )
     client = TestClient(create_app())
     resp = client.get("/api/v1/analytics/delta?current_run_id=run-2&baseline_run_id=run-1")
     assert resp.status_code == 422
     payload = resp.json()
     assert payload["error"]["code"] == "invalid_input"
-

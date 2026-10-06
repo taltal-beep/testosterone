@@ -22,6 +22,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `ARCHITECTURE.md` and `README.md` now describe the single execution engine (config → `CycleRunService` → engine → framework adapters → reporting/persistence) with a system diagram, layer table and the typed Pydantic-to-React contract
 - `testo_core/run_history.py` is replaced by the `testo_core/history/` package: `views` (typed run views), `read_model` (queries), `report_links`, `snapshots`, `s3_snapshots` (pre-1.1 MinIO lookups only) and `maintenance`. All of it goes through the run repository, which gains `merge_run_metadata()`; `STATIC_HISTORY_ROOT` moves to `testo_core.paths`
 - GitHub Action and GitLab template now run `testo run --ci` (they called `uqo run --config … --ghost`, which v1.0's `uqo` alias no longer accepted). Action inputs are `config-path`, `cycle`, `ci-mode`, `persist`, `python-version`; `ghost-mode`, `stream-json`, `runner-image`, `runner-prebuilt` and the `run_id` output are gone. GitLab variables are now `TESTO_CONFIG_PATH`, `TESTO_CYCLE`, `TESTO_PERSIST`
+- CI's `format` job now blocks on `mypy testo_core` and `ruff format --check` (both were advisory); the codebase was reformatted once with `ruff format`, and a `ruff-format` pre-commit hook was added
 
 ### Removed
 - The second, Docker-based execution stack: `HeadlessEngineService`, `testo_core/runners.py`, `command_builders.py`, `multi_run.py`, `event_drain.py`, `config_loader.py`, `audit_service.py`, `ghost_policy.py`, `result_management.py`, and the pluggy `orchestrator.py` / `specs.py` / `plugins_builtin.py`. Every run now goes through the cycle engine
@@ -31,9 +32,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - The `docker` extra and the `pluggy` runtime dependency
 - Run-history writer functions in `run_history.py` (`create_run`, `record_completed_run`, MinIO uploads), the unused `compare_latest_two()` and the `db_path` arguments on history queries
 - Generated run output that was committed by mistake (`artifacts/allure-report*`, `artifacts/allure-results-archive/`, `artifacts/metrics.json`); these paths are now ignored
+- `testo_core/reporting/allure_delta_transform.py`, `allure_history_serve.py` and `allure_summary_widgets.py`: unreferenced modules that could not be imported (they depended on functions no longer in `services/report_archive_diff.py`)
 
 ### Fixed
 - Frontend typecheck errors surfaced by the generated types: `/health/ready` is typed `"ready" | "degraded"` as the API returns, and `StatusPill` handles a `null` status
+- `mypy testo_core` reports 0 errors, down from 59: reporters take a typed Rich `Console`, `testo report` narrows its optional open path before use, and the persistence, repository and CLI UI code is fully annotated
 - `equipment: behavex`: every BehaveX stage failed at startup with `OSError: AF_UNIX path too long`, because BehaveX points `TEMP` at its output folder and the multiprocessing socket landed there; the adapter now pins `TMPDIR` to the system temp dir
 - Run detail, dashboard and compare showed a wall duration of 0 ms for every cycle run; engine-sourced records store `duration_s`, which the history view now falls back to
 

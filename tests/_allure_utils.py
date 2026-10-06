@@ -33,5 +33,9 @@ def attach_json(name: str, data: Any) -> None:
         body = json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False)
     except Exception:
         body = repr(data)
-    allure.attach(body, name=name, attachment_type=getattr(allure.attachment_type, "JSON", None) or allure.attachment_type.TEXT)
-
+    allure.attach(
+        body,
+        name=name,
+        attachment_type=getattr(allure.attachment_type, "JSON", None)
+        or allure.attachment_type.TEXT,
+    )

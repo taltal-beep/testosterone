@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.engine import Engine
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from .base import BaseRunRepository
 from .models import RunRecord, RunStatus
@@ -112,7 +112,7 @@ class SQLModelRunRepository(BaseRunRepository):
             return True
 
     def list_recent_runs(self, *, limit: int = 30) -> list[RunRecord]:
-        stmt = select(RunRecord).order_by(RunRecord.start_time.desc()).limit(int(limit))
+        stmt = select(RunRecord).order_by(col(RunRecord.start_time).desc()).limit(int(limit))
         with Session(self._engine) as session:
             rows = list(session.exec(stmt).all())
             for r in rows:

@@ -6,7 +6,7 @@ import uuid
 from typing import Any
 
 from sqlalchemy.engine import Engine
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from testo_core.repository.models import ReportArchive
 
@@ -67,7 +67,9 @@ class SQLReportArchiveRepository:
             return r
 
     def list_recent(self, *, limit: int = 30) -> list[ReportArchive]:
-        stmt = select(ReportArchive).order_by(ReportArchive.created_at.desc()).limit(int(limit))
+        stmt = (
+            select(ReportArchive).order_by(col(ReportArchive.created_at).desc()).limit(int(limit))
+        )
         with Session(self._engine) as session:
             rows = list(session.exec(stmt).all())
             for r in rows:
@@ -78,7 +80,7 @@ class SQLReportArchiveRepository:
         stmt = (
             select(ReportArchive)
             .where(ReportArchive.cycle_name == cycle_name)
-            .order_by(ReportArchive.created_at.desc())
+            .order_by(col(ReportArchive.created_at).desc())
             .limit(int(limit))
         )
         with Session(self._engine) as session:

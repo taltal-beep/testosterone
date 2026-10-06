@@ -108,7 +108,9 @@ def _results_for_file(path: Path, *, tool: str, fallback_ms: int) -> list[dict]:
                 ],
             }
             if message or trace:
-                result["statusDetails"] = {k: v for k, v in (("message", message), ("trace", trace)) if v}
+                result["statusDetails"] = {
+                    k: v for k, v in (("message", message), ("trace", trace)) if v
+                }
             results.append(result)
             clock += duration
     return results

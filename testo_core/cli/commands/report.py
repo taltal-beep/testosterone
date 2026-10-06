@@ -158,13 +158,17 @@ def report_native(
     cycle_dir = resolve_cycle_dir(artifacts_root=artifacts_root, cycle=resolved_cycle)
     if cycle_dir is None:
         label = resolved_cycle or "(latest)"
-        console.print(f"[fail]No cycle artifacts found for[/] {label} under {relpath_for_display(Path(artifacts_root))}")
+        console.print(
+            f"[fail]No cycle artifacts found for[/] {label} under {relpath_for_display(Path(artifacts_root))}"
+        )
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
     if routine_name is None or not str(routine_name).strip():
         rows = list_native_rows(cycle_dir=cycle_dir)
         if not rows:
-            console.print("[warn]No raw data found for this routine[/] — no stage directories under the cycle.")
+            console.print(
+                "[warn]No raw data found for this routine[/] — no stage directories under the cycle."
+            )
             raise typer.Exit(code=0)
 
         table = Table(title="Native reports", show_lines=False, title_justify="left")
@@ -186,14 +190,16 @@ def report_native(
             html_targets = [r for r in rows if r.open_path is not None and r.open_kind == "html"]
             any_failed = False
             for r in html_targets:
-                if open_native_uri(r.open_path):
+                target = r.open_path
+                assert target is not None  # filtered above
+                if open_native_uri(target):
                     console.print(
-                        f"[ok]Opened[/] [html] {relpath_for_display(r.open_path)} [muted]({r.routine})[/]"
+                        f"[ok]Opened[/] [html] {relpath_for_display(target)} [muted]({r.routine})[/]"
                     )
                 else:
                     any_failed = True
                     console.print(
-                        f"[fail]Could not open browser for[/] {r.open_path.resolve()} [muted]({r.routine})[/]"
+                        f"[fail]Could not open browser for[/] {target.resolve()} [muted]({r.routine})[/]"
                     )
             if any_failed:
                 raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE))
@@ -202,7 +208,9 @@ def report_native(
     routine = str(routine_name).strip()
     stage_dir = find_stage_dir(cycle_dir, routine)
     if stage_dir is None:
-        console.print(f"[fail]Unknown routine[/] {routine!r} under {relpath_for_display(cycle_dir)}")
+        console.print(
+            f"[fail]Unknown routine[/] {routine!r} under {relpath_for_display(cycle_dir)}"
+        )
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
     eq_map = load_stage_equipment(cycle_dir)
@@ -221,12 +229,12 @@ def report_native(
         raise typer.Exit(code=0)
 
     if open_native_uri(row.open_path):
-        console.print(
-            f"[ok]Opened[/] [{row.open_kind}] {relpath_for_display(row.open_path)}"
-        )
+        console.print(f"[ok]Opened[/] [{row.open_kind}] {relpath_for_display(row.open_path)}")
         raise typer.Exit(code=0)
 
-    console.print("[fail]Could not open the default browser for[/] " f"{relpath_for_display(row.open_path)}")
+    console.print(
+        f"[fail]Could not open the default browser for[/] {relpath_for_display(row.open_path)}"
+    )
     raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE))
 
 
@@ -355,7 +363,9 @@ def report_open_archived(
     raise typer.Exit(code=int(exit_code))
 
 
-@report_app.command("pyramid", help="Render the unit/integration/e2e test pyramid for a completed run.")
+@report_app.command(
+    "pyramid", help="Render the unit/integration/e2e test pyramid for a completed run."
+)
 def report_pyramid(
     run_id: str = typer.Argument(
         ...,

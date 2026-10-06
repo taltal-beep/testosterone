@@ -52,7 +52,9 @@ def test_push_to_prometheus_http_error(sample_metrics: RunMetrics) -> None:
 
     with patch("testo_core.integrations.requests.post") as post:
         post.return_value = MagicMock(status_code=400, text="bad")
-        ok, msg = push_to_prometheus(sample_metrics, pushgateway_url="http://x:9091", job_name="uqo")
+        ok, msg = push_to_prometheus(
+            sample_metrics, pushgateway_url="http://x:9091", job_name="uqo"
+        )
     assert ok is False
     assert "HTTP 400" in msg
 
@@ -70,13 +72,21 @@ def test_push_run_metrics_does_nothing_when_no_target_is_configured(
 ) -> None:
     from testo_core.integrations import push_run_metrics_if_configured
 
-    for name in ("INFLUXDB_URL", "INFLUXDB_TOKEN", "INFLUXDB_ORG", "INFLUXDB_BUCKET", "PROMETHEUS_PUSHGATEWAY_URL"):
+    for name in (
+        "INFLUXDB_URL",
+        "INFLUXDB_TOKEN",
+        "INFLUXDB_ORG",
+        "INFLUXDB_BUCKET",
+        "PROMETHEUS_PUSHGATEWAY_URL",
+    ):
         monkeypatch.delenv(name, raising=False)
     _write_result(tmp_path, "passed")
     assert push_run_metrics_if_configured(results_root=tmp_path, run_id="rid") == []
 
 
-def test_push_run_metrics_reports_missing_results(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_push_run_metrics_reports_missing_results(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from testo_core.integrations import push_run_metrics_if_configured
 
     monkeypatch.setenv("PROMETHEUS_PUSHGATEWAY_URL", "http://x:9091")
@@ -84,7 +94,9 @@ def test_push_run_metrics_reports_missing_results(tmp_path: Path, monkeypatch: p
     assert out and out[0][0] == "metrics" and out[0][1] is False
 
 
-def test_push_run_metrics_pushes_to_each_configured_target(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_push_run_metrics_pushes_to_each_configured_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from testo_core.integrations import push_run_metrics_if_configured
 
     for name, value in {

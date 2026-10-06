@@ -16,7 +16,7 @@ See [README Quickstart](README.md#quickstart-copypaste) for the full local infra
 ## Before opening a PR
 
 - **Tests**: `pytest -q -m "tier_fast and not quarantined" --no-cov` — this is the required check in CI (`ci.yml`'s `test` job).
-- **Lint**: `ruff check .` — blocking in CI. `mypy testo_core` is advisory (see [Technical Debt Tracker](docs/Testing%20Workflows/Technical%20Debt%20Tracker.md) for the known baseline).
+- **Lint, format, types**: `ruff check .`, `ruff format --check .` and `mypy testo_core` — all three are blocking in CI (`ci.yml`'s `format` job). Run `ruff format .` to fix formatting.
 - **Frontend**: `npm --prefix frontend run typecheck && npm --prefix frontend test` — both blocking in CI (`ci.yml`'s `frontend` job).
 - **API contract**: the React app's request/response types are generated from FastAPI's OpenAPI schema. After changing a model in `testo_api/models.py` (or a route's `response_model`), run `python scripts/export_openapi.py && npm --prefix frontend run gen:api` and commit `frontend/openapi.json` and `frontend/src/lib/api-schema.ts`. CI fails if either is stale.
 - **Commit messages**: [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `test:`, `chore:`, `docs:`, ...) — enforced by `commitlint` in CI against `commitlint.config.js`.

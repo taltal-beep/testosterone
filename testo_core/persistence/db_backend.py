@@ -16,6 +16,7 @@ from testo_core.repository.models import RunStatus
 
 logger = logging.getLogger(__name__)
 
+
 class DbBackend:
     """Persist a :class:`PlanResult` as a :class:`RunRecord` in the database."""
 
@@ -68,12 +69,18 @@ class DbBackend:
                             "framework": s.framework,
                             "returncode": s.returncode,
                             "duration_s": s.duration_s,
-                            **{k: v for k, v in stage_health_by_name.get(s.stage_name, {}).items() if k != "name"},
+                            **{
+                                k: v
+                                for k, v in stage_health_by_name.get(s.stage_name, {}).items()
+                                if k != "name"
+                            },
                         }
                         for s in result.stages
                     ],
                     "health_pct": health_pct,
-                    "total_tests": sum(h["total_tests"] for h in stage_health) if stage_health else None,
+                    "total_tests": sum(h["total_tests"] for h in stage_health)
+                    if stage_health
+                    else None,
                     "passed": sum(h["passed"] for h in stage_health) if stage_health else None,
                     "failed": sum(h["failed"] for h in stage_health) if stage_health else None,
                     "broken": sum(h["broken"] for h in stage_health) if stage_health else None,

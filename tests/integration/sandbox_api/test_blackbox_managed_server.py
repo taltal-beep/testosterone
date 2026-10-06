@@ -11,7 +11,9 @@ pytestmark = [pytest.mark.integration]
 @pytest.fixture
 def managed_requests_client(sandbox_server: str, api_recorder):
     class _Req:
-        def request(self, method: str, path: str, *, json=None, headers=None, timeout: float | None = None):
+        def request(
+            self, method: str, path: str, *, json=None, headers=None, timeout: float | None = None
+        ):
             url = f"{sandbox_server}{path}"
             hdrs = dict(headers or {})
             try:
@@ -70,4 +72,3 @@ def test_blackbox_flaky_endpoint_demo(managed_requests_client) -> None:
     with step("GET /flaky (managed uvicorn)"):
         r = managed_requests_client.get("/flaky", timeout=5)
     assert r.status_code in {200, 500}
-

@@ -99,7 +99,9 @@ class DashboardService:
         run_lookup: Callable[[str], CompletedRunView | None] | None = None,
         delta_service_factory: Callable[[], DeltaComparisonService] | None = None,
     ) -> None:
-        self._run_sessions_loader = run_sessions_loader or (lambda limit: list_run_sessions(limit=limit))
+        self._run_sessions_loader = run_sessions_loader or (
+            lambda limit: list_run_sessions(limit=limit)
+        )
         self._run_lookup = run_lookup or (lambda run_id: get_run(run_id=run_id))
         self._delta_service_factory = delta_service_factory or DeltaComparisonService
 
@@ -107,7 +109,10 @@ class DashboardService:
         if limit <= 0:
             raise ValueError("limit must be greater than zero.")
         sessions = self._run_sessions_loader(limit)
-        return tuple(self._build_recent_run(index=i, session=sessions[i], sessions=sessions) for i in range(len(sessions)))
+        return tuple(
+            self._build_recent_run(index=i, session=sessions[i], sessions=sessions)
+            for i in range(len(sessions))
+        )
 
     def get_overview(self, *, recent_limit: int = 5) -> DashboardOverview:
         if recent_limit <= 0:
@@ -152,14 +157,20 @@ class DashboardService:
         report_links = self._build_report_links(latest_session=latest_session)
 
         return DashboardOverview(
-            headline_kpis=self._build_headline(latest_run=latest_run, latest_session=latest_session),
+            headline_kpis=self._build_headline(
+                latest_run=latest_run, latest_session=latest_session
+            ),
             trend_health=self._build_trend(
                 current=latest_run.health_pct if latest_run else None,
                 baseline=baseline_run.health_pct if baseline_run else None,
             ),
             trend_failed_count=self._build_trend(
-                current=float(latest_run.failed) if latest_run and latest_run.failed is not None else None,
-                baseline=float(baseline_run.failed) if baseline_run and baseline_run.failed is not None else None,
+                current=float(latest_run.failed)
+                if latest_run and latest_run.failed is not None
+                else None,
+                baseline=float(baseline_run.failed)
+                if baseline_run and baseline_run.failed is not None
+                else None,
             ),
             trend_duration=self._build_trend(
                 current=latest_run.wall_duration_ms if latest_run else None,
@@ -187,11 +198,21 @@ class DashboardService:
         latest_session: RunSessionView | None,
     ) -> DashboardHeadlineKpis:
         return DashboardHeadlineKpis(
-            latest_run_id=latest_run.run_id if latest_run else (latest_session.run_id if latest_session else None),
-            latest_status=latest_run.status.value if latest_run and latest_run.status is not None else None,
-            health_pct=latest_run.health_pct if latest_run else (latest_session.health_pct if latest_session else None),
-            pass_count=latest_run.passed if latest_run else (latest_session.passed if latest_session else None),
-            fail_count=latest_run.failed if latest_run else (latest_session.failed if latest_session else None),
+            latest_run_id=latest_run.run_id
+            if latest_run
+            else (latest_session.run_id if latest_session else None),
+            latest_status=latest_run.status.value
+            if latest_run and latest_run.status is not None
+            else None,
+            health_pct=latest_run.health_pct
+            if latest_run
+            else (latest_session.health_pct if latest_session else None),
+            pass_count=latest_run.passed
+            if latest_run
+            else (latest_session.passed if latest_session else None),
+            fail_count=latest_run.failed
+            if latest_run
+            else (latest_session.failed if latest_session else None),
             duration_ms=latest_run.wall_duration_ms if latest_run else None,
         )
 
@@ -203,7 +224,9 @@ class DashboardService:
     ) -> DashboardRollup:
         if delta_result is None:
             return DashboardRollup(
-                status_summary=DashboardRollupSummary(regressions=0, improvements=0, unchanged=0, unknown=0),
+                status_summary=DashboardRollupSummary(
+                    regressions=0, improvements=0, unchanged=0, unknown=0
+                ),
                 top_highlights=(),
             )
 
@@ -224,7 +247,9 @@ class DashboardService:
         delta_result: DeltaComparisonResult,
     ) -> list[str]:
         keys = {metric.metric_key for metric in metrics}
-        return [line for line in delta_result.highlights if any(key in line.lower() for key in keys)]
+        return [
+            line for line in delta_result.highlights if any(key in line.lower() for key in keys)
+        ]
 
     @staticmethod
     def _build_trend(*, current: float | None, baseline: float | None) -> DashboardTrendIndicator:
@@ -239,7 +264,9 @@ class DashboardService:
             direction = "down"
         else:
             direction = "flat"
-        return DashboardTrendIndicator(direction=direction, delta_abs=delta_abs, delta_pct=delta_pct)
+        return DashboardTrendIndicator(
+            direction=direction, delta_abs=delta_abs, delta_pct=delta_pct
+        )
 
     @staticmethod
     def _pick_link(links: dict[str, str], *keys: str) -> DashboardReportLink:
@@ -265,12 +292,12 @@ class DashboardService:
         return DashboardReportLinks(allure=allure, behave=behave)
 
     @staticmethod
-    def _build_recent_run(*, index: int, session: RunSessionView, sessions: list[RunSessionView]) -> DashboardRecentRun:
+    def _build_recent_run(
+        *, index: int, session: RunSessionView, sessions: list[RunSessionView]
+    ) -> DashboardRecentRun:
         compare_url = None
         if index + 1 < len(sessions):
-            compare_url = (
-                f"/compare?current_run_id={session.run_id}&baseline_run_id={sessions[index + 1].run_id}"
-            )
+            compare_url = f"/compare?current_run_id={session.run_id}&baseline_run_id={sessions[index + 1].run_id}"
         return DashboardRecentRun(
             run_id=session.run_id,
             created_at=session.created_at,

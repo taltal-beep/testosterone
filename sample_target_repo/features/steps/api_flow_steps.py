@@ -31,10 +31,8 @@ def given_logged_in(context, username: str) -> None:
 @when('I GET "{path}" as authenticated user')
 def when_get_authenticated(context, path: str) -> None:
     token = getattr(context, "token", None)
-    assert token, "not logged in; use Given I am logged in as \"...\""
-    context.response = _client(context).get(
-        path, headers={"Authorization": f"Bearer {token}"}
-    )
+    assert token, 'not logged in; use Given I am logged in as "..."'
+    context.response = _client(context).get(path, headers={"Authorization": f"Bearer {token}"})
 
 
 @when('I GET "{path}"')

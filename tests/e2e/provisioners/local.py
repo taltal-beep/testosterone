@@ -9,4 +9,3 @@ class LocalProvisioner:
 
     def cleanup(self, ctx: FlowContext) -> None:
         ctx.resources.pop("workspace", None)
-

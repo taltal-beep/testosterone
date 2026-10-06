@@ -10,7 +10,9 @@ from testo_core.engine.result import PlanResult, StageResult
 from testo_core.persistence.failure_context import failed_cases_from_allure, failure_metadata
 
 
-def _stage(tmp_path: Path, name: str, *, returncode: int, output_tail: str = "", timed_out: bool = False) -> StageResult:
+def _stage(
+    tmp_path: Path, name: str, *, returncode: int, output_tail: str = "", timed_out: bool = False
+) -> StageResult:
     return StageResult(
         stage_name=name,
         framework="pytest",
@@ -51,7 +53,10 @@ def test_failed_cases_from_allure_collects_failed_and_broken(tmp_path: Path) -> 
             "name": "test_auth_expiry",
             "fullName": "tests.auth.test_auth_expiry",
             "status": "failed",
-            "statusDetails": {"message": "API failed: token expired", "trace": "Traceback: AuthError"},
+            "statusDetails": {
+                "message": "API failed: token expired",
+                "trace": "Traceback: AuthError",
+            },
         },
     )
     _write_result(tmp_path, "b-result.json", {"name": "test_ok", "status": "passed"})
@@ -65,14 +70,25 @@ def test_failed_cases_from_allure_collects_failed_and_broken(tmp_path: Path) -> 
 
 
 def test_failure_metadata_is_empty_for_a_passing_plan(tmp_path: Path) -> None:
-    assert failure_metadata(_plan(_stage(tmp_path, "s", returncode=0), exit_code=EngineExitCode.SUCCESS)) == {}
+    assert (
+        failure_metadata(
+            _plan(_stage(tmp_path, "s", returncode=0), exit_code=EngineExitCode.SUCCESS)
+        )
+        == {}
+    )
 
 
-def test_failure_metadata_collects_cases_across_stages_and_the_failing_log_tail(tmp_path: Path) -> None:
+def test_failure_metadata_collects_cases_across_stages_and_the_failing_log_tail(
+    tmp_path: Path,
+) -> None:
     _write_result(
         tmp_path / "unit" / "allure-results" / "pytest",
         "x-result.json",
-        {"name": "test_math", "status": "failed", "statusDetails": {"message": "assert 1 == 2", "trace": "E assert"}},
+        {
+            "name": "test_math",
+            "status": "failed",
+            "statusDetails": {"message": "assert 1 == 2", "trace": "E assert"},
+        },
     )
     result = _plan(
         _stage(tmp_path, "lint", returncode=0),
@@ -91,7 +107,13 @@ def test_failure_metadata_collects_cases_across_stages_and_the_failing_log_tail(
 
 def test_failure_metadata_falls_back_to_output_tail_and_flags_timeouts(tmp_path: Path) -> None:
     result = _plan(
-        _stage(tmp_path, "slow", returncode=124, output_tail="still running... token=abcdefghijklmnop", timed_out=True),
+        _stage(
+            tmp_path,
+            "slow",
+            returncode=124,
+            output_tail="still running... token=abcdefghijklmnop",
+            timed_out=True,
+        ),
         exit_code=EngineExitCode.DOMAIN_FAILURE,
     )
 

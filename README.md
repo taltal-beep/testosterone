@@ -144,9 +144,15 @@ job, commit and branch. Inputs and outputs: [integrations/github-action/README.m
 pip install -e ".[dev]"
 pre-commit install
 ruff check .
+ruff format --check .
+mypy testo_core
 pytest -q -m "tier_fast and not quarantined" --no-cov
+npm --prefix frontend run typecheck
 npm --prefix frontend test
 ```
+
+`ruff check`, `ruff format --check` and `mypy testo_core` are all blocking in CI
+(`.github/workflows/ci.yml`'s `format` job), as are the frontend typecheck and tests.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full checklist and [docs/Index.md](docs/Index.md)
 for the design notes vault.

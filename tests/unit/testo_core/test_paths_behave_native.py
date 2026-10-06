@@ -13,4 +13,3 @@ def test_allure_cli_input_directories_includes_behave_native(tmp_path: Path) -> 
     (root / "behave_native").mkdir()
     dirs = allure_cli_input_directories(root)
     assert (root / "behave_native") in dirs
-

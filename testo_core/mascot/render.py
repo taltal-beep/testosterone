@@ -42,7 +42,7 @@ def frame_to_ansi(frame: Frame, palette: dict[str, str] = PALETTE) -> str:
             else:
                 parts.append("49")
             glyph = "▀" if tcol else "▄"
-            if tcol is None:
+            if tcol is None and bcol is not None:
                 # only bottom colored: draw lower half-block with fg=bottom
                 r, g, b = _hex_rgb(bcol)
                 parts = [f"38;2;{r};{g};{b}", "49"]
@@ -51,8 +51,13 @@ def frame_to_ansi(frame: Frame, palette: dict[str, str] = PALETTE) -> str:
     return "\n".join(lines)
 
 
-def play(animation: Animation, fps: float = 6.0, loops: int = 3,
-         palette: dict[str, str] = PALETTE, out=sys.stdout) -> None:
+def play(
+    animation: Animation,
+    fps: float = 6.0,
+    loops: int = 3,
+    palette: dict[str, str] = PALETTE,
+    out=sys.stdout,
+) -> None:
     """Play an animation in-place in the terminal."""
     height = (max(len(f) for f in animation) + 1) // 2
     delay = 1.0 / fps
@@ -72,9 +77,13 @@ def play(animation: Animation, fps: float = 6.0, loops: int = 3,
         out.flush()
 
 
-def frame_to_png(frame: Frame, path: str, scale: int = 12,
-                 palette: dict[str, str] = PALETTE,
-                 background: str | None = "#ffffff") -> None:
+def frame_to_png(
+    frame: Frame,
+    path: str,
+    scale: int = 12,
+    palette: dict[str, str] = PALETTE,
+    background: str | None = "#ffffff",
+) -> None:
     """Write a frame as a PNG using only the stdlib (for previews/docs)."""
     width = max(len(row) for row in frame)
     rows = [row.ljust(width, ".") for row in frame]
@@ -90,13 +99,14 @@ def frame_to_png(frame: Frame, path: str, scale: int = 12,
     w, h = width * scale, len(rows) * scale
 
     def chunk(tag: bytes, data: bytes) -> bytes:
-        return (struct.pack(">I", len(data)) + tag + data
-                + struct.pack(">I", zlib.crc32(tag + data)))
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data))
 
-    png = (b"\x89PNG\r\n\x1a\n"
-           + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
-           + chunk(b"IDAT", zlib.compress(bytes(raw)))
-           + chunk(b"IEND", b""))
+    png = (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(bytes(raw)))
+        + chunk(b"IEND", b"")
+    )
     with open(path, "wb") as fh:
         fh.write(png)
 

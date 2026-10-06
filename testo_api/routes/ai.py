@@ -29,7 +29,9 @@ def _config_status_payload(store: InMemoryAiSettingsStore) -> dict[str, object]:
 
 
 @router.get("/ai/config/status", response_model=AiConfigStatusResponse)
-def get_ai_config_status(store: InMemoryAiSettingsStore = Depends(get_ai_settings_store)) -> AiConfigStatusResponse:
+def get_ai_config_status(
+    store: InMemoryAiSettingsStore = Depends(get_ai_settings_store),
+) -> AiConfigStatusResponse:
     return AiConfigStatusResponse(**_config_status_payload(store))
 
 

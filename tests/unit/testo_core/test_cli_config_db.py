@@ -15,7 +15,9 @@ def runner() -> CliRunner:
     return CliRunner()
 
 
-def test_config_db_writes_yaml(runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_config_db_writes_yaml(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     cfg = tmp_path / "testosterone.yaml"
     cfg.write_text(
@@ -38,7 +40,9 @@ def test_config_db_writes_yaml(runner: CliRunner, tmp_path: Path, monkeypatch: p
     assert "cli_config.db" in text
 
 
-def test_config_db_connection_probe_failure(runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_config_db_connection_probe_failure(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Unreachable DB must fail before rewriting config."""
     from unittest.mock import MagicMock, patch
 
@@ -73,7 +77,9 @@ def test_config_db_connection_probe_failure(runner: CliRunner, tmp_path: Path, m
     assert cfg.read_text(encoding="utf-8") == before
 
 
-def test_config_db_rejects_bad_url(runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_config_db_rejects_bad_url(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     cfg = tmp_path / "testosterone.yaml"
     cfg.write_text(

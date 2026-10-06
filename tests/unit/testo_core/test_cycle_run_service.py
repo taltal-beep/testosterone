@@ -54,7 +54,9 @@ def _load(config: Path, cycle: str):  # noqa: ANN202
     return cfg, resolve_plan(cfg, plan_name=cycle)
 
 
-def test_runs_plan_and_returns_engine_exit_code(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_runs_plan_and_returns_engine_exit_code(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     adapter = use_echo_adapter(monkeypatch)
     cfg, plan = _load(write_minimal_config(tmp_path, args=("--exit-code", "1")), "smoke")
 
@@ -72,7 +74,9 @@ def test_resting_trigger_skips_engine_and_tells_listener(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     adapter = use_echo_adapter(monkeypatch)
-    monkeypatch.setattr(cycle_run_mod, "evaluate_cycle_trigger", lambda *, plan, cfg: _trigger(stimulus=False))
+    monkeypatch.setattr(
+        cycle_run_mod, "evaluate_cycle_trigger", lambda *, plan, cfg: _trigger(stimulus=False)
+    )
     config = write_cycles_config(
         tmp_path, cycles={"gated": [stage_spec("g")]}, trigger_paths={"gated": ["src/**"]}
     )
@@ -114,7 +118,9 @@ def test_archives_report_and_reports_id_to_listener(
     report_id = uuid4()
     calls: list[tuple[str, int | None]] = []
 
-    def fake_archive(*, artifacts_root: Path, plan_name: str, exit_code_override: int | None = None) -> UUID:
+    def fake_archive(
+        *, artifacts_root: Path, plan_name: str, exit_code_override: int | None = None
+    ) -> UUID:
         calls.append((plan_name, exit_code_override))
         return report_id
 
@@ -144,7 +150,9 @@ def test_no_persist_skips_archive(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     assert outcome.exit_code == 0
 
 
-def test_workers_override_applies_to_every_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workers_override_applies_to_every_stage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     use_echo_adapter(monkeypatch)
     config = write_cycles_config(tmp_path, cycles={"multi": [stage_spec("a"), stage_spec("b")]})
     cfg, plan = _load(config, "multi")
@@ -159,7 +167,9 @@ def test_workers_override_applies_to_every_stage(tmp_path: Path, monkeypatch: py
     assert [s.workers for s in outcome.plan.stages] == [3, 3]
 
 
-def test_plan_with_no_enabled_stages_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_plan_with_no_enabled_stages_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     use_echo_adapter(monkeypatch)
     cfg, plan = _load(write_minimal_config(tmp_path), "smoke")
     monkeypatch.setattr(cycle_run_mod, "resolve_stages_for_plan", lambda _plan: ())

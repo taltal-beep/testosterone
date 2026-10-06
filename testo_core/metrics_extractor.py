@@ -71,9 +71,7 @@ def extract_from_summary_json(*, summary_path: Path) -> ExtractedMetrics | None:
         return None
 
     s = _parse_statistic_block(stat)
-    total = s["total"] or (
-        s["passed"] + s["failed"] + s["broken"] + s["skipped"] + s["unknown"]
-    )
+    total = s["total"] or (s["passed"] + s["failed"] + s["broken"] + s["skipped"] + s["unknown"])
     duration_ms = _duration_from_summary(data)
     ts = int(time.time())
 
@@ -182,5 +180,3 @@ def trend_direction(
 def trend_from_extracted_history(rows: list[ExtractedMetrics]) -> TrendDirection:
     rates = [r.success_rate_pct() for r in rows]
     return trend_direction(rates)
-
-

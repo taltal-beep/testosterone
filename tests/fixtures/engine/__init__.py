@@ -127,7 +127,9 @@ def parse_ndjson(text: str) -> list[dict[str, Any]]:
     return events
 
 
-def assert_ndjson_events(events: Sequence[Mapping[str, Any]], expected_kinds: Iterable[str]) -> None:
+def assert_ndjson_events(
+    events: Sequence[Mapping[str, Any]], expected_kinds: Iterable[str]
+) -> None:
     """Assert the exact ``event`` field sequence of an NDJSON stream."""
     kinds = [e["event"] for e in events]
     assert kinds == list(expected_kinds), f"NDJSON event order mismatch: {kinds}"
@@ -181,7 +183,9 @@ def write_minimal_config(
         {
             "version": 1,
             "defaults": {"target_repo": ".", "artifacts_root": "artifacts"},
-            "cycles": {cycle: {"stages": [stage_spec(f"{cycle}-stage", args=args, timeout_s=timeout_s)]}},
+            "cycles": {
+                cycle: {"stages": [stage_spec(f"{cycle}-stage", args=args, timeout_s=timeout_s)]}
+            },
         },
     )
 

@@ -18,10 +18,15 @@ from testo_core.db_config import reset_engine_cache, resolve_database_url
 def test_extract_database_url_from_mapping() -> None:
     assert extract_database_url_from_mapping({}) is None
     assert extract_database_url_from_mapping({"database": "x"}) is None
-    assert extract_database_url_from_mapping({"database": {"url": "  sqlite:///x.db  "}}) == "sqlite:///x.db"
+    assert (
+        extract_database_url_from_mapping({"database": {"url": "  sqlite:///x.db  "}})
+        == "sqlite:///x.db"
+    )
 
 
-def test_database_url_from_discovered_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_database_url_from_discovered_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     assert database_url_from_discovered_config() is None
 
@@ -35,7 +40,9 @@ def test_database_url_from_discovered_config(tmp_path: Path, monkeypatch: pytest
     assert database_url_from_discovered_config() == "sqlite:///from_yaml.db"
 
 
-def test_resolve_database_url_prefers_env_over_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_database_url_prefers_env_over_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     (tmp_path / "testosterone.yaml").write_text(
         "version: 1\ndefaults: {target_repo: ., artifacts_root: artifacts}\n"
@@ -52,7 +59,9 @@ def test_resolve_database_url_prefers_env_over_file(tmp_path: Path, monkeypatch:
         reset_engine_cache()
 
 
-def test_resolve_database_url_uses_file_when_env_unset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_database_url_uses_file_when_env_unset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.delenv("POSTGRES_USER", raising=False)

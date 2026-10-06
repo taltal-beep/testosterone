@@ -3,7 +3,7 @@ name: ci
 # Unified CI/CD pipeline: format -> test -> deploy
 #
 # Stages:
-#   format               ruff lint (blocking) + ruff format check + mypy (both advisory)
+#   format               ruff lint + ruff format check + mypy (all blocking)
 #   test                 fast required pytest suite (folds in the old pr-fast workflow)
 #   frontend             React dashboard: typecheck, generated API types up to date,
 #                        vitest unit tests, production build
@@ -34,32 +34,25 @@ jobs:
   format:
     name: format (ruff)
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install ruff + mypy
-        run: python -m pip install --upgrade ruff mypy
-      # Tree is clean under [tool.ruff.lint] (select E,F,I,UP,B) as of this
-      # change, so this is now a hard gate. `ruff format --check` stays
-      # non-blocking below -- 149 files would need reformatting, a much
-      # bigger, separate change.
+      # mypy needs the real dependencies (SQLModel, Rich, FastAPI, ...) to
+      # check against their types instead of treating them as Any.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
       - name: Ruff lint
         run: ruff check --output-format=github .
-      # NOTE: non-blocking -- 149 files are not yet `ruff format`-clean.
-      # Annotations still appear on the PR. Adopting `ruff format` repo-wide
-      # is a deliberate, separate change (large diff); remove
-      # `continue-on-error` once that lands.
       - name: Ruff format check
-        continue-on-error: true
         run: ruff format --check --diff .
-      # Advisory only -- 43 pre-existing errors across 14 files, tracked in
-      # docs/Testing Workflows/Technical Debt Tracker.md. Flip to blocking
-      # once that backlog is cleared.
-      - name: mypy (advisory)
-        continue-on-error: true
+      # Legacy Docker-stack modules are excluded in [tool.mypy.overrides]
+      # until they are removed.
+      - name: mypy
         run: mypy testo_core
 
   test:

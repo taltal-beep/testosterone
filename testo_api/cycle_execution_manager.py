@@ -276,7 +276,9 @@ class CycleExecutionManager:
                 state.status = "running"
 
             cfg, plan = load_plan()
-            artifacts_root = (artifacts_root_override or cfg.defaults.artifacts_root).expanduser().resolve()
+            artifacts_root = (
+                (artifacts_root_override or cfg.defaults.artifacts_root).expanduser().resolve()
+            )
             plan_artifacts = (artifacts_root / plan.name).resolve()
             events_path = plan_artifacts / "events.ndjson"
             plan_result_path = plan_artifacts / "plan_result.json"
@@ -403,4 +405,3 @@ def iter_sse_from_ndjson_file(
                 return
         yield ": keep-alive\n\n"
         time.sleep(float(poll_interval_s))
-

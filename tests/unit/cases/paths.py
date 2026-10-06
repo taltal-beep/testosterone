@@ -20,4 +20,3 @@ def common_path_cases(tmp_path: Path) -> list[PathCase]:
         PathCase("relative_file", Path("relative.txt")),
         PathCase("absolute", tmp_path.resolve()),
     ]
-

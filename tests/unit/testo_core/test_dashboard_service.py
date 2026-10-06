@@ -39,7 +39,9 @@ def _completed(
     )
 
 
-def _session(*, run_id: str, created_at: float, returncode: int, status: RunStatus) -> RunSessionView:
+def _session(
+    *, run_id: str, created_at: float, returncode: int, status: RunStatus
+) -> RunSessionView:
     return RunSessionView(
         run_id=run_id,
         created_at=created_at,
@@ -57,20 +59,28 @@ def _session(*, run_id: str, created_at: float, returncode: int, status: RunStat
     )
 
 
-def test_dashboard_overview_uses_existing_run_and_delta_services(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_dashboard_overview_uses_existing_run_and_delta_services(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("ALLURE_SERVER_URL", "http://allure.local")
     sessions = [
         _session(run_id="run-current", created_at=2.0, returncode=0, status=RunStatus.COMPLETED),
         _session(run_id="run-baseline", created_at=1.0, returncode=1, status=RunStatus.FAILED),
     ]
     runs = {
-        "run-current": _completed(run_id="run-current", health_pct=98.0, failed=1, wall_duration_ms=900.0, passed=9),
-        "run-baseline": _completed(run_id="run-baseline", health_pct=93.0, failed=3, wall_duration_ms=1200.0, passed=7),
+        "run-current": _completed(
+            run_id="run-current", health_pct=98.0, failed=1, wall_duration_ms=900.0, passed=9
+        ),
+        "run-baseline": _completed(
+            run_id="run-baseline", health_pct=93.0, failed=3, wall_duration_ms=1200.0, passed=7
+        ),
     }
     service = DashboardService(
         run_sessions_loader=lambda limit: sessions[:limit],
         run_lookup=lambda run_id: runs.get(run_id),
-        delta_service_factory=lambda: DeltaComparisonService(run_lookup=lambda run_id: runs.get(run_id)),
+        delta_service_factory=lambda: DeltaComparisonService(
+            run_lookup=lambda run_id: runs.get(run_id)
+        ),
     )
 
     overview = service.get_overview(recent_limit=2)
@@ -86,7 +96,10 @@ def test_dashboard_overview_uses_existing_run_and_delta_services(monkeypatch: py
     assert overview.report_links.allure.url is not None
     assert overview.report_links.behave.state == "available"
     assert len(overview.recent_runs) == 2
-    assert overview.recent_runs[0].compare_url == "/compare?current_run_id=run-current&baseline_run_id=run-baseline"
+    assert (
+        overview.recent_runs[0].compare_url
+        == "/compare?current_run_id=run-current&baseline_run_id=run-baseline"
+    )
     assert overview.data_freshness.degraded is False
 
 
