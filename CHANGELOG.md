@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- GitLab Pages demo: `.gitlab-ci.yml` runs real `testo run` cycles against `sample_target_repo` and publishes the React UI as a read-only snapshot of those runs (`scripts/export_static_site.py` freezes the API's own responses; `frontend/src/lib/static-backend.ts` serves them to the unchanged pages). `.github/workflows/mirror-to-gitlab.yml` mirrors `main` to GitLab, inert until configured
 - `frontend` CI job in `ci.yml`: runs the React dashboard's vitest suite and production build on every PR (the frontend had no CI coverage)
 
 ### Changed
@@ -19,6 +20,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 - `equipment: behavex`: every BehaveX stage failed at startup with `OSError: AF_UNIX path too long`, because BehaveX points `TEMP` at its output folder and the multiprocessing socket landed there; the adapter now pins `TMPDIR` to the system temp dir
+- API errors surfaced in the UI as `API error <status>`; the client now shows the message the API returned, and the Run detail page reports a failed AI-summary request instead of swallowing it
 - Run detail, dashboard and compare showed a wall duration of 0 ms for every cycle run; engine-sourced records store `duration_s`, which the history view now falls back to
 
 ---
