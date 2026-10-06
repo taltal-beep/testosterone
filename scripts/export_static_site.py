@@ -167,14 +167,22 @@ class Exporter:
         self._dump("/api/v1/dashboard/runs/recent?limit=8", "dashboard/recent-runs.json")
 
     def export_deltas(self, runs: list[dict[str, Any]]) -> list[list[str]]:
-        """Export every adjacent run pair, plus latest-vs-each so Compare always has data."""
-        pairs: list[tuple[str, str]] = []
+        """Export the run pairs the UI can ask for.
+
+        Same-cycle neighbours come first: those are the comparisons that mean
+        something (this run of ``fake-api`` against the previous one). Then the
+        overall neighbours, because the Dashboard and Runs pages link "compare
+        latest two" across whatever ran last.
+        """
+        candidates: list[tuple[str, str]] = []
+        by_cycle: dict[str | None, list[str]] = {}
+        for run in runs:
+            by_cycle.setdefault(run.get("cycle"), []).append(run["run_id"])
+        for ids in by_cycle.values():
+            candidates.extend(zip(ids, ids[1:], strict=False))
         ids = [r["run_id"] for r in runs]
-        for current, baseline in zip(ids, ids[1:], strict=False):
-            pairs.append((current, baseline))
-        if ids:
-            for baseline in ids[2:]:
-                pairs.append((ids[0], baseline))
+        candidates.extend(zip(ids, ids[1:], strict=False))
+        pairs = list(dict.fromkeys(candidates))
 
         exported: list[list[str]] = []
         for current, baseline in pairs[: self.delta_pairs]:
@@ -278,13 +286,13 @@ def main(argv: list[str] | None = None) -> int:
         "--out", default="public", help="Output directory for the static site (default: public)."
     )
     parser.add_argument(
-        "--runs", type=int, default=5, help="How many recent runs to export (default: 5)."
+        "--runs", type=int, default=10, help="How many recent runs to export (default: 10)."
     )
     parser.add_argument(
         "--delta-pairs",
         type=int,
-        default=12,
-        help="Maximum run comparisons to export (default: 12).",
+        default=20,
+        help="Maximum run comparisons to export (default: 20).",
     )
     parser.add_argument(
         "--site-url",

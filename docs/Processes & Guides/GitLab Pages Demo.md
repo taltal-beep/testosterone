@@ -6,8 +6,19 @@ tags: [ci, gitlab, pages, frontend, demo]
 # GitLab Pages Demo
 
 A public, link-shareable demo of Testo: a GitLab pipeline runs **real** `testo run`
-cycles against `sample_target_repo`, then publishes the React UI to GitLab Pages
-showing the results of those runs.
+cycles, then publishes the React UI to GitLab Pages showing the results of those
+runs. It runs two things:
+
+- **Testosterone testing itself**: its own fast Python suite, split into a unit
+  and an integration/contract stage so the dashboard's pyramid is real.
+- **[fake-api](https://github.com/taltal-beep/fake-api)**, a deliberately silly
+  app ("Fake Doing Bullshit") with a flaky route, a broken route and a slow route.
+  Its tests describe how the app *should* behave, so the broken parts fail them
+  honestly. Nothing in the tests is rigged.
+
+Green-only data proves little about a test tool, which is why the second target
+exists: it guarantees failures, flakiness and slowness to look at, and every one
+of them traces back to a line of app code.
 
 > Live site: `https://<namespace>.gitlab.io/<project>/` (see [[#What you have to do on GitLab]]).
 
@@ -34,7 +45,7 @@ is a layout contract between those two files, pinned by
 `tests/unit/ci/test_gitlab_pages_demo_contract.py`.
 
 ```
-testo run (pytest + Behave + BehaveX)
+testo run (self-test, fake-api ×2)
   └─ history DB + static/history/<run_id>/ (Allure HTML)
        └─ export_static_site.py ──► public/data/**.json  +  public/history/**
                                         └─ vite build ──► public/  ──► GitLab Pages
@@ -48,16 +59,30 @@ testo run (pytest + Behave + BehaveX)
 
 | Job | Stage | What it does |
 |-----|-------|--------------|
-| `run_demo_cycles` | `demo` | Installs the package, runs `sample-all-frameworks` (green baseline) then `sample-all-frameworks-stochastic` (injected random failures), exports the site into `public/`. |
+| `run_demo_cycles` | `demo` | Installs the package and Playwright's Chromium, clones fake-api into `.demo/fake-api`, runs `self-test` once and `fake-api` twice, exports the site into `public/`. |
 | `pages` | `deploy` | Builds the frontend in static mode and copies it over `public/`, then copies `index.html` to `404.html` so deep links survive a refresh. |
 
-Two cycles are run on purpose: the second one fails tests at random, so the
-published Dashboard and Compare pages show a real regression rather than an
-empty diff.
+Both cycles live in the root `testosterone.yaml`:
+
+| Cycle | Stages (tier) | Expected result |
+|-------|---------------|-----------------|
+| `self-test` | `core-unit` (unit), `core-integration` (integration) | Green. A red self-test fails the pipeline and nothing is published. |
+| `fake-api` | `unit` (unit), `api` (integration), `buttons` Behave (integration), `ui` Playwright (e2e) | Red by design: `broken` and `slow` always fail, `flaky` fails about a third of the time. |
+
+`fake-api` runs twice on the same commit. A test whose outcome changes between
+the two runs is flaky, and that is what Compare shows for that pair.
 
 Run history goes to file-backed SQLite inside the job workspace
 (`DATABASE_URL=sqlite:///$CI_PROJECT_DIR/.ci-history/testo.db`), so the demo
-needs no database service, no MinIO and no credentials.
+needs no database service, no MinIO and no credentials. The DB and the Allure
+HTML under `static/history/` are kept in a GitLab cache between pipelines (the
+20 newest report trees are kept), so the trend grows with every pipeline. The
+cache is best-effort: if GitLab drops it, the next pipeline starts a fresh
+history.
+
+The self-test's nested pytest gets `DATABASE_URL=sqlite:////tmp/testo-self-test.db`
+through `extra_env`, so testosterone's own tests never write into the history of
+the run that is executing them.
 
 ### Build-time variables the `pages` job sets
 
@@ -73,11 +98,15 @@ pipeline works for project, user and group Pages.
 ## Running it locally
 
 ```bash
-pip install -e ".[api,db]" httpx
+pip install -e ".[dev]"
 npm install                       # Allure 3 CLI, for the HTML reports
+git clone https://github.com/taltal-beep/fake-api.git .demo/fake-api
+pip install -r .demo/fake-api/requirements.txt
+python -m playwright install chromium
 
-testo run --cycle sample-all-frameworks --ci
-testo run --cycle sample-all-frameworks-stochastic --ci || true
+testo run --cycle self-test --ci
+testo run --cycle fake-api --ci || true
+testo run --cycle fake-api --ci || true
 python scripts/export_static_site.py --out public --site-url http://localhost:8090/testo
 
 cd frontend
@@ -130,8 +159,15 @@ mirror token in step 2, and only if you choose that route.
 
 ## Maintenance notes
 
-- The cycles the demo runs are `TESTO_BASELINE_CYCLE` / `TESTO_CURRENT_CYCLE` in
-  `.gitlab-ci.yml`; a test asserts both still exist in `testosterone.yaml`.
+- `FAKE_API_REPO` / `FAKE_API_REF` in `.gitlab-ci.yml` choose what is cloned;
+  pin `FAKE_API_REF` to a tag to freeze the demo.
+- `tests/unit/ci/test_gitlab_pages_demo_contract.py` asserts the cycles exist,
+  that the fake-api cycle points where the pipeline clones it, and that only
+  fake-api is allowed to fail.
+- Known limitation: two runs of the same cycle share one `artifacts/<cycle>/`
+  directory, which is also each run's snapshot, so Compare's **Test-Level
+  Changes** between them comes back empty (stage and count deltas are correct).
+  That is an engine issue, not a demo one.
 - Adding a UI page that calls a new endpoint means exporting it in
   `scripts/export_static_site.py` *and* mapping it in `static-backend.ts`,
   otherwise the demo shows that panel's error state.

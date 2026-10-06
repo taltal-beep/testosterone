@@ -66,6 +66,8 @@ artifacts/sample-behave/
 artifacts/sample-pytests/
 artifacts/sample-all-frameworks/
 artifacts/sample-all-frameworks-stochastic/
+artifacts/self-test/
+artifacts/fake-api/
 .testo/
 
 # Local test-suite scratch DBs
@@ -78,3 +80,4 @@ data/
 # GitLab Pages demo output (scripts/export_static_site.py + the Pages job)
 /public/
 /.ci-history/
+/.demo/

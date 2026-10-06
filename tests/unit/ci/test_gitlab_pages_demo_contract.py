@@ -28,8 +28,9 @@ def test_pipeline_runs_cycles_then_publishes_pages() -> None:
 
     demo = payload["run_demo_cycles"]
     script = "\n".join(demo["script"])
-    assert 'testo run --cycle "$TESTO_BASELINE_CYCLE" --ci' in script
-    assert 'testo run --cycle "$TESTO_CURRENT_CYCLE" --ci' in script
+    assert 'git clone --depth 1 --branch "$FAKE_API_REF" "$FAKE_API_REPO" .demo/fake-api' in script
+    assert "testo run --cycle self-test --ci" in script
+    assert "testo run --cycle fake-api --ci" in script
     assert "scripts/export_static_site.py" in script
     assert "public" in demo["artifacts"]["paths"]
 
@@ -38,11 +39,22 @@ def test_pipeline_runs_cycles_then_publishes_pages() -> None:
     assert pages["artifacts"]["paths"] == ["public"]
 
 
+def test_only_the_fake_app_is_allowed_to_fail() -> None:
+    script = _pipeline()["run_demo_cycles"]["script"]
+    self_test = next(line for line in script if "--cycle self-test" in line)
+    assert "pipefail" in self_test and "|| true" not in self_test
+    for line in script:
+        if "--cycle fake-api" in line:
+            assert line.endswith("|| true")
+
+
 def test_demo_cycles_exist_in_the_config() -> None:
-    variables = _pipeline()["variables"]
     config = yaml.safe_load((REPO_ROOT / "testosterone.yaml").read_text(encoding="utf-8"))
-    for key in ("TESTO_BASELINE_CYCLE", "TESTO_CURRENT_CYCLE"):
-        assert variables[key] in config["cycles"], f"{key} names a cycle that no longer exists"
+    assert "self-test" in config["cycles"]
+    fake = config["cycles"]["fake-api"]
+    # The pipeline clones the target here; the cycle has to look in the same place.
+    assert {stage["target_repo"] for stage in fake["stages"]} == {".demo/fake-api"}
+    assert {stage["tier"] for stage in fake["stages"]} == {"unit", "integration", "e2e"}
 
 
 def test_pages_job_wires_the_static_build_and_spa_fallback() -> None:

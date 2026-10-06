@@ -1,8 +1,10 @@
 # GitLab pipeline for the public Testo demo.
 #
 # It does two things:
-#   1. runs real `testo run` cycles against sample_target_repo, the same way a
-#      user would locally (pytest + Behave + BehaveX, with Allure HTML output);
+#   1. runs real `testo run` cycles, the same way a user would locally:
+#      - `self-test`: testosterone running its own Python suite, split by tier;
+#      - `fake-api`: the Fake Doing Bullshit app (github.com/taltal-beep/fake-api),
+#        whose flaky, broken and slow routes fail its tests on purpose;
 #   2. publishes the React UI to GitLab Pages as a read-only snapshot of those
 #      runs, because Pages serves static files and so cannot host the FastAPI
 #      backend the UI normally talks to.
@@ -11,6 +13,9 @@
 # read-only API endpoint the UI uses in-process and writes each response to a
 # JSON file, and frontend/src/lib/static-backend.ts serves those files to the
 # unchanged pages. So the published dashboard shows real run data, not fixtures.
+#
+# Run history is cached between pipelines, so each pipeline adds to the trend
+# and Compare can put this run next to the previous one.
 #
 # Reusable CI template for running Testo in *your own* project lives in
 # ci/gitlab/testo.gitlab-ci.yml — this file is the demo of this repository.
@@ -22,9 +27,10 @@ stages:
   - deploy
 
 variables:
-  # Both demo cycles are defined in testosterone.yaml at the repo root.
-  TESTO_BASELINE_CYCLE: "sample-all-frameworks"
-  TESTO_CURRENT_CYCLE: "sample-all-frameworks-stochastic"
+  # The demo target, cloned into .demo/fake-api where testosterone.yaml's
+  # `fake-api` cycle expects it.
+  FAKE_API_REPO: "https://github.com/taltal-beep/fake-api.git"
+  FAKE_API_REF: "main"
   # File-backed SQLite keeps the run history in the job workspace: no service
   # containers, no credentials, nothing to provision before the first run.
   DATABASE_URL: "sqlite:///$CI_PROJECT_DIR/.ci-history/testo.db"
@@ -40,11 +46,11 @@ variables:
     - apt-get install -y -qq --no-install-recommends git nodejs npm
     - python -m pip install --upgrade pip
   cache:
-    key: "testo-demo-$CI_COMMIT_REF_SLUG"
-    paths:
-      - .cache/pip
-      - node_modules
-      - frontend/node_modules
+    - key: "testo-demo-deps-$CI_COMMIT_REF_SLUG"
+      paths:
+        - .cache/pip
+        - node_modules
+        - frontend/node_modules
 
 run_demo_cycles:
   stage: demo
@@ -54,24 +60,42 @@ run_demo_cycles:
     - if: $CI_PIPELINE_SOURCE == "web"
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  cache:
+    - key: "testo-demo-deps-$CI_COMMIT_REF_SLUG"
+      paths:
+        - .cache/pip
+        - node_modules
+        - frontend/node_modules
+    # The run history (DB + Allure HTML) carries over between pipelines.
+    - key: "testo-demo-history"
+      when: always
+      paths:
+        - .ci-history
+        - static/history
   script:
-    - pip install -e ".[api,db]" httpx
+    # [dev] because the self-test runs testosterone's own test suite.
+    - pip install -e ".[dev]"
     - npm install --no-audit --no-fund
-    - mkdir -p .ci-history
-    # Baseline: the deterministic green cycle.
-    - testo run --cycle "$TESTO_BASELINE_CYCLE" --ci | tee baseline.ndjson
-    # Current: the same stages with injected random failures, so the published
-    # Compare and Dashboard pages show a real regression rather than a flat diff.
-    # It is expected to exit non-zero; the demo is the data it produces.
-    - testo run --cycle "$TESTO_CURRENT_CYCLE" --ci | tee current.ndjson || true
+    - git clone --depth 1 --branch "$FAKE_API_REF" "$FAKE_API_REPO" .demo/fake-api
+    - pip install -r .demo/fake-api/requirements.txt
+    - python -m playwright install --with-deps chromium
+    - mkdir -p .ci-history static/history
+    # Testosterone testing itself. A red self-test fails the pipeline, as it should.
+    - set -o pipefail; testo run --cycle self-test --ci | tee self-test.ndjson
+    # The fake app fails on purpose, so a non-zero exit is the expected outcome.
+    # It runs twice on the same commit: a test whose outcome changes between the
+    # two runs is flaky, which is exactly what Compare then shows.
+    - testo run --cycle fake-api --ci | tee fake-api-1.ndjson || true
+    - testo run --cycle fake-api --ci | tee fake-api-2.ndjson || true
     - python scripts/export_static_site.py --out public --site-url "$CI_PAGES_URL"
+    # Keep the cached Allure HTML bounded: the 20 newest runs are plenty.
+    - ls -1dt static/history/*/ | tail -n +21 | xargs -r rm -rf
   artifacts:
     when: always
     expire_in: 1 week
     paths:
       - public
-      - baseline.ndjson
-      - current.ndjson
+      - "*.ndjson"
 
 pages:
   stage: deploy
