@@ -76,7 +76,7 @@ Long-term: extract a shared `RunBackend` protocol with host and Docker implement
 
 **Evidence**
 
-- `testo_core/cli/runner.py` — `threading.Thread(..., daemon=True)` for `try_persist_cycle_report`
+- `testo_core/services/cycle_run.py` (was `cli/runner.py`) — `threading.Thread(..., daemon=True)` for `try_persist_cycle_report`
 - CLI help text warns archive may not finish before exit
 
 **Risk**

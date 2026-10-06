@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+- Running a cycle (trigger gate, engine, reporters, native report snapshot, report archive, trigger snapshot) now lives in one application service, `testo_core/services/cycle_run.py` (`CycleRunService`). `testo run` and `POST /api/v1/cycles/{cycle}/executions` both call it, so the API no longer imports private helpers from `testo_core/cli/runner.py`
+- API cycle executions now save the trigger snapshot after a successful triggered run, as `testo run` already did; before, a cycle with `trigger:` started from the dashboard never advanced its snapshot
+
 ### Fixed
 - `equipment: behavex`: every BehaveX stage failed at startup with `OSError: AF_UNIX path too long`, because BehaveX points `TEMP` at its output folder and the multiprocessing socket landed there; the adapter now pins `TMPDIR` to the system temp dir
 - Run detail, dashboard and compare showed a wall duration of 0 ms for every cycle run; engine-sourced records store `duration_s`, which the history view now falls back to

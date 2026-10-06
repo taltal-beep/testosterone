@@ -15,8 +15,8 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from testo_core.cli import runner as cli_runner_mod
 from testo_core.cli.app import app
+from testo_core.services import cycle_run as cycle_run_mod
 from testo_core.triggers import TriggerResult
 from tests.fixtures.engine import (
     HangAdapter,
@@ -113,7 +113,7 @@ def test_ci_cycle_trigger_resting_event(
 ) -> None:
     use_echo_adapter(monkeypatch)
     monkeypatch.setattr(
-        cli_runner_mod,
+        cycle_run_mod,
         "evaluate_cycle_trigger",
         lambda *, plan, cfg: TriggerResult(
             stimulus=False,
@@ -149,7 +149,7 @@ def test_ci_cycle_trigger_activated_precedes_plan_events(
 ) -> None:
     use_echo_adapter(monkeypatch)
     monkeypatch.setattr(
-        cli_runner_mod,
+        cycle_run_mod,
         "evaluate_cycle_trigger",
         lambda *, plan, cfg: TriggerResult(
             stimulus=True,

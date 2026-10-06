@@ -153,11 +153,11 @@ def test_ec04_engine_internal_failure_exits_4(
 def test_ec05_trigger_resting_exits_0_without_running_stages(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cli_runner: CliRunner
 ) -> None:
-    from testo_core.cli import runner as cli_runner_mod
+    from testo_core.services import cycle_run as cycle_run_mod
 
     adapter = use_echo_adapter(monkeypatch)
     monkeypatch.setattr(
-        cli_runner_mod,
+        cycle_run_mod,
         "evaluate_cycle_trigger",
         lambda *, plan, cfg: TriggerResult(
             stimulus=False,

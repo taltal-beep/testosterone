@@ -13,7 +13,10 @@ testosterone.yaml
 testo_core/config/     discover_and_load → resolve_plan / resolve_stages
        │
        ▼
-testo_core/cli/runner   execute_plan_command (triggers, renderers, reporters)
+testo_core/cli/runner   execute_plan_command (picks renderer, prints trigger/archive messages)
+       │                (the API's cycle_execution_manager is the other caller)
+       ▼
+testo_core/services/cycle_run   CycleRunService.run (trigger gate, reporters, archive)
        │
        ▼
 testo_core/engine/
@@ -83,7 +86,7 @@ Adapters build `argv`, set Allure output under `allure-results/<framework>/`, an
 - **`entry.py`** — `testo report` dispatch (generate, serve, json/junit export).
 - **`reporters/`** — plug-in reporters: `allure`, `extent`, `reportportal`, `testbeats`.
 
-Post-run reporters are invoked from `cli/runner.py` after `run_plan()` when `reporters:` is set in YAML or `--reporter` is passed.
+Post-run reporters are invoked from `CycleRunService` (`services/cycle_run.py`) after `run_plan()`, for both `testo run` and API cycle executions, when `reporters:` is set in YAML or `--reporter` is passed.
 
 ### `testo_core/triggers.py`
 
@@ -97,7 +100,7 @@ Optional per-cycle **selective execution**: Git diff or filesystem snapshot agai
 | `frontend/` | React UI (primary) — cycles-first navigation, see [[Phase 5 UI Redesign - Cycles-First Navigation]] |
 | `testo_ui/` | Streamlit dashboard (legacy fallback) |
 | `testo_core/runners.py` | Legacy **Docker** streaming runner used by UQO headless path |
-| `testo_core/services/` | Headless engine, report archive diff, config DB helpers |
+| `testo_core/services/` | `cycle_run.py` (the cycle use case shared by CLI and API), headless engine, report archive diff, config DB helpers |
 
 Modern **`testo run`** does not require Docker; the compose stack in `docker-compose.yml` supports the full UQO reporting platform (Postgres, MinIO, Allure Server) when those extras are enabled.
 
@@ -179,7 +182,7 @@ A `composite_backend()` factory fans out to both; individual backend failures ne
 **Two separate, unlinked id spaces** — easy to conflate, worth calling out explicitly (found while building per-test diff for the API, see [[CLI-UI Parity - Pyramid, Graphs, Deep Diff - 2026-07-23]]):
 
 - **Run-history runs** (`RunRecord` / `CompletedRunView`, `run_history.py`): one row per `testo run --cycle` execution, keyed by `run_id`. This is what the dashboard, history, run detail, and delta/compare pages all use (`/api/v1/runs/{run_id}`, `/api/v1/analytics/delta`). Carries `stage_health`, `snapshot_dir` (the run's own raw artifact tree, local or S3).
-- **Report archives** (`ReportArchive`, `testo_core/repository/report_archive_repository.py`): one row per `testo report list/open/diff` archive, a zipped Allure snapshot keyed by its own UUID (`report_id`), with **no `run_id` column linking it back** to the run that produced it. Populated separately via `_maybe_archive_cycle_report()` in `testo_core/cli/runner.py`.
+- **Report archives** (`ReportArchive`, `testo_core/repository/report_archive_repository.py`): one row per `testo report list/open/diff` archive, a zipped Allure snapshot keyed by its own UUID (`report_id`), with **no `run_id` column linking it back** to the run that produced it. Populated separately by `CycleRunService` (`testo_core/services/cycle_run.py`) after each run, via `try_persist_cycle_report()`.
 
 Code that needs per-test data for a *run_id* (not a *report_id*) should extract from `CompletedRunView.snapshot_dir` (via `snapshot_files_for_download()`), not attempt to resolve a `ReportArchive` row — there isn't one to resolve to. See `testo_core/services/run_snapshot_diff.py` for the pattern.
 
