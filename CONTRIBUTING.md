@@ -17,6 +17,8 @@ See [README Quickstart](README.md#quickstart-copypaste) for the full local infra
 
 - **Tests**: `pytest -q -m "tier_fast and not quarantined" --no-cov` — this is the required check in CI (`ci.yml`'s `test` job).
 - **Lint, format, types**: `ruff check .`, `ruff format --check .` and `mypy testo_core` — all three are blocking in CI (`ci.yml`'s `format` job). Run `ruff format .` to fix formatting.
+- **Frontend**: `npm --prefix frontend run typecheck && npm --prefix frontend test` — both blocking in CI (`ci.yml`'s `frontend` job).
+- **API contract**: the React app's request/response types are generated from FastAPI's OpenAPI schema. After changing a model in `testo_api/models.py` (or a route's `response_model`), run `python scripts/export_openapi.py && npm --prefix frontend run gen:api` and commit `frontend/openapi.json` and `frontend/src/lib/api-schema.ts`. CI fails if either is stale.
 - **Commit messages**: [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `test:`, `chore:`, `docs:`, ...) — enforced by `commitlint` in CI against `commitlint.config.js`.
 - **Changelog**: add an entry under `## [Unreleased]` in `CHANGELOG.md` (Keep a Changelog format) for any non-doc change. CI's `changelog_required` job fails PRs that skip this — apply the `no-changelog` label if the change genuinely doesn't warrant an entry (pure test/CI/refactor with no user-facing effect).
 - **Behave features**: always target explicitly (`behave features/smoke.feature`), never rely on cwd auto-discovery — see [Command Reference](docs/CLI%20Commands/Command%20Reference.md).

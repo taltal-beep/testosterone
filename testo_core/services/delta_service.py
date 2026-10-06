@@ -4,7 +4,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from testo_core.run_history import CompletedRunView, get_run
+from testo_core.history.read_model import get_run
+from testo_core.history.views import CompletedRunView
 from testo_core.services.delta_models import (
     DeltaClassification,
     DeltaComparisonResult,

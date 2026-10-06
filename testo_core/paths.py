@@ -14,6 +14,10 @@ from typing import Final
 ORCHESTRATOR_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 STATIC_DIR: Final[Path] = ORCHESTRATOR_ROOT / "static"
 
+# Per-run report bundles (``static/history/<run_id>/``), served by the API at ``/history``.
+# Local ``snapshot_dir`` values on run records are relative to ``ORCHESTRATOR_ROOT``.
+STATIC_HISTORY_ROOT: Final[Path] = STATIC_DIR / "history"
+
 # Allure HTML output directories (single-file bundle under each directory).
 # New layout: ``static/allure_reports/<framework>/index.html``
 STATIC_ALLURE_REPORTS_DIR: Final[Path] = STATIC_DIR / "allure_reports"

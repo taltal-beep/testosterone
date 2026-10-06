@@ -5,12 +5,10 @@ from pathlib import Path
 
 import yaml
 
-from testo_core.cli import SUMMARY_SCHEMA_KEYS
-
 
 def _load_wrapper_module():
-    script = Path("integrations/github-action/run_uqo_action.py").resolve()
-    spec = importlib.util.spec_from_file_location("run_uqo_action_contract", script)
+    script = Path("integrations/github-action/run_testo_action.py").resolve()
+    spec = importlib.util.spec_from_file_location("run_testo_action_contract", script)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -23,54 +21,21 @@ def test_action_contract_has_required_inputs_outputs() -> None:
     )
     assert set(payload["inputs"].keys()) == {
         "config-path",
+        "cycle",
         "ci-mode",
-        "ghost-mode",
-        "stream-json",
         "persist",
-        "runner-image",
-        "runner-prebuilt",
         "python-version",
     }
-    assert set(payload["outputs"].keys()) == {
-        "exit_code",
-        "run_id",
-        "summary_json",
-        "summary_path",
-        "status",
-    }
+    assert set(payload["outputs"].keys()) == {"exit_code", "summary_json", "summary_path", "status"}
 
 
-def test_wrapper_uses_uqo_run_ci_command_shape() -> None:
+def test_wrapper_uses_testo_run_ci_command_shape() -> None:
     module = _load_wrapper_module()
-    cmd = module.build_command(
-        config_path="config.yml", ci_mode=True, stream_json=False, persist=True, ghost_mode="auto"
-    )
-    assert cmd[:4] == ["uqo", "run", "--config", "config.yml"]
+    cmd = module.build_command(config_path="config.yml", cycle="", ci_mode=True, persist=True)
+    assert cmd[:2] == ["testo", "run"]
     assert "--ci" in cmd
 
 
 def test_github_fixture_is_one_line_consumer() -> None:
     workflow = Path("tests/fixtures/ci/github_workflow_minimal.yml").read_text(encoding="utf-8")
-    assert "uses: ariel-evn/uqo-action@v1" in workflow
-
-
-def test_gitlab_template_exposes_runner_image_controls() -> None:
-    template = Path("ci/gitlab/testo.gitlab-ci.yml").read_text(encoding="utf-8")
-    assert "UQO_RUNNER_IMAGE" in template
-    assert "UQO_RUNNER_PREBUILT" in template
-
-
-def test_core_summary_schema_keys_unchanged() -> None:
-    assert SUMMARY_SCHEMA_KEYS == (
-        "schema_version",
-        "trigger_source",
-        "ci_mode",
-        "persist",
-        "exit_code",
-        "aggregate_returncode",
-        "started_at",
-        "finished_at",
-        "duration_s",
-        "runs",
-        "error",
-    )
+    assert "uses: taltal-beep/testosterone/integrations/github-action@v1" in workflow

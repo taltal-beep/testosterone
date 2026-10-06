@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
+from testo_core.history.views import CompletedRunView, RunSessionView
 from testo_core.repository.models import RunStatus
-from testo_core.run_history import CompletedRunView, RunSessionView
 from testo_core.services.dashboard_service import DashboardService
 from testo_core.services.delta_service import DeltaComparisonService
 

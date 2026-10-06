@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -58,34 +59,66 @@ def test_push_to_prometheus_http_error(sample_metrics: RunMetrics) -> None:
     assert "HTTP 400" in msg
 
 
-def test_auto_push_metrics_no_extract(tmp_path: Path) -> None:
-    from testo_core.integrations import auto_push_metrics_if_enabled
-
-    with patch("testo_core.integrations.extract_best", return_value=None):
-        out = auto_push_metrics_if_enabled(
-            artifacts_root=tmp_path,
-            run_id="rid",
-            auto_influx=True,
-            auto_prometheus=True,
-        )
-    assert out and out[0][0] == "metrics"
+def _write_result(results_root: Path, status: str) -> None:
+    stage_results = results_root / "unit" / "allure-results" / "pytest"
+    stage_results.mkdir(parents=True, exist_ok=True)
+    (stage_results / f"{status}-result.json").write_text(
+        json.dumps({"status": status, "start": 0, "stop": 10}), encoding="utf-8"
+    )
 
 
-def test_auto_push_metrics_happy_path(tmp_path: Path, sample_metrics: RunMetrics) -> None:
-    from testo_core.integrations import auto_push_metrics_if_enabled
+def test_push_run_metrics_does_nothing_when_no_target_is_configured(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from testo_core.integrations import push_run_metrics_if_configured
 
-    fake_em = MagicMock()
-    with patch("testo_core.integrations.extract_best", return_value=fake_em):
-        with patch("testo_core.integrations.to_run_metrics", return_value=sample_metrics):
-            with patch("testo_core.integrations.push_to_influxdb", return_value=(True, "ok")):
-                with patch("testo_core.integrations.push_to_prometheus", return_value=(True, "ok")):
-                    out = auto_push_metrics_if_enabled(
-                        artifacts_root=tmp_path,
-                        run_id="rid",
-                        auto_influx=True,
-                        auto_prometheus=True,
-                        prometheus_pushgateway_url="http://x:9091",
-                    )
-    targets = [t for t, _ok, _msg in out]
-    assert "influxdb" in targets
-    assert "prometheus" in targets
+    for name in (
+        "INFLUXDB_URL",
+        "INFLUXDB_TOKEN",
+        "INFLUXDB_ORG",
+        "INFLUXDB_BUCKET",
+        "PROMETHEUS_PUSHGATEWAY_URL",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    _write_result(tmp_path, "passed")
+    assert push_run_metrics_if_configured(results_root=tmp_path, run_id="rid") == []
+
+
+def test_push_run_metrics_reports_missing_results(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from testo_core.integrations import push_run_metrics_if_configured
+
+    monkeypatch.setenv("PROMETHEUS_PUSHGATEWAY_URL", "http://x:9091")
+    out = push_run_metrics_if_configured(results_root=tmp_path, run_id="rid")
+    assert out and out[0][0] == "metrics" and out[0][1] is False
+
+
+def test_push_run_metrics_pushes_to_each_configured_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from testo_core.integrations import push_run_metrics_if_configured
+
+    for name, value in {
+        "INFLUXDB_URL": "http://influx:8086",
+        "INFLUXDB_TOKEN": "t",
+        "INFLUXDB_ORG": "o",
+        "INFLUXDB_BUCKET": "b",
+        "PROMETHEUS_PUSHGATEWAY_URL": "http://x:9091",
+    }.items():
+        monkeypatch.setenv(name, value)
+    _write_result(tmp_path, "passed")
+    _write_result(tmp_path, "failed")
+    pushed: list[RunMetrics] = []
+
+    def fake_push(metrics: RunMetrics, **_kwargs):  # noqa: ANN003
+        pushed.append(metrics)
+        return True, "ok"
+
+    with patch("testo_core.integrations.push_to_influxdb", side_effect=fake_push):
+        with patch("testo_core.integrations.push_to_prometheus", side_effect=fake_push):
+            out = push_run_metrics_if_configured(results_root=tmp_path, run_id="rid")
+
+    assert [t for t, _ok, _msg in out] == ["influxdb", "prometheus"]
+    assert pushed[0].total_tests == 2 and pushed[0].failed == 1
+    assert pushed[0].run_id == "rid"

@@ -447,32 +447,9 @@ testo config db show    # if configured
 
 ---
 
-## Legacy `uqo run` appendix
+## Removed: `uqo run` headless contract
 
-Entry: `uqo` → `testo_core/cli/legacy.py` → `HeadlessEngineService`.
-
-| Code | Meaning (headless contract) |
-|------|----------------------------|
-| 0 | Success |
-| 1 | Domain/test failure |
-| 2 | Invalid config/arguments |
-| 3 | Infrastructure (Docker, runtime) |
-| 4 | Internal error |
-
-**Ghost / CI output**
-
-- `--json` — single summary object on stdout at end
-- `--stream-json` — NDJSON with `event` types: `log`, `run_result`, `unknown`
-
-**Summary keys** (`schema_version=1`): `exit_code`, `aggregate_returncode`, `runs`, `error`, `execution_mode`, `failure_type`, `sync`, timestamps, CI provenance fields.
-
-**Debug**
-
-- Container logs: `logs/<run_id>.log` (UQO layout)
-- Requires Docker daemon and compose network for full platform
-- See repo `ARCHITECTURE.md` for MinIO/Postgres/Allure Server
-
-Prefer **`testo run --ci`** for new CI integrations unless Docker-isolated runs are required.
+v1.0 shipped a second CLI contract, `uqo run --config <runs.yaml>` with `--ghost`, `--json` and `--stream-json`, backed by a Docker-based runner. It was removed in v1.1: `uqo` now forwards to `testo`, and CI integrations use `testo run --cycle <name> --ci` (NDJSON events above, `plan_finished` last). Exit codes `0`–`4` mean the same thing in both.
 
 ---
 

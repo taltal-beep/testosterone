@@ -1,4 +1,4 @@
-"""``_maybe_snapshot_native_reports`` — copies each stage's native report (if any)."""
+"""``snapshot_native_reports`` — copies each stage's native report (if any)."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from testo_core.cli.runner import _maybe_snapshot_native_reports
 from testo_core.config.schema import Plan, Stage
+from testo_core.services.cycle_run import snapshot_native_reports
 
 
 def _make_plan(*, name: str, stages: tuple[Stage, ...]) -> Plan:
@@ -19,7 +19,7 @@ def test_copies_behavex_native_report_and_derives_index_html(
 ) -> None:
     artifacts_root = tmp_path / "artifacts"
     static_history = tmp_path / "static" / "history"
-    monkeypatch.setattr("testo_core.run_history.STATIC_HISTORY_ROOT", static_history)
+    monkeypatch.setattr("testo_core.paths.STATIC_HISTORY_ROOT", static_history)
 
     plan = _make_plan(
         name="my-cycle",
@@ -30,7 +30,7 @@ def test_copies_behavex_native_report_and_derives_index_html(
     (reports_dir / "report.html").write_text("<html>native</html>", encoding="utf-8")
     (reports_dir / "overall_status.json").write_text("{}", encoding="utf-8")
 
-    _maybe_snapshot_native_reports(plan=plan, artifacts_root=artifacts_root, run_id="rid-1")
+    snapshot_native_reports(plan=plan, artifacts_root=artifacts_root, run_id="rid-1")
 
     dest = static_history / "rid-1" / "native_reports" / "behavex"
     assert (dest / "report.html").read_text(encoding="utf-8") == "<html>native</html>"
@@ -43,7 +43,7 @@ def test_pytest_and_behave_stages_produce_no_native_reports(
 ) -> None:
     artifacts_root = tmp_path / "artifacts"
     static_history = tmp_path / "static" / "history"
-    monkeypatch.setattr("testo_core.run_history.STATIC_HISTORY_ROOT", static_history)
+    monkeypatch.setattr("testo_core.paths.STATIC_HISTORY_ROOT", static_history)
 
     plan = _make_plan(
         name="my-cycle",
@@ -55,19 +55,19 @@ def test_pytest_and_behave_stages_produce_no_native_reports(
     (artifacts_root / "my-cycle" / "pytest-sample").mkdir(parents=True)
     (artifacts_root / "my-cycle" / "behave-features").mkdir(parents=True)
 
-    _maybe_snapshot_native_reports(plan=plan, artifacts_root=artifacts_root, run_id="rid-1")
+    snapshot_native_reports(plan=plan, artifacts_root=artifacts_root, run_id="rid-1")
 
     assert not (static_history / "rid-1" / "native_reports").exists()
 
 
 def test_no_op_when_run_id_is_none(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     static_history = tmp_path / "static" / "history"
-    monkeypatch.setattr("testo_core.run_history.STATIC_HISTORY_ROOT", static_history)
+    monkeypatch.setattr("testo_core.paths.STATIC_HISTORY_ROOT", static_history)
 
     plan = _make_plan(
         name="my-cycle",
         stages=(Stage(name="flow-tests", framework="behavex", target_repo=tmp_path),),
     )
-    _maybe_snapshot_native_reports(plan=plan, artifacts_root=tmp_path / "artifacts", run_id=None)
+    snapshot_native_reports(plan=plan, artifacts_root=tmp_path / "artifacts", run_id=None)
 
     assert not static_history.exists()

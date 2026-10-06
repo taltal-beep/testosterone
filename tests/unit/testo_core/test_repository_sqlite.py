@@ -8,8 +8,8 @@ import pytest
 
 from testo_core.db import get_repository, reset_repository_cache
 from testo_core.db_config import reset_engine_cache
+from testo_core.history.maintenance import cleanup_orphaned_runs, upsert_run_metadata
 from testo_core.repository.models import RunStatus
-from testo_core.run_history import cleanup_orphaned_runs
 
 
 @pytest.fixture
@@ -98,3 +98,18 @@ def test_update_run_status_merge_metadata(sqlite_repo) -> None:
     assert r.metadata_.get("a") == 1
     assert r.metadata_.get("b") == 2
     assert r.end_time is not None
+
+
+def test_merge_run_metadata_patches_existing_run(sqlite_repo) -> None:
+    r = sqlite_repo.create_run(status=RunStatus.FAILED, metadata={"error": "boom"})
+    assert (
+        upsert_run_metadata(run_id=str(r.id), metadata_patch={"ai_summary_v1": {"ok": True}})
+        is True
+    )
+    stored = sqlite_repo.get_run(r.id)
+    assert stored.metadata_["error"] == "boom"
+    assert stored.metadata_["ai_summary_v1"] == {"ok": True}
+
+
+def test_merge_run_metadata_missing_run(sqlite_repo) -> None:
+    assert sqlite_repo.merge_run_metadata("no-such-run", {"a": 1}) is False

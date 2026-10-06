@@ -223,8 +223,8 @@ def test_analytics_delta_contract_includes_stage_deltas(monkeypatch) -> None:  #
 
 
 def test_analytics_delta_cases_contract(monkeypatch) -> None:  # noqa: ANN001
+    from testo_core.history.views import CompletedRunView
     from testo_core.repository.models import RunStatus
-    from testo_core.run_history import CompletedRunView
     from testo_core.services.report_archive_diff import CaseChange
 
     def _fake_run(*, run_id: str):

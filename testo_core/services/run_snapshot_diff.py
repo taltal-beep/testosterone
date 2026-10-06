@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from testo_core.run_history import CompletedRunView, snapshot_files_for_download
+from testo_core.history.snapshots import snapshot_files_for_download
+from testo_core.history.views import CompletedRunView
 from testo_core.services.report_archive_diff import CaseChange, _load_cases, diff_case_maps
 
 
