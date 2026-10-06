@@ -23,7 +23,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # The bot needs two secrets that are not configured on every fork or
+      # repo. Without them, checkout fails with "Input required and not
+      # supplied: token" and main shows a red X on every push. Skip with a
+      # notice instead; PRs already add their own entries (ci.yml's
+      # changelog_required job), so nothing is lost.
+      - name: Check bot secrets are configured
+        id: gate
+        env:
+          CHANGELOG_BOT_TOKEN: ${{ secrets.CHANGELOG_BOT_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$CHANGELOG_BOT_TOKEN" ] && [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::CHANGELOG_BOT_TOKEN or ANTHROPIC_API_KEY is not set; skipping the changelog bot."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.gate.outputs.enabled == 'true'
         with:
           fetch-depth: 0
           # Default GITHUB_TOKEN can't push past branch protection on main;
@@ -32,11 +51,13 @@ jobs:
           token: ${{ secrets.CHANGELOG_BOT_TOKEN }}
 
       - name: Configure git identity
+        if: steps.gate.outputs.enabled == 'true'
         run: |
           git config user.name "testo-changelog-bot"
           git config user.email "actions@users.noreply.github.com"
 
       - name: Collect pushed commit range
+        if: steps.gate.outputs.enabled == 'true'
         run: |
           git log --stat "${{ github.event.before }}..${{ github.event.after }}" > /tmp/commit_range.txt
           cat /tmp/commit_range.txt
@@ -46,6 +67,7 @@ jobs:
       # of its own), which is what we want since git commit/push is handled
       # explicitly by this workflow below.
       - name: Draft changelog entry with Claude
+        if: steps.gate.outputs.enabled == 'true'
         uses: anthropics/claude-code-base-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -64,6 +86,7 @@ jobs:
             --max-turns 6
 
       - name: Check whether Claude changed CHANGELOG.md
+        if: steps.gate.outputs.enabled == 'true'
         id: diff
         run: |
           if git diff --quiet -- CHANGELOG.md; then
@@ -73,11 +96,11 @@ jobs:
           fi
 
       - name: Validate CHANGELOG.md format
-        if: steps.diff.outputs.changed == 'true'
+        if: steps.gate.outputs.enabled == 'true' && steps.diff.outputs.changed == 'true'
         run: python3 scripts/check_changelog_format.py
 
       - name: Commit and push
-        if: steps.diff.outputs.changed == 'true'
+        if: steps.gate.outputs.enabled == 'true' && steps.diff.outputs.changed == 'true'
         run: |
           git add CHANGELOG.md
           git commit -m "docs: update changelog [skip ci]"
