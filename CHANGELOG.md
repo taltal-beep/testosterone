@@ -8,7 +8,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+- CI's `format` job now blocks on `mypy testo_core` and `ruff format --check` (both were advisory); the codebase was reformatted once with `ruff format`, and a `ruff-format` pre-commit hook was added
+
+### Removed
+- `testo_core/reporting/allure_delta_transform.py`, `allure_history_serve.py` and `allure_summary_widgets.py`: unreferenced modules that could not be imported (they depended on functions no longer in `services/report_archive_diff.py`)
+
 ### Fixed
+- `mypy testo_core` reports 0 errors, down from 59: reporters take a typed Rich `Console`, `testo report` narrows its optional open path before use, and the persistence, repository and CLI UI code is fully annotated
 - `equipment: behavex`: every BehaveX stage failed at startup with `OSError: AF_UNIX path too long`, because BehaveX points `TEMP` at its output folder and the multiprocessing socket landed there; the adapter now pins `TMPDIR` to the system temp dir
 - Run detail, dashboard and compare showed a wall duration of 0 ms for every cycle run; engine-sourced records store `duration_s`, which the history view now falls back to
 
