@@ -15,6 +15,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `ARCHITECTURE.md` now describes the current engine (config → engine → framework adapters → reporting/persistence) with a system diagram, layer table and known structural debt; the original UQO Docker-runner description moved to a "Legacy UQO platform" section
 
 ### Removed
+- **Breaking (public API):** the unused Pluggy plugin layer: `testo_core.orchestrator`, `testo_core.specs`, `testo_core.plugins_builtin`, and the `create_plugin_manager`, `BaseRunnerSpec` and `hookimpl` exports from `testo_core`. No runner ever called these hooks. `pluggy` is no longer a dependency. New test frameworks plug in as a `FrameworkAdapter` (or via `equipment: command` with `junit_xml`)
 - Generated run output that was committed by mistake (`artifacts/allure-report*`, `artifacts/allure-results-archive/`, `artifacts/metrics.json`); these paths are now ignored
 
 ### Fixed

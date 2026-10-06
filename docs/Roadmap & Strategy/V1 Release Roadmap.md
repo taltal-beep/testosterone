@@ -320,7 +320,7 @@
 
 | # | Task | Priority | Effort |
 |---|------|----------|--------|
-| 11.4.1 | Document Pluggy hook specs and plugin API | P3 | M |
+| 11.4.1 | ~~Document Pluggy hook specs and plugin API~~ (dropped 2026-10-06: Pluggy layer removed; frameworks plug in as `FrameworkAdapter`) | P3 | M |
 | 11.4.2 | Create example third-party plugin (e.g. Slack notifier) | P3 | M |
 | 11.4.3 | Add `testo plugins list` CLI command | P3 | S |
 

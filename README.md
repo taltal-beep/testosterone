@@ -239,68 +239,11 @@ runs:
 
 ---
 
-## Writing a custom test plugin (step-by-step)
+## Adding a test framework
 
-UQO supports **drop-in runner plugins** via **Pluggy**. Plugins are Python modules placed under `plugins/` and loaded by `testo_core/orchestrator.py`.
+Any runner that can write JUnit XML already works without code: use `equipment: command` in `testosterone.yaml` and point `junit_xml` at its report (see [QA Strategies](docs/Testing%20Workflows/QA%20Strategies.md)).
 
-The plugin interface is defined in `testo_core/specs.py` (`BaseRunnerSpec`), with these hooks:
-- `get_command(config) -> list[str] | None` (first plugin to return an argv wins)
-- `setup_env(config) -> dict[str, str] | None`
-- `collect_artifacts(run_id) -> list[pathlib.Path] | None`
-
-The built-in Streamlit workflow uses `testo_core.command_builders.TestType` for `pytest`, `behavex`, `behave_native`, and `locust`. A custom plugin can participate in a runner path that calls `create_plugin_manager(load_dropins=True)`, but adding a file under `plugins/` does not automatically add a new option to the UI.
-
-### 1) Create a plugin module
-
-Create `plugins/my_custom_runner.py` at the repository root:
-
-```python
-from __future__ import annotations
-
-from pathlib import Path
-from typing import Mapping
-
-from testo_core.command_builders import RunConfig, TestType
-from testo_core.specs import hookimpl
-
-
-@hookimpl
-def get_command(config: RunConfig) -> list[str] | None:
-    # Example: override Locust command construction for a specialized runner.
-    if config.test_type != TestType.LOCUST:
-        return None
-    return ["python", "-m", "my_tool.cli", "--results", str(config.shared_allure_results_dir)]
-
-
-@hookimpl
-def setup_env(config: RunConfig) -> Mapping[str, str] | None:
-    if config.test_type != TestType.LOCUST:
-        return None
-    return {"MY_TOOL_MODE": "1"}
-
-
-@hookimpl
-def collect_artifacts(run_id: str) -> list[Path] | None:
-    # Return host paths that should be uploaded (optional).
-    p = Path("artifacts") / "my-tool"
-    return [p] if p.exists() else None
-```
-
-### 2) Run it (developer workflow)
-
-At runtime, `testo_core/orchestrator.create_plugin_manager(load_dropins=True)` scans `plugins/*.py` and registers each module.
-
-If you’re extending the system to execute custom plugins from the UI, the typical wiring is:
-- build a `RunConfig` that expresses what tool/framework should run
-- ask Pluggy for `get_command(config)` to obtain the argv
-- merge env from `setup_env(config)`
-- execute inside the Docker runner and upload artifacts from `collect_artifacts(run_id)`
-
-### 3) Production tips
-
-- **Timeouts**: rely on `UQO_CONTAINER_TIMEOUT_S` as a hard safety net for runaway tools.
-- **Allure**: write results into `UQO_SHARED_ALLURE_RESULTS_DIR` so UQO can upload them to MinIO and Allure Server can render the report.
-- **Artifacts**: keep output under `artifacts/` so it’s easy to snapshot/upload.
+For first-class support, add a `FrameworkAdapter` in `testo_core/frameworks/` (see `pytest_adapter.py` for the smallest example) and add a branch for it in `get_adapter()` in `frameworks/base.py`. An adapter builds the argv for one stage and says where Allure results land; the engine handles the subprocess, logs, events and reporting.
 
 ---
 

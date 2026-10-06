@@ -32,7 +32,6 @@ _LEGACY_EXPORTS: dict[str, str] = {
     "get_engine": "testo_core.db_config",
     "reset_engine_cache": "testo_core.db_config",
     "resolve_database_url": "testo_core.db_config",
-    "create_plugin_manager": "testo_core.orchestrator",
     "RunRecord": "testo_core.repository.models",
     "RunStatus": "testo_core.repository.models",
     "LogEvent": "testo_core.runners",
@@ -41,8 +40,6 @@ _LEGACY_EXPORTS: dict[str, str] = {
     "run_audit_streaming": "testo_core.runners",
     "run_streaming": "testo_core.runners",
     "validate_target_repo": "testo_core.runners",
-    "BaseRunnerSpec": "testo_core.specs",
-    "hookimpl": "testo_core.specs",
 }
 
 

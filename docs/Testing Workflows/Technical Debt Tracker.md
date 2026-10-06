@@ -265,15 +265,10 @@ Acceptable for stability; optional debug callback or counter for dropped chunk h
 
 ---
 
-### 14. Pluggy optional imports
+### 14. Pluggy optional imports — ✅ resolved 2026-10-06
 
-**Evidence**
-
-- `testo_core/orchestrator.py`, `specs.py` — `ModuleNotFoundError` / broad `except` for pluggy
-
-**Recommendation**
-
-Document optional `[plugins]` extra in README; `testo doctor` could list whether pluggy is installed.
+The Pluggy hook layer (`orchestrator.py`, `specs.py`, `plugins_builtin.py`) was deleted: no
+runner ever called it. New frameworks plug in as a `FrameworkAdapter` in `testo_core/frameworks/`.
 
 ---
 

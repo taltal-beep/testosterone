@@ -94,7 +94,6 @@ These are the main places where the code does not yet match the layering above. 
 - **Two execution stacks.** The modern engine (`engine/` + `frameworks/`) and the legacy stack (`services/headless_engine.py` + `runners.py` + `run_history.py`, Docker-based) both exist. The deprecated `uqo` CLI, the Streamlit UI and the API's `/executions` routes still use the legacy one.
 - **The cycle use case lives in the CLI module.** `cli/runner.py` owns "trigger → run → report → archive", and `testo_api/cycle_execution_manager.py` imports its private helpers to do the same after an API run.
 - **Overlapping persistence modules.** `persistence/`, `repository/`, `db.py`/`db_config.py` and the 900-line `run_history.py` all touch run storage.
-- **Unused plugin layer.** The Pluggy hook system (`orchestrator.py`, `specs.py`, `plugins_builtin.py`) is exported publicly but no runner calls it.
 
 ---
 
@@ -131,8 +130,6 @@ The Streamlit UI (`testo-ui`), FastAPI (`uvicorn testo_api.main:app ...`), React
 │   ├── report_generator.py         # Local Allure/static report generation and sync
 │   ├── result_management.py        # Per-run result archive/cleanup
 │   ├── integrations.py             # InfluxDB and Prometheus Pushgateway integration
-│   ├── orchestrator.py             # Pluggy manager and optional plugins/*.py loader
-│   ├── specs.py                    # Pluggy hook specifications
 │   └── services/                   # Shared application services (headless engine, config loader, delta analytics, UI helpers)
 ├── drop_in_hooks/                  # Framework helper modules injected via PYTHONPATH
 ├── sample_target_repo/             # Sandbox/demo target API and tests
@@ -301,23 +298,6 @@ Security model:
 - runtime-input key path is memory-only by default
 - token redaction utility applied before error propagation
 - deterministic context budget/truncation for prompt construction
-
-## Extension points
-
-UQO includes a Pluggy extension surface:
-
-- Specs: `testo_core/specs.py`
-- Manager/loader: `testo_core/orchestrator.py`
-- Built-in no-op hooks: `testo_core/plugins_builtin.py`
-- Optional drop-ins: create `plugins/*.py` at the repository root
-
-The hook specs are:
-
-- `get_command(config: RunConfig) -> list[str] | None`
-- `setup_env(config: RunConfig) -> Mapping[str, str] | None`
-- `collect_artifacts(run_id: str) -> list[Path] | None`
-
-The current Streamlit workflow uses the built-in `TestType` command builders. Custom plugin authors should wire `create_plugin_manager(load_dropins=True)` into their own runner selection path or extend the UI/runner flow deliberately; simply adding `plugins/*.py` does not create a new UI test type by itself.
 
 ## Operational notes
 
