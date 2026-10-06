@@ -63,7 +63,7 @@ Signal deaths other than timeout (e.g. SIGKILL rc **137**) still classify as exi
 
 **Remaining**
 
-`run_history.py` still reads pre-v1.1 records (per-framework `test_kind`, MinIO snapshot prefixes). Once those records age out it can drop the S3 read path.
+`testo_core/history/` still reads pre-v1.1 records (per-framework `test_kind`, MinIO snapshot prefixes). The MinIO reads are isolated in `history/s3_snapshots.py`; once those records age out that module can be deleted.
 
 ---
 
@@ -107,7 +107,7 @@ Default to synchronous archive in CI (`--ci` implies no `--async-report-db`), or
 **Evidence** (non-exhaustive)
 
 - `testo_core/runners.py` — many bare handlers around Docker/streaming
-- `testo_core/run_history.py` — S3/DB upload paths
+- `testo_core/history/s3_snapshots.py` — MinIO lookups degrade to empty results
 - `testo_core/reporting/reporters/reportportal_client.py`, `extent_reporter.py`
 - `testo_core/services/headless_engine.py`, `multi_run.py`, `event_drain.py`
 
@@ -178,7 +178,7 @@ Add `reporters_required: true` config or fail the run with exit **3** when a con
 | `testo_core/runners.py` | 17 | `callable?[Any, None]` not callable (13×); redefined names; container/context-manager type drift |
 | `testo_core/services/ai/integration_settings.py` | 7 | `dataclasses.replace(**dict[str, object])` can't narrow to the per-field literal/str/int/bool types |
 | `testo_core/cli/commands/report.py` | 3 | `Path \| None` passed where `Path` expected — likely a real missing-None-check |
-| `testo_core/run_history.py`, `repository/report_archive_repository.py`, `repository/models.py`, `repository/factory.py`, `repository/adapters.py` | 2 each | `datetime \| None` attribute access, redefined names, repository adapter return-type union not narrowed |
+| `repository/report_archive_repository.py`, `repository/models.py`, `repository/factory.py`, `repository/adapters.py` | 2 each | `datetime \| None` attribute access, redefined names, repository adapter return-type union not narrowed |
 | `services/headless_engine.py`, `reporting/exporter.py`, `persistence/composite.py`, `engine/executor.py`, `cli/ui/renderers.py`, `cli/legacy.py` | 1 each | assorted union-narrowing and `object`-typed attribute access |
 
 **Risk**
@@ -305,7 +305,6 @@ Functions/modules worth extra care when refactoring:
 | Location | Concern |
 |----------|---------|
 | `testo_core/runners.py` | Large Docker streaming loop; many exception handlers |
-| `testo_core/run_history.py` | Postgres + S3 sync; transactional edge cases |
 | `testo_core/config/loader.py` | Legacy schema compatibility paths |
 | `testo_core/cli/runner.py` | `execute_plan_command` branches (`all`, tags, dry-run, triggers) |
 | `testo_core/services/headless_engine.py` | Multi-run aggregation and ghost JSON contract |

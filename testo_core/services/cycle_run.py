@@ -287,9 +287,9 @@ def run_configured_reporters_for_cycle(
 
     run_report_root = None
     if run_id:
-        from testo_core.run_history import STATIC_HISTORY_ROOT
+        from testo_core import paths
 
-        run_report_root = STATIC_HISTORY_ROOT / run_id
+        run_report_root = paths.STATIC_HISTORY_ROOT / run_id
 
     if console is None:
         from rich.console import Console
@@ -331,9 +331,9 @@ def snapshot_native_reports(*, plan: Plan, artifacts_root: Path, run_id: str | N
     if not run_id:
         return
 
+    from testo_core import paths
     from testo_core.frameworks.base import get_adapter
     from testo_core.reporting.paths import plan_artifacts_dir
-    from testo_core.run_history import STATIC_HISTORY_ROOT
 
     plan_dir = plan_artifacts_dir(artifacts_root, plan.name)
     for stage in plan.stages:
@@ -346,7 +346,7 @@ def snapshot_native_reports(*, plan: Plan, artifacts_root: Path, run_id: str | N
         if native is None or not native.root_dir.is_dir():
             continue
 
-        dest = STATIC_HISTORY_ROOT / run_id / "native_reports" / stage.framework
+        dest = paths.STATIC_HISTORY_ROOT / run_id / "native_reports" / stage.framework
         try:
             shutil.copytree(native.root_dir, dest, dirs_exist_ok=True)
             entry = dest / native.entry_relpath

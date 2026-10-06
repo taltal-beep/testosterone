@@ -20,6 +20,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - API cycle executions now save the trigger snapshot after a successful triggered run, as `testo run` already did; before, a cycle with `trigger:` started from the dashboard never advanced its snapshot
 - Frontend API types are now generated from FastAPI's OpenAPI schema (`frontend/openapi.json` → `frontend/src/lib/api-schema.ts`) instead of being hand-written; CI's `frontend` job runs `tsc` and fails on a stale schema or generated file
 - `ARCHITECTURE.md` and `README.md` now describe the single execution engine (config → `CycleRunService` → engine → framework adapters → reporting/persistence) with a system diagram, layer table and the typed Pydantic-to-React contract
+- `testo_core/run_history.py` is replaced by the `testo_core/history/` package: `views` (typed run views), `read_model` (queries), `report_links`, `snapshots`, `s3_snapshots` (pre-1.1 MinIO lookups only) and `maintenance`. All of it goes through the run repository, which gains `merge_run_metadata()`; `STATIC_HISTORY_ROOT` moves to `testo_core.paths`
 - GitHub Action and GitLab template now run `testo run --ci` (they called `uqo run --config … --ghost`, which v1.0's `uqo` alias no longer accepted). Action inputs are `config-path`, `cycle`, `ci-mode`, `persist`, `python-version`; `ghost-mode`, `stream-json`, `runner-image`, `runner-prebuilt` and the `run_id` output are gone. GitLab variables are now `TESTO_CONFIG_PATH`, `TESTO_CYCLE`, `TESTO_PERSIST`
 
 ### Removed
@@ -28,7 +29,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `POST /api/v1/executions`, `GET /api/v1/executions/{id}` and `GET /api/v1/executions/{id}/events`; use `POST /api/v1/adhoc-executions` or `POST /api/v1/cycles/{cycle}/executions`
 - The Streamlit UI (`testo_ui/`, `testo-ui` script, `ui` extra), as scheduled in 1.0.0
 - The `docker` extra and the `pluggy` runtime dependency
-- Run-history writer functions in `run_history.py` (`create_run`, `record_completed_run`, MinIO uploads); it is now the read model only, and still reads pre-1.1 records
+- Run-history writer functions in `run_history.py` (`create_run`, `record_completed_run`, MinIO uploads), the unused `compare_latest_two()` and the `db_path` arguments on history queries
 - Generated run output that was committed by mistake (`artifacts/allure-report*`, `artifacts/allure-results-archive/`, `artifacts/metrics.json`); these paths are now ignored
 
 ### Fixed

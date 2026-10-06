@@ -372,9 +372,9 @@ def report_pyramid(
     from testo_core.cli.ui.console import default_console
     from testo_core.config.errors import ConfigError
     from testo_core.config.loader import discover_and_load
+    from testo_core.history.read_model import get_run
     from testo_core.reporting.pyramid_data import build_pyramid_model
     from testo_core.reporting.pyramid_viz import classify_shape, render_pyramid_lines
-    from testo_core.run_history import get_run
 
     console = default_console()
     run = get_run(run_id=run_id)

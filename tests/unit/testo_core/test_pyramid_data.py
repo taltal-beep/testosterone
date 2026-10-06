@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from testo_core.config.schema import Stage
+from testo_core.history.views import CompletedRunView
 from testo_core.reporting.pyramid_data import build_pyramid_model
-from testo_core.run_history import CompletedRunView
 
 
 def _run(stage_health: list[dict]) -> CompletedRunView:

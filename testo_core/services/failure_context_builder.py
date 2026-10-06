@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from testo_core.run_history import CompletedRunView
+from testo_core.history.views import CompletedRunView
 from testo_core.security.redaction import redact_text, redact_value
 
 

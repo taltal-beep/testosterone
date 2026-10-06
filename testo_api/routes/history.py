@@ -16,7 +16,8 @@ from testo_api.models import (
 )
 from testo_core.config.errors import ConfigError
 from testo_core.config.loader import discover_and_load
-from testo_core.run_history import get_run, list_run_sessions, snapshot_files_for_download
+from testo_core.history.read_model import get_run, list_run_sessions
+from testo_core.history.snapshots import snapshot_files_for_download
 
 router = APIRouter(prefix="/api/v1", tags=["history"])
 
@@ -103,7 +104,7 @@ def get_run_reports(run_id: str) -> RunReportsResponse:
     allure_base = os.getenv("ALLURE_SERVER_URL", "").rstrip("/")
     allure_url = None
     if allure_base:
-        from testo_core.run_history import allure_report_url_for_run
+        from testo_core.history.report_links import allure_report_url_for_run
 
         allure_url = allure_report_url_for_run(run_id)
     return RunReportsResponse(

@@ -42,7 +42,8 @@ flowchart TD
 | Engine | `testo_core/engine/` | `run_plan()` runs stages in order and emits typed events; `run_stage()` spawns the subprocess, tees `run.log`, enforces timeouts; `exit_codes.py` is the single exit-code taxonomy. |
 | Framework adapters | `testo_core/frameworks/` | Build argv and Allure output dirs per framework. `command` runs any argv and imports its JUnit XML as Allure results. |
 | Persistence | `testo_core/persistence/` | Best-effort backends behind one protocol: `plan_result.json` and a `RunRecord` row with health %, per-stage counts, failure evidence and CI provenance. |
-| Storage | `testo_core/repository/`, `db.py`, `run_history.py` | Dialect-agnostic repository (SQLite default, Postgres/MySQL via `DATABASE_URL`); `run_history.py` is the read model the API and services query. |
+| Storage | `testo_core/repository/`, `db.py` | Dialect-agnostic repository (SQLite default, Postgres/MySQL via `DATABASE_URL`). The only code that opens a database session. |
+| Run history | `testo_core/history/` | Read side over stored runs: typed views, queries, report links and snapshot files. Reads through the repository only; MinIO lookups for pre-v1.1 runs are isolated in `s3_snapshots.py`. |
 | Reporting | `testo_core/reporting/` | Collect Allure results from the artifacts tree; generate Allure / Extent / ReportPortal / TestBeats output; `testo report` commands. |
 | Analytics | `testo_core/services/` | Dashboard rollups, run-to-run delta, AI failure analysis (bring-your-own-key providers in `services/ai/`). |
 | Adapters | `testo_core/cli/`, `testo_api/`, `frontend/` | Presentation only: CLI renderers (Rich / NDJSON), FastAPI routes + SSE, React pages. |
@@ -67,7 +68,7 @@ flowchart TD
    to InfluxDB / a Prometheus Pushgateway when those are configured, and the cycle's report
    bundle is archived to the report DB (`testo report list/open/diff`).
 7. **Read side.** The dashboard, Runs, Run Detail, Compare and AI summary endpoints all read
-   the run history through `run_history.py` and the services on top of it.
+   the run history through `testo_core/history/` and the services on top of it.
 
 ## Interfaces
 
@@ -131,7 +132,7 @@ static/history/<run_id>/      # per-run reporter output, served at /history
 
 - **Run history** (`RunRecord`, one row per cycle execution) is what every UI page and the
   delta/AI services read. Engine runs are written by `DbBackend`; records from the pre-v1.1
-  headless runner are still readable (`run_history.py` understands both shapes).
+  headless runner are still readable (`history/views.py` normalises both shapes).
 - **Report archives** (`ReportArchive`) are zipped report bundles keyed by their own UUID,
   written by `CycleRunService` after each run for `testo report list/open/diff`. They are not
   linked to a run id.

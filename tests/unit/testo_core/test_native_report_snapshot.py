@@ -17,7 +17,7 @@ def _make_plan(*, name: str, stages: tuple[Stage, ...]) -> Plan:
 def test_copies_behavex_native_report_and_derives_index_html(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     artifacts_root = tmp_path / "artifacts"
     static_history = tmp_path / "static" / "history"
-    monkeypatch.setattr("testo_core.run_history.STATIC_HISTORY_ROOT", static_history)
+    monkeypatch.setattr("testo_core.paths.STATIC_HISTORY_ROOT", static_history)
 
     plan = _make_plan(
         name="my-cycle",
@@ -39,7 +39,7 @@ def test_copies_behavex_native_report_and_derives_index_html(tmp_path: Path, mon
 def test_pytest_and_behave_stages_produce_no_native_reports(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     artifacts_root = tmp_path / "artifacts"
     static_history = tmp_path / "static" / "history"
-    monkeypatch.setattr("testo_core.run_history.STATIC_HISTORY_ROOT", static_history)
+    monkeypatch.setattr("testo_core.paths.STATIC_HISTORY_ROOT", static_history)
 
     plan = _make_plan(
         name="my-cycle",
@@ -58,7 +58,7 @@ def test_pytest_and_behave_stages_produce_no_native_reports(tmp_path: Path, monk
 
 def test_no_op_when_run_id_is_none(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     static_history = tmp_path / "static" / "history"
-    monkeypatch.setattr("testo_core.run_history.STATIC_HISTORY_ROOT", static_history)
+    monkeypatch.setattr("testo_core.paths.STATIC_HISTORY_ROOT", static_history)
 
     plan = _make_plan(
         name="my-cycle",

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 
+from testo_core.history.views import CompletedRunView
 from testo_core.repository.models import RunStatus
-from testo_core.run_history import CompletedRunView
 from testo_core.services import run_snapshot_diff
 
 
