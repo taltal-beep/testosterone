@@ -9,13 +9,13 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from testo_core.config.loader import discover_and_load
-from testo_core.config.resolver import resolve_plan, resolve_stages_for_plan
-from testo_core.config.schema import Plan, Stage
-from testo_core.engine.orchestrator import run_plan
-from testo_core.triggers import evaluate_cycle_trigger
+from testo_core.config.resolver import resolve_plan
+from testo_core.config.schema import Plan
+from testo_core.services.cycle_run import CycleRunOptions, CycleRunService
+from testo_core.triggers import TriggerResult
 
 CycleExecutionStatus = Literal["queued", "running", "completed", "failed"]
 
@@ -48,6 +48,35 @@ class _NullRenderer:
         return
 
 
+class _NdjsonCycleListener:
+    """Writes the trigger verdict into the cycle's events.ndjson so the SSE stream carries it."""
+
+    def __init__(self, events_path: Path, *, ci: bool) -> None:
+        self._events_path = events_path
+        self._ci = ci
+
+    def trigger_evaluated(self, plan: Plan, result: TriggerResult) -> None:
+        if not self._ci:
+            return
+        _append_ndjson_line(
+            self._events_path,
+            {
+                "event": "cycle_trigger",
+                "cycle": plan.name,
+                "status": "activated" if result.stimulus else "resting",
+                "reason": result.reason,
+                "matched": list(result.matched_paths),
+                "mode": result.mode,
+            },
+        )
+
+    def trigger_bypassed(self, plan: Plan) -> None:
+        return
+
+    def report_archived(self, report_id: UUID | None, *, background: bool) -> None:
+        return
+
+
 def _append_ndjson_line(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as fh:
@@ -60,10 +89,10 @@ class CycleExecutionManager:
     """
     Manage plan/cycle executions using the modern engine lifecycle:
 
-    - `discover_and_load` config discovery
-    - `resolve_plan` + `resolve_stages_for_plan`
-    - optional trigger evaluation (`cycle_trigger` NDJSON event)
-    - `orchestrator.run_plan()` emits durable NDJSON into `artifacts/<cycle>/events.ndjson`
+    - `discover_and_load` config discovery + `resolve_plan`
+    - `CycleRunService.run()`, the same use case as `testo run`: trigger gate
+      (`cycle_trigger` NDJSON event), `orchestrator.run_plan()` writing durable NDJSON
+      into `artifacts/<cycle>/events.ndjson`, reporters and the report archive
 
     Streaming is done by tailing `events.ndjson` from a recorded byte offset.
     """
@@ -153,10 +182,6 @@ class CycleExecutionManager:
 
             cfg = discover_and_load(config_path=config_path)
             plan = resolve_plan(cfg, plan_name=state.cycle)
-            resolved_stages = resolve_stages_for_plan(plan)
-            if not resolved_stages:
-                raise ValueError(f"plan {plan.name!r} has no stages enabled in this environment.")
-
             artifacts_root = (artifacts_root_override or cfg.defaults.artifacts_root).expanduser().resolve()
             plan_artifacts = (artifacts_root / plan.name).resolve()
             events_path = plan_artifacts / "events.ndjson"
@@ -175,41 +200,6 @@ class CycleExecutionManager:
                 state.plan_result_path = plan_result_path
                 state.events_start_offset_bytes = start_offset
 
-            # Trigger gate (CI schema): emit `cycle_trigger` and potentially short-circuit to success.
-            if plan.trigger is not None and not force:
-                tr = evaluate_cycle_trigger(plan=plan, cfg=cfg)
-                if ci:
-                    _append_ndjson_line(
-                        events_path,
-                        {
-                            "event": "cycle_trigger",
-                            "cycle": plan.name,
-                            "status": "activated" if tr.stimulus else "resting",
-                            "reason": tr.reason,
-                            "matched": list(tr.matched_paths),
-                            "mode": tr.mode,
-                        },
-                    )
-                if not tr.stimulus:
-                    # Contract: treat resting as success (exit_code 0). Emit a minimal `plan_finished`
-                    # so UIs relying on a terminal event can close the stream.
-                    _append_ndjson_line(
-                        events_path,
-                        {
-                            "event": "plan_finished",
-                            "plan": plan.name,
-                            "aggregate_returncode": 0,
-                            "exit_code": 0,
-                            "duration_s": 0.0,
-                            "stages": [],
-                            "error": None,
-                        },
-                    )
-                    state.mark_done(status="completed", error=None)
-                    return
-
-            renderer = _NullRenderer()
-            effective_plan = _apply_workers_override(plan=plan, stages=resolved_stages, workers_override=workers_override)
             # Stage subprocesses resolve tools (pytest/behave/...) via PATH. The API server
             # may be launched without an activated venv, so prepend this interpreter's bin
             # dir to guarantee stages run against the same environment as the engine.
@@ -220,57 +210,40 @@ class CycleExecutionManager:
             path_entries = parent_env.get("PATH", "").split(os.pathsep)
             if exe_bin not in path_entries:
                 parent_env["PATH"] = os.pathsep.join([exe_bin, *path_entries])
-            # `run_plan` persists events.ndjson and plan_result.json under artifacts/<cycle>/.
-            result = run_plan(
-                plan=effective_plan,
-                renderer=renderer,
-                artifacts_root=artifacts_root,
-                parent_env=parent_env,
-                persist=persist,
-                fail_fast=fail_fast,
-            )
 
-            # Post-run reporters + optional report DB archive (same flow as CLI runner).
-            run_id = result.extra.get("run_id")
-            resolved_run_id = run_id if isinstance(run_id, str) else None
-            from rich.console import Console
-
-            from testo_core.cli.runner import (  # type: ignore[attr-defined]
-                _maybe_run_configured_reporters,
-                _maybe_snapshot_native_reports,
-            )
-
-            _maybe_run_configured_reporters(
+            # Same use case as `testo run`; `run_plan` persists events.ndjson and
+            # plan_result.json under artifacts/<cycle>/, which the SSE route tails.
+            outcome = CycleRunService(listener=_NdjsonCycleListener(events_path, ci=ci)).run(
                 cfg=cfg,
-                plan=effective_plan,
-                artifacts_root=artifacts_root,
-                run_id=resolved_run_id,
-                console=Console(),
-                ci=ci,
-                reporter_override=reporter_override,
-            )
-            _maybe_snapshot_native_reports(
-                plan=effective_plan,
-                artifacts_root=artifacts_root,
-                run_id=resolved_run_id,
-            )
-
-            if persist and report_db:
-                from rich.console import Console
-
-                from testo_core.cli.runner import (
-                    _maybe_archive_cycle_report,  # type: ignore[attr-defined]
-                )
-
-                _maybe_archive_cycle_report(
-                    cfg=cfg,
-                    plan=effective_plan,
-                    console=Console(),
-                    ci=ci,
+                plan=plan,
+                renderer=_NullRenderer(),
+                options=CycleRunOptions(
                     persist=persist,
+                    force=force,
+                    fail_fast=fail_fast,
+                    workers_override=workers_override,
+                    reporter_override=reporter_override,
                     report_db=report_db,
                     async_report_db=async_report_db,
-                    plan_exit_code=int(result.exit_code),
+                    artifacts_root=artifacts_root,
+                    parent_env=parent_env,
+                    ci=ci,
+                ),
+            )
+            if outcome.skipped:
+                # Contract: treat resting as success (exit_code 0). Emit a minimal `plan_finished`
+                # so UIs relying on a terminal event can close the stream.
+                _append_ndjson_line(
+                    events_path,
+                    {
+                        "event": "plan_finished",
+                        "plan": plan.name,
+                        "aggregate_returncode": 0,
+                        "exit_code": 0,
+                        "duration_s": 0.0,
+                        "stages": [],
+                        "error": None,
+                    },
                 )
 
             state.mark_done(status="completed", error=None)
@@ -290,35 +263,6 @@ class CycleExecutionManager:
             with self._states_lock:
                 if self._active_by_cycle.get(state.cycle) == state.execution_id:
                     self._active_by_cycle.pop(state.cycle, None)
-
-
-def _apply_workers_override(*, plan: Plan, stages: tuple[Stage, ...], workers_override: int | None) -> Plan:
-    if workers_override is None:
-        return Plan(
-            name=plan.name,
-            description=plan.description,
-            stages=tuple(stages),
-            trigger=plan.trigger,
-        )
-    new_stages = tuple(
-        Stage(
-            name=s.name,
-            framework=s.framework,
-            target_repo=s.target_repo,
-            args=s.args,
-            workers=int(workers_override),
-            timeout_s=s.timeout_s,
-            if_expr=None,
-            extra_env=s.extra_env,
-        )
-        for s in stages
-    )
-    return Plan(
-        name=plan.name,
-        description=plan.description,
-        stages=new_stages,
-        trigger=plan.trigger,
-    )
 
 
 def iter_sse_from_ndjson_file(

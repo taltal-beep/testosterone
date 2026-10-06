@@ -18,6 +18,7 @@ from testo_core.cli import runner as cli_runner_mod
 from testo_core.cli.app import app
 from testo_core.cli.ui.console import make_console
 from testo_core.cli.ui.renderers import BufferedRenderer, CIRenderer, StreamRenderer
+from testo_core.services import cycle_run as cycle_run_mod
 from testo_core.triggers import TriggerResult
 from tests.fixtures.engine import (
     stage_spec,
@@ -127,7 +128,7 @@ def test_force_bypasses_resting_trigger(
 ) -> None:
     adapter = use_echo_adapter(monkeypatch)
     monkeypatch.setattr(
-        cli_runner_mod,
+        cycle_run_mod,
         "evaluate_cycle_trigger",
         lambda *, plan, cfg: _activated_trigger(stimulus=False, reason="no changes", matched_paths=()),
     )
@@ -182,11 +183,11 @@ def test_trigger_snapshot_persisted_only_after_successful_run(
     # LC-08: snapshot state advances only when the cycle both fired and passed.
     use_echo_adapter(monkeypatch)
     monkeypatch.setattr(
-        cli_runner_mod, "evaluate_cycle_trigger", lambda *, plan, cfg: _activated_trigger()
+        cycle_run_mod, "evaluate_cycle_trigger", lambda *, plan, cfg: _activated_trigger()
     )
     snapshots: list[str] = []
     monkeypatch.setattr(
-        cli_runner_mod,
+        cycle_run_mod,
         "persist_trigger_snapshot",
         lambda *, cfg, plan_name, anchor, patterns: snapshots.append(plan_name),
     )

@@ -29,6 +29,7 @@ The default path uses **host subprocesses** — no Docker. The legacy **UQO head
 sequenceDiagram
   participant CLI as testo_run
   participant Runner as cli_runner
+  participant Svc as CycleRunService
   participant Config as config_loader
   participant Trig as triggers
   participant Orch as orchestrator
@@ -36,9 +37,11 @@ sequenceDiagram
   participant FW as framework_adapter
 
   CLI->>Runner: execute_plan_command
-  Runner->>Config: discover_and_load / resolve_stages
-  Runner->>Trig: evaluate_cycle_trigger optional
-  Runner->>Orch: run_plan
+  Runner->>Config: discover_and_load / resolve_plan
+  Runner->>Svc: run(cfg, plan, renderer, options)
+  Svc->>Config: resolve_stages_for_plan
+  Svc->>Trig: evaluate_cycle_trigger optional
+  Svc->>Orch: run_plan
   loop each stage
     Orch->>Exec: run_stage
     Exec->>FW: build_argv
@@ -46,7 +49,7 @@ sequenceDiagram
     Exec-->>Orch: StageResult
   end
   Orch->>Orch: plan_result.json + events.ndjson
-  Runner->>Runner: reporters + optional DB archive
+  Svc->>Svc: reporters + optional DB archive + trigger snapshot
 ```
 
 ### Phase map
@@ -56,11 +59,11 @@ sequenceDiagram
 | 1. CLI parse | `testo_core/cli/commands/run.py` | Validates flags; defers heavy imports |
 | 2. Config load | `testo_core/config/loader.py` | `discover_and_load()` → `TestosteroneConfig` |
 | 3. Plan resolve | `testo_core/config/resolver.py` | `resolve_plan()` / `resolve_stages_for_plan()` |
-| 4. Trigger gate | `testo_core/triggers.py` | Optional skip (exit 0) unless `--force` |
+| 4. Trigger gate | `testo_core/services/cycle_run.py` → `triggers.py` | Optional skip (exit 0) unless `--force` |
 | 5. Renderer pick | `testo_core/cli/runner.py` | Buffered / Stream / CI (NDJSON) |
 | 6. Engine run | `testo_core/engine/orchestrator.py` | `run_plan()` — sequential stages |
 | 7. Subprocess | `testo_core/engine/executor.py` | `run_stage()` per stage |
-| 8. Post-run | `testo_core/cli/runner.py` | Reporters, trigger snapshot, DB archive |
+| 8. Post-run | `testo_core/services/cycle_run.py` | Reporters, native report snapshot, DB archive, trigger snapshot |
 
 ---
 
@@ -74,6 +77,8 @@ sequenceDiagram
 - **Single cycle** — `resolve_plan(cfg, plan_name=...)`.
 - **`--tag`** — filters cycles when using `all`, or validates tag membership for one cycle.
 - **`--dry-run`** — prints resolved argv/cwd table (or NDJSON `dry_run_stage` events); no subprocesses.
+
+Each resolved cycle is handed to `CycleRunService.run()` (`testo_core/services/cycle_run.py`), which owns the trigger gate, the engine call and every post-run step. The API's `testo_api/cycle_execution_manager.py` calls the same service, so a cycle started from the dashboard runs exactly the same steps; the two callers differ only in the renderer and the listener that presents trigger/archive messages (Rich panels or NDJSON on stdout for the CLI, lines in `events.ndjson` for the API).
 
 Config errors return exit code **2** (`EngineExitCode.INVALID_INPUT`). In `--ci` mode, errors emit:
 

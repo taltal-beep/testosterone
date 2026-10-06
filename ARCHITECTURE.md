@@ -19,7 +19,7 @@ flowchart TB
 
     subgraph core["testo_core (the library)"]
         CFG["config/<br/>load + resolve testosterone.yaml"]
-        UC["cli/runner.py<br/>trigger → run → report → archive"]
+        UC["services/cycle_run.py<br/>CycleRunService: trigger → run → report → archive"]
         ENG["engine/<br/>orchestrator.run_plan → executor.run_stage"]
         FW["frameworks/<br/>pytest · behave · behavex · command"]
         REP["reporting/<br/>Allure · Extent · ReportPortal · TestBeats"]
@@ -30,8 +30,7 @@ flowchart TB
     end
 
     CLI --> UC
-    API -- "cycle executions" --> ENG
-    API -. "reuses CLI helpers" .-> UC
+    API -- "cycle executions" --> UC
     API -- "dashboard, compare, history" --> SVC
     API -- "/executions (legacy)" --> HE
     LEG --> HE
@@ -51,7 +50,7 @@ flowchart TB
     HE --> S3[("MinIO (S3) +<br/>Allure Docker Service")]
 ```
 
-Solid arrows are the main path. The dotted arrow is a known shortcut: the API imports helpers from the CLI module to run reporters and the report archive after a cycle (see [Known structural debt](#known-structural-debt)).
+The CLI and the API are thin adapters over the same `CycleRunService`; they differ only in how they render progress.
 
 ## Layers
 
@@ -63,7 +62,7 @@ Solid arrows are the main path. The dotted arrow is a known shortcut: the API im
 | Framework adapters | `testo_core/frameworks/` | One `FrameworkAdapter` per `equipment` value. Each builds argv and says where Allure results land. `command` runs any argv and converts its JUnit XML into Allure results. |
 | Reporting | `testo_core/reporting/` | Collects per-stage Allure results and generates reports. `reporters/` holds pluggable reporters selected by the `reporters:` block in config. |
 | Persistence | `testo_core/persistence/`, `testo_core/repository/` | `PersistenceBackend` protocol with JSON and DB implementations fanned out by a composite backend. The DB side goes through a `BaseRunRepository` protocol backed by SQLModel, so SQLite, Postgres and MySQL all work. |
-| Application services | `testo_core/services/` | Read-side use cases over run history: dashboard KPIs and trends, run-to-run delta comparison, and bring-your-own-key AI failure summaries (`services/ai/`, OpenAI and Anthropic providers). |
+| Application services | `testo_core/services/` | `cycle_run.py` (`CycleRunService`) is the "run a cycle" use case shared by the CLI and the API: trigger gate, engine, reporters, report archive. The rest are read-side use cases over run history: dashboard KPIs and trends, run-to-run delta comparison, and bring-your-own-key AI failure summaries (`services/ai/`, OpenAI and Anthropic providers). |
 
 Dependency direction is outer to inner: entry points depend on `testo_core`; nothing in `testo_core` imports `testo_api`, `frontend` or Streamlit. Heavy dependencies (SQLAlchemy, Docker, FastAPI, Streamlit) are optional extras, and `import testo_core` loads none of them.
 
@@ -93,7 +92,6 @@ Dependency direction is outer to inner: entry points depend on `testo_core`; not
 These are the main places where the code does not yet match the layering above. They are listed here so the picture is honest; the plan for each lives in the [Technical Debt Tracker](docs/Testing%20Workflows/Technical%20Debt%20Tracker.md).
 
 - **Two execution stacks.** The modern engine (`engine/` + `frameworks/`) and the legacy stack (`services/headless_engine.py` + `runners.py` + `run_history.py`, Docker-based) both exist. The deprecated `uqo` CLI, the Streamlit UI and the API's `/executions` routes still use the legacy one.
-- **The cycle use case lives in the CLI module.** `cli/runner.py` owns "trigger → run → report → archive", and `testo_api/cycle_execution_manager.py` imports its private helpers to do the same after an API run.
 - **Overlapping persistence modules.** `persistence/`, `repository/`, `db.py`/`db_config.py` and the 900-line `run_history.py` all touch run storage.
 - **Unused plugin layer.** The Pluggy hook system (`orchestrator.py`, `specs.py`, `plugins_builtin.py`) is exported publicly but no runner calls it.
 
