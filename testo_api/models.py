@@ -2,12 +2,24 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from testo_core.services.headless_engine import EngineSummary
 
 
-class RunSpecRequest(BaseModel):
+class ApiModel(BaseModel):
+    """Base for every request/response body in the HTTP contract.
+
+    The response always contains fields that have a default, so the OpenAPI
+    schema marks them required in responses. That keeps the generated
+    frontend types (``frontend/src/lib/api-schema.ts``) from turning every
+    defaulted field into an optional one. Request schemas are unaffected.
+    """
+
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+
+class RunSpecRequest(ApiModel):
     test_type: Literal["pytest", "behavex", "behave_native"]
     target_repo: str
     cli_args: list[str] = Field(default_factory=list)
@@ -15,21 +27,21 @@ class RunSpecRequest(BaseModel):
     extra_env: dict[str, str] | None = None
 
 
-class CreateExecutionRequest(BaseModel):
+class CreateExecutionRequest(ApiModel):
     runs: list[RunSpecRequest]
     persist: bool = True
     trigger_source: Literal["ui"] = "ui"
     ci_mode: bool = False
 
 
-class ExecutionAcceptedResponse(BaseModel):
+class ExecutionAcceptedResponse(ApiModel):
     execution_id: str
     status: Literal["queued", "running"]
     events_url: str
     summary_url: str
 
 
-class ExecutionStatusResponse(BaseModel):
+class ExecutionStatusResponse(ApiModel):
     execution_id: str
     status: Literal["queued", "running", "completed", "failed"]
     summary: dict[str, Any] | None = None
@@ -58,7 +70,7 @@ class ExecutionStatusResponse(BaseModel):
         )
 
 
-class StageSummary(BaseModel):
+class StageSummary(ApiModel):
     name: str
     equipment: str
     target_repo: str
@@ -67,31 +79,31 @@ class StageSummary(BaseModel):
     workers: int | None = None
 
 
-class CycleSummary(BaseModel):
+class CycleSummary(ApiModel):
     name: str
     description: str | None = None
     stage_count: int
     equipment: list[str] = Field(default_factory=list)
 
 
-class CycleListResponse(BaseModel):
+class CycleListResponse(ApiModel):
     items: list[CycleSummary]
     config_path: str | None = None
 
 
-class CycleTriggerSummary(BaseModel):
+class CycleTriggerSummary(ApiModel):
     paths: list[str] = Field(default_factory=list)
     since_ref: str | None = None
 
 
-class CycleDetailResponse(BaseModel):
+class CycleDetailResponse(ApiModel):
     name: str
     description: str | None = None
     stages: list[StageSummary]
     trigger: CycleTriggerSummary | None = None
 
 
-class CycleExecutionRequest(BaseModel):
+class CycleExecutionRequest(ApiModel):
     config_path: str | None = None
     artifacts_root: str | None = None
     stream: bool = False
@@ -104,14 +116,14 @@ class CycleExecutionRequest(BaseModel):
     reporter_override: list[str] | None = None
 
 
-class CycleExecutionAcceptedResponse(BaseModel):
+class CycleExecutionAcceptedResponse(ApiModel):
     execution_id: str
     status: Literal["queued", "running"]
     events_url: str
     summary_url: str
 
 
-class CycleExecutionStatusResponse(BaseModel):
+class CycleExecutionStatusResponse(ApiModel):
     execution_id: str
     cycle: str
     status: Literal["queued", "running", "completed", "failed"]
@@ -121,7 +133,7 @@ class CycleExecutionStatusResponse(BaseModel):
     error: str | None = None
 
 
-class ErrorPayload(BaseModel):
+class ErrorPayload(ApiModel):
     code: Literal[
         "invalid_input",
         "not_found",
@@ -139,12 +151,12 @@ class ErrorPayload(BaseModel):
     details: dict[str, Any] | None = None
 
 
-class ErrorResponse(BaseModel):
+class ErrorResponse(ApiModel):
     error: ErrorPayload
     request_id: str
 
 
-class RunListItem(BaseModel):
+class RunListItem(ApiModel):
     run_id: str
     created_at: float
     returncode: int
@@ -159,12 +171,12 @@ class RunListItem(BaseModel):
     links_under_static: dict[str, str] = Field(default_factory=dict)
 
 
-class RunListResponse(BaseModel):
+class RunListResponse(ApiModel):
     items: list[RunListItem]
     next_cursor: str | None = None
 
 
-class StageHealth(BaseModel):
+class StageHealth(ApiModel):
     name: str
     framework: str | None = None
     total_tests: int | None = None
@@ -175,7 +187,7 @@ class StageHealth(BaseModel):
     health_pct: float | None = None
 
 
-class RunDetail(BaseModel):
+class RunDetail(ApiModel):
     run_id: str
     status: str | None = None
     created_at: float
@@ -199,19 +211,19 @@ class RunDetail(BaseModel):
     stage_health: list[StageHealth] = Field(default_factory=list)
 
 
-class RunDetailResponse(BaseModel):
+class RunDetailResponse(ApiModel):
     run: RunDetail
     metrics: dict[str, Any] | None = None
     sync: dict[str, Any] | None = None
 
 
-class RunReportsResponse(BaseModel):
+class RunReportsResponse(ApiModel):
     allure_server_url: str | None = None
     static_links: dict[str, str] = Field(default_factory=dict)
     artifact_links: list[str] = Field(default_factory=list)
 
 
-class RunPyramidResponse(BaseModel):
+class RunPyramidResponse(ApiModel):
     unit: int
     integration: int
     e2e: int
@@ -219,7 +231,7 @@ class RunPyramidResponse(BaseModel):
     message: str
 
 
-class DeltaMetricNode(BaseModel):
+class DeltaMetricNode(ApiModel):
     current_value: float | None = None
     baseline_value: float | None = None
     absolute_delta: float | None = None
@@ -230,7 +242,7 @@ class DeltaMetricNode(BaseModel):
     unit: Literal["tests", "pct", "ms"]
 
 
-class DeltaReliabilityMetrics(BaseModel):
+class DeltaReliabilityMetrics(ApiModel):
     total_tests: DeltaMetricNode
     passed: DeltaMetricNode
     failed: DeltaMetricNode
@@ -239,32 +251,32 @@ class DeltaReliabilityMetrics(BaseModel):
     health_pct: DeltaMetricNode
 
 
-class DeltaPerformanceMetrics(BaseModel):
+class DeltaPerformanceMetrics(ApiModel):
     wall_duration_ms: DeltaMetricNode
     metrics_duration_ms: DeltaMetricNode
     avg_case_ms: DeltaMetricNode
 
 
-class DeltaMetricsResponse(BaseModel):
+class DeltaMetricsResponse(ApiModel):
     reliability: DeltaReliabilityMetrics
     performance: DeltaPerformanceMetrics
 
 
-class DeltaComparisonMeta(BaseModel):
+class DeltaComparisonMeta(ApiModel):
     current_run_id: str
     baseline_run_id: str
     current_test_kind: str
     baseline_test_kind: str
 
 
-class DeltaStatusSummaryResponse(BaseModel):
+class DeltaStatusSummaryResponse(ApiModel):
     regressions: list[str] = Field(default_factory=list)
     improvements: list[str] = Field(default_factory=list)
     unchanged: list[str] = Field(default_factory=list)
     unknown: list[str] = Field(default_factory=list)
 
 
-class DeltaStageDelta(BaseModel):
+class DeltaStageDelta(ApiModel):
     stage_name: str
     framework: str | None = None
     baseline_total_tests: int | None = None
@@ -277,7 +289,7 @@ class DeltaStageDelta(BaseModel):
     classification: Literal["regression", "improvement", "neutral", "unknown"]
 
 
-class DeltaComparisonResponse(BaseModel):
+class DeltaComparisonResponse(ApiModel):
     comparison: DeltaComparisonMeta
     metrics: DeltaMetricsResponse
     status_summary: DeltaStatusSummaryResponse
@@ -285,7 +297,7 @@ class DeltaComparisonResponse(BaseModel):
     stage_deltas: list[DeltaStageDelta] = Field(default_factory=list)
 
 
-class DeltaCaseChange(BaseModel):
+class DeltaCaseChange(ApiModel):
     key: str
     name: str
     group: str
@@ -295,13 +307,13 @@ class DeltaCaseChange(BaseModel):
     duration_delta_ms: int | None = None
 
 
-class DeltaCaseChangesResponse(BaseModel):
+class DeltaCaseChangesResponse(ApiModel):
     current_run_id: str
     baseline_run_id: str
     changes: list[DeltaCaseChange] = Field(default_factory=list)
 
 
-class DashboardHeadlineKpis(BaseModel):
+class DashboardHeadlineKpis(ApiModel):
     latest_run_id: str | None = None
     latest_status: str | None = None
     health_pct: float | None = None
@@ -310,35 +322,35 @@ class DashboardHeadlineKpis(BaseModel):
     duration_ms: float | None = None
 
 
-class DashboardTrendIndicator(BaseModel):
+class DashboardTrendIndicator(ApiModel):
     direction: Literal["up", "down", "flat", "unknown"]
     delta_abs: float | None = None
     delta_pct: float | None = None
 
 
-class DashboardRollupSummaryResponse(BaseModel):
+class DashboardRollupSummaryResponse(ApiModel):
     regressions: int
     improvements: int
     unchanged: int
     unknown: int
 
 
-class DashboardRollupResponse(BaseModel):
+class DashboardRollupResponse(ApiModel):
     status_summary: DashboardRollupSummaryResponse
     top_highlights: list[str] = Field(default_factory=list)
 
 
-class DashboardReportLinkResponse(BaseModel):
+class DashboardReportLinkResponse(ApiModel):
     url: str | None = None
     state: Literal["available", "missing", "unknown"]
 
 
-class DashboardReportLinksResponse(BaseModel):
+class DashboardReportLinksResponse(ApiModel):
     allure: DashboardReportLinkResponse
     behave: DashboardReportLinkResponse
 
 
-class DashboardRecentRunItem(BaseModel):
+class DashboardRecentRunItem(ApiModel):
     run_id: str
     created_at: float
     status: str | None = None
@@ -349,14 +361,14 @@ class DashboardRecentRunItem(BaseModel):
     compare_url: str | None = None
 
 
-class DashboardDataFreshnessResponse(BaseModel):
+class DashboardDataFreshnessResponse(ApiModel):
     generated_at: float
     source_window_size: int
     degraded: bool
     notes: list[str] = Field(default_factory=list)
 
 
-class DashboardOverviewResponse(BaseModel):
+class DashboardOverviewResponse(ApiModel):
     headline_kpis: DashboardHeadlineKpis
     trend_indicators: dict[Literal["health", "failed_count", "duration"], DashboardTrendIndicator]
     reliability_rollup: DashboardRollupResponse
@@ -366,26 +378,26 @@ class DashboardOverviewResponse(BaseModel):
     data_freshness: DashboardDataFreshnessResponse
 
 
-class DashboardRecentRunsResponse(BaseModel):
+class DashboardRecentRunsResponse(ApiModel):
     items: list[DashboardRecentRunItem] = Field(default_factory=list)
     generated_at: float
 
 
-class HealthLiveResponse(BaseModel):
+class HealthLiveResponse(ApiModel):
     status: Literal["ok"]
 
 
-class ReadinessCheck(BaseModel):
+class ReadinessCheck(ApiModel):
     status: Literal["ok", "degraded"]
     detail: str | None = None
 
 
-class HealthReadyResponse(BaseModel):
+class HealthReadyResponse(ApiModel):
     status: Literal["ready", "degraded"]
     checks: dict[str, ReadinessCheck]
 
 
-class AiConfigUpdateRequest(BaseModel):
+class AiConfigUpdateRequest(ApiModel):
     enabled: bool = False
     provider: Literal["openai", "anthropic"] = "openai"
     model: str = "gpt-4o-mini"
@@ -398,7 +410,7 @@ class AiConfigUpdateRequest(BaseModel):
     max_output_tokens: int = 300
 
 
-class AiConfigStatusResponse(BaseModel):
+class AiConfigStatusResponse(ApiModel):
     enabled: bool
     configured: bool
     provider: Literal["openai", "anthropic"]
@@ -412,7 +424,7 @@ class AiConfigStatusResponse(BaseModel):
     max_output_tokens: int
 
 
-class AiSummaryResponse(BaseModel):
+class AiSummaryResponse(ApiModel):
     schema_version: Literal["v1"]
     run_id: str
     status: Literal["available", "no_summary_generated"]
@@ -426,5 +438,5 @@ class AiSummaryResponse(BaseModel):
     error_code: str | None = None
 
 
-class GenerateAiSummaryRequest(BaseModel):
+class GenerateAiSummaryRequest(ApiModel):
     force_refresh: bool = False

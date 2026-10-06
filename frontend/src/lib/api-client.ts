@@ -1,317 +1,49 @@
-export interface ExecutionRequest {
-  runs: Array<{
-    test_type: "pytest" | "behavex" | "behave_native" | "locust";
-    target_repo: string;
-    cli_args?: string[];
-    timeout_s?: number;
-  }>;
-  persist?: boolean;
-  trigger_source?: "ui";
-  ci_mode?: boolean;
-}
+// Request/response types are generated from the FastAPI OpenAPI schema, so the
+// backend's Pydantic models in testo_api/models.py are the single source of
+// truth for the HTTP contract. To regenerate after changing a model:
+//   python scripts/export_openapi.py && npm --prefix frontend run gen:api
+// CI fails if either generated file is stale.
+import type { components } from "./api-schema";
 
-export interface ExecutionAccepted {
-  execution_id: string;
-  status: "queued" | "running";
-  events_url: string;
-  summary_url: string;
-}
+type Schemas = components["schemas"];
 
-export interface CycleExecutionRequest {
-  config_path?: string | null;
-  artifacts_root?: string | null;
-  stream?: boolean;
-  persist?: boolean;
-  fail_fast?: boolean;
-  force?: boolean;
-  workers_override?: number | null;
-  report_db?: boolean;
-  async_report_db?: boolean;
-  reporter_override?: string[] | null;
-}
+export type ExecutionRequest = Schemas["CreateExecutionRequest"];
+export type ExecutionAccepted = Schemas["ExecutionAcceptedResponse"];
+export type ExecutionStatus = Schemas["ExecutionStatusResponse"];
 
-export interface CycleExecutionAccepted {
-  execution_id: string;
-  status: "queued" | "running";
-  events_url: string;
-  summary_url: string;
-}
+export type CycleExecutionRequest = Schemas["CycleExecutionRequest"];
+export type CycleExecutionAccepted = Schemas["CycleExecutionAcceptedResponse"];
+export type CycleExecutionStatus = Schemas["CycleExecutionStatusResponse"];
+export type CycleSummary = Schemas["CycleSummary"];
+export type CycleListResponse = Schemas["CycleListResponse"];
+export type StageSummary = Schemas["StageSummary"];
+export type CycleDetailResponse = Schemas["CycleDetailResponse"];
 
-export interface CycleExecutionStatus {
-  execution_id: string;
-  cycle: string;
-  status: "queued" | "running" | "completed" | "failed";
-  artifacts_root: string | null;
-  events_path: string | null;
-  plan_result_path: string | null;
-  error: string | null;
-}
+export type RunListItem = Schemas["RunListItem"];
+export type RunListResponse = Schemas["RunListResponse"];
+export type StageHealth = Schemas["StageHealth"];
+export type RunDetailResponse = Schemas["RunDetailResponse"];
+export type RunReportsResponse = Schemas["RunReportsResponse"];
+export type RunPyramidResponse = Schemas["RunPyramidResponse"];
+export type PyramidShape = RunPyramidResponse["shape"];
 
-export interface ExecutionStatus {
-  execution_id: string;
-  status: "queued" | "running" | "completed" | "failed";
-  summary: Record<string, unknown> | null;
-  run_ids: string[];
-  error: string | null;
-}
+export type DeltaMetricNode = Schemas["DeltaMetricNode"];
+export type DeltaClassification = DeltaMetricNode["classification"];
+export type DeltaComparisonResponse = Schemas["DeltaComparisonResponse"];
+export type DeltaStageDelta = Schemas["DeltaStageDelta"];
+export type DeltaCaseChange = Schemas["DeltaCaseChange"];
+export type CaseChangeKind = DeltaCaseChange["kind"];
+export type DeltaCaseChangesResponse = Schemas["DeltaCaseChangesResponse"];
 
-export interface RunListItem {
-  run_id: string;
-  created_at: number;
-  returncode: number;
-  status: string | null;
-  cycle: string | null;
-  health_pct: number | null;
-  links_under_static: Record<string, string>;
-}
+export type AiConfigStatus = Schemas["AiConfigStatusResponse"];
+export type UpdateAiConfigRequest = Schemas["AiConfigUpdateRequest"];
+export type AiSummaryResponse = Schemas["AiSummaryResponse"];
 
-export type DeltaClassification = "regression" | "improvement" | "neutral" | "unknown";
+export type DashboardTrendIndicator = Schemas["DashboardTrendIndicator"];
+export type DashboardOverviewResponse = Schemas["DashboardOverviewResponse"];
+export type DashboardRecentRunsResponse = Schemas["DashboardRecentRunsResponse"];
 
-export interface DeltaMetricNode {
-  current_value: number | null;
-  baseline_value: number | null;
-  absolute_delta: number | null;
-  relative_delta_pct: number | null;
-  classification: DeltaClassification;
-  reason: string | null;
-  direction: "higher_is_better" | "lower_is_better";
-  unit: "tests" | "pct" | "ms";
-}
-
-export interface DeltaComparisonResponse {
-  comparison: {
-    current_run_id: string;
-    baseline_run_id: string;
-    current_test_kind: string;
-    baseline_test_kind: string;
-  };
-  metrics: {
-    reliability: {
-      total_tests: DeltaMetricNode;
-      passed: DeltaMetricNode;
-      failed: DeltaMetricNode;
-      broken: DeltaMetricNode;
-      skipped: DeltaMetricNode;
-      health_pct: DeltaMetricNode;
-    };
-    performance: {
-      wall_duration_ms: DeltaMetricNode;
-      metrics_duration_ms: DeltaMetricNode;
-      avg_case_ms: DeltaMetricNode;
-    };
-  };
-  status_summary: {
-    regressions: string[];
-    improvements: string[];
-    unchanged: string[];
-    unknown: string[];
-  };
-  highlights: string[];
-  stage_deltas: DeltaStageDelta[];
-}
-
-export interface DeltaStageDelta {
-  stage_name: string;
-  framework: string | null;
-  baseline_total_tests: number | null;
-  current_total_tests: number | null;
-  baseline_passed: number | null;
-  current_passed: number | null;
-  baseline_health_pct: number | null;
-  current_health_pct: number | null;
-  health_pct_delta: number | null;
-  classification: DeltaClassification;
-}
-
-export type CaseChangeKind = "added" | "removed" | "regression" | "fix" | "status_change";
-
-export interface DeltaCaseChange {
-  key: string;
-  name: string;
-  group: string;
-  baseline_status: string | null;
-  current_status: string | null;
-  kind: CaseChangeKind;
-  duration_delta_ms: number | null;
-}
-
-export interface DeltaCaseChangesResponse {
-  current_run_id: string;
-  baseline_run_id: string;
-  changes: DeltaCaseChange[];
-}
-
-export interface StageHealth {
-  name: string;
-  framework: string | null;
-  total_tests: number | null;
-  passed: number | null;
-  failed: number | null;
-  broken: number | null;
-  skipped: number | null;
-  health_pct: number | null;
-}
-
-export interface RunDetailResponse {
-  run: {
-    run_id: string;
-    status: string | null;
-    cycle: string | null;
-    test_kind: string;
-    returncode: number;
-    created_at: number;
-    started_at: number;
-    finished_at: number;
-    wall_duration_ms: number;
-    health_pct: number | null;
-    stage_health: StageHealth[];
-  };
-}
-
-export type PyramidShape = "healthy" | "top_heavy" | "mid_bulge" | "irregular";
-
-export interface RunPyramidResponse {
-  unit: number;
-  integration: number;
-  e2e: number;
-  shape: PyramidShape;
-  message: string;
-}
-
-export interface AiConfigStatus {
-  enabled: boolean;
-  configured: boolean;
-  provider: "openai" | "anthropic";
-  model: string;
-  api_key_source: "env" | "runtime_input";
-  api_key_env_var: string | null;
-  key_present: boolean | null;
-  timeout_s: number;
-  retry_count: number;
-  max_input_chars: number;
-  max_output_tokens: number;
-}
-
-export interface UpdateAiConfigRequest {
-  enabled: boolean;
-  provider: "openai" | "anthropic";
-  model: string;
-  api_key_source: "env" | "runtime_input";
-  api_key_env_var?: string | null;
-  api_key_input?: string;
-  timeout_s: number;
-  retry_count: number;
-  max_input_chars: number;
-  max_output_tokens: number;
-}
-
-export interface AiSummaryResponse {
-  schema_version: "v1";
-  run_id: string;
-  status: "available" | "no_summary_generated";
-  summary_text: string | null;
-  confidence: "low" | "medium" | "high" | null;
-  limitations: string[];
-  provider: string | null;
-  model: string | null;
-  generated_at: number;
-  context_stats: Record<string, number>;
-  error_code: string | null;
-}
-
-export interface DashboardTrendIndicator {
-  direction: "up" | "down" | "flat" | "unknown";
-  delta_abs: number | null;
-  delta_pct: number | null;
-}
-
-export interface DashboardOverviewResponse {
-  headline_kpis: {
-    latest_run_id: string | null;
-    latest_status: string | null;
-    health_pct: number | null;
-    pass_count: number | null;
-    fail_count: number | null;
-    duration_ms: number | null;
-  };
-  trend_indicators: {
-    health: DashboardTrendIndicator;
-    failed_count: DashboardTrendIndicator;
-    duration: DashboardTrendIndicator;
-  };
-  reliability_rollup: {
-    status_summary: {
-      regressions: number;
-      improvements: number;
-      unchanged: number;
-      unknown: number;
-    };
-    top_highlights: string[];
-  };
-  performance_rollup: {
-    status_summary: {
-      regressions: number;
-      improvements: number;
-      unchanged: number;
-      unknown: number;
-    };
-    top_highlights: string[];
-  };
-  report_links: {
-    allure: { url: string | null; state: "available" | "missing" | "unknown" };
-    locust: { url: string | null; state: "available" | "missing" | "unknown" };
-    behave: { url: string | null; state: "available" | "missing" | "unknown" };
-  };
-  recent_runs: Array<{
-    run_id: string;
-    created_at: number;
-    status: string | null;
-    returncode: number;
-    health_pct: number | null;
-    duration_ms: number | null;
-    run_detail_url: string;
-    compare_url: string | null;
-  }>;
-  data_freshness: {
-    generated_at: number;
-    source_window_size: number;
-    degraded: boolean;
-    notes: string[];
-  };
-}
-
-export interface CycleSummary {
-  name: string;
-  description: string | null;
-  stage_count: number;
-  equipment: string[];
-}
-
-export interface CycleListResponse {
-  items: CycleSummary[];
-  config_path: string | null;
-}
-
-export interface StageSummary {
-  name: string;
-  equipment: string;
-  target_repo: string;
-  args: string[];
-  timeout_s: number | null;
-  workers: number | null;
-}
-
-export interface CycleDetailResponse {
-  name: string;
-  description: string | null;
-  stages: StageSummary[];
-  trigger: { paths: string[]; since_ref: string | null } | null;
-}
-
-export interface HealthReadyResponse {
-  status: "ok" | "degraded";
-  checks: Record<string, { status: string; detail: string | null }>;
-}
+export type HealthReadyResponse = Schemas["HealthReadyResponse"];
 
 export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -363,14 +95,14 @@ export const apiClient = {
     });
     return (await resp.json()) as HealthReadyResponse;
   },
-  listRuns(): Promise<{ items: RunListItem[] }> {
-    return api<{ items: RunListItem[] }>("/api/v1/runs");
+  listRuns(): Promise<RunListResponse> {
+    return api<RunListResponse>("/api/v1/runs");
   },
   getRun(runId: string): Promise<RunDetailResponse> {
     return api<RunDetailResponse>(`/api/v1/runs/${runId}`);
   },
-  getRunReports(runId: string): Promise<{ static_links: Record<string, string>; artifact_links: string[] }> {
-    return api<{ static_links: Record<string, string>; artifact_links: string[] }>(`/api/v1/runs/${runId}/reports`);
+  getRunReports(runId: string): Promise<RunReportsResponse> {
+    return api<RunReportsResponse>(`/api/v1/runs/${runId}/reports`);
   },
   getRunPyramid(runId: string): Promise<RunPyramidResponse> {
     return api<RunPyramidResponse>(`/api/v1/runs/${runId}/pyramid`);
@@ -392,10 +124,8 @@ export const apiClient = {
   getDashboardOverview(recentLimit = 5): Promise<DashboardOverviewResponse> {
     return api<DashboardOverviewResponse>(`/api/v1/dashboard/overview?recent_limit=${recentLimit}`);
   },
-  getDashboardRecentRuns(limit = 10): Promise<{ items: DashboardOverviewResponse["recent_runs"]; generated_at: number }> {
-    return api<{ items: DashboardOverviewResponse["recent_runs"]; generated_at: number }>(
-      `/api/v1/dashboard/runs/recent?limit=${limit}`
-    );
+  getDashboardRecentRuns(limit = 10): Promise<DashboardRecentRunsResponse> {
+    return api<DashboardRecentRunsResponse>(`/api/v1/dashboard/runs/recent?limit=${limit}`);
   },
   getAiConfigStatus(): Promise<AiConfigStatus> {
     return api<AiConfigStatus>("/api/v1/ai/config/status");

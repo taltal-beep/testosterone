@@ -84,6 +84,7 @@ Dependency direction is outer to inner: entry points depend on `testo_core`; not
 - **Host subprocesses by default.** The modern engine runs frameworks directly on the host. Docker execution belongs to the legacy stack and the published `testo-runner` image.
 - **Sequential stages.** Stages run in order on purpose, which keeps logs, events and exit codes deterministic. Parallelism stays inside a framework (for example BehaveX `--workers`).
 - **Allure as the common result format.** Every adapter, including the generic `command` adapter via JUnit import, produces Allure results, so every reporter works for every framework.
+- **One typed contract from Pydantic to React.** `testo_api/models.py` is the only place the HTTP contract is written. `scripts/export_openapi.py` exports FastAPI's OpenAPI schema to `frontend/openapi.json`, and `openapi-typescript` generates `frontend/src/lib/api-schema.ts` from it. CI fails if either file is stale or `tsc` finds a mismatch, so a backend change that breaks the UI fails the build instead of the browser.
 - **Events, not callbacks.** The engine emits typed events and a renderer decides the output. That is how the same run feeds a terminal, a CI log and a browser.
 - **Protocols at the seams.** Framework adapters, persistence backends, repositories, reporters and AI providers are each a small `Protocol` with swappable implementations.
 

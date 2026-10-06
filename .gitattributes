@@ -13,3 +13,7 @@ docs/.obsidian/** linguist-vendored=true
 
 # Lockfiles are dependency state, not authored source.
 frontend/package-lock.json linguist-generated=true
+
+# Generated from the FastAPI app (scripts/export_openapi.py, npm run gen:api).
+frontend/openapi.json linguist-generated=true
+frontend/src/lib/api-schema.ts linguist-generated=true

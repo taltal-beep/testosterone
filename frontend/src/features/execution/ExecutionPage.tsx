@@ -1,6 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 
-import { apiClient } from "../../lib/api-client";
+import { apiClient, type ExecutionRequest } from "../../lib/api-client";
 import { subscribeToExecutionEvents } from "../../lib/sse-client";
 
 const inputClass = "rounded border border-ink-700 bg-ink-950 px-3 py-2 text-sm text-ink-100";
@@ -8,7 +8,7 @@ const labelClass = "grid gap-1 text-xs font-medium text-ink-300";
 
 export function ExecutionPage() {
   const [targetRepo, setTargetRepo] = useState(".");
-  const [testType, setTestType] = useState<"pytest" | "behavex" | "behave_native" | "locust">("pytest");
+  const [testType, setTestType] = useState<ExecutionRequest["runs"][number]["test_type"]>("pytest");
   const [cliArgs, setCliArgs] = useState("-q");
   const [executionId, setExecutionId] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("idle");
@@ -70,7 +70,6 @@ export function ExecutionPage() {
             <option value="pytest">pytest</option>
             <option value="behavex">behavex</option>
             <option value="behave_native">behave_native</option>
-            <option value="locust">locust</option>
           </select>
         </label>
         <label className={labelClass}>
