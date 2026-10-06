@@ -12,12 +12,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `frontend` CI job in `ci.yml`: runs the React dashboard's vitest suite and production build on every PR (the frontend had no CI coverage)
 
 ### Changed
+- Frontend API types are now generated from FastAPI's OpenAPI schema (`frontend/openapi.json` → `frontend/src/lib/api-schema.ts`) instead of being hand-written; CI's `frontend` job runs `tsc` and fails on a stale schema or generated file
 - `ARCHITECTURE.md` now describes the current engine (config → engine → framework adapters → reporting/persistence) with a system diagram, layer table and known structural debt; the original UQO Docker-runner description moved to a "Legacy UQO platform" section
 
 ### Removed
 - Generated run output that was committed by mistake (`artifacts/allure-report*`, `artifacts/allure-results-archive/`, `artifacts/metrics.json`); these paths are now ignored
 
 ### Fixed
+- Frontend typecheck errors surfaced by the generated types: the dashboard no longer shows a "Locust report" link the API never returns, the legacy execution form no longer offers `locust` (the API rejects it), and `StatusPill` handles a `null` status
 - `equipment: behavex`: every BehaveX stage failed at startup with `OSError: AF_UNIX path too long`, because BehaveX points `TEMP` at its output folder and the multiprocessing socket landed there; the adapter now pins `TMPDIR` to the system temp dir
 - Run detail, dashboard and compare showed a wall duration of 0 ms for every cycle run; engine-sourced records store `duration_s`, which the history view now falls back to
 
