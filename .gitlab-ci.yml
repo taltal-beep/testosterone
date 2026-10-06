@@ -83,10 +83,9 @@ run_demo_cycles:
     # Testosterone testing itself. A red self-test fails the pipeline, as it should.
     - set -o pipefail; testo run --cycle self-test --ci | tee self-test.ndjson
     # The fake app fails on purpose, so a non-zero exit is the expected outcome.
-    # It runs twice on the same commit: a test whose outcome changes between the
-    # two runs is flaky, which is exactly what Compare then shows.
-    - testo run --cycle fake-api --ci | tee fake-api-1.ndjson || true
-    - testo run --cycle fake-api --ci | tee fake-api-2.ndjson || true
+    # One run per pipeline: the cached history supplies the previous run, so
+    # Compare shows which tests changed since the last pipeline.
+    - testo run --cycle fake-api --ci | tee fake-api.ndjson || true
     - python scripts/export_static_site.py --out public --site-url "$CI_PAGES_URL"
     # Keep the cached Allure HTML bounded: the 20 newest runs are plenty.
     - ls -1dt static/history/*/ | tail -n +21 | xargs -r rm -rf

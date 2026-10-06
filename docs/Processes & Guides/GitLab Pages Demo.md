@@ -45,7 +45,7 @@ is a layout contract between those two files, pinned by
 `tests/unit/ci/test_gitlab_pages_demo_contract.py`.
 
 ```
-testo run (self-test, fake-api ×2)
+testo run (self-test, fake-api)
   └─ history DB + static/history/<run_id>/ (Allure HTML)
        └─ export_static_site.py ──► public/data/**.json  +  public/history/**
                                         └─ vite build ──► public/  ──► GitLab Pages
@@ -59,7 +59,7 @@ testo run (self-test, fake-api ×2)
 
 | Job | Stage | What it does |
 |-----|-------|--------------|
-| `run_demo_cycles` | `demo` | Installs the package and Playwright's Chromium, clones fake-api into `.demo/fake-api`, runs `self-test` once and `fake-api` twice, exports the site into `public/`. |
+| `run_demo_cycles` | `demo` | Installs the package and Playwright's Chromium, clones fake-api into `.demo/fake-api`, runs `self-test` and `fake-api` once each, exports the site into `public/`. |
 | `pages` | `deploy` | Builds the frontend in static mode and copies it over `public/`, then copies `index.html` to `404.html` so deep links survive a refresh. |
 
 Both cycles live in the root `testosterone.yaml`:
@@ -69,8 +69,11 @@ Both cycles live in the root `testosterone.yaml`:
 | `self-test` | `core-unit` (unit), `core-integration` (integration) | Green. A red self-test fails the pipeline and nothing is published. |
 | `fake-api` | `unit` (unit), `api` (integration), `buttons` Behave (integration), `ui` Playwright (e2e) | Red by design: `broken` and `slow` always fail, `flaky` fails about a third of the time. |
 
-`fake-api` runs twice on the same commit. A test whose outcome changes between
-the two runs is flaky, and that is what Compare shows for that pair.
+Each pipeline runs `fake-api` once. The cached history (below) holds the
+previous pipelines' runs, so Compare puts this run next to the last one and
+shows which tests changed, such as the flaky route passing in one pipeline and
+failing in the next. The very first pipeline has nothing to compare against
+yet.
 
 Run history goes to file-backed SQLite inside the job workspace
 (`DATABASE_URL=sqlite:///$CI_PROJECT_DIR/.ci-history/testo.db`), so the demo
@@ -106,7 +109,7 @@ python -m playwright install chromium
 
 testo run --cycle self-test --ci
 testo run --cycle fake-api --ci || true
-testo run --cycle fake-api --ci || true
+testo run --cycle fake-api --ci || true   # a second run gives Compare a pair locally
 python scripts/export_static_site.py --out public --site-url http://localhost:8090/testo
 
 cd frontend
@@ -164,10 +167,9 @@ mirror token in step 2, and only if you choose that route.
 - `tests/unit/ci/test_gitlab_pages_demo_contract.py` asserts the cycles exist,
   that the fake-api cycle points where the pipeline clones it, and that only
   fake-api is allowed to fail.
-- Known limitation: two runs of the same cycle share one `artifacts/<cycle>/`
-  directory, which is also each run's snapshot, so Compare's **Test-Level
-  Changes** between them comes back empty (stage and count deltas are correct).
-  That is an engine issue, not a demo one.
+- Compare's **Test-Level Changes** needs each run's own copy of its per-test
+  results under `static/history/<run_id>/artifacts/` (PR #68). That folder is
+  in the history cache, and the prune step trims it with the reports.
 - Adding a UI page that calls a new endpoint means exporting it in
   `scripts/export_static_site.py` *and* mapping it in `static-backend.ts`,
   otherwise the demo shows that panel's error state.
