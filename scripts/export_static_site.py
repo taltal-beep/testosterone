@@ -200,7 +200,7 @@ class Exporter:
 
     def copy_reports(self, runs: list[dict[str, Any]]) -> int:
         """Copy ``static/history/<run_id>/`` for each exported run into the site."""
-        from testo_core.run_history import STATIC_HISTORY_ROOT
+        from testo_core.paths import STATIC_HISTORY_ROOT
 
         copied = 0
         for item in runs:
@@ -256,7 +256,8 @@ class Exporter:
                 "latest_run_id": runs[0]["run_id"],
                 "delta_pairs": deltas,
                 "commit": os.getenv("CI_COMMIT_SHA") or _git("rev-parse", "HEAD"),
-                "commit_ref": os.getenv("CI_COMMIT_REF_NAME") or _git("rev-parse", "--abbrev-ref", "HEAD"),
+                "commit_ref": os.getenv("CI_COMMIT_REF_NAME")
+                or _git("rev-parse", "--abbrev-ref", "HEAD"),
                 "pipeline_url": os.getenv("CI_PIPELINE_URL"),
                 "project_url": os.getenv("CI_PROJECT_URL"),
             },
@@ -270,11 +271,20 @@ class Exporter:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--out", default="public", help="Output directory for the static site (default: public).")
-    parser.add_argument("--runs", type=int, default=5, help="How many recent runs to export (default: 5).")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument(
-        "--delta-pairs", type=int, default=12, help="Maximum run comparisons to export (default: 12)."
+        "--out", default="public", help="Output directory for the static site (default: public)."
+    )
+    parser.add_argument(
+        "--runs", type=int, default=5, help="How many recent runs to export (default: 5)."
+    )
+    parser.add_argument(
+        "--delta-pairs",
+        type=int,
+        default=12,
+        help="Maximum run comparisons to export (default: 12).",
     )
     parser.add_argument(
         "--site-url",

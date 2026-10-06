@@ -72,7 +72,9 @@ def test_get_cycle_detail_resolves_stages(client: TestClient, config_path: Path)
     assert body["trigger"] is None
 
 
-def test_get_unknown_cycle_is_404_with_available_names(client: TestClient, config_path: Path) -> None:
+def test_get_unknown_cycle_is_404_with_available_names(
+    client: TestClient, config_path: Path
+) -> None:
     resp = client.get("/api/v1/cycles/nope", params={"config_path": str(config_path)})
     assert resp.status_code == 404
     error = resp.json()["error"]

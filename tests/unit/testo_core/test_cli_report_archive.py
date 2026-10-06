@@ -35,7 +35,9 @@ def _minimal_cycle_artifacts(base: Path, plan: str = "cyc") -> bytes:
     return blob
 
 
-def test_report_list_empty(runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_report_list_empty(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("DATABASE_URL", "sqlite:///:memory:")
     reset_repository_cache()

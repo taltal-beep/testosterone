@@ -28,7 +28,7 @@ rg 'TODO|FIXME|HACK' \
 | `tests/` | **None** |
 | `artifacts/`, `reports/` | Vendored JS only (e.g. Bootstrap) — **ignore** |
 
-The backlog below is **inferred technical debt**: exception breadth, dual execution stacks, exit-code drift, and documented future work in module docstrings.
+The backlog below is **inferred technical debt**: exception breadth, (formerly) dual execution stacks, exit-code drift, and documented future work in module docstrings.
 
 ---
 
@@ -50,9 +50,10 @@ Signal deaths other than timeout (e.g. SIGKILL rc **137**) still classify as exi
 
 ### 2. Dual execution stacks
 
-- [x] **Partially resolved 2026-06-25** — `EngineExitCode` and `classify_exit_code` are now single-sourced in `engine/exit_codes.py`; headless engine imports and re-exports. Remaining: `RunBackend` protocol extraction (P3, post-v1.0).
+- [x] **Partially resolved 2026-06-25** — `EngineExitCode` and `classify_exit_code` single-sourced in `engine/exit_codes.py`.
+- [x] **Resolved 2026-10-06** — the legacy stack was removed instead of being put behind a `RunBackend` protocol: `HeadlessEngineService`, `runners.py`, `command_builders.py`, the pluggy `orchestrator.py`/`specs.py`, the legacy `uqo run --config` CLI, the API's `ExecutionManager` + `/api/v1/executions`, and the Streamlit UI. Its unique features moved onto the engine path (ad-hoc runs, CI provenance, failure context, metrics push). See [[Deep Dive - Execution Logic#Removed: the UQO headless / Docker path]].
 
-**Evidence**
+**Evidence (before)**
 
 | Modern | Legacy |
 |--------|--------|
@@ -60,13 +61,9 @@ Signal deaths other than timeout (e.g. SIGKILL rc **137**) still classify as exi
 | `testo_core/engine/executor.py` | `testo_core/runners.py` (Docker streaming) |
 | `testo run` | `uqo run` |
 
-**Risk** (mitigated)
+**Remaining**
 
-Exit code drift is eliminated. Behavioral drift between run backends remains but is bounded by contract tests (`test_exit_code_consolidation.py`).
-
-**Recommendation**
-
-Long-term: extract a shared `RunBackend` protocol with host and Docker implementations.
+`testo_core/history/` still reads pre-v1.1 records (per-framework `test_kind`, MinIO snapshot prefixes). The MinIO reads are isolated in `history/s3_snapshots.py`; once those records age out that module can be deleted.
 
 ---
 
@@ -76,7 +73,7 @@ Long-term: extract a shared `RunBackend` protocol with host and Docker implement
 
 **Evidence**
 
-- `testo_core/cli/runner.py` — `threading.Thread(..., daemon=True)` for `try_persist_cycle_report`
+- `testo_core/services/cycle_run.py` (was `cli/runner.py`) — `threading.Thread(..., daemon=True)` for `try_persist_cycle_report`
 - CLI help text warns archive may not finish before exit
 
 **Risk**
@@ -110,7 +107,7 @@ Default to synchronous archive in CI (`--ci` implies no `--async-report-db`), or
 **Evidence** (non-exhaustive)
 
 - `testo_core/runners.py` — many bare handlers around Docker/streaming
-- `testo_core/run_history.py` — S3/DB upload paths
+- `testo_core/history/s3_snapshots.py` — MinIO lookups degrade to empty results
 - `testo_core/reporting/reporters/reportportal_client.py`, `extent_reporter.py`
 - `testo_core/services/headless_engine.py`, `multi_run.py`, `event_drain.py`
 
@@ -168,20 +165,33 @@ Add `reporters_required: true` config or fail the run with exit **3** when a con
 
 ---
 
-### 8a. mypy baseline (43 errors, 14 files) — advisory in CI, not yet blocking
+### 8a. mypy baseline — ✅ resolved 2026-10-06, blocking in CI
 
-- **Added 2026-07-02** — `mypy` landed in `pyproject.toml` (`[tool.mypy]`) and as an
-  advisory step in `.github/workflows/ci.yml`'s `format` job (`continue-on-error: true`).
-  `ruff check .` is separately clean and blocking in the same job.
+- **Added 2026-07-02** — `mypy` landed in `pyproject.toml` (`[tool.mypy]`) as an advisory
+  step in `ci.yml`'s `format` job. By 2026-10-06 the baseline had grown to 59 errors in 24 files.
+- **Resolved 2026-10-06** — `mypy testo_core` is clean and blocking; `ruff format --check`
+  is blocking too, after a one-time repo-wide `ruff format`.
 
-**Evidence** (by file, `mypy testo_core`)
+What the fixes were:
 
-| File | Errors | Nature |
-|------|--------|--------|
+| Cluster | Fix |
+|---------|-----|
+| Reporters typed `console: object` and silenced every `.print` with `type: ignore` | Typed as `rich.console.Console \| None` |
+| `reporting/allure_delta_transform.py`, `allure_history_serve.py`, `allure_summary_widgets.py` imported functions that no longer exist (the modules could not be imported at all) and nothing called them | Deleted as dead code |
+| `cli/commands/report.py` passed `Path \| None` where `Path` was required | Narrowed before use |
+| SQLModel `order_by(Model.col.desc())` on `datetime` columns | `col(Model.col).desc()` |
+| `dataclasses.replace(**dict[str, object])`, `int(object)`, `list[object]` passed to Rich, untyped context-manager slot, composite backend typed `list[object]` | Correct annotations or `isinstance` narrowing |
+| Legacy Docker stack (`runners.py`, `services/headless_engine.py`, `cli/legacy.py`, 19 errors) | Excluded via `[[tool.mypy.overrides]]` because the modules are being removed; delete the override with them |
+
+Still open: `mypy testo_api` reports 22 errors, mostly in `cycle_execution_manager.py` and
+`routes/ai.py`. Fix those once the CycleRunService refactor and the legacy-stack removal
+have landed (both rewrite those files), then add `testo_api` to the CI step.
+
+------|--------|--------|
 | `testo_core/runners.py` | 17 | `callable?[Any, None]` not callable (13×); redefined names; container/context-manager type drift |
 | `testo_core/services/ai/integration_settings.py` | 7 | `dataclasses.replace(**dict[str, object])` can't narrow to the per-field literal/str/int/bool types |
 | `testo_core/cli/commands/report.py` | 3 | `Path \| None` passed where `Path` expected — likely a real missing-None-check |
-| `testo_core/run_history.py`, `repository/report_archive_repository.py`, `repository/models.py`, `repository/factory.py`, `repository/adapters.py` | 2 each | `datetime \| None` attribute access, redefined names, repository adapter return-type union not narrowed |
+| `repository/report_archive_repository.py`, `repository/models.py`, `repository/factory.py`, `repository/adapters.py` | 2 each | `datetime \| None` attribute access, redefined names, repository adapter return-type union not narrowed |
 | `services/headless_engine.py`, `reporting/exporter.py`, `persistence/composite.py`, `engine/executor.py`, `cli/ui/renderers.py`, `cli/legacy.py` | 1 each | assorted union-narrowing and `object`-typed attribute access |
 
 **Risk**
@@ -308,7 +318,6 @@ Functions/modules worth extra care when refactoring:
 | Location | Concern |
 |----------|---------|
 | `testo_core/runners.py` | Large Docker streaming loop; many exception handlers |
-| `testo_core/run_history.py` | Postgres + S3 sync; transactional edge cases |
 | `testo_core/config/loader.py` | Legacy schema compatibility paths |
 | `testo_core/cli/runner.py` | `execute_plan_command` branches (`all`, tags, dry-run, triggers) |
 | `testo_core/services/headless_engine.py` | Multi-run aggregation and ghost JSON contract |

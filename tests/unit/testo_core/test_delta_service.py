@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
+from testo_core.history.views import CompletedRunView
 from testo_core.repository.models import RunStatus
-from testo_core.run_history import CompletedRunView
 from testo_core.services.delta_service import (
     DeltaComparisonService,
     IncompatibleRunDataError,
@@ -58,8 +58,12 @@ def _service(rows: dict[str, CompletedRunView | None]) -> DeltaComparisonService
 def test_compare_runs_classifies_regressions_and_improvements() -> None:
     service = _service(
         {
-            "current": _view(run_id="current", failed=3, broken=1, wall_duration_ms=1300.0, health_pct=90.0),
-            "baseline": _view(run_id="baseline", failed=1, broken=0, wall_duration_ms=1000.0, health_pct=96.0),
+            "current": _view(
+                run_id="current", failed=3, broken=1, wall_duration_ms=1300.0, health_pct=90.0
+            ),
+            "baseline": _view(
+                run_id="baseline", failed=1, broken=0, wall_duration_ms=1000.0, health_pct=96.0
+            ),
         }
     )
     result = service.compare_runs(current_run_id="current", baseline_run_id="baseline")
@@ -148,13 +152,25 @@ def test_compare_runs_matches_stage_deltas_by_name() -> None:
             "current": _view(
                 run_id="current",
                 stage_health=[
-                    {"name": "pytest-sample", "framework": "pytest", "total_tests": 10, "passed": 8, "health_pct": 80.0}
+                    {
+                        "name": "pytest-sample",
+                        "framework": "pytest",
+                        "total_tests": 10,
+                        "passed": 8,
+                        "health_pct": 80.0,
+                    }
                 ],
             ),
             "baseline": _view(
                 run_id="baseline",
                 stage_health=[
-                    {"name": "pytest-sample", "framework": "pytest", "total_tests": 10, "passed": 10, "health_pct": 100.0}
+                    {
+                        "name": "pytest-sample",
+                        "framework": "pytest",
+                        "total_tests": 10,
+                        "passed": 10,
+                        "health_pct": 100.0,
+                    }
                 ],
             ),
         }
@@ -173,7 +189,9 @@ def test_compare_runs_stage_delta_unknown_when_stage_missing_on_one_side() -> No
         {
             "current": _view(
                 run_id="current",
-                stage_health=[{"name": "new-stage", "total_tests": 5, "passed": 5, "health_pct": 100.0}],
+                stage_health=[
+                    {"name": "new-stage", "total_tests": 5, "passed": 5, "health_pct": 100.0}
+                ],
             ),
             "baseline": _view(run_id="baseline", stage_health=[]),
         }
@@ -197,4 +215,3 @@ def test_compare_runs_no_stage_deltas_when_no_stage_health() -> None:
     )
     result = service.compare_runs(current_run_id="current", baseline_run_id="baseline")
     assert result.stage_deltas == ()
-

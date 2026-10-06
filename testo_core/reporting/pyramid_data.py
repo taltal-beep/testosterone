@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from testo_core.config.schema import Stage
+from testo_core.history.views import CompletedRunView
 from testo_core.reporting.pyramid_viz import PyramidModel
-from testo_core.run_history import CompletedRunView
 
 
 def build_pyramid_model(run: CompletedRunView, stages: tuple[Stage, ...]) -> PyramidModel:

@@ -33,7 +33,9 @@ def find_repo_root(*, start: Path | None = None) -> Path:
     for directory in (cur, *cur.parents):
         if any((directory / name).is_file() for name in ALLURE_CONFIG_NAMES):
             return directory
-        if (directory / "package.json").is_file() and (directory / "node_modules" / ".bin" / "allure").is_file():
+        if (directory / "package.json").is_file() and (
+            directory / "node_modules" / ".bin" / "allure"
+        ).is_file():
             return directory
     return ORCHESTRATOR_ROOT
 

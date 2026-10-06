@@ -205,16 +205,20 @@ def _extract_duration_ms(data: dict) -> int:
 
 
 def _to_int(value: object) -> int:
+    if not isinstance(value, (int, float, str)):
+        return 0
     try:
-        return int(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+        return int(value)
+    except ValueError:
         return 0
 
 
 def _to_int_or_none(value: object) -> int | None:
+    if not isinstance(value, (int, float, str)):
+        return None
     try:
-        return int(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+        return int(value)
+    except ValueError:
         return None
 
 

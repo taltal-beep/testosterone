@@ -100,7 +100,9 @@ def get_dashboard_recent_runs(limit: int = 10) -> DashboardRecentRunsResponse:
         items = service.get_recent_runs(limit=limit)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return DashboardRecentRunsResponse(items=[_to_recent_run_item(item) for item in items], generated_at=time.time())
+    return DashboardRecentRunsResponse(
+        items=[_to_recent_run_item(item) for item in items], generated_at=time.time()
+    )
 
 
 def _to_recent_run_item(item: DashboardRecentRun) -> DashboardRecentRunItem:

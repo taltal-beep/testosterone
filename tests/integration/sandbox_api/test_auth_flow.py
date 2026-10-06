@@ -20,7 +20,9 @@ def test_login_then_secure_then_admin(fastapi_client, auth_headers: dict[str, st
     assert isinstance(claims.get("sub"), str)
 
 
-@pytest.mark.parametrize("auth_header", [None, "", "Bearer", "Bearer ", "Basic abc", "bearer not-a-jwt"])
+@pytest.mark.parametrize(
+    "auth_header", [None, "", "Bearer", "Bearer ", "Basic abc", "bearer not-a-jwt"]
+)
 def test_secure_rejects_invalid_bearer(auth_header: str | None, fastapi_client) -> None:
     headers = {}
     if auth_header is not None:
@@ -28,4 +30,3 @@ def test_secure_rejects_invalid_bearer(auth_header: str | None, fastapi_client) 
     with step("GET /secure invalid bearer"):
         r = fastapi_client.get("/secure", headers=headers)
     assert r.status_code == 401
-

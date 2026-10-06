@@ -63,7 +63,8 @@ def try_inject_prior_history(
                 if not prior_root.is_dir():
                     continue
                 copied_any = (
-                    any(_copy_matching_history(prior_root, st.results_dir) for st in results.stages) or copied_any
+                    any(_copy_matching_history(prior_root, st.results_dir) for st in results.stages)
+                    or copied_any
                 )
 
         if console and copied_any:

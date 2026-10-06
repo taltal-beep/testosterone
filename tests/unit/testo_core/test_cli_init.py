@@ -17,7 +17,9 @@ def runner() -> CliRunner:
     return CliRunner()
 
 
-def test_init_writes_loadable_config(runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_init_writes_loadable_config(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     out = tmp_path / "testosterone.yaml"
     result = runner.invoke(
@@ -49,7 +51,9 @@ def test_init_includes_database_url_when_provided(
     assert "sqlite:///cli_init.db" in text
 
 
-def test_init_aborts_without_overwrite(runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_init_aborts_without_overwrite(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     out = tmp_path / "testosterone.yaml"
     out.write_text("version: 1\n", encoding="utf-8")
@@ -59,7 +63,9 @@ def test_init_aborts_without_overwrite(runner: CliRunner, tmp_path: Path, monkey
     assert out.read_text(encoding="utf-8") == "version: 1\n"
 
 
-def test_init_overwrite_confirmed(runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_init_overwrite_confirmed(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     out = tmp_path / "testosterone.yaml"
     out.write_text("version: 1\n", encoding="utf-8")

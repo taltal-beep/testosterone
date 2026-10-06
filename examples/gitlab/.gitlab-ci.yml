@@ -1,8 +1,7 @@
 include:
-  - project: "ariel-evn/unified-quality-orchestration-reporting-dashboard"
+  - project: "taltal-beep/testosterone"
     file: "/ci/gitlab/testo.gitlab-ci.yml"
 
 variables:
-  UQO_CONFIG_PATH: ".uqo/config.yaml"
-  UQO_STREAM_JSON: "true"
-  UQO_PERSIST: "true"
+  TESTO_CYCLE: "sample-pytests"
+  TESTO_PERSIST: "true"

@@ -132,9 +132,7 @@ def test_error_endpoint_returns_500(client: TestClient) -> None:
         {"x": "y", "z": [1, 2]},
     ],
 )
-def test_submit_echoes_payload(
-    client: TestClient, payload: dict[str, Any]
-) -> None:
+def test_submit_echoes_payload(client: TestClient, payload: dict[str, Any]) -> None:
     r = client.post("/submit", json=payload)
     assert r.status_code == 200
     body = r.json()
@@ -233,9 +231,7 @@ def test_flaky_fails_when_random_below_threshold(
 
 
 @pytest.mark.flow
-def test_chaos_normal_path(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_chaos_normal_path(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mock_api.random, "random", lambda: 0.99)
     r = client.get("/chaos")
     assert r.status_code == 200
@@ -256,18 +252,14 @@ def test_chaos_high_latency_path(
 
 
 @pytest.mark.flow
-def test_chaos_unauthorized_path(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_chaos_unauthorized_path(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mock_api.random, "random", lambda: 0.20)
     r = client.get("/chaos")
     assert r.status_code == 401
 
 
 @pytest.mark.flow
-def test_chaos_server_error_path(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_chaos_server_error_path(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mock_api.random, "random", lambda: 0.40)
     r = client.get("/chaos")
     assert r.status_code == 500

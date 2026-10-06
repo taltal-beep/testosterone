@@ -114,8 +114,8 @@ function AdvancedMenu() {
           role="menu"
           className="absolute right-0 mt-1 w-48 overflow-hidden rounded-md border border-ink-700 bg-ink-900 py-1 shadow-xl"
         >
-          <MenuLink to="/advanced/execution" onClick={() => setOpen(false)}>
-            Legacy Execution
+          <MenuLink to="/quick-run" onClick={() => setOpen(false)}>
+            Quick Run
           </MenuLink>
           <MenuLink to="/settings/ai" onClick={() => setOpen(false)}>
             AI Settings

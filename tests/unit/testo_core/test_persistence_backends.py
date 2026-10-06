@@ -107,7 +107,9 @@ class TestJsonBackend:
         assert data["total_tests"] == 3
         assert data["passed"] == 2
 
-    def test_health_pct_falls_back_to_binary_estimate_when_no_allure_results(self, tmp_path: Path) -> None:
+    def test_health_pct_falls_back_to_binary_estimate_when_no_allure_results(
+        self, tmp_path: Path
+    ) -> None:
         backend = JsonBackend(tmp_path)
         result = _make_plan_result(exit_code=EngineExitCode.DOMAIN_FAILURE)
         backend.persist(result)
@@ -138,7 +140,9 @@ class TestDbBackend:
         assert call_kwargs["metadata"]["source"] == "engine"
 
     @patch("testo_core.db.get_repository")
-    def test_health_pct_is_real_pass_rate_not_binary_returncode(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:
+    def test_health_pct_is_real_pass_rate_not_binary_returncode(
+        self, mock_get_repo: MagicMock, tmp_path: Path
+    ) -> None:
         mock_repo = MagicMock()
         mock_get_repo.return_value = mock_repo
 
@@ -179,7 +183,9 @@ class TestDbBackend:
         assert run_id is None
 
     @patch("testo_core.db.get_repository")
-    def test_returns_persisted_run_id_on_success(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:
+    def test_returns_persisted_run_id_on_success(
+        self, mock_get_repo: MagicMock, tmp_path: Path
+    ) -> None:
         mock_repo = MagicMock()
         fake_record = MagicMock()
         fake_record.id = "abc-123"
@@ -193,8 +199,10 @@ class TestDbBackend:
         assert run_id == "abc-123"
 
     @patch("testo_core.db.get_repository")
-    def test_sets_local_snapshot_dir_under_orchestrator_root(self, mock_get_repo: MagicMock) -> None:
-        from testo_core.persistence.db_backend import ORCHESTRATOR_ROOT
+    def test_sets_local_snapshot_dir_under_orchestrator_root(
+        self, mock_get_repo: MagicMock
+    ) -> None:
+        from testo_core.paths import ORCHESTRATOR_ROOT
 
         mock_repo = MagicMock()
         mock_get_repo.return_value = mock_repo
@@ -208,7 +216,9 @@ class TestDbBackend:
         assert metadata["snapshot_dir"] == "artifacts/smoke"
 
     @patch("testo_core.db.get_repository")
-    def test_snapshot_dir_none_when_outside_orchestrator_root(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:
+    def test_snapshot_dir_none_when_outside_orchestrator_root(
+        self, mock_get_repo: MagicMock, tmp_path: Path
+    ) -> None:
         mock_repo = MagicMock()
         mock_get_repo.return_value = mock_repo
 

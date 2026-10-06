@@ -4,7 +4,7 @@
 
 This note maps how **Testo** (`testo run`) initializes a test session, executes it stage-by-stage on the host, preserves state, and tears down. It is the implementation companion to [[Architecture Overview]] and [[QA Strategies]].
 
-The default path uses **host subprocesses** — no Docker. The legacy **UQO headless** stack (`uqo run`, `testo_core/runners.py`, `HeadlessEngineService`) is documented briefly at the end.
+Every run uses **host subprocesses** — no Docker. The UQO headless stack that existed until v1.1 is summarized at the end.
 
 ---
 
@@ -29,6 +29,7 @@ The default path uses **host subprocesses** — no Docker. The legacy **UQO head
 sequenceDiagram
   participant CLI as testo_run
   participant Runner as cli_runner
+  participant Svc as CycleRunService
   participant Config as config_loader
   participant Trig as triggers
   participant Orch as orchestrator
@@ -36,9 +37,11 @@ sequenceDiagram
   participant FW as framework_adapter
 
   CLI->>Runner: execute_plan_command
-  Runner->>Config: discover_and_load / resolve_stages
-  Runner->>Trig: evaluate_cycle_trigger optional
-  Runner->>Orch: run_plan
+  Runner->>Config: discover_and_load / resolve_plan
+  Runner->>Svc: run(cfg, plan, renderer, options)
+  Svc->>Config: resolve_stages_for_plan
+  Svc->>Trig: evaluate_cycle_trigger optional
+  Svc->>Orch: run_plan
   loop each stage
     Orch->>Exec: run_stage
     Exec->>FW: build_argv
@@ -46,7 +49,7 @@ sequenceDiagram
     Exec-->>Orch: StageResult
   end
   Orch->>Orch: plan_result.json + events.ndjson
-  Runner->>Runner: reporters + optional DB archive
+  Svc->>Svc: reporters + optional DB archive + trigger snapshot
 ```
 
 ### Phase map
@@ -56,11 +59,11 @@ sequenceDiagram
 | 1. CLI parse | `testo_core/cli/commands/run.py` | Validates flags; defers heavy imports |
 | 2. Config load | `testo_core/config/loader.py` | `discover_and_load()` → `TestosteroneConfig` |
 | 3. Plan resolve | `testo_core/config/resolver.py` | `resolve_plan()` / `resolve_stages_for_plan()` |
-| 4. Trigger gate | `testo_core/triggers.py` | Optional skip (exit 0) unless `--force` |
+| 4. Trigger gate | `testo_core/services/cycle_run.py` → `triggers.py` | Optional skip (exit 0) unless `--force` |
 | 5. Renderer pick | `testo_core/cli/runner.py` | Buffered / Stream / CI (NDJSON) |
 | 6. Engine run | `testo_core/engine/orchestrator.py` | `run_plan()` — sequential stages |
 | 7. Subprocess | `testo_core/engine/executor.py` | `run_stage()` per stage |
-| 8. Post-run | `testo_core/cli/runner.py` | Reporters, trigger snapshot, DB archive |
+| 8. Post-run | `testo_core/services/cycle_run.py` | Reporters, native report snapshot, DB archive, trigger snapshot |
 
 ---
 
@@ -74,6 +77,8 @@ sequenceDiagram
 - **Single cycle** — `resolve_plan(cfg, plan_name=...)`.
 - **`--tag`** — filters cycles when using `all`, or validates tag membership for one cycle.
 - **`--dry-run`** — prints resolved argv/cwd table (or NDJSON `dry_run_stage` events); no subprocesses.
+
+Each resolved cycle is handed to `CycleRunService.run()` (`testo_core/services/cycle_run.py`), which owns the trigger gate, the engine call and every post-run step. The API's `testo_api/cycle_execution_manager.py` calls the same service (for named cycles and for ad-hoc one-stage runs built by `single_stage_plan()`), so a run started from the dashboard goes through exactly the same steps; the two callers differ only in the renderer and the listener that presents trigger/archive messages (Rich panels or NDJSON on stdout for the CLI, lines in `events.ndjson` for the API).
 
 Config errors return exit code **2** (`EngineExitCode.INVALID_INPUT`). In `--ci` mode, errors emit:
 
@@ -315,16 +320,18 @@ Stage timeouts emit **124** after `_terminate()`; orchestrator sets `internal_fa
 
 ---
 
-## Legacy UQO / Docker path (contrast)
+## Removed: the UQO headless / Docker path
 
-| Aspect | `testo run` (modern) | `uqo run` / `HeadlessEngineService` |
-|--------|----------------------|-------------------------------------|
-| Runtime | Host subprocess | Docker container on `uqo-net` |
-| Module | `testo_core/engine/*` | `testo_core/runners.py`, `services/headless_engine.py` |
-| Output | Rich / NDJSON / artifacts | Ghost JSON / NDJSON + Postgres + MinIO |
-| Timeout | `stage.timeout_s` | `UQO_CONTAINER_TIMEOUT_S` |
+Until v1.1 a second stack ran beside the engine: `uqo run --config` and the API's `/api/v1/executions` called `HeadlessEngineService`, which ran each framework in a one-off Docker container via `testo_core/runners.py` and wrote history through `run_history.record_completed_run`. It duplicated trigger-less execution, persistence and exit-code logic, so behaviour drifted between surfaces. It was removed; what only it provided now lives on the engine path:
 
-Platform compose stack (Postgres, MinIO, Allure Server) is described in repo `ARCHITECTURE.md`, not required for default `testo run`.
+| Former legacy-only feature | Now |
+|----------------------------|-----|
+| Run one framework without a cycle | `POST /api/v1/adhoc-executions` → `single_stage_plan()` → `CycleRunService` |
+| CI provenance on run records | `DbBackend` + `services/ci_provenance.py` |
+| Failed cases / traceback / log tail for AI summaries | `persistence/failure_context.py` via `DbBackend` |
+| InfluxDB / Prometheus push | `integrations.push_run_metrics_if_configured()` after every cycle |
+
+The compose stack (Postgres, MinIO, Allure Server) is described in repo `ARCHITECTURE.md` and is not required for `testo run`.
 
 ### Official documentation
 

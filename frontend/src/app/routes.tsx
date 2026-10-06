@@ -5,7 +5,7 @@ import { ComparePage } from "../features/compare/ComparePage";
 import { CycleDetailPage } from "../features/cycles/CycleDetailPage";
 import { CyclesPage } from "../features/cycles/CyclesPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
-import { ExecutionPage } from "../features/execution/ExecutionPage";
+import { QuickRunPage } from "../features/execution/QuickRunPage";
 import { HistoryPage } from "../features/history/HistoryPage";
 import { RunDetailPage } from "../features/run-detail/RunDetailPage";
 import { AIIntegrationSettingsPage } from "../features/settings/AIIntegrationSettingsPage";
@@ -40,8 +40,8 @@ const routes = [
         element: <ComparePage />
       },
       {
-        path: "advanced/execution",
-        element: <ExecutionPage />
+        path: "quick-run",
+        element: <QuickRunPage />
       },
       {
         path: "settings/ai",
@@ -58,7 +58,11 @@ const routes = [
       },
       {
         path: "execution",
-        element: <Navigate to="/advanced/execution" replace />
+        element: <Navigate to="/quick-run" replace />
+      },
+      {
+        path: "advanced/execution",
+        element: <Navigate to="/quick-run" replace />
       }
     ]
   }

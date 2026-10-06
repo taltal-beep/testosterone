@@ -163,16 +163,19 @@ def build_teams_payload(
     if channel:
         body.insert(
             1,
-            {"type": "TextBlock", "text": f"Channel: {channel}", "isSubtle": True, "spacing": "Small"},
+            {
+                "type": "TextBlock",
+                "text": f"Channel: {channel}",
+                "isSubtle": True,
+                "spacing": "Small",
+            },
         )
 
     if report_url:
         body.append(
             {
                 "type": "ActionSet",
-                "actions": [
-                    {"type": "Action.OpenUrl", "title": "View report", "url": report_url}
-                ],
+                "actions": [{"type": "Action.OpenUrl", "title": "View report", "url": report_url}],
             }
         )
 

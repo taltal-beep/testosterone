@@ -5,9 +5,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from testo_core.reporting.collector import CollectedResults
+
+if TYPE_CHECKING:
+    from rich.console import Console
 
 ReportLayout = Literal["cycle", "docker_run"]
 
@@ -55,6 +58,6 @@ class BaseReporter(ABC):
         *,
         results: CollectedResults,
         context: ReportContext,
-        console: object | None = None,
+        console: Console | None = None,
     ) -> ReporterResult:
         """Consume collected artifacts and emit or upload a report."""

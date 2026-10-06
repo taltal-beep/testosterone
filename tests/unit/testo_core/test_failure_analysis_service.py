@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
+from testo_core.history.views import CompletedRunView
 from testo_core.repository.models import RunStatus
-from testo_core.run_history import CompletedRunView
 from testo_core.services.ai import AiGenerationResult, ProviderUnavailableError
 from testo_core.services.ai.integration_settings import InMemoryAiSettingsStore
 from testo_core.services.ai.provider_base import (
@@ -19,7 +19,9 @@ class _FakeProvider:
     provider_name = "openai"
     model = "gpt-4o-mini"
 
-    def __init__(self, *, text: str = "The pytest suite failed.", exc: Exception | None = None) -> None:
+    def __init__(
+        self, *, text: str = "The pytest suite failed.", exc: Exception | None = None
+    ) -> None:
         self._text = text
         self._exc = exc
         self.requests: list[AiGenerationRequest] = []
@@ -75,7 +77,9 @@ def test_generate_summary_returns_disabled_fallback() -> None:
     assert summary.error_code == "ai_feature_disabled"
 
 
-def test_force_refresh_failure_preserves_cached_available_summary(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_force_refresh_failure_preserves_cached_available_summary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     store = InMemoryAiSettingsStore()
     store.update(enabled=True, api_key_source="runtime_input", runtime_api_key="runtime-token")
     cached_summary = {
@@ -150,7 +154,9 @@ def test_generate_summary_persists_provider_result(monkeypatch: pytest.MonkeyPat
     assert stored["context_stats"]["prompt_chars"] > 0
 
 
-def test_generate_summary_reuses_stored_summary_without_force_refresh(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_summary_reuses_stored_summary_without_force_refresh(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     provider = _FakeProvider(text="Fresh summary should not be used.")
     state: dict[str, dict] = {
         "md": {
@@ -266,7 +272,9 @@ def test_generate_summary_persists_provider_failure_fallback(
 # --- PR #24 tests: cache hit/bypass, error redaction, get_summary ---
 
 
-def test_generate_summary_returns_cached_summary_without_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_summary_returns_cached_summary_without_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     state: dict[str, dict] = {
         "md": {
             "ai_summary_v1": {
@@ -305,7 +313,9 @@ def test_generate_summary_returns_cached_summary_without_provider(monkeypatch: p
 
 def test_generate_summary_force_refresh_bypasses_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     store = InMemoryAiSettingsStore()
-    store.update(enabled=True, api_key_source="runtime_input", runtime_api_key="sk-test-runtime-token")
+    store.update(
+        enabled=True, api_key_source="runtime_input", runtime_api_key="sk-test-runtime-token"
+    )
     state: dict[str, dict] = {
         "md": {
             "ai_summary_v1": {
@@ -328,9 +338,13 @@ def test_generate_summary_force_refresh_bypasses_cache(monkeypatch: pytest.Monke
     class _Provider:
         def generate(self, request):  # noqa: ANN001,ANN202
             calls.append(request.prompt)
-            return AiGenerationResult(text="Fresh root cause", provider="openai", model="gpt-4o-mini")
+            return AiGenerationResult(
+                text="Fresh root cause", provider="openai", model="gpt-4o-mini"
+            )
 
-    monkeypatch.setattr("testo_core.services.failure_analysis_service.build_ai_provider", lambda **_: _Provider())
+    monkeypatch.setattr(
+        "testo_core.services.failure_analysis_service.build_ai_provider", lambda **_: _Provider()
+    )
     service = FailureAnalysisService(
         settings_store=store,
         run_lookup=lambda _: _failed_run(),
@@ -350,14 +364,18 @@ def test_generate_summary_provider_error_redacts_exception_before_persisting(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     store = InMemoryAiSettingsStore()
-    store.update(enabled=True, api_key_source="runtime_input", runtime_api_key="sk-test-runtime-token")
+    store.update(
+        enabled=True, api_key_source="runtime_input", runtime_api_key="sk-test-runtime-token"
+    )
     state: dict[str, dict] = {"md": {"error_message": "failed assertion"}}
 
     class _Provider:
         def generate(self, request):  # noqa: ANN001,ANN202
             raise ProviderUnavailableError("upstream failed with Bearer sk-test-secret-token")
 
-    monkeypatch.setattr("testo_core.services.failure_analysis_service.build_ai_provider", lambda **_: _Provider())
+    monkeypatch.setattr(
+        "testo_core.services.failure_analysis_service.build_ai_provider", lambda **_: _Provider()
+    )
     service = FailureAnalysisService(
         settings_store=store,
         run_lookup=lambda _: _failed_run(),

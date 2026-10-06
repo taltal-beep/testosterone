@@ -122,7 +122,9 @@ def generate_allure_html(
         return False, f"Results dir does not exist: {results_dir}", None
 
     # Each report MUST be generated from an isolated input directory.
-    use_inputs = [results_dir] if input_dirs is None else [p.expanduser().resolve() for p in input_dirs]
+    use_inputs = (
+        [results_dir] if input_dirs is None else [p.expanduser().resolve() for p in input_dirs]
+    )
     for d in use_inputs:
         d.mkdir(parents=True, exist_ok=True)
 
@@ -143,7 +145,9 @@ def generate_allure_html(
     counts = {p.name: _count_results(p) for p in use_inputs}
     print("[allure] input counts: " + " ".join(f"{k}={v}" for k, v in counts.items()))
     if "behavex" in counts and counts["behavex"] == 0:
-        print(f"[allure] WARNING: no BehaveX Allure result files found under {results_dir / 'behavex'}")
+        print(
+            f"[allure] WARNING: no BehaveX Allure result files found under {results_dir / 'behavex'}"
+        )
 
     report_dir.mkdir(parents=True, exist_ok=True)
 
@@ -456,7 +460,9 @@ def collect_behavex_native_report(
     return dest
 
 
-def sync_all_reports_to_static(*, artifacts_root: Path, run_id: str | None = None) -> dict[str, Path | None]:
+def sync_all_reports_to_static(
+    *, artifacts_root: Path, run_id: str | None = None
+) -> dict[str, Path | None]:
     """
     Copy the latest known report HTML artifacts into ``./static/`` for Streamlit static serving.
 
@@ -502,6 +508,7 @@ def url_for(server: ReportServer, *, relative_path: str) -> str:
     rp = relative_path.lstrip("/")
     return f"{server.url}{rp}"
 
+
 def _find_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
@@ -527,4 +534,3 @@ def default_report_paths(*, artifacts_root: Path) -> ReportPaths:
     report_dir = STATIC_ALLURE_REPORTS_DIR
     zip_path = artifacts_root / "allure-report.zip"
     return ReportPaths(results_dir=results_dir, report_dir=report_dir, zip_path=zip_path)
-

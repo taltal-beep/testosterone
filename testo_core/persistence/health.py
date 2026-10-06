@@ -18,7 +18,9 @@ def _pct(passed: int, total: int) -> float | None:
     return 100.0 * passed / total if total else None
 
 
-def compute_stage_health(result: PlanResult, artifacts_root: Path) -> tuple[list[dict], float | None]:
+def compute_stage_health(
+    result: PlanResult, artifacts_root: Path
+) -> tuple[list[dict], float | None]:
     """Return (per-stage health dicts, overall weighted health_pct).
 
     Each stage dict has ``total_tests``/``passed``/``failed``/``broken``/

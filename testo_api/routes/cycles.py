@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 from testo_api.cycle_execution_manager import CycleExecutionManager, iter_sse_from_ndjson_file
 from testo_api.dependencies import get_cycle_execution_manager
 from testo_api.models import (
+    AdhocExecutionRequest,
     CycleDetailResponse,
     CycleExecutionAcceptedResponse,
     CycleExecutionRequest,
@@ -17,7 +18,7 @@ from testo_api.models import (
     CycleTriggerSummary,
     StageSummary,
 )
-from testo_core.config.errors import ConfigError
+from testo_core.config.errors import ConfigError, ConfigValidationError
 from testo_core.config.loader import discover_and_load
 
 router = APIRouter(prefix="/api/v1", tags=["cycles"])
@@ -30,6 +31,20 @@ def _load_config(config_path: str | None = None):
         )
     except ConfigError as exc:
         raise HTTPException(status_code=503, detail=f"config error: {exc}") from exc
+
+
+def _optional_path(raw: str | None) -> Path | None:
+    return Path(raw).expanduser().resolve() if raw else None
+
+
+def _accepted(request: Request, execution_id: str) -> CycleExecutionAcceptedResponse:
+    base = str(request.base_url).rstrip("/")
+    return CycleExecutionAcceptedResponse(
+        execution_id=execution_id,
+        status="queued",
+        events_url=f"{base}/api/v1/cycle-executions/{execution_id}/events",
+        summary_url=f"{base}/api/v1/cycle-executions/{execution_id}",
+    )
 
 
 @router.get("/cycles", response_model=CycleListResponse)
@@ -75,13 +90,17 @@ def get_cycle(cycle: str, config_path: str | None = None) -> CycleDetailResponse
             )
             for stage in plan.stages
         ],
-        trigger=CycleTriggerSummary(paths=list(plan.trigger.paths), since_ref=plan.trigger.since_ref)
+        trigger=CycleTriggerSummary(
+            paths=list(plan.trigger.paths), since_ref=plan.trigger.since_ref
+        )
         if plan.trigger
         else None,
     )
 
 
-@router.post("/cycles/{cycle}/executions", response_model=CycleExecutionAcceptedResponse, status_code=202)
+@router.post(
+    "/cycles/{cycle}/executions", response_model=CycleExecutionAcceptedResponse, status_code=202
+)
 def create_cycle_execution(
     cycle: str,
     payload: CycleExecutionRequest,
@@ -91,12 +110,14 @@ def create_cycle_execution(
     try:
         state = manager.create_execution(
             cycle=str(cycle),
-            config_path=Path(payload.config_path).expanduser().resolve() if payload.config_path else None,
-            artifacts_root_override=Path(payload.artifacts_root).expanduser().resolve() if payload.artifacts_root else None,
+            config_path=_optional_path(payload.config_path),
+            artifacts_root_override=_optional_path(payload.artifacts_root),
             persist=bool(payload.persist),
             force=bool(payload.force),
             fail_fast=bool(payload.fail_fast),
-            reporter_override=list(payload.reporter_override) if payload.reporter_override else None,
+            reporter_override=list(payload.reporter_override)
+            if payload.reporter_override
+            else None,
             report_db=bool(payload.report_db),
             async_report_db=bool(payload.async_report_db),
             workers_override=payload.workers_override,
@@ -108,13 +129,37 @@ def create_cycle_execution(
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    base = str(request.base_url).rstrip("/")
-    return CycleExecutionAcceptedResponse(
-        execution_id=state.execution_id,
-        status="queued",
-        events_url=f"{base}/api/v1/cycle-executions/{state.execution_id}/events",
-        summary_url=f"{base}/api/v1/cycle-executions/{state.execution_id}",
-    )
+    return _accepted(request, state.execution_id)
+
+
+@router.post("/adhoc-executions", response_model=CycleExecutionAcceptedResponse, status_code=202)
+def create_adhoc_execution(
+    payload: AdhocExecutionRequest,
+    request: Request,
+    manager: CycleExecutionManager = Depends(get_cycle_execution_manager),
+) -> CycleExecutionAcceptedResponse:
+    """Run one framework directly as a one-stage ``adhoc`` cycle.
+
+    Same engine, persistence and event stream as a named cycle: progress and
+    status live under ``/cycle-executions/{execution_id}``.
+    """
+    try:
+        state = manager.create_adhoc_execution(
+            framework=payload.framework,
+            target_repo=Path(payload.target_repo),
+            args=payload.args,
+            timeout_s=payload.timeout_s,
+            extra_env=payload.extra_env,
+            config_path=_optional_path(payload.config_path),
+            artifacts_root_override=_optional_path(payload.artifacts_root),
+            persist=bool(payload.persist),
+            report_db=bool(payload.report_db),
+        )
+    except ConfigValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return _accepted(request, state.execution_id)
 
 
 @router.get("/cycle-executions/{execution_id}", response_model=CycleExecutionStatusResponse)
@@ -169,4 +214,3 @@ def stream_cycle_execution_events(
         ),
         media_type="text/event-stream",
     )
-

@@ -1,16 +1,22 @@
+"""Push run KPIs to InfluxDB and a Prometheus Pushgateway, configured via environment.
+
+:func:`push_run_metrics_if_configured` is the post-run hook
+(:class:`testo_core.services.cycle_run.CycleRunService`); the rest are the
+per-target clients and connection checks.
+"""
+
 from __future__ import annotations
 
 import os
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
 import requests
 
-from .metrics import RunMetrics
+from .metrics import RunMetrics, parse_allure_results_dir
 from .metrics import push_influxdb as _push_influx_core
-from .metrics_extractor import ExtractedMetrics, extract_best, to_run_metrics
-from .report_generator import default_report_paths
 
 
 def _env(name: str, default: str | None = None) -> str | None:
@@ -56,7 +62,10 @@ def push_to_influxdb(
         o = org or s["org"]
         b = bucket or s["bucket"]
         if not u or not t or not o or not b:
-            return False, "InfluxDB: set INFLUXDB_URL, INFLUXDB_TOKEN, INFLUXDB_ORG, and INFLUXDB_BUCKET (e.g. in .env)."
+            return (
+                False,
+                "InfluxDB: set INFLUXDB_URL, INFLUXDB_TOKEN, INFLUXDB_ORG, and INFLUXDB_BUCKET (e.g. in .env).",
+            )
         return _push_influx_core(metrics, url=u, token=t, org=o, bucket=b, measurement=measurement)
     except Exception as exc:
         return False, f"InfluxDB push error: {exc}"
@@ -104,7 +113,12 @@ def push_to_prometheus(
             return False, "Prometheus: set PROMETHEUS_PUSHGATEWAY_URL (e.g. http://localhost:9091)."
         url = f"{base}/metrics/job/{quote(job, safe='')}"
         body = _prometheus_exposition(metrics)
-        r = requests.post(url, data=body.encode("utf-8"), headers={"Content-Type": "text/plain; charset=utf-8"}, timeout=15)
+        r = requests.post(
+            url,
+            data=body.encode("utf-8"),
+            headers={"Content-Type": "text/plain; charset=utf-8"},
+            timeout=15,
+        )
         if r.status_code >= 400:
             return False, f"Pushgateway HTTP {r.status_code}: {(r.text or '')[:500]}"
         return True, "Pushed metrics to Prometheus Pushgateway."
@@ -168,56 +182,32 @@ def test_prometheus_pushgateway(*, pushgateway_url: str | None = None) -> tuple[
         return False, f"Prometheus test failed: {exc}"
 
 
-def auto_push_metrics_if_enabled(
-    *,
-    artifacts_root: Path,
-    run_id: str | None,
-    auto_influx: bool,
-    auto_prometheus: bool,
-    influx_url: str | None = None,
-    influx_token: str | None = None,
-    influx_org: str | None = None,
-    influx_bucket: str | None = None,
-    prometheus_pushgateway_url: str | None = None,
+def push_run_metrics_if_configured(
+    *, results_root: Path, run_id: str | None
 ) -> list[tuple[str, bool, str]]:
-    """
-    Best-effort metrics extraction + push after a run. Never raises; returns a list of
-    ``(target, ok, message)`` for UI logging.
+    """Push a finished run's test KPIs to every metrics target configured in the environment.
 
-    Optional Influx/Prometheus parameters override ``.env`` for this push (Streamlit session).
+    Targets are opt-in by configuration: InfluxDB when all ``INFLUXDB_*`` settings are
+    set, Prometheus when ``PROMETHEUS_PUSHGATEWAY_URL`` is set. KPIs come from every
+    Allure ``*-result.json`` under *results_root* (a cycle's artifacts dir).
+    Never raises; returns ``(target, ok, message)`` per attempted push, or ``[]``
+    when nothing is configured.
     """
+    status = integration_status_from_env()
+    if not status["influx_configured"] and not status["prometheus_configured"]:
+        return []
     out: list[tuple[str, bool, str]] = []
     try:
-        ar = artifacts_root.expanduser().resolve()
-        paths = default_report_paths(artifacts_root=ar)
-        em: ExtractedMetrics | None = extract_best(
-            report_dir=paths.report_dir,
-            results_dir=paths.results_dir,
-        )
-        if em is None:
-            out.append(("metrics", False, "No Allure report/results to extract."))
-            return out
-        rm = to_run_metrics(em, run_id=run_id)
-        if auto_influx:
-            try:
-                ok, msg = push_to_influxdb(
-                    rm,
-                    url=influx_url,
-                    token=influx_token,
-                    org=influx_org,
-                    bucket=influx_bucket,
-                )
-                out.append(("influxdb", ok, msg))
-            except Exception as exc:
-                out.append(("influxdb", False, str(exc)))
-        if auto_prometheus:
-            try:
-                ok, msg = push_to_prometheus(rm, pushgateway_url=prometheus_pushgateway_url)
-                out.append(("prometheus", ok, msg))
-            except Exception as exc:
-                out.append(("prometheus", False, str(exc)))
+        metrics = parse_allure_results_dir(results_root)
+        if metrics.total_tests == 0:
+            return [("metrics", False, f"No Allure results under {results_root}.")]
+        metrics = replace(metrics, run_id=run_id)
+        if status["influx_configured"]:
+            out.append(("influxdb", *push_to_influxdb(metrics)))
+        if status["prometheus_configured"]:
+            out.append(("prometheus", *push_to_prometheus(metrics)))
     except Exception as exc:
-        out.append(("auto_push", False, str(exc)))
+        out.append(("metrics", False, str(exc)))
     return out
 
 

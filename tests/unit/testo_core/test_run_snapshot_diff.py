@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 
+from testo_core.history.views import CompletedRunView
 from testo_core.repository.models import RunStatus
-from testo_core.run_history import CompletedRunView
 from testo_core.services import run_snapshot_diff
 
 
@@ -33,7 +33,9 @@ def _run(run_id: str) -> CompletedRunView:
     )
 
 
-def _result_bytes(*, history_id: str, status: str, name: str, start: int = 0, stop: int = 100) -> bytes:
+def _result_bytes(
+    *, history_id: str, status: str, name: str, start: int = 0, stop: int = 100
+) -> bytes:
     return json.dumps(
         {"historyId": history_id, "status": status, "name": name, "start": start, "stop": stop}
     ).encode("utf-8")
@@ -46,13 +48,28 @@ def test_diff_run_snapshots_classifies_regression_and_added(monkeypatch, tmp_pat
     def _fake_snapshot_files(*, record: CompletedRunView):
         if record.run_id == "baseline":
             return [
-                ("st/allure-results/pytest/a-result.json", _result_bytes(history_id="a", status="passed", name="test_a")),
-                ("st/allure-results/pytest/b-result.json", _result_bytes(history_id="b", status="passed", name="test_b")),
+                (
+                    "st/allure-results/pytest/a-result.json",
+                    _result_bytes(history_id="a", status="passed", name="test_a"),
+                ),
+                (
+                    "st/allure-results/pytest/b-result.json",
+                    _result_bytes(history_id="b", status="passed", name="test_b"),
+                ),
             ]
         return [
-            ("st/allure-results/pytest/a-result.json", _result_bytes(history_id="a", status="failed", name="test_a")),
-            ("st/allure-results/pytest/b-result.json", _result_bytes(history_id="b", status="passed", name="test_b")),
-            ("st/allure-results/pytest/c-result.json", _result_bytes(history_id="c", status="passed", name="test_c")),
+            (
+                "st/allure-results/pytest/a-result.json",
+                _result_bytes(history_id="a", status="failed", name="test_a"),
+            ),
+            (
+                "st/allure-results/pytest/b-result.json",
+                _result_bytes(history_id="b", status="passed", name="test_b"),
+            ),
+            (
+                "st/allure-results/pytest/c-result.json",
+                _result_bytes(history_id="c", status="passed", name="test_c"),
+            ),
         ]
 
     monkeypatch.setattr(run_snapshot_diff, "snapshot_files_for_download", _fake_snapshot_files)

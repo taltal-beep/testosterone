@@ -3,19 +3,18 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 
+from testo_core import paths
 from testo_core.engine.result import PlanResult
+from testo_core.persistence.failure_context import failure_metadata
 from testo_core.persistence.health import compute_stage_health
 from testo_core.reporting.paths import plan_artifacts_dir
 from testo_core.repository.models import RunStatus
 
 logger = logging.getLogger(__name__)
-
-# Mirrors testo_core.run_history.ORCHESTRATOR_ROOT — the root that
-# snapshot_files_for_download() resolves local (non-S3) snapshot_dir values against.
-ORCHESTRATOR_ROOT = Path(__file__).resolve().parents[2]
 
 
 class DbBackend:
@@ -25,21 +24,21 @@ class DbBackend:
         self._artifacts_root = artifacts_root
 
     def _local_snapshot_dir(self, plan_name: str) -> str | None:
-        """Relative path (from ``ORCHESTRATOR_ROOT``) to this plan's artifacts.
+        """Path of this plan's artifacts relative to ``paths.ORCHESTRATOR_ROOT`` (the repo root).
 
-        ``run_history.snapshot_files_for_download`` resolves non-S3
-        ``snapshot_dir`` values as ``ORCHESTRATOR_ROOT / snapshot_dir``; only
-        return a value when the artifacts actually live under the repo root.
+        ``history.snapshots`` reads local ``snapshot_dir`` values relative to
+        ``ORCHESTRATOR_ROOT``, so only return a value when the artifacts live under it.
         """
         plan_dir = plan_artifacts_dir(self._artifacts_root, plan_name)
         try:
-            return plan_dir.relative_to(ORCHESTRATOR_ROOT).as_posix()
+            return plan_dir.relative_to(paths.ORCHESTRATOR_ROOT).as_posix()
         except ValueError:
             return None
 
     def persist(self, result: PlanResult) -> str | None:
         try:
             from testo_core.db import get_repository
+            from testo_core.services.ci_provenance import detect_ci_provenance
 
             repo = get_repository()
             status = RunStatus.COMPLETED if result.exit_code == 0 else RunStatus.FAILED
@@ -49,6 +48,7 @@ class DbBackend:
                 passed_stages = sum(1 for s in result.stages if s.returncode == 0)
                 health_pct = 100.0 * passed_stages / len(result.stages)
             stage_health_by_name = {h["name"]: h for h in stage_health}
+            provenance = detect_ci_provenance(os.environ)
 
             record = repo.create_run(
                 status=status,
@@ -69,18 +69,26 @@ class DbBackend:
                             "framework": s.framework,
                             "returncode": s.returncode,
                             "duration_s": s.duration_s,
-                            **{k: v for k, v in stage_health_by_name.get(s.stage_name, {}).items() if k != "name"},
+                            **{
+                                k: v
+                                for k, v in stage_health_by_name.get(s.stage_name, {}).items()
+                                if k != "name"
+                            },
                         }
                         for s in result.stages
                     ],
                     "health_pct": health_pct,
-                    "total_tests": sum(h["total_tests"] for h in stage_health) if stage_health else None,
+                    "total_tests": sum(h["total_tests"] for h in stage_health)
+                    if stage_health
+                    else None,
                     "passed": sum(h["passed"] for h in stage_health) if stage_health else None,
                     "failed": sum(h["failed"] for h in stage_health) if stage_health else None,
                     "broken": sum(h["broken"] for h in stage_health) if stage_health else None,
                     "skipped": sum(h["skipped"] for h in stage_health) if stage_health else None,
                     "snapshot_dir": self._local_snapshot_dir(result.plan_name),
                     "source": "engine",
+                    **failure_metadata(result),
+                    **(provenance.to_metadata() if provenance else {}),
                 },
             )
             return str(record.id)

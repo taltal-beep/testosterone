@@ -1,4 +1,0 @@
-runs:
-  - test_type: pytest
-    target_repo: ../../../sample_target_repo
-    cli_args: "-q"

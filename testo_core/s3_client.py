@@ -16,7 +16,11 @@ from botocore.exceptions import ClientError
 
 
 def _is_running_in_docker() -> bool:
-    return Path("/.dockerenv").exists() or os.getenv("RUNNING_IN_DOCKER", "").lower() in {"1", "true", "yes"}
+    return Path("/.dockerenv").exists() or os.getenv("RUNNING_IN_DOCKER", "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
 
 def _default_minio_endpoint() -> str:
@@ -28,9 +32,11 @@ def _default_minio_endpoint() -> str:
 
 def _public_base_url() -> str:
     """Browser / API base for path-style object URLs (defaults to MINIO_ENDPOINT)."""
-    return (os.getenv("MINIO_PUBLIC_BASE_URL") or os.getenv("MINIO_ENDPOINT") or _default_minio_endpoint()).rstrip(
-        "/"
-    )
+    return (
+        os.getenv("MINIO_PUBLIC_BASE_URL")
+        or os.getenv("MINIO_ENDPOINT")
+        or _default_minio_endpoint()
+    ).rstrip("/")
 
 
 class ArtifactS3Storage:
@@ -46,7 +52,9 @@ class ArtifactS3Storage:
         access = (os.getenv("MINIO_ROOT_USER") or "").strip()
         secret = (os.getenv("MINIO_ROOT_PASSWORD") or "").strip()
         if not access or not secret:
-            raise ValueError("MINIO_ROOT_USER and MINIO_ROOT_PASSWORD are required for S3 artifact storage")
+            raise ValueError(
+                "MINIO_ROOT_USER and MINIO_ROOT_PASSWORD are required for S3 artifact storage"
+            )
         endpoint = _default_minio_endpoint()
         region = (os.getenv("MINIO_REGION") or "us-east-1").strip()
         self._bucket = (os.getenv("BUCKET_NAME") or "uqo-artifacts").strip()
@@ -89,7 +97,9 @@ class ArtifactS3Storage:
             else:
                 raise
 
-    def upload_file(self, local_path: str | Path, s3_key: str, bucket_name: str | None = None) -> None:
+    def upload_file(
+        self, local_path: str | Path, s3_key: str, bucket_name: str | None = None
+    ) -> None:
         b = (bucket_name or self._bucket).strip()
         self._client.upload_file(str(local_path), b, s3_key.replace("\\", "/"))
 

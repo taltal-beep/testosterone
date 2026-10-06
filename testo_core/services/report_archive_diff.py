@@ -90,7 +90,9 @@ class CaseChange:
     duration_delta_ms: int | None
 
 
-def diff_case_maps(base_cases: dict[str, dict[str, Any]], cur_cases: dict[str, dict[str, Any]]) -> list[CaseChange]:
+def diff_case_maps(
+    base_cases: dict[str, dict[str, Any]], cur_cases: dict[str, dict[str, Any]]
+) -> list[CaseChange]:
     """Match two ``_load_cases()`` maps by key and classify each case's change.
 
     Shared by both ``diff_archives`` (ReportArchive zips, ``testo diff``) and
@@ -141,7 +143,9 @@ def diff_case_maps(base_cases: dict[str, dict[str, Any]], cur_cases: dict[str, d
     return changes
 
 
-def diff_archives(*, baseline: ReportArchive, current: ReportArchive, tmp: Path) -> tuple[list[CaseChange], dict[str, Any]]:
+def diff_archives(
+    *, baseline: ReportArchive, current: ReportArchive, tmp: Path
+) -> tuple[list[CaseChange], dict[str, Any]]:
     """Extract both zips under ``tmp`` and return case-level changes plus metrics row dict."""
     from testo_core.services.report_archive import extract_archive_to_plan_dir
 

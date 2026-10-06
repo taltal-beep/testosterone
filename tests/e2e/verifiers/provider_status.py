@@ -8,4 +8,3 @@ class ProviderStatusVerifier:
         status = ctx.metadata.get("pipeline_status")
         if status not in {"success", "passed"}:
             raise AssertionError(f"provider pipeline/action did not succeed: {status}")
-

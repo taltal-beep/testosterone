@@ -133,7 +133,9 @@ def _infer_equipment(stage_dir: Path, routine_name: str, from_json: dict[str, st
         return from_json[routine_name]
     # Fallback: allure-results subdir names, prefer behavex if behave_reports exists
     ar = stage_dir / "allure-results"
-    if (stage_dir / "behave_reports").is_dir() or (stage_dir / "allure-results" / "behave_reports").is_dir():
+    if (stage_dir / "behave_reports").is_dir() or (
+        stage_dir / "allure-results" / "behave_reports"
+    ).is_dir():
         return "behavex"
     if ar.is_dir():
         try:
@@ -200,7 +202,9 @@ def native_row_for_stage(stage_dir: Path, equipment: str) -> NativeReportRow:
     if eq == "behavex":
         html, images = _behavex_candidates(stage_dir)
         if html is not None:
-            return NativeReportRow(routine=routine, equipment=eq, open_path=html, open_kind="html", notes="")
+            return NativeReportRow(
+                routine=routine, equipment=eq, open_path=html, open_kind="html", notes=""
+            )
         if images is not None:
             return NativeReportRow(
                 routine=routine,
@@ -215,7 +219,9 @@ def native_row_for_stage(stage_dir: Path, equipment: str) -> NativeReportRow:
     if eq == "pytest":
         path, kind = _pytest_candidates(stage_dir)
         if path is not None:
-            return NativeReportRow(routine=routine, equipment=eq, open_path=path, open_kind=kind, notes="")
+            return NativeReportRow(
+                routine=routine, equipment=eq, open_path=path, open_kind=kind, notes=""
+            )
         return NativeReportRow(
             routine=routine, equipment=eq, open_path=None, open_kind="", notes="no raw data"
         )

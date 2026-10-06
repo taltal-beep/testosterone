@@ -51,10 +51,14 @@ class AnthropicProvider(AiProvider):
             if exc.code == 429:
                 raise ProviderRateLimitError("Anthropic rate limit exceeded.") from exc
             if exc.code == 400:
-                raise UnsupportedProviderModelError("Anthropic model is unsupported for this key.") from exc
+                raise UnsupportedProviderModelError(
+                    "Anthropic model is unsupported for this key."
+                ) from exc
             raise ProviderUnavailableError(f"Anthropic HTTP error {exc.code}.") from exc
         except urllib.error.URLError as exc:
-            raise ProviderUnavailableError(f"Anthropic request failed: {redact_error_message(exc)}") from exc
+            raise ProviderUnavailableError(
+                f"Anthropic request failed: {redact_error_message(exc)}"
+            ) from exc
         content = body.get("content")
         text = None
         if isinstance(content, list) and content:

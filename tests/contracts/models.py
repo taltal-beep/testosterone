@@ -74,4 +74,3 @@ class ChaosResponse(StrictModel):
     status: Literal["ok"]
     mode: Literal["high_latency", "normal"]
     delay_ms: int
-

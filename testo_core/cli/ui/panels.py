@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from rich.console import Console, Group
+from rich.console import Console, Group, RenderableType
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -33,11 +33,9 @@ def render_stage_panel(console: Console, data: StagePanelData, *, tail_max_lines
     style = "ok" if data.returncode == 0 else "fail"
 
     equipment = _format_equipment(data.framework)
-    title = Text.from_markup(
-        f"[{style}]{data.name}[/] {equipment} [{style}]{status_label}[/]"
-    )
+    title = Text.from_markup(f"[{style}]{data.name}[/] {equipment} [{style}]{status_label}[/]")
 
-    rows: list[object] = []
+    rows: list[RenderableType] = []
     rows.append(Text.from_markup(f"[muted]duration:[/] {data.duration_s:.2f}s"))
     if data.command:
         rows.append(Text.from_markup(f"[muted]command:[/]  {data.command}"))
@@ -76,7 +74,9 @@ def render_plan_summary(
     table.add_column("Duration", justify="right")
     for stage in stage_results:
         status = "[ok]PASS[/]" if stage.returncode == 0 else f"[fail]FAIL ({stage.returncode})[/]"
-        table.add_row(stage.name, _equipment_cell(stage.framework), status, f"{stage.duration_s:.2f}s")
+        table.add_row(
+            stage.name, _equipment_cell(stage.framework), status, f"{stage.duration_s:.2f}s"
+        )
     console.print(table)
 
     # Secondary table: metrics derived from Allure results (robust to BehaveX parallel stdout shape).

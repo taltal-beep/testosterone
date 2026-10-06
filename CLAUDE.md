@@ -8,7 +8,7 @@ Before planning, debugging, or implementing anything in this repo, read [docs/In
 - Config: `testosterone.yaml` at repo root defines cycles/stages/reporters.
 - Engine flow: `config/loader.py` → `config/resolver.py` → `engine/orchestrator.run_plan()` → `engine/executor.run_stage()`.
 - Framework adapters: `testo_core/frameworks/` (Pytest, Behave, BehaveX).
-- API: `testo_api/` (FastAPI, `/api/v1/`). Frontend: `frontend/` (Vite + React + Tailwind). Legacy UI: `testo_ui/` (Streamlit).
+- API: `testo_api/` (FastAPI, `/api/v1/`). Frontend: `frontend/` (Vite + React + Tailwind). CLI and API both run cycles through `services/cycle_run.CycleRunService`.
 
 ## Rules
 

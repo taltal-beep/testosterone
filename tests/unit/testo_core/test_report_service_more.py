@@ -34,7 +34,9 @@ def test_static_reports_ready_detects_any_framework_index(tmp_path: Path, monkey
     (fake_reports / "pytest" / "index.html").write_text("ok", encoding="utf-8")
 
     monkeypatch.setattr(rs, "STATIC_ALLURE_REPORTS_DIR", fake_reports)
-    monkeypatch.setattr(rs, "STATIC_ALLURE_INDEX", tmp_path / "static" / "allure_report" / "index.html")
+    monkeypatch.setattr(
+        rs, "STATIC_ALLURE_INDEX", tmp_path / "static" / "allure_report" / "index.html"
+    )
     monkeypatch.setattr(rs, "STATIC_ALLURE_HTML", tmp_path / "static" / "allure_report.html")
 
     assert ReportService.static_reports_ready() is True

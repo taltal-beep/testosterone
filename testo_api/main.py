@@ -16,11 +16,9 @@ from testo_api.routes.ai import router as ai_router
 from testo_api.routes.analytics import router as analytics_router
 from testo_api.routes.cycles import router as cycles_router
 from testo_api.routes.dashboard import router as dashboard_router
-from testo_api.routes.events import router as events_router
 from testo_api.routes.health import router as health_router
 from testo_api.routes.history import router as history_router
-from testo_api.routes.runs import router as runs_router
-from testo_core.run_history import STATIC_HISTORY_ROOT
+from testo_core.paths import STATIC_HISTORY_ROOT
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +27,7 @@ logger = logging.getLogger(__name__)
 async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # Runs left "RUNNING" by a crashed/reloaded process would otherwise sit
     # stuck forever in the UI history; mark them FAILED so the run list stays honest.
-    from testo_core.run_history import cleanup_orphaned_runs
+    from testo_core.history.maintenance import cleanup_orphaned_runs
 
     try:
         n = cleanup_orphaned_runs(note="Orphaned by API server restart")
@@ -43,7 +41,11 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     app = FastAPI(title="UQO API", version="1.0.0", lifespan=_lifespan)
 
-    allowed_origins = [origin.strip() for origin in os.getenv("UQO_API_CORS_ORIGINS", "*").split(",") if origin.strip()]
+    allowed_origins = [
+        origin.strip()
+        for origin in os.getenv("UQO_API_CORS_ORIGINS", "*").split(",")
+        if origin.strip()
+    ]
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins or ["*"],
@@ -52,9 +54,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(runs_router)
     app.include_router(ai_router)
-    app.include_router(events_router)
     app.include_router(cycles_router)
     app.include_router(history_router)
     app.include_router(analytics_router)
@@ -106,7 +106,9 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:  # type: ignore[no-redef]
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:  # type: ignore[no-redef]
         return JSONResponse(
             status_code=422,
             content={
@@ -118,6 +120,7 @@ def create_app() -> FastAPI:
                 "request_id": getattr(request.state, "request_id", str(uuid4())),
             },
         )
+
     return app
 
 
@@ -137,9 +140,7 @@ def run(argv: list[str] | None = None) -> int:
     try:
         import uvicorn  # type: ignore[import-not-found]
     except ModuleNotFoundError:
-        sys.stderr.write(
-            "uvicorn is not installed. Run `pip install testo-core[api]` first.\n"
-        )
+        sys.stderr.write("uvicorn is not installed. Run `pip install testo-core[api]` first.\n")
         return 1
 
     host = os.environ.get("TESTO_API_HOST", "127.0.0.1")
@@ -147,4 +148,3 @@ def run(argv: list[str] | None = None) -> int:
     reload = os.environ.get("TESTO_API_RELOAD", "0") in ("1", "true", "True")
     uvicorn.run("testo_api.main:app", host=host, port=port, reload=reload)
     return 0
-

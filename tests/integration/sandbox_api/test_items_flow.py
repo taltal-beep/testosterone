@@ -39,4 +39,3 @@ def test_get_missing_item_is_404(bad_id: int, fastapi_client) -> None:
     with step(f"GET /items/{bad_id} missing"):
         r = fastapi_client.get(f"/items/{bad_id}")
     assert r.status_code == 404
-

@@ -12,7 +12,6 @@ requires-python = ">=3.11"
 # Anything UI-, API-, or DB-related must live in an extras group below.
 dependencies = [
     "python-dotenv>=1.0.0",
-    "pluggy>=1.5.0",
     "requests>=2.32.0",
     "behave>=1.3.0,<2",
     "behavex>=4.6.0",
@@ -29,13 +28,9 @@ dependencies = [
 [project.scripts]
 testo = "testo_core.cli.app:main"
 uqo = "testo_core.cli.deprecated:main"
-testo-ui = "testo_ui.entry:main"
 testo-api = "testo_api.main:run"
 
 [project.optional-dependencies]
-ui = [
-    "streamlit>=1.36.0",
-]
 api = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
@@ -49,9 +44,6 @@ db = [
 ]
 db_mysql = [
     "pymysql>=1.1.0",
-]
-docker = [
-    "docker>=7.0.0",
 ]
 metrics = [
     "matplotlib>=3.10.0",
@@ -68,11 +60,11 @@ dev = [
     "pre-commit>=4.0.0",
     # The dev profile installs every extra so the test suite covers the full
     # surface area without needing per-test installs.
-    "testo-core[ui,api,db,docker,metrics]",
+    "testo-core[api,db,metrics]",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["testo_core", "testo_api", "testo_ui"]
+packages = ["testo_core", "testo_api"]
 
 [tool.ruff]
 target-version = "py311"
@@ -80,9 +72,9 @@ line-length = 100
 
 [tool.ruff.lint]
 # Started as pyflakes (F) + a subset of pycodestyle (E) + import sorting (I);
-# extended with pyupgrade (UP) and bugbear (B). Line-length (E501) is ignored
-# since no autoformatter enforcement is blocking yet (`ruff format --check` in
-# ci.yml is still continue-on-error); tighten once that gate goes blocking.
+# extended with pyupgrade (UP) and bugbear (B). Line-length (E501) is ignored:
+# `ruff format` (blocking in CI) wraps code, and the lines it leaves long are
+# strings and comments it deliberately does not split.
 select = ["E", "F", "I", "UP", "B"]
 ignore = [
     "E501",
@@ -90,16 +82,10 @@ ignore = [
     # the idiomatic pattern for both frameworks, used throughout testo_api and the CLI.
     "B008",
     # `class Foo(str, Enum)` -> `enum.StrEnum` is a real behavior-adjacent change
-    # (repr/serialization edge cases) affecting enums used pervasively (TestType,
-    # RunStatus); deserves its own tested PR, not a lint-config side effect.
+    # (repr/serialization edge cases) affecting enums used pervasively (RunStatus,
+    # EngineExitCode); deserves its own tested PR, not a lint-config side effect.
     "UP042",
 ]
-
-[tool.ruff.lint.per-file-ignores]
-# sys.path setup for direct-script execution must precede the local import it enables.
-"testo_core/run_history.py" = ["E402"]
-# dotenv must load before modules that read os.environ at import time.
-"testo_ui/streamlit_app.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.11"

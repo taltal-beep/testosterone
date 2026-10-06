@@ -1,6 +1,6 @@
 # Command Reference
 
-Entry point: **`testo`** (`pyproject.toml` → `testo_core.cli.app:main`). Legacy alias: **`uqo`** (deprecated headless wrapper).
+Entry point: **`testo`** (`pyproject.toml` → `testo_core.cli.app:main`). Deprecated alias: **`uqo`** (forwards to `testo` with a notice on stderr).
 
 Parent index: [[Index]]. Architecture: [[Architecture Overview]]. Run lifecycle: [[QA Strategies]].
 
@@ -242,9 +242,10 @@ testo -v
 
 | Command | Package | Role |
 |---------|---------|------|
-| `uqo run …` | `testo_core.cli.deprecated` | Legacy headless JSON/ghost mode for CI |
-| `testo-api` | `testo_api` | FastAPI server |
-| `testo-ui` | `testo_ui` | Streamlit UI |
+| `uqo …` | `testo_core.cli.deprecated` | Deprecated alias for `testo` |
+| `testo-api` | `testo_api` | FastAPI server (React UI backend) |
+
+The v1.0 `uqo run --config` headless format (`--ghost`, `--json`, `--stream-json`) and the `testo-ui` Streamlit app were removed in v1.1; use `testo run --cycle … --ci` and the React frontend.
 
 ---
 
@@ -253,7 +254,8 @@ testo -v
 | Variable | Effect |
 |----------|--------|
 | `DATABASE_URL` | Overrides `database.url` in YAML for archives / list |
-| `UQO_*` | Legacy runner/orchestration (Docker path) |
+| `INFLUXDB_URL`, `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, `INFLUXDB_BUCKET` | Push run KPIs to InfluxDB after each run |
+| `PROMETHEUS_PUSHGATEWAY_URL`, `PROMETHEUS_JOB_NAME` | Push run KPIs to a Prometheus Pushgateway after each run |
 | Reporter tokens | e.g. `REPORTPORTAL_TOKEN`, `SLACK_WEBHOOK` via `${env:…}` in YAML |
 
 ---
@@ -275,6 +277,6 @@ After `testo run`, terminal hints may point to `./reports/allure`, `./reports/ex
 ## Related operational docs
 
 - [[Release Management/README]] — install/contract gates per phase
-- [[CI-CD Pipeline Setup]] — `uqo run` in CI wrappers
+- [[CI-CD Pipeline Setup]] — `testo run --ci` in CI wrappers
 - [[ReportPortal Local Setup Guide]] — local ReportPortal stack for reporter validation
 - [[Delta Comparison Policy]] — semantics for `testo diff` / `testo summary`

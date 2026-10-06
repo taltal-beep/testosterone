@@ -140,4 +140,3 @@ def test_upload_contract_payload_only(payload: dict[str, Any] | None, fastapi_cl
         r = fastapi_client.post("/upload", json=payload)
     assert r.status_code == 200
     UploadResponse.model_validate(r.json())
-

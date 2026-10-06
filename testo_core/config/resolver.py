@@ -47,9 +47,7 @@ def resolve_stages_for_plan(
         if not _eval_if(stage.if_expr, env=env_map):
             continue
         resolved_args = tuple(_interpolate(arg, env=env_map) for arg in stage.args)
-        resolved_extra_env = tuple(
-            (k, _interpolate(v, env=env_map)) for k, v in stage.extra_env
-        )
+        resolved_extra_env = tuple((k, _interpolate(v, env=env_map)) for k, v in stage.extra_env)
         out.append(
             Stage(
                 name=stage.name,

@@ -18,7 +18,11 @@ def _is_running_in_docker() -> bool:
     """Heuristic used widely in containers; safe fallback."""
     from pathlib import Path
 
-    return Path("/.dockerenv").exists() or os.getenv("RUNNING_IN_DOCKER", "").lower() in {"1", "true", "yes"}
+    return Path("/.dockerenv").exists() or os.getenv("RUNNING_IN_DOCKER", "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
 
 def _postgres_host() -> str:
@@ -76,7 +80,9 @@ def validate_database_url(url: str) -> str:
     dialect = _dialect(url)
     if dialect not in SUPPORTED_DATABASE_DIALECTS:
         allowed = ", ".join(sorted(SUPPORTED_DATABASE_DIALECTS))
-        raise ValueError(f"Unsupported database dialect `{dialect}`. Supported dialects: {allowed}.")
+        raise ValueError(
+            f"Unsupported database dialect `{dialect}`. Supported dialects: {allowed}."
+        )
     return dialect
 
 

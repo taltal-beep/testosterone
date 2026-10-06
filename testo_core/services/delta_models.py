@@ -59,4 +59,3 @@ class DeltaComparisonResult:
     status_summary: DeltaStatusSummary
     highlights: tuple[str, ...]
     stage_deltas: tuple[StageDelta, ...] = ()
-

@@ -16,8 +16,8 @@ class RunNotFoundError(LookupError):
 class BaseRunRepository(Protocol):
     """Storage-agnostic interface for :class:`RunRecord` lifecycle operations.
 
-    Implementations MUST be safe to call from multiple threads (e.g. Streamlit worker
-    thread and main UI thread) when backed by a thread-safe SQLAlchemy engine.
+    Implementations MUST be safe to call from multiple threads (the API runs each
+    execution on a background thread) when backed by a thread-safe SQLAlchemy engine.
     """
 
     def create_run(
@@ -48,6 +48,9 @@ class BaseRunRepository(Protocol):
         Sets ``end_time`` to the current UTC time when ``status`` is
         :attr:`RunStatus.COMPLETED` or :attr:`RunStatus.FAILED`.
         """
+
+    def merge_run_metadata(self, run_id: uuid.UUID | str, patch: dict[str, Any]) -> bool:
+        """Shallow-merge ``patch`` into the run's metadata; return ``False`` if the run does not exist."""
 
     def list_recent_runs(self, *, limit: int = 30) -> list[RunRecord]:
         """Return up to ``limit`` runs ordered by ``start_time`` descending (newest first)."""

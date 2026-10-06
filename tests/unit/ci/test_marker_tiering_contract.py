@@ -12,7 +12,10 @@ def test_path_kind_recognizes_both_contract_directories() -> None:
 
 def test_path_kind_sets_expected_families() -> None:
     assert test_conftest._path_kind(Path("tests/unit/testo_core/test_cli_run.py")) == "unit"
-    assert test_conftest._path_kind(Path("tests/integration/api/test_run_lifecycle.py")) == "integration"
+    assert (
+        test_conftest._path_kind(Path("tests/integration/api/test_run_lifecycle.py"))
+        == "integration"
+    )
     assert test_conftest._path_kind(Path("tests/e2e/sandbox_api/test_user_journeys.py")) == "e2e"
 
 
@@ -21,4 +24,3 @@ def test_run_id_sanitization_is_deterministic_and_safe() -> None:
     sanitized = test_conftest._sanitize_run_id(raw)
     assert sanitized == "run-id-with-spaces-symbols"
     assert len(sanitized) <= 48
-

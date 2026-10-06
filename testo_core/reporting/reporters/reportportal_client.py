@@ -268,9 +268,7 @@ class ReportPortalClient:
         for version in ("v2", "v1"):
             url = f"{self.endpoint}/api/{version}/{self.project}/launch"
             try:
-                resp = self._session.get(
-                    url, params={"page.size": 1}, timeout=self.timeout_s
-                )
+                resp = self._session.get(url, params={"page.size": 1}, timeout=self.timeout_s)
                 if resp.status_code in (200, 401, 403):
                     return version
             except requests.RequestException:
@@ -359,4 +357,3 @@ def _normalize_test_times(
     start_ms = max(start_ms, launch_start_ms)
     stop_ms = max(stop_ms, start_ms)
     return start_ms, stop_ms
-

@@ -14,7 +14,7 @@ from testo_api.models import (
     DeltaStageDelta,
     DeltaStatusSummaryResponse,
 )
-from testo_core.run_history import get_run
+from testo_core.history.read_model import get_run
 from testo_core.services.delta_models import MetricDelta
 from testo_core.services.delta_service import (
     DeltaComparisonService,
@@ -31,7 +31,9 @@ router = APIRouter(prefix="/api/v1", tags=["analytics"])
 def get_delta_comparison(current_run_id: str, baseline_run_id: str) -> DeltaComparisonResponse:
     service = DeltaComparisonService()
     try:
-        result = service.compare_runs(current_run_id=current_run_id, baseline_run_id=baseline_run_id)
+        result = service.compare_runs(
+            current_run_id=current_run_id, baseline_run_id=baseline_run_id
+        )
     except InvalidRunIdError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RunNotFoundComparisonError as exc:
@@ -137,4 +139,3 @@ def get_delta_case_changes(current_run_id: str, baseline_run_id: str) -> DeltaCa
             for c in changes
         ],
     )
-
