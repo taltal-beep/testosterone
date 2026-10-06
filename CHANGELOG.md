@@ -14,6 +14,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Changed
 - `ARCHITECTURE.md` now describes the current engine (config → engine → framework adapters → reporting/persistence) with a system diagram, layer table and known structural debt; the original UQO Docker-runner description moved to a "Legacy UQO platform" section
 
+### Removed
+- Generated run output that was committed by mistake (`artifacts/allure-report*`, `artifacts/allure-results-archive/`, `artifacts/metrics.json`); these paths are now ignored
+
 ### Fixed
 - `equipment: behavex`: every BehaveX stage failed at startup with `OSError: AF_UNIX path too long`, because BehaveX points `TEMP` at its output folder and the multiprocessing socket landed there; the adapter now pins `TMPDIR` to the system temp dir
 - Run detail, dashboard and compare showed a wall duration of 0 ms for every cycle run; engine-sourced records store `duration_s`, which the history view now falls back to
