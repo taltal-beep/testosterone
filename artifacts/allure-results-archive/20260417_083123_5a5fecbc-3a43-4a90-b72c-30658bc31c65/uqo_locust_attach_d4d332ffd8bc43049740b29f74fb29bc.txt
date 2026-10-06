@@ -1,5 +1,0 @@
-request_type=GET
-name=GET /
-response_time_ms=1.5557499718852341
-response_length=39
-exception=

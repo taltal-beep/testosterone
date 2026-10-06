@@ -27,13 +27,13 @@ export function normalizeRunStatus(value: string | null | undefined, returncode?
 }
 
 export interface StatusPillProps {
-  status: RunUiStatus | string;
+  status: RunUiStatus | string | null;
   returncode?: number | null;
   className?: string;
 }
 
 export function StatusPill({ status, returncode, className }: StatusPillProps) {
-  const normalized = normalizeRunStatus(String(status), returncode);
+  const normalized = normalizeRunStatus(status, returncode);
   const style = STATUS_STYLES[normalized];
   return (
     <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${style.text} ${className ?? ""}`}>
