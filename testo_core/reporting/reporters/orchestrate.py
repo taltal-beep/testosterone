@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from testo_core.config.schema import TestosteroneConfig
 from testo_core.reporting.collector import (
@@ -12,6 +13,9 @@ from testo_core.reporting.collector import (
 )
 from testo_core.reporting.reporters.base import ReportContext, ReportLayout
 from testo_core.reporting.reporters.factory import ReporterFactory
+
+if TYPE_CHECKING:
+    from rich.console import Console
 
 
 def run_configured_reporters(
@@ -23,7 +27,7 @@ def run_configured_reporters(
     reporter_override: Sequence[str] | None = None,
     layout: ReportLayout = "cycle",
     run_id: str | None = None,
-    console: object | None = None,
+    console: Console | None = None,
     ci: bool = False,
     generate_only: bool = True,
     inject_history: bool = True,
@@ -45,7 +49,7 @@ def run_configured_reporters(
         )
     except ValueError as exc:
         if console is not None:
-            console.print(f"[fail]{exc}[/]")  # type: ignore[union-attr]
+            console.print(f"[fail]{exc}[/]")
         return []
 
     if layout == "docker_run":
@@ -55,7 +59,7 @@ def run_configured_reporters(
 
     if not results.stages:
         if console is not None and not ci:
-            console.print(  # type: ignore[union-attr]
+            console.print(
                 f"[muted]No Allure results under {artifacts_root}; skipping reporters.[/]"
             )
         return []
@@ -79,7 +83,7 @@ def run_configured_reporters(
         if console is None:
             continue
         if outcome.ok:
-            console.print(f"[muted]Reporter:[/] {outcome.message}")  # type: ignore[union-attr]
+            console.print(f"[muted]Reporter:[/] {outcome.message}")
         else:
-            console.print(f"[warn]Reporter failed:[/] {outcome.message}")  # type: ignore[union-attr]
+            console.print(f"[warn]Reporter failed:[/] {outcome.message}")
     return outcomes

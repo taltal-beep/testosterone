@@ -346,10 +346,11 @@ Metrics pushes are best-effort. They do not change the run result.
 
 ## CI/CD (recommended)
 
-- **Lint + unit tests**: `.github/workflows/ci.yml`'s `format` job runs on every PR — `ruff check .` (blocking), `ruff format --check` (advisory), `mypy testo_core` (advisory, see `docs/Testing Workflows/Technical Debt Tracker.md`) — followed by the `test` job's fast pytest tier. Run locally before pushing:
+- **Lint + unit tests**: `.github/workflows/ci.yml`'s `format` job runs on every PR — `ruff check .`, `ruff format --check .` and `mypy testo_core`, all blocking — followed by the `test` job's fast pytest tier. Run locally before pushing:
   ```bash
   pip install -e ".[dev]"
   ruff check .
+  ruff format --check .
   mypy testo_core
   ```
 - **Pre-commit hooks**: catches the same `ruff`/changelog-format checks locally before you push, plus basic whitespace/YAML/TOML hygiene. One-time setup:

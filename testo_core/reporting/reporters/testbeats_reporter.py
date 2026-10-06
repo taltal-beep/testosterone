@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import requests
 
@@ -16,6 +17,9 @@ from testo_core.reporting.reporters.testbeats_payloads import (
     build_teams_payload,
 )
 
+if TYPE_CHECKING:
+    from rich.console import Console
+
 
 class TestBeatsReporter(BaseReporter):
     @property
@@ -27,7 +31,7 @@ class TestBeatsReporter(BaseReporter):
         *,
         results: CollectedResults,
         context: ReportContext,
-        console: object | None = None,
+        console: Console | None = None,
     ) -> ReporterResult:
         slack_url = (self._options.get("slack_webhook") or "").strip()
         teams_url = (self._options.get("teams_webhook") or "").strip()
@@ -71,7 +75,7 @@ class TestBeatsReporter(BaseReporter):
         if not slack_url and not teams_url:
             msg = f"TestBeats preview at {preview_path} (set slack_webhook or teams_webhook to send)"
             if console is not None:
-                console.print(f"[muted]{msg}[/]")  # type: ignore[union-attr]
+                console.print(f"[muted]{msg}[/]")
             return ReporterResult(ok=True, message=msg, artifacts=tuple(artifacts))
 
         if slack_url:
@@ -95,7 +99,7 @@ class TestBeatsReporter(BaseReporter):
 
         msg = "TestBeats notification sent."
         if console is not None:
-            console.print(f"[ok]{msg}[/]")  # type: ignore[union-attr]
+            console.print(f"[ok]{msg}[/]")
         return ReporterResult(ok=True, message=msg, artifacts=tuple(artifacts))
 
 

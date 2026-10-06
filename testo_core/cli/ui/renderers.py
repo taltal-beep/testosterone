@@ -13,10 +13,11 @@ Three implementations are provided:
 
 from __future__ import annotations
 
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 from typing import Protocol
 
 from rich.console import Console
+from rich.progress import Progress
 
 from testo_core.cli.ui.ci_renderer import emit_ndjson
 from testo_core.cli.ui.panels import StagePanelData, render_plan_summary, render_stage_panel
@@ -48,8 +49,8 @@ class BufferedRenderer:
         self._console = console
         self._tail_lines = output_tail_lines
         self._panels: list[StagePanelData] = []
-        self._progress_ctx = nullcontext()
-        self._progress = None
+        self._progress_ctx: AbstractContextManager[Progress | None] = nullcontext()
+        self._progress: Progress | None = None
 
     def handle(self, event: EngineEvent) -> None:
         if isinstance(event, PlanStarted):

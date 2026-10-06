@@ -802,12 +802,11 @@ def snapshot_files_for_download(*, record: CompletedRunView) -> list[tuple[str, 
     base = ORCHESTRATOR_ROOT / record.snapshot_dir
     if not base.is_dir():
         return []
-    out: list[tuple[str, bytes]] = []
+    local_files: list[tuple[str, bytes]] = []
     for p in sorted(base.rglob("*")):
         if p.is_file():
-            rel = p.relative_to(base)
-            out.append((str(rel), p.read_bytes()))
-    return out
+            local_files.append((str(p.relative_to(base)), p.read_bytes()))
+    return local_files
 
 
 def _extract_failure_context_from_allure(

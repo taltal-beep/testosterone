@@ -42,7 +42,7 @@ def frame_to_ansi(frame: Frame, palette: dict[str, str] = PALETTE) -> str:
             else:
                 parts.append("49")
             glyph = "▀" if tcol else "▄"
-            if tcol is None:
+            if tcol is None and bcol is not None:
                 # only bottom colored: draw lower half-block with fg=bottom
                 r, g, b = _hex_rgb(bcol)
                 parts = [f"38;2;{r};{g};{b}", "49"]

@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from rich import box
 from rich.columns import Columns
-from rich.console import Console
+from rich.console import Console, RenderableType
 from rich.panel import Panel
 from rich.rule import Rule
 from rich.table import Table
@@ -227,7 +227,7 @@ def _fill_change_table(
     include_group: bool,
 ) -> None:
     for c in rows:
-        row: list[object] = []
+        row: list[RenderableType] = []
         if include_group:
             row.append(c.group)
         row.extend(

@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 
 from testo_core.engine.result import PlanResult
+from testo_core.persistence.backend import PersistenceBackend
 from testo_core.persistence.json_backend import JsonBackend
 
 logger = logging.getLogger(__name__)
@@ -14,14 +15,14 @@ logger = logging.getLogger(__name__)
 class _CompositeBackend:
     """Run every registered backend; swallow individual failures."""
 
-    def __init__(self, backends: list[object]) -> None:
+    def __init__(self, backends: list[PersistenceBackend]) -> None:
         self._backends = backends
 
     def persist(self, result: PlanResult) -> str | None:
         run_id: str | None = None
         for backend in self._backends:
             try:
-                outcome = backend.persist(result)  # type: ignore[union-attr]
+                outcome = backend.persist(result)
             except Exception:
                 logger.debug("backend %s failed", type(backend).__name__, exc_info=True)
                 continue
@@ -37,7 +38,7 @@ def composite_backend(*, artifacts_root: Path, db: bool = True) -> _CompositeBac
     *db* is ``True`` and the repository layer is importable.
     """
 
-    backends: list[object] = [JsonBackend(artifacts_root)]
+    backends: list[PersistenceBackend] = [JsonBackend(artifacts_root)]
     if db:
         try:
             from testo_core.persistence.db_backend import DbBackend

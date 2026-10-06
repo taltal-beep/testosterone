@@ -186,14 +186,16 @@ def report_native(
             html_targets = [r for r in rows if r.open_path is not None and r.open_kind == "html"]
             any_failed = False
             for r in html_targets:
-                if open_native_uri(r.open_path):
+                target = r.open_path
+                assert target is not None  # filtered above
+                if open_native_uri(target):
                     console.print(
-                        f"[ok]Opened[/] [html] {relpath_for_display(r.open_path)} [muted]({r.routine})[/]"
+                        f"[ok]Opened[/] [html] {relpath_for_display(target)} [muted]({r.routine})[/]"
                     )
                 else:
                     any_failed = True
                     console.print(
-                        f"[fail]Could not open browser for[/] {r.open_path.resolve()} [muted]({r.routine})[/]"
+                        f"[fail]Could not open browser for[/] {target.resolve()} [muted]({r.routine})[/]"
                     )
             if any_failed:
                 raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE))

@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from testo_core.reporting.collector import CollectedResults
 from testo_core.reporting.reporters.base import BaseReporter, ReportContext, ReporterResult
+
+if TYPE_CHECKING:
+    from rich.console import Console
 
 
 class AllureReporter(BaseReporter):
@@ -18,7 +22,7 @@ class AllureReporter(BaseReporter):
         *,
         results: CollectedResults,
         context: ReportContext,
-        console: object | None = None,
+        console: Console | None = None,
     ) -> ReporterResult:
         if not results.stages:
             return ReporterResult(ok=False, message="no Allure result directories found.")
@@ -73,7 +77,7 @@ class AllureReporter(BaseReporter):
 
         serve_port = resolve_serve_port(context.host, context.port)
         if console is not None and serve_port != context.port:
-            console.print(  # type: ignore[union-attr]
+            console.print(
                 f"[muted]Port {context.port} is in use; serving the dashboard on[/] [bold]{serve_port}[/] instead."
             )
         code = open_generated_report(report_dir=outcome.out_dir.resolve(), host=context.host, port=serve_port)
@@ -97,7 +101,7 @@ class AllureReporter(BaseReporter):
         *,
         results: CollectedResults,
         context: ReportContext,
-        console: object | None = None,
+        console: Console | None = None,
     ) -> ReporterResult:
         """Generate one Allure report per framework under run_report_root/allure_reports/<framework>/."""
         from testo_core.reporting.allure import AllureCLINotFoundError, generate_html

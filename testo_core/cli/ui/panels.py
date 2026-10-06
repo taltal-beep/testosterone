@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from rich.console import Console, Group
+from rich.console import Console, Group, RenderableType
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -37,7 +37,7 @@ def render_stage_panel(console: Console, data: StagePanelData, *, tail_max_lines
         f"[{style}]{data.name}[/] {equipment} [{style}]{status_label}[/]"
     )
 
-    rows: list[object] = []
+    rows: list[RenderableType] = []
     rows.append(Text.from_markup(f"[muted]duration:[/] {data.duration_s:.2f}s"))
     if data.command:
         rows.append(Text.from_markup(f"[muted]command:[/]  {data.command}"))

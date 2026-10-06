@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from testo_core.reporting.allure_results import parse_collected_results
 from testo_core.reporting.collector import CollectedResults
 from testo_core.reporting.exporter import write_json_summary
@@ -10,6 +12,9 @@ from testo_core.reporting.reporters.reportportal_client import (
     ReportPortalClient,
     ReportPortalError,
 )
+
+if TYPE_CHECKING:
+    from rich.console import Console
 
 
 class ReportPortalReporter(BaseReporter):
@@ -22,7 +27,7 @@ class ReportPortalReporter(BaseReporter):
         *,
         results: CollectedResults,
         context: ReportContext,
-        console: object | None = None,
+        console: Console | None = None,
     ) -> ReporterResult:
         endpoint = (self._options.get("endpoint") or "").strip().rstrip("/")
         project = (self._options.get("project") or "").strip()
@@ -77,7 +82,7 @@ class ReportPortalReporter(BaseReporter):
 
         msg = f"ReportPortal launch {launch_uuid} — {dashboard}"
         if console is not None:
-            console.print(f"[ok]{msg}[/]")  # type: ignore[union-attr]
+            console.print(f"[ok]{msg}[/]")
         return ReporterResult(
             ok=True,
             message=msg,

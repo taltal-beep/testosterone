@@ -18,10 +18,9 @@ are lost when the orchestrator moves on to the next stage.
 
 from __future__ import annotations
 
-import os
 import threading
 from collections import deque
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 from typing import IO
 
@@ -127,7 +126,7 @@ def drain_stream_into_buffer(
         return
 
 
-def merged_env(parent: dict[str, str] | os._Environ[str], extra: Iterable[tuple[str, str]] | None) -> dict[str, str]:
+def merged_env(parent: Mapping[str, str], extra: Iterable[tuple[str, str]] | None) -> dict[str, str]:
     """Return a copy of ``parent`` overlaid with ``extra`` env vars."""
     out = dict(parent)
     for k, v in extra or ():

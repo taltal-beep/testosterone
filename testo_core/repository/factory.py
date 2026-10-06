@@ -46,7 +46,7 @@ class MySQLRepositoryAdapter:
         return SQLModelRunRepository(engine=engine)
 
 
-SUPPORTED_DIALECT_ADAPTERS = {
+SUPPORTED_DIALECT_ADAPTERS: dict[str, SQLiteRepositoryAdapter | PostgreSQLRepositoryAdapter | MySQLRepositoryAdapter] = {
     "sqlite": SQLiteRepositoryAdapter(),
     "postgresql": PostgreSQLRepositoryAdapter(),
     "mysql": MySQLRepositoryAdapter(),
