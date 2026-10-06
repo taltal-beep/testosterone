@@ -69,3 +69,36 @@ def test_resting_trigger_emits_trigger_and_terminal_event(
     assert [e["event"] for e in events] == ["cycle_trigger", "plan_finished"]
     assert events[0]["status"] == "resting"
     assert events[1]["exit_code"] == 0
+
+
+def test_adhoc_execution_runs_one_stage_plan_through_the_engine(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    adapter = use_echo_adapter(monkeypatch)
+    config = write_minimal_config(tmp_path)
+
+    state = CycleExecutionManager().create_adhoc_execution(
+        framework="pytest",
+        target_repo=tmp_path,
+        args=["--text", "adhoc-ok"],
+        config_path=config,
+        report_db=False,
+    )
+    _wait(state)
+
+    assert state.status == "completed", state.error
+    assert state.cycle == "adhoc"
+    assert len(adapter.calls) == 1
+    events = read_artifact_events(tmp_path / "artifacts", "adhoc")
+    assert [e["event"] for e in events][-1] == "plan_finished"
+    assert any(e["event"] == "stage_started" and e.get("stage") == "pytest" for e in events)
+
+
+def test_adhoc_execution_rejects_unknown_framework_before_starting(tmp_path: Path) -> None:
+    from testo_core.config.errors import ConfigValidationError
+
+    manager = CycleExecutionManager()
+    with pytest.raises(ConfigValidationError, match="unknown framework"):
+        manager.create_adhoc_execution(framework="locust", target_repo=tmp_path)
+    with pytest.raises(ConfigValidationError, match="not a directory"):
+        manager.create_adhoc_execution(framework="pytest", target_repo=tmp_path / "missing")

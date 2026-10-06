@@ -2,37 +2,34 @@ stages:
   - quality
 
 variables:
-  UQO_CONFIG_PATH: ".uqo/config.yaml"
-  UQO_GHOST_MODE: "auto"
-  UQO_STREAM_JSON: "false"
-  UQO_PERSIST: "true"
-  UQO_RUNNER_IMAGE: ""
-  UQO_RUNNER_PREBUILT: "auto"
+  TESTO_CONFIG_PATH: ""
+  TESTO_CYCLE: ""
+  TESTO_PERSIST: "true"
 
-uqo_run:
+testo_run:
   stage: quality
   image: python:3.11-slim
   script:
     - python -m pip install --upgrade pip
     - python -m pip install testo-core
     - |
-      UQO_ARGS=(run --config "$UQO_CONFIG_PATH" --ci)
-      if [ "$UQO_GHOST_MODE" = "true" ]; then
-        UQO_ARGS+=(--ghost)
-      elif [ "$UQO_GHOST_MODE" = "false" ]; then
-        UQO_ARGS+=(--no-ghost)
+      TESTO_ARGS=(run --ci)
+      if [ -n "$TESTO_CONFIG_PATH" ]; then
+        TESTO_ARGS+=(--config "$TESTO_CONFIG_PATH")
       fi
-      if [ "$UQO_STREAM_JSON" = "true" ]; then
-        UQO_ARGS+=(--stream-json)
+      if [ -n "$TESTO_CYCLE" ]; then
+        TESTO_ARGS+=(--cycle "$TESTO_CYCLE")
       fi
-      if [ "$UQO_PERSIST" = "false" ]; then
-        UQO_ARGS+=(--no-persist)
+      if [ "$TESTO_PERSIST" = "false" ]; then
+        TESTO_ARGS+=(--no-persist)
       fi
-      uqo "${UQO_ARGS[@]}" | tee uqo-output.ndjson
-    - tail -n 1 uqo-output.ndjson > uqo-summary.json
+      set -o pipefail
+      testo "${TESTO_ARGS[@]}" | tee testo-output.ndjson
+  after_script:
+    - grep '"event":"plan_finished"' testo-output.ndjson | tail -n 1 > testo-summary.json || true
   artifacts:
     when: always
     expire_in: 7 days
     paths:
-      - uqo-output.ndjson
-      - uqo-summary.json
+      - testo-output.ndjson
+      - testo-summary.json

@@ -16,10 +16,8 @@ from testo_api.routes.ai import router as ai_router
 from testo_api.routes.analytics import router as analytics_router
 from testo_api.routes.cycles import router as cycles_router
 from testo_api.routes.dashboard import router as dashboard_router
-from testo_api.routes.events import router as events_router
 from testo_api.routes.health import router as health_router
 from testo_api.routes.history import router as history_router
-from testo_api.routes.runs import router as runs_router
 from testo_core.run_history import STATIC_HISTORY_ROOT
 
 logger = logging.getLogger(__name__)
@@ -52,9 +50,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(runs_router)
     app.include_router(ai_router)
-    app.include_router(events_router)
     app.include_router(cycles_router)
     app.include_router(history_router)
     app.include_router(analytics_router)

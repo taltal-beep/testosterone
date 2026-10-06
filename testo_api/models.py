@@ -4,59 +4,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from testo_core.services.headless_engine import EngineSummary
-
-
-class RunSpecRequest(BaseModel):
-    test_type: Literal["pytest", "behavex", "behave_native"]
-    target_repo: str
-    cli_args: list[str] = Field(default_factory=list)
-    timeout_s: float | None = None
-    extra_env: dict[str, str] | None = None
-
-
-class CreateExecutionRequest(BaseModel):
-    runs: list[RunSpecRequest]
-    persist: bool = True
-    trigger_source: Literal["ui"] = "ui"
-    ci_mode: bool = False
-
-
-class ExecutionAcceptedResponse(BaseModel):
-    execution_id: str
-    status: Literal["queued", "running"]
-    events_url: str
-    summary_url: str
-
-
-class ExecutionStatusResponse(BaseModel):
-    execution_id: str
-    status: Literal["queued", "running", "completed", "failed"]
-    summary: dict[str, Any] | None = None
-    run_ids: list[str] = Field(default_factory=list)
-    error: str | None = None
-
-    @classmethod
-    def from_summary(
-        cls,
-        *,
-        execution_id: str,
-        status: Literal["queued", "running", "completed", "failed"],
-        summary: EngineSummary | None,
-        error: str | None = None,
-    ) -> ExecutionStatusResponse:
-        payload = summary.to_dict() if summary else None
-        run_ids = []
-        if payload:
-            run_ids = [str(run.get("run_id")) for run in payload.get("runs", []) if run.get("run_id")]
-        return cls(
-            execution_id=execution_id,
-            status=status,
-            summary=payload,
-            run_ids=run_ids,
-            error=error,
-        )
-
 
 class StageSummary(BaseModel):
     name: str
@@ -102,6 +49,20 @@ class CycleExecutionRequest(BaseModel):
     report_db: bool = True
     async_report_db: bool = False
     reporter_override: list[str] | None = None
+
+
+class AdhocExecutionRequest(BaseModel):
+    """Run one framework directly, without a cycle in ``testosterone.yaml``."""
+
+    framework: Literal["pytest", "behave", "behavex", "command"]
+    target_repo: str
+    args: list[str] = Field(default_factory=list)
+    timeout_s: float | None = None
+    extra_env: dict[str, str] | None = None
+    config_path: str | None = None
+    artifacts_root: str | None = None
+    persist: bool = True
+    report_db: bool = True
 
 
 class CycleExecutionAcceptedResponse(BaseModel):

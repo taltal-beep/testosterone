@@ -1,20 +1,15 @@
-export interface ExecutionRequest {
-  runs: Array<{
-    test_type: "pytest" | "behavex" | "behave_native" | "locust";
-    target_repo: string;
-    cli_args?: string[];
-    timeout_s?: number;
-  }>;
-  persist?: boolean;
-  trigger_source?: "ui";
-  ci_mode?: boolean;
-}
+export type AdhocFramework = "pytest" | "behave" | "behavex" | "command";
 
-export interface ExecutionAccepted {
-  execution_id: string;
-  status: "queued" | "running";
-  events_url: string;
-  summary_url: string;
+export interface AdhocExecutionRequest {
+  framework: AdhocFramework;
+  target_repo: string;
+  args?: string[];
+  timeout_s?: number | null;
+  extra_env?: Record<string, string> | null;
+  config_path?: string | null;
+  artifacts_root?: string | null;
+  persist?: boolean;
+  report_db?: boolean;
 }
 
 export interface CycleExecutionRequest {
@@ -44,14 +39,6 @@ export interface CycleExecutionStatus {
   artifacts_root: string | null;
   events_path: string | null;
   plan_result_path: string | null;
-  error: string | null;
-}
-
-export interface ExecutionStatus {
-  execution_id: string;
-  status: "queued" | "running" | "completed" | "failed";
-  summary: Record<string, unknown> | null;
-  run_ids: string[];
   error: string | null;
 }
 
@@ -327,25 +314,17 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const apiClient = {
-  createExecution(payload: ExecutionRequest): Promise<ExecutionAccepted> {
-    return api<ExecutionAccepted>("/api/v1/executions", {
-      method: "POST",
-      body: JSON.stringify({
-        persist: true,
-        trigger_source: "ui",
-        ci_mode: false,
-        ...payload
-      })
-    });
-  },
   createCycleExecution(cycle: string, payload: CycleExecutionRequest): Promise<CycleExecutionAccepted> {
     return api<CycleExecutionAccepted>(`/api/v1/cycles/${encodeURIComponent(cycle)}/executions`, {
       method: "POST",
       body: JSON.stringify(payload)
     });
   },
-  getExecution(executionId: string): Promise<ExecutionStatus> {
-    return api<ExecutionStatus>(`/api/v1/executions/${executionId}`);
+  createAdhocExecution(payload: AdhocExecutionRequest): Promise<CycleExecutionAccepted> {
+    return api<CycleExecutionAccepted>("/api/v1/adhoc-executions", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
   },
   getCycleExecutionStatus(executionId: string): Promise<CycleExecutionStatus> {
     return api<CycleExecutionStatus>(`/api/v1/cycle-executions/${executionId}`);

@@ -1,13 +1,17 @@
+"""Read model over persisted runs: list/get views, report links, snapshot downloads.
+
+Runs are written by the engine's persistence backends
+(:mod:`testo_core.persistence`); this module only reads them back for the API,
+the dashboard and the AI failure analysis. Records written before v1.1 by the
+removed headless runner (``test_kind`` per framework, MinIO snapshots) are still
+readable here.
+"""
+
 from __future__ import annotations
 
-import json
 import logging
-import shutil
 import sys
-import tempfile
 import time
-import uuid
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -22,13 +26,7 @@ from testo_core.db import get_repository
 from testo_core.db_config import (  # get_engine: back-compat re-export
     create_db_and_tables,
 )
-from testo_core.metrics import parse_allure_results_dir
-from testo_core.paths import (
-    STATIC_ALLURE_HTML,
-    STATIC_BEHAVE_DIR,
-)
 from testo_core.repository.models import RunRecord, RunStatus
-from testo_core.runners import RunResult
 from testo_core.s3_client import get_artifact_s3
 
 logger = logging.getLogger(__name__)
@@ -41,7 +39,7 @@ def cleanup_orphaned_runs(*, note: str = "Orphaned due to system crash") -> int:
     On startup, mark any RUNNING runs as FAILED.
 
     This prevents the UI from displaying runs that were interrupted by a crash or a force-quit
-    (Streamlit reload, kernel restart, machine reboot, etc.) as if they were still executing.
+    (API server reload, kernel restart, machine reboot, etc.) as if they were still executing.
     """
     repo = get_repository()
     rows = repo.list_runs_by_status(RunStatus.RUNNING)
@@ -71,27 +69,10 @@ def _utcnow() -> datetime:
     return datetime.now(tz=UTC)
 
 
-def create_run(*, status: RunStatus = RunStatus.PENDING, metadata: dict[str, Any] | None = None) -> uuid.UUID:
-    """
-    Initializes a new record in the DB.
-
-    Returns the new run UUID.
-    """
-    rr = get_repository().create_run(status=status, metadata=metadata)
-    return rr.id
-
-
-def update_run_status(run_id: uuid.UUID | str, status: RunStatus, metadata: dict[str, Any] | None = None) -> None:
-    """
-    Updates an existing record (or creates it if missing).
-    """
-    get_repository().update_run_status(run_id, status=status, metadata=metadata)
-
-
 @dataclass(frozen=True)
 class CompletedRunView:
     """
-    Back-compat view for the Streamlit UI.
+    Flat view of one run for the API and services.
     Derived from `RunRecord.metadata_`.
     """
 
@@ -122,58 +103,6 @@ def _is_s3_snapshot_prefix(snapshot_dir: str | None) -> bool:
     return bool(snapshot_dir and snapshot_dir.startswith("runs/"))
 
 
-def _snapshot_reports(*, run_id: str, artifacts_root: Path) -> str | None:
-    """
-    Stage report mirrors in a temp directory, upload to MinIO under
-    ``runs/{run_id}/artifacts/...``, and return the key prefix ``runs/{run_id}/artifacts``.
-
-    Does not write under ``artifacts/history/`` or ``static/history/``.
-    """
-    del artifacts_root  # Snapshot source is static mirrors, not the local artifacts tree.
-    prefix = f"runs/{run_id}/artifacts"
-    try:
-        storage = get_artifact_s3()
-    except Exception as exc:
-        logger.warning("S3 artifact snapshot skipped (configure MinIO env): %s", exc)
-        return None
-
-    try:
-        with tempfile.TemporaryDirectory() as td:
-            dest = Path(td)
-            dest.mkdir(parents=True, exist_ok=True)
-            try:
-                from .paths import STATIC_ALLURE_REPORTS_DIR
-
-                allure_hist = dest / "allure_reports"
-                allure_hist.mkdir(parents=True, exist_ok=True)
-                if STATIC_ALLURE_REPORTS_DIR.is_dir():
-                    for d in [p for p in STATIC_ALLURE_REPORTS_DIR.iterdir() if p.is_dir()]:
-                        if d.name == "unified":
-                            continue
-                        if (d / "index.html").is_file():
-                            shutil.copytree(d, allure_hist / d.name)
-            except Exception:
-                pass
-
-            if not (dest / "allure_reports").is_dir() and STATIC_ALLURE_HTML.is_file():
-                shutil.copy2(STATIC_ALLURE_HTML, dest / "allure_report.html")
-            if STATIC_BEHAVE_DIR.is_dir() and any(STATIC_BEHAVE_DIR.iterdir()):
-                shutil.copytree(STATIC_BEHAVE_DIR, dest / "behave")
-
-            uploaded = 0
-            for path in dest.rglob("*"):
-                if path.is_file():
-                    rel = path.relative_to(dest).as_posix()
-                    key = f"{prefix}/{rel}"
-                    storage.upload_file(path, key)
-                    uploaded += 1
-            if uploaded == 0:
-                return None
-            return prefix
-    except OSError:
-        return None
-
-
 @dataclass(frozen=True)
 class RunSessionView:
     """UI-friendly grouped run session with available report links."""
@@ -190,59 +119,6 @@ class RunSessionView:
     status: RunStatus | None
     links_under_static: dict[str, str]
     cycle: str | None = None
-
-
-@dataclass(frozen=True)
-class SyncOperationStatus:
-    status: str
-    attempts: int
-    error: str | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "status": self.status,
-            "attempts": int(self.attempts),
-            "error": self.error,
-        }
-
-
-@dataclass(frozen=True)
-class RunSyncStatus:
-    run_id: str | None
-    db_finalize: SyncOperationStatus
-    artifact_upload: SyncOperationStatus
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "run_id": self.run_id,
-            "db_finalize": self.db_finalize.to_dict(),
-            "artifact_upload": self.artifact_upload.to_dict(),
-        }
-
-
-def _is_transient_sync_error(exc: Exception) -> bool:
-    return isinstance(exc, (ConnectionError, TimeoutError, OSError))
-
-
-def _run_with_retry(
-    fn: Callable[[], None],
-    *,
-    max_attempts: int = 3,
-    base_backoff_s: float = 0.1,
-) -> tuple[int, Exception | None]:
-    attempts = 0
-    last_error: Exception | None = None
-    while attempts < max_attempts:
-        attempts += 1
-        try:
-            fn()
-            return attempts, None
-        except Exception as exc:  # pragma: no cover - exercised via callers
-            last_error = exc
-            if attempts >= max_attempts or not _is_transient_sync_error(exc):
-                break
-            time.sleep(base_backoff_s * float(2 ** (attempts - 1)))
-    return attempts, last_error
 
 
 def _s3_session_links(*, run_id: str, snap_prefix: str) -> dict[str, str]:
@@ -333,287 +209,12 @@ def list_run_sessions(*, limit: int = 30, db_path: Path | None = None) -> list[R
     return out
 
 
-def record_completed_run(
-    *,
-    rr: RunResult,
-    artifacts_root: Path,
-    test_kind: str,
-    audit_health_pct: float | None = None,
-    metadata_context: dict[str, Any] | None = None,
-    db_path: Path | None = None,
-) -> RunSyncStatus:
-    """Persist metadata and snapshot HTML after a run completes."""
-    del db_path
-    env = rr.command.env
-    run_id = env.get("UQO_AUDIT_RUN_ID") or env.get("UQO_RUN_ID")
-    if not run_id:
-        return RunSyncStatus(
-            run_id=None,
-            db_finalize=SyncOperationStatus(status="failed", attempts=0, error="missing_run_id"),
-            artifact_upload=SyncOperationStatus(status="failed", attempts=0, error="missing_run_id"),
-        )
-
-    ar = artifacts_root.expanduser().resolve()
-    results_dir = ar / "allure-results"
-    if not rr.audit_mode:
-        scoped_results = env.get("UQO_SHARED_ALLURE_RESULTS_DIR")
-        if scoped_results:
-            results_dir = Path(scoped_results).expanduser().resolve()
-    m = None
-    try:
-        if results_dir.is_dir():
-            m = parse_allure_results_dir(results_dir)
-    except Exception:
-        m = None
-
-    wall_ms = max(0.0, (rr.finished_at - rr.started_at) * 1000.0)
-    metrics_ms = int(m.duration_ms) if m else None
-    total_t = int(m.total_tests) if m else None
-    passed = int(m.passed) if m else None
-    failed = int(m.failed) if m else None
-    avg_case = None
-    if m and m.total_tests > 0:
-        avg_case = float(m.duration_ms) / float(m.total_tests)
-
-    health = rr.audit_health_pct if rr.audit_mode else audit_health_pct
-    if health is None and m and m.total_tests > 0:
-        health = (m.passed / m.total_tests) * 100.0
-
-    audit_blob: str | None = None
-    if rr.audit_mode:
-        audit_blob = json.dumps(
-            {
-                "partial": rr.audit_partial_success,
-                "phases": list(rr.audit_phase_returncodes),
-                "health_pct": rr.audit_health_pct,
-            }
-        )
-
-    snapshot_attempts = 0
-    upload_attempts = 0
-    artifact_error: str | None = None
-    snap_prefix: str | None = None
-    upload_count = 0
-    snapshot_holder: dict[str, str | None] = {"prefix": None}
-    upload_holder: dict[str, int] = {"count": 0}
-
-    def _snapshot_op() -> None:
-        snapshot_holder["prefix"] = _snapshot_reports(run_id=run_id, artifacts_root=ar)
-
-    def _upload_op() -> None:
-        upload_holder["count"] = _upload_allure_results_to_s3(
-            run_id=str(run_id),
-            artifacts_root=ar,
-            test_kind=str(test_kind),
-        )
-
-    snapshot_attempts, snapshot_error = _run_with_retry(_snapshot_op)
-    upload_attempts, upload_error = _run_with_retry(_upload_op)
-    snap_prefix = snapshot_holder["prefix"]
-    upload_count = int(upload_holder["count"])
-    if snapshot_error is not None:
-        artifact_error = str(snapshot_error)
-    elif upload_error is not None:
-        artifact_error = str(upload_error)
-
-    target_repo = str(rr.command.cwd)
-    payload: dict[str, Any] = {
-        "run_id": str(run_id),
-        "created_at": float(time.time()),
-        "started_at": float(rr.started_at),
-        "finished_at": float(rr.finished_at),
-        "test_kind": str(test_kind),
-        "returncode": int(rr.returncode),
-        "wall_duration_ms": float(wall_ms),
-        "metrics_duration_ms": int(metrics_ms) if metrics_ms is not None else None,
-        "total_tests": int(total_t) if total_t is not None else None,
-        "passed": int(passed) if passed is not None else None,
-        "failed": int(failed) if failed is not None else None,
-        "broken": int(getattr(m, "broken", 0)) if m is not None and getattr(m, "broken", None) is not None else None,
-        "skipped": int(getattr(m, "skipped", 0)) if m is not None and getattr(m, "skipped", None) is not None else None,
-        "avg_case_ms": float(avg_case) if avg_case is not None else None,
-        "health_pct": float(health) if health is not None else None,
-        "target_repo": str(target_repo),
-        "snapshot_dir": snap_prefix,
-        "allure_report_url": allure_report_url_for_run(str(run_id)) if upload_count > 0 else None,
-        "audit_json": str(audit_blob) if audit_blob else None,
-    }
-    if metadata_context:
-        payload.update({str(k): v for k, v in metadata_context.items()})
-    if int(rr.returncode) != 0:
-        failure_context, trace_excerpt = _extract_failure_context_from_allure(results_dir=results_dir)
-        if failure_context:
-            payload.setdefault("failure_context", failure_context)
-            failed_cases = failure_context.get("failed_cases")
-            if isinstance(failed_cases, list) and failed_cases:
-                first_message = failed_cases[0].get("message") if isinstance(failed_cases[0], dict) else None
-                if first_message:
-                    payload.setdefault("error_message", str(first_message))
-        if trace_excerpt:
-            payload.setdefault("traceback", trace_excerpt)
-        log_tail = _read_run_log_tail(run_id=str(run_id))
-        if log_tail:
-            payload.setdefault("log_tail", log_tail)
-            payload.setdefault("error_message", log_tail)
-    if int(rr.returncode) == 124:
-        payload.setdefault("error", "timeout")
-        payload.setdefault("error_message", "Container exceeded timeout and was force-killed.")
-    status = RunStatus.COMPLETED if int(rr.returncode) == 0 else RunStatus.FAILED
-    db_attempts, db_error = _run_with_retry(lambda: update_run_status(run_id, status=status, metadata=payload))
-
-    db_status = "success" if db_error is None else "failed"
-    if artifact_error is not None:
-        artifact_status = "failed"
-    elif snap_prefix is None and upload_count <= 0:
-        artifact_status = "skipped"
-    else:
-        artifact_status = "success"
-
-    return RunSyncStatus(
-        run_id=str(run_id),
-        db_finalize=SyncOperationStatus(status=db_status, attempts=db_attempts, error=str(db_error) if db_error else None),
-        artifact_upload=SyncOperationStatus(
-            status=artifact_status,
-            attempts=max(1, snapshot_attempts + upload_attempts),
-            error=artifact_error,
-        ),
-    )
-
-
 def allure_report_url_for_run(run_id: str) -> str:
     """Public URL for a pre-generated Allure 3 HTML bundle (nginx static host)."""
     import os
 
     base = (os.getenv("ALLURE_SERVER_URL") or "http://localhost:5050").rstrip("/")
     return f"{base}/reports/{run_id}/index.html"
-
-
-def _collect_allure_input_dirs(*, artifacts_root: Path, test_kind: str) -> list[Path]:
-    ar = artifacts_root.expanduser().resolve()
-    src_root = (ar / "allure-results").resolve()
-    if not src_root.is_dir():
-        return []
-    include_dirs: list[Path] = []
-    if str(test_kind).strip().lower() == "audit":
-        for fw in ("pytest", "behavex", "behave_native"):
-            p = (src_root / fw).resolve()
-            if p.is_dir():
-                include_dirs.append(p)
-    else:
-        p = (src_root / str(test_kind)).resolve()
-        if p.is_dir():
-            include_dirs.append(p)
-    return include_dirs
-
-
-def _upload_allure_html_report_to_s3(*, run_id: str, artifacts_root: Path, test_kind: str) -> int:
-    """Generate Allure 3 HTML locally and upload to ``reports/<run_id>/`` in MinIO."""
-    try:
-        storage = get_artifact_s3()
-    except Exception as exc:
-        logger.warning("Allure HTML upload skipped (MinIO not configured): %s", exc)
-        return 0
-
-    include_dirs = _collect_allure_input_dirs(artifacts_root=artifacts_root, test_kind=test_kind)
-    if not include_dirs:
-        return 0
-
-    try:
-        from testo_core.reporting.allure_cli import (
-            AllureCLINotFoundError,
-            report_has_index,
-            run_generate,
-        )
-    except ImportError:
-        return 0
-
-    prefix = f"reports/{run_id}"
-    uploaded = 0
-    try:
-        with tempfile.TemporaryDirectory(prefix="testo-allure-html-") as td:
-            out_dir = Path(td) / "report"
-            try:
-                completed = run_generate(result_dirs=include_dirs, out_dir=out_dir, clean=True, single_file=False)
-            except AllureCLINotFoundError as exc:
-                logger.warning("Allure HTML generation skipped: %s", exc)
-                return 0
-            if completed.returncode != 0 or not report_has_index(out_dir):
-                logger.warning(
-                    "Allure HTML generation failed (exit %s): %s",
-                    completed.returncode,
-                    (completed.stderr or completed.stdout or "").strip()[:500],
-                )
-                return 0
-            for path in out_dir.rglob("*"):
-                if not path.is_file():
-                    continue
-                rel = path.relative_to(out_dir).as_posix()
-                key = f"{prefix}/{rel}"
-                storage.upload_file(path, key)
-                uploaded += 1
-    except OSError as exc:
-        logger.warning("Allure HTML upload failed: %s", exc)
-        return 0
-
-    if uploaded:
-        logger.info(
-            "Uploaded %s Allure HTML file(s) to s3://%s/%s",
-            uploaded,
-            storage.bucket_name,
-            prefix,
-        )
-    return int(uploaded)
-
-
-def _upload_allure_results_to_s3(*, run_id: str, artifacts_root: Path, test_kind: str) -> int:
-    """
-    Upload raw Allure JSON (optional, for debugging) and generated HTML to MinIO.
-
-    HTML bundles are served by ``allure-static`` nginx at ``/reports/<run_id>/index.html``.
-    """
-    try:
-        storage = get_artifact_s3()
-    except Exception as exc:
-        logger.warning("Raw Allure results upload skipped (MinIO not configured): %s", exc)
-        return 0
-
-    include_dirs = _collect_allure_input_dirs(artifacts_root=artifacts_root, test_kind=test_kind)
-    if not include_dirs:
-        return 0
-
-    html_count = _upload_allure_html_report_to_s3(
-        run_id=run_id,
-        artifacts_root=artifacts_root,
-        test_kind=test_kind,
-    )
-
-    prefix = f"projects/{run_id}/results"
-
-    uploaded = 0
-    seen: set[str] = set()
-    for base in include_dirs:
-        for path in base.rglob("*"):
-            if not path.is_file():
-                continue
-            # Keep only valid Allure result payloads/attachments.
-            # - JSON: result/container/categories/executors
-            # - attachments: binary/text blobs referenced by tests
-            if path.suffix.lower() not in {".json", ".txt", ".png", ".jpg", ".jpeg", ".gif", ".xml", ".csv", ".log"}:
-                # Still allow attachment files without suffix.
-                if path.suffix:
-                    continue
-            name = path.name
-            # Avoid overwriting same-named files across frameworks (best-effort).
-            if name in seen:
-                continue
-            seen.add(name)
-            key = f"{prefix}/{name}"
-            storage.upload_file(path, key)
-            uploaded += 1
-
-    if uploaded:
-        logger.info("Uploaded %s Allure result file(s) to s3://%s/%s", uploaded, storage.bucket_name, prefix)
-    return int(uploaded) + int(html_count)
 
 
 def init_schema(db_path: Path | None = None) -> None:
@@ -623,7 +224,7 @@ def init_schema(db_path: Path | None = None) -> None:
 
 def _returncode_from_metadata(md: dict[str, Any]) -> int:
     """``DbBackend.persist`` (engine-sourced runs) writes ``exit_code``/``aggregate_returncode``
-    but no plain ``returncode`` key; the legacy headless runner writes ``returncode`` directly.
+    but no plain ``returncode`` key; pre-v1.1 headless-runner records carry ``returncode`` directly.
     Prefer the explicit key, then fall back through the engine-shaped aliases.
     """
     for key in ("returncode", "aggregate_returncode", "exit_code"):
@@ -635,7 +236,7 @@ def _returncode_from_metadata(md: dict[str, Any]) -> int:
 
 def _wall_duration_ms_from_metadata(md: dict[str, Any]) -> float:
     """``DbBackend.persist`` (engine-sourced runs) writes ``duration_s`` but no
-    ``wall_duration_ms``; the legacy headless runner writes ``wall_duration_ms`` directly.
+    ``wall_duration_ms``; pre-v1.1 headless-runner records carry ``wall_duration_ms`` directly.
     """
     if md.get("wall_duration_ms") is not None:
         return float(md["wall_duration_ms"])
@@ -808,105 +409,6 @@ def snapshot_files_for_download(*, record: CompletedRunView) -> list[tuple[str, 
             rel = p.relative_to(base)
             out.append((str(rel), p.read_bytes()))
     return out
-
-
-def _extract_failure_context_from_allure(
-    *, results_dir: Path, max_cases: int = 20, message_max_chars: int = 2000, trace_max_chars: int = 4000
-) -> tuple[dict[str, Any] | None, str | None]:
-    """Collect failed-case context from an Allure ``results_dir``.
-
-    Returns a tuple ``(context, trace_excerpt)``:
-
-    * ``context`` is a dict with ``schema_version``, ``captured_cases`` and a
-      ``failed_cases`` list (each item: ``name``/``fullName``/``status``/
-      ``message``), or ``None`` if no failures were found.
-    * ``trace_excerpt`` is a redacted excerpt of the first traceback seen
-      (trimmed to ``trace_max_chars``), or ``None``.
-
-    Inputs are read defensively: malformed JSON files are skipped.
-    """
-    from testo_core.security.redaction import redact_text  # local import: keep startup lean
-
-    if not results_dir.is_dir():
-        return None, None
-
-    failed_cases: list[dict[str, Any]] = []
-    trace_excerpt: str | None = None
-    for path in sorted(results_dir.glob("*-result.json")):
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        status = str(payload.get("status") or "").lower()
-        if status not in {"failed", "broken"}:
-            continue
-        details = payload.get("statusDetails") or {}
-        message_raw = str(details.get("message") or "")
-        trace_raw = str(details.get("trace") or "")
-        message = redact_text(message_raw)[:message_max_chars]
-        if trace_excerpt is None and trace_raw:
-            trace_excerpt = redact_text(trace_raw)[:trace_max_chars]
-        failed_cases.append(
-            {
-                "name": str(payload.get("name") or ""),
-                "fullName": str(payload.get("fullName") or ""),
-                "status": status,
-                "message": message,
-            }
-        )
-        if len(failed_cases) >= max_cases:
-            break
-
-    if not failed_cases:
-        return None, None
-
-    context = {
-        "schema_version": "v1",
-        "captured_cases": len(failed_cases),
-        "failed_cases": failed_cases,
-    }
-    return context, trace_excerpt
-
-
-def _read_run_log_tail(*, run_id: str, max_chars: int = 4000) -> str | None:
-    """Return a redacted tail of the orchestrator log file for ``run_id``
-    (``<ORCHESTRATOR_ROOT>/logs/<run_id>.log``) or ``None`` if the log is
-    missing.
-
-    The function prefers whole-line boundaries when truncating, so the caller
-    always sees a meaningful excerpt. We aim to return at most ``max_chars``
-    characters but will return the final non-empty line in full even if it
-    exceeds the soft cap, ensuring the most relevant context survives.
-    """
-    from testo_core.security.redaction import redact_text  # local import: keep startup lean
-
-    log_path = ORCHESTRATOR_ROOT / "logs" / f"{run_id}.log"
-    if not log_path.is_file():
-        return None
-    try:
-        text = log_path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return None
-    redacted = redact_text(text)
-    if len(redacted) <= max_chars:
-        return redacted
-
-    lines = redacted.splitlines()
-    selected: list[str] = []
-    used = 0
-    for line in reversed(lines):
-        cand = len(line) + (1 if selected else 0)
-        if selected and used + cand > max_chars:
-            break
-        selected.insert(0, line)
-        used += cand
-    # Guarantee at least one non-empty line of context.
-    if not any(selected):
-        for line in reversed(lines):
-            if line:
-                selected = [line]
-                break
-    return "\n".join(selected)
 
 
 if __name__ == "__main__":

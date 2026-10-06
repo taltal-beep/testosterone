@@ -1,24 +1,12 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { FormEvent, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { apiClient, type CycleExecutionRequest } from "../../lib/api-client";
-import { subscribeToCycleExecutionEvents, type CycleNdjsonEvent } from "../../lib/sse-client";
-import { Badge, Button, Card, Spinner, StatusPill } from "../../components/ui";
-import { MuscleDefeated, MuscleFlex } from "../../components/mascot";
+import { Button, Card, Spinner } from "../../components/ui";
+import { ExecutionProgress } from "../execution/ExecutionProgress";
+import { useCycleExecution } from "../execution/useCycleExecution";
 
 const REPORTERS = ["allure", "extent", "reportportal", "testbeats"] as const;
-
-type RunPhase = "idle" | "starting" | "running" | "passed" | "failed" | "aborted";
-
-type StageRow = {
-  stage: string;
-  framework?: string;
-  index?: number;
-  returncode?: number;
-  duration_s?: number;
-  status: "pending" | "running" | "completed";
-};
 
 export interface RunPanelProps {
   /** Pre-selected cycle; when set the dropdown starts on it. */
@@ -50,15 +38,8 @@ export function RunPanel({ initialCycle, lockCycle = false }: RunPanelProps) {
   const [configPath, setConfigPath] = useState("");
   const [artifactsRoot, setArtifactsRoot] = useState("");
 
-  const [phase, setPhase] = useState<RunPhase>("idle");
-  const [executionId, setExecutionId] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [exitCode, setExitCode] = useState<number | null>(null);
-  const [events, setEvents] = useState<CycleNdjsonEvent[]>([]);
-  const [stages, setStages] = useState<Record<string, StageRow>>({});
-  const unsubscribeRef = useRef<null | (() => void)>(null);
-
-  useEffect(() => () => unsubscribeRef.current?.(), []);
+  const execution = useCycleExecution();
+  const { busy } = execution;
 
   // Default the dropdown to the first cycle once loaded.
   useEffect(() => {
@@ -67,74 +48,9 @@ export function RunPanel({ initialCycle, lockCycle = false }: RunPanelProps) {
     }
   }, [cycle, cyclesQuery.data, initialCycle]);
 
-  function applyEvent(evt: CycleNdjsonEvent) {
-    setEvents((prev) => [...prev, evt]);
-    if (evt.event === "plan_started") {
-      setPhase("running");
-    }
-    if (evt.event === "stage_started") {
-      setStages((prev) => ({
-        ...prev,
-        [evt.stage]: { stage: evt.stage, framework: evt.framework, index: evt.index, status: "running" }
-      }));
-    }
-    if (evt.event === "stage_finished") {
-      setStages((prev) => ({
-        ...prev,
-        [evt.stage]: {
-          ...(prev[evt.stage] ?? { stage: evt.stage, status: "pending" }),
-          status: "completed",
-          returncode: evt.returncode,
-          duration_s: evt.duration_s
-        }
-      }));
-    }
-    if (evt.event === "plan_aborted") {
-      setPhase("aborted");
-      stopStream();
-    }
-    if (evt.event === "plan_finished") {
-      setExitCode(evt.exit_code);
-      setPhase(evt.exit_code === 0 ? "passed" : "failed");
-      stopStream();
-    }
-    if (evt.event === "error") {
-      setErrorMessage(evt.message);
-      setPhase("failed");
-      stopStream();
-    }
-  }
-
-  function stopStream() {
-    unsubscribeRef.current?.();
-    unsubscribeRef.current = null;
-  }
-
-  async function resolvePhaseFromStatus(executionId: string) {
-    try {
-      const status = await apiClient.getCycleExecutionStatus(executionId);
-      setPhase((current) => {
-        if (current !== "running" && current !== "starting") return current;
-        if (status.status === "completed") return "passed";
-        if (status.status === "failed") return "failed";
-        return current;
-      });
-      if (status.error) setErrorMessage(status.error);
-    } catch {
-      setPhase((current) => (current === "running" || current === "starting" ? "failed" : current));
-    }
-  }
-
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!cycle) return;
-    setPhase("starting");
-    setErrorMessage(null);
-    setExitCode(null);
-    setEvents([]);
-    setStages({});
-    setExecutionId(null);
-    stopStream();
 
     const payload: CycleExecutionRequest = {
       stream,
@@ -150,31 +66,8 @@ export function RunPanel({ initialCycle, lockCycle = false }: RunPanelProps) {
     if (configPath.trim()) payload.config_path = configPath.trim();
     if (artifactsRoot.trim()) payload.artifacts_root = artifactsRoot.trim();
 
-    try {
-      const created = await apiClient.createCycleExecution(cycle, payload);
-      setExecutionId(created.execution_id);
-      setPhase("running");
-      unsubscribeRef.current = subscribeToCycleExecutionEvents(created.events_url, {
-        onEvent: applyEvent,
-        onError: () => {
-          stopStream();
-          // EventSource fires error on normal server close too. Rather than assume
-          // failure, poll the execution's own status endpoint for the real outcome.
-          void resolvePhaseFromStatus(created.execution_id);
-        }
-      });
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : String(err));
-      setPhase("failed");
-    }
+    await execution.start(() => apiClient.createCycleExecution(cycle, payload));
   }
-
-  const stageRows = useMemo(
-    () => Object.values(stages).sort((a, b) => (a.index ?? 0) - (b.index ?? 0)),
-    [stages]
-  );
-  const busy = phase === "starting" || phase === "running";
-  const finished = phase === "passed" || phase === "failed" || phase === "aborted";
 
   return (
     <div className="space-y-4">
@@ -286,77 +179,19 @@ export function RunPanel({ initialCycle, lockCycle = false }: RunPanelProps) {
                 "Run cycle"
               )}
             </Button>
-            {executionId ? (
-              <span className="font-mono text-xs text-ink-400">execution {executionId}</span>
+            {execution.executionId ? (
+              <span className="font-mono text-xs text-ink-400">execution {execution.executionId}</span>
             ) : null}
           </div>
         </form>
       </Card>
 
-      {finished ? (
-        <Card>
-          <div className="flex items-center gap-4" data-testid="run-outcome">
-            {phase === "passed" ? <MuscleFlex size={72} animate /> : <MuscleDefeated size={72} animate />}
-            <div>
-              <p className="text-base font-semibold text-ink-100">
-                {phase === "passed"
-                  ? "Cycle passed. Gains secured. 💪"
-                  : phase === "aborted"
-                    ? "Cycle aborted (fail fast)."
-                    : "Cycle failed."}
-              </p>
-              <p className="mt-0.5 text-sm text-ink-300">
-                {exitCode !== null ? `Exit code ${exitCode}. ` : ""}
-                {errorMessage ?? ""}
-                {persist ? (
-                  <>
-                    See <Link to="/runs" className="text-brand-300 hover:underline">Runs</Link> for the archived
-                    result.
-                  </>
-                ) : null}
-              </p>
-            </div>
-          </div>
-        </Card>
-      ) : null}
-
-      {(stageRows.length > 0 || events.length > 0) && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card title="Stage timeline">
-            {stageRows.length === 0 ? (
-              <p className="text-sm text-ink-400">Waiting for stage events…</p>
-            ) : (
-              <ul className="space-y-2">
-                {stageRows.map((s) => (
-                  <li key={s.stage} className="rounded-md border border-ink-700 bg-ink-950 p-2.5 text-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-ink-100">{s.stage}</span>
-                      <StatusPill
-                        status={s.status === "completed" ? (s.returncode === 0 ? "passed" : "failed") : s.status === "running" ? "running" : "queued"}
-                      />
-                    </div>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-ink-400">
-                      {s.framework ? <Badge tone="brand">{s.framework}</Badge> : null}
-                      {typeof s.duration_s === "number" ? <span>{s.duration_s.toFixed(1)}s</span> : null}
-                      {typeof s.returncode === "number" ? <span>rc={s.returncode}</span> : null}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-          <Card title="Event stream">
-            <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-md bg-ink-950 p-3 font-mono text-xs leading-relaxed text-ink-200">
-              {events.map((e) => JSON.stringify(e)).join("\n") || "(no events yet)"}
-            </pre>
-          </Card>
-        </div>
-      )}
+      <ExecutionProgress execution={execution} noun="Cycle" persisted={persist} />
     </div>
   );
 }
 
-function Toggle({
+export function Toggle({
   label,
   checked,
   onChange,
