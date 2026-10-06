@@ -18,7 +18,7 @@ from testo_api.routes.cycles import router as cycles_router
 from testo_api.routes.dashboard import router as dashboard_router
 from testo_api.routes.health import router as health_router
 from testo_api.routes.history import router as history_router
-from testo_core.run_history import STATIC_HISTORY_ROOT
+from testo_core.paths import STATIC_HISTORY_ROOT
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # Runs left "RUNNING" by a crashed/reloaded process would otherwise sit
     # stuck forever in the UI history; mark them FAILED so the run list stays honest.
-    from testo_core.run_history import cleanup_orphaned_runs
+    from testo_core.history.maintenance import cleanup_orphaned_runs
 
     try:
         n = cleanup_orphaned_runs(note="Orphaned by API server restart")

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
+from testo_core.history.views import CompletedRunView
 from testo_core.repository.models import RunStatus
-from testo_core.run_history import CompletedRunView
 from testo_core.services.ai import AiGenerationResult, ProviderUnavailableError
 from testo_core.services.ai.integration_settings import InMemoryAiSettingsStore
 from testo_core.services.ai.provider_base import (

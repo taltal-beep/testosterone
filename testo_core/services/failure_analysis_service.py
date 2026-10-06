@@ -5,7 +5,9 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
-from testo_core.run_history import CompletedRunView, get_run, get_run_metadata, upsert_run_metadata
+from testo_core.history.maintenance import upsert_run_metadata
+from testo_core.history.read_model import get_run, get_run_metadata
+from testo_core.history.views import CompletedRunView
 from testo_core.security.redaction import redact_error_message
 from testo_core.services.ai import (
     AiGenerationRequest,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from testo_core.history.views import CompletedRunView
 from testo_core.repository.models import RunStatus
-from testo_core.run_history import CompletedRunView
 from testo_core.services.failure_context_builder import FailureContextBudget, build_failure_context
 
 

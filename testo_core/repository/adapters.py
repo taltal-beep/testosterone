@@ -101,6 +101,16 @@ class SQLModelRunRepository(BaseRunRepository):
             session.expunge(existing)
             return existing
 
+    def merge_run_metadata(self, run_id: uuid.UUID | str, patch: dict[str, Any]) -> bool:
+        with Session(self._engine) as session:
+            existing = session.get(RunRecord, _run_uuid_from_external(run_id))
+            if existing is None:
+                return False
+            existing.metadata_ = {**(existing.metadata_ or {}), **patch}
+            session.add(existing)
+            session.commit()
+            return True
+
     def list_recent_runs(self, *, limit: int = 30) -> list[RunRecord]:
         stmt = select(RunRecord).order_by(RunRecord.start_time.desc()).limit(int(limit))
         with Session(self._engine) as session:

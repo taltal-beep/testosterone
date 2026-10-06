@@ -3,8 +3,8 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from testo_api.main import create_app
+from testo_core.history.views import CompletedRunView, RunSessionView
 from testo_core.repository.models import RunStatus
-from testo_core.run_history import CompletedRunView, RunSessionView
 
 
 def test_runs_and_details_contract(monkeypatch) -> None:  # noqa: ANN001

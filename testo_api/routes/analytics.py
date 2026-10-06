@@ -14,7 +14,7 @@ from testo_api.models import (
     DeltaStageDelta,
     DeltaStatusSummaryResponse,
 )
-from testo_core.run_history import get_run
+from testo_core.history.read_model import get_run
 from testo_core.services.delta_models import MetricDelta
 from testo_core.services.delta_service import (
     DeltaComparisonService,

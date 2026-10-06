@@ -194,7 +194,7 @@ class TestDbBackend:
 
     @patch("testo_core.db.get_repository")
     def test_sets_local_snapshot_dir_under_orchestrator_root(self, mock_get_repo: MagicMock) -> None:
-        from testo_core.persistence.db_backend import ORCHESTRATOR_ROOT
+        from testo_core.paths import ORCHESTRATOR_ROOT
 
         mock_repo = MagicMock()
         mock_get_repo.return_value = mock_repo

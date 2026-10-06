@@ -6,7 +6,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from testo_core.run_history import CompletedRunView, RunSessionView, get_run, list_run_sessions
+from testo_core.history.read_model import get_run, list_run_sessions
+from testo_core.history.views import CompletedRunView, RunSessionView
 from testo_core.services.delta_models import DeltaComparisonResult, MetricDelta
 from testo_core.services.delta_service import DeltaComparisonError, DeltaComparisonService
 
