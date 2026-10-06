@@ -48,7 +48,9 @@ class ExecutionStatusResponse(BaseModel):
         payload = summary.to_dict() if summary else None
         run_ids = []
         if payload:
-            run_ids = [str(run.get("run_id")) for run in payload.get("runs", []) if run.get("run_id")]
+            run_ids = [
+                str(run.get("run_id")) for run in payload.get("runs", []) if run.get("run_id")
+            ]
         return cls(
             execution_id=execution_id,
             status=status,

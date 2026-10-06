@@ -73,7 +73,9 @@ class TestBeatsReporter(BaseReporter):
         errors: list[str] = []
 
         if not slack_url and not teams_url:
-            msg = f"TestBeats preview at {preview_path} (set slack_webhook or teams_webhook to send)"
+            msg = (
+                f"TestBeats preview at {preview_path} (set slack_webhook or teams_webhook to send)"
+            )
             if console is not None:
                 console.print(f"[muted]{msg}[/]")
             return ReporterResult(ok=True, message=msg, artifacts=tuple(artifacts))

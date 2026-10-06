@@ -33,9 +33,7 @@ def render_stage_panel(console: Console, data: StagePanelData, *, tail_max_lines
     style = "ok" if data.returncode == 0 else "fail"
 
     equipment = _format_equipment(data.framework)
-    title = Text.from_markup(
-        f"[{style}]{data.name}[/] {equipment} [{style}]{status_label}[/]"
-    )
+    title = Text.from_markup(f"[{style}]{data.name}[/] {equipment} [{style}]{status_label}[/]")
 
     rows: list[RenderableType] = []
     rows.append(Text.from_markup(f"[muted]duration:[/] {data.duration_s:.2f}s"))
@@ -76,7 +74,9 @@ def render_plan_summary(
     table.add_column("Duration", justify="right")
     for stage in stage_results:
         status = "[ok]PASS[/]" if stage.returncode == 0 else f"[fail]FAIL ({stage.returncode})[/]"
-        table.add_row(stage.name, _equipment_cell(stage.framework), status, f"{stage.duration_s:.2f}s")
+        table.add_row(
+            stage.name, _equipment_cell(stage.framework), status, f"{stage.duration_s:.2f}s"
+        )
     console.print(table)
 
     # Secondary table: metrics derived from Allure results (robust to BehaveX parallel stdout shape).

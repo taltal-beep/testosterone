@@ -46,12 +46,18 @@ class JsonBackend:
                         "log_path": str(s.log_path) if s.log_path else None,
                         "timed_out": s.timed_out,
                         "error": s.error,
-                        **{k: v for k, v in stage_health_by_name.get(s.stage_name, {}).items() if k != "name"},
+                        **{
+                            k: v
+                            for k, v in stage_health_by_name.get(s.stage_name, {}).items()
+                            if k != "name"
+                        },
                     }
                     for s in result.stages
                 ],
                 "health_pct": health_pct,
-                "total_tests": sum(h["total_tests"] for h in stage_health) if stage_health else None,
+                "total_tests": sum(h["total_tests"] for h in stage_health)
+                if stage_health
+                else None,
                 "passed": sum(h["passed"] for h in stage_health) if stage_health else None,
                 "failed": sum(h["failed"] for h in stage_health) if stage_health else None,
                 "broken": sum(h["broken"] for h in stage_health) if stage_health else None,

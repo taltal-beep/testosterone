@@ -134,7 +134,9 @@ async def delete_item(item_id: int) -> dict[str, Any]:
 
 
 @app.post("/upload")
-async def upload(file: UploadFile | None = None, payload: dict[str, Any] | None = Body(default=None)) -> dict[str, Any]:
+async def upload(
+    file: UploadFile | None = None, payload: dict[str, Any] | None = Body(default=None)
+) -> dict[str, Any]:
     # Randomized latency between 50ms and 2000ms
     delay = random.uniform(0.05, 2.0)
     await asyncio.sleep(delay)

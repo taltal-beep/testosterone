@@ -50,10 +50,14 @@ class OpenAiProvider(AiProvider):
             if exc.code == 429:
                 raise ProviderRateLimitError("OpenAI rate limit exceeded.") from exc
             if exc.code == 400:
-                raise UnsupportedProviderModelError("OpenAI model is unsupported for this key.") from exc
+                raise UnsupportedProviderModelError(
+                    "OpenAI model is unsupported for this key."
+                ) from exc
             raise ProviderUnavailableError(f"OpenAI HTTP error {exc.code}.") from exc
         except urllib.error.URLError as exc:
-            raise ProviderUnavailableError(f"OpenAI request failed: {redact_error_message(exc)}") from exc
+            raise ProviderUnavailableError(
+                f"OpenAI request failed: {redact_error_message(exc)}"
+            ) from exc
         text = (
             body.get("choices", [{}])[0].get("message", {}).get("content")
             if isinstance(body.get("choices"), list)
@@ -66,7 +70,9 @@ class OpenAiProvider(AiProvider):
             text=str(text).strip(),
             provider="openai",
             model=self.model,
-            finish_reason=body.get("choices", [{}])[0].get("finish_reason") if isinstance(body.get("choices"), list) else None,
+            finish_reason=body.get("choices", [{}])[0].get("finish_reason")
+            if isinstance(body.get("choices"), list)
+            else None,
             usage_input_tokens=usage.get("prompt_tokens"),
             usage_output_tokens=usage.get("completion_tokens"),
         )

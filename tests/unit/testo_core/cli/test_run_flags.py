@@ -94,10 +94,16 @@ def test_stream_flag_runs_clean_and_shows_stage_output(
 
 def test_pick_renderer_maps_flags_to_renderer_classes() -> None:
     console = make_console(plain=True)
-    assert isinstance(cli_runner_mod._pick_renderer(console=console, stream=False, ci=False), BufferedRenderer)
-    assert isinstance(cli_runner_mod._pick_renderer(console=console, stream=True, ci=False), StreamRenderer)
+    assert isinstance(
+        cli_runner_mod._pick_renderer(console=console, stream=False, ci=False), BufferedRenderer
+    )
+    assert isinstance(
+        cli_runner_mod._pick_renderer(console=console, stream=True, ci=False), StreamRenderer
+    )
     # --ci wins over --stream: NDJSON must stay machine-readable.
-    assert isinstance(cli_runner_mod._pick_renderer(console=console, stream=True, ci=True), CIRenderer)
+    assert isinstance(
+        cli_runner_mod._pick_renderer(console=console, stream=True, ci=True), CIRenderer
+    )
 
 
 def test_cycle_all_runs_every_cycle_in_sorted_order(
@@ -129,7 +135,9 @@ def test_force_bypasses_resting_trigger(
     monkeypatch.setattr(
         cli_runner_mod,
         "evaluate_cycle_trigger",
-        lambda *, plan, cfg: _activated_trigger(stimulus=False, reason="no changes", matched_paths=()),
+        lambda *, plan, cfg: _activated_trigger(
+            stimulus=False, reason="no changes", matched_paths=()
+        ),
     )
     cfg = write_cycles_config(
         tmp_path,

@@ -51,5 +51,4 @@ class AiProvider(Protocol):
     provider_name: AiProviderName
     model: str
 
-    def generate(self, request: AiGenerationRequest) -> AiGenerationResult:
-        ...
+    def generate(self, request: AiGenerationRequest) -> AiGenerationResult: ...

@@ -48,4 +48,3 @@ def test_start_sandbox_if_needed_port_in_use(monkeypatch: pytest.MonkeyPatch, tm
     ok, msg = sa.start_sandbox_if_needed()
     assert ok is False
     assert "Port" in msg
-

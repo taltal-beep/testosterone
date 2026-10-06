@@ -56,7 +56,10 @@ def push_to_influxdb(
         o = org or s["org"]
         b = bucket or s["bucket"]
         if not u or not t or not o or not b:
-            return False, "InfluxDB: set INFLUXDB_URL, INFLUXDB_TOKEN, INFLUXDB_ORG, and INFLUXDB_BUCKET (e.g. in .env)."
+            return (
+                False,
+                "InfluxDB: set INFLUXDB_URL, INFLUXDB_TOKEN, INFLUXDB_ORG, and INFLUXDB_BUCKET (e.g. in .env).",
+            )
         return _push_influx_core(metrics, url=u, token=t, org=o, bucket=b, measurement=measurement)
     except Exception as exc:
         return False, f"InfluxDB push error: {exc}"
@@ -104,7 +107,12 @@ def push_to_prometheus(
             return False, "Prometheus: set PROMETHEUS_PUSHGATEWAY_URL (e.g. http://localhost:9091)."
         url = f"{base}/metrics/job/{quote(job, safe='')}"
         body = _prometheus_exposition(metrics)
-        r = requests.post(url, data=body.encode("utf-8"), headers={"Content-Type": "text/plain; charset=utf-8"}, timeout=15)
+        r = requests.post(
+            url,
+            data=body.encode("utf-8"),
+            headers={"Content-Type": "text/plain; charset=utf-8"},
+            timeout=15,
+        )
         if r.status_code >= 400:
             return False, f"Pushgateway HTTP {r.status_code}: {(r.text or '')[:500]}"
         return True, "Pushed metrics to Prometheus Pushgateway."

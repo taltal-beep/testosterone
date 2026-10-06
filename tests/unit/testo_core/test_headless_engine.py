@@ -53,7 +53,9 @@ def test_engine_persists_metadata_context(monkeypatch, tmp_path: Path) -> None: 
         captured_start_md.append(dict(metadata))
         return uuid.uuid4()
 
-    def fake_record_completed_run(*, rr, artifacts_root, test_kind, metadata_context, audit_health_pct=None, db_path=None):  # noqa: ANN001
+    def fake_record_completed_run(
+        *, rr, artifacts_root, test_kind, metadata_context, audit_health_pct=None, db_path=None
+    ):  # noqa: ANN001
         del rr, artifacts_root, test_kind, audit_health_pct, db_path
         captured_complete_md.append(dict(metadata_context or {}))
         return RunSyncStatus(
@@ -63,7 +65,9 @@ def test_engine_persists_metadata_context(monkeypatch, tmp_path: Path) -> None: 
         )
 
     monkeypatch.setattr("testo_core.services.headless_engine.create_run", fake_create_run)
-    monkeypatch.setattr("testo_core.services.headless_engine.record_completed_run", fake_record_completed_run)
+    monkeypatch.setattr(
+        "testo_core.services.headless_engine.record_completed_run", fake_record_completed_run
+    )
 
     target = tmp_path / "repo"
     target.mkdir()
@@ -162,8 +166,12 @@ def test_engine_maps_empty_results_to_internal_error(tmp_path: Path) -> None:
     assert summary.aggregate_returncode == 1
 
 
-def test_engine_sync_failure_maps_successful_tests_to_infra_exit(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
-    def fake_sync_fail(*, rr, artifacts_root, test_kind, metadata_context, audit_health_pct=None, db_path=None):  # noqa: ANN001
+def test_engine_sync_failure_maps_successful_tests_to_infra_exit(
+    tmp_path: Path, monkeypatch
+) -> None:  # noqa: ANN001
+    def fake_sync_fail(
+        *, rr, artifacts_root, test_kind, metadata_context, audit_health_pct=None, db_path=None
+    ):  # noqa: ANN001
         del rr, artifacts_root, test_kind, metadata_context, audit_health_pct, db_path
         return RunSyncStatus(
             run_id="rid-sync",
@@ -192,7 +200,9 @@ def test_engine_sync_failure_maps_successful_tests_to_infra_exit(tmp_path: Path,
 def test_engine_finalizes_each_persisted_run_exactly_once(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
     completed_run_ids: list[str] = []
 
-    def fake_record_completed_run(*, rr, artifacts_root, test_kind, metadata_context, audit_health_pct=None, db_path=None):  # noqa: ANN001
+    def fake_record_completed_run(
+        *, rr, artifacts_root, test_kind, metadata_context, audit_health_pct=None, db_path=None
+    ):  # noqa: ANN001
         del artifacts_root, test_kind, metadata_context, audit_health_pct, db_path
         completed_run_ids.append(str(rr.command.env.get("UQO_RUN_ID") or ""))
         return RunSyncStatus(
@@ -201,7 +211,9 @@ def test_engine_finalizes_each_persisted_run_exactly_once(tmp_path: Path, monkey
             artifact_upload=SyncOperationStatus(status="success", attempts=1),
         )
 
-    monkeypatch.setattr("testo_core.services.headless_engine.record_completed_run", fake_record_completed_run)
+    monkeypatch.setattr(
+        "testo_core.services.headless_engine.record_completed_run", fake_record_completed_run
+    )
     target = tmp_path / "repo"
     target.mkdir()
     request = EngineRequest(

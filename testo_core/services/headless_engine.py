@@ -135,7 +135,9 @@ def _split_args_for_spec(spec: EngineRunSpec) -> tuple[Sequence[str], Sequence[s
 
 def _build_run_config(spec: EngineRunSpec, *, db_run_id: str | None) -> RunConfig:
     pytest_args, behavex_args, behave_native_args = _split_args_for_spec(spec)
-    shared_dir = spec.shared_allure_results_dir or Path(f"artifacts/allure-results/{spec.test_type.value}")
+    shared_dir = spec.shared_allure_results_dir or Path(
+        f"artifacts/allure-results/{spec.test_type.value}"
+    )
     artifacts_root = spec.artifacts_root or Path("artifacts")
     extra_env = dict(spec.extra_env or {})
     extra_env.setdefault("UQO_ARTIFACTS_ROOT", str(Path(artifacts_root).expanduser().resolve()))
@@ -197,7 +199,9 @@ class HeadlessEngineService:
                     )
                     db_run_id = str(db_run_uuid)
                 except Exception as exc:
-                    raise InfrastructureRuntimeError("Failed to persist run start.", details={"reason": str(exc)}) from exc
+                    raise InfrastructureRuntimeError(
+                        "Failed to persist run start.", details={"reason": str(exc)}
+                    ) from exc
             db_run_ids.append(db_run_id)
             run_configs.append(_build_run_config(spec, db_run_id=db_run_id))
 
@@ -253,7 +257,10 @@ class HeadlessEngineService:
             run_id = rr.command.env.get("UQO_AUDIT_RUN_ID") or rr.command.env.get("UQO_RUN_ID")
             run_records.append(
                 EngineRunRecord(
-                    test_type=str(rr.command.env.get("UQO_LAST_TEST_TYPE") or request.runs[idx].test_type.value),
+                    test_type=str(
+                        rr.command.env.get("UQO_LAST_TEST_TYPE")
+                        or request.runs[idx].test_type.value
+                    ),
                     run_id=run_id,
                     returncode=int(rr.returncode),
                     started_at=float(rr.started_at),
@@ -266,8 +273,15 @@ class HeadlessEngineService:
                 try:
                     sync_result = record_completed_run(
                         rr=rr,
-                        artifacts_root=Path(rr.command.env.get("UQO_ARTIFACTS_ROOT") or run_configs[idx].artifacts_root or "artifacts"),
-                        test_kind=str(rr.command.env.get("UQO_LAST_TEST_TYPE") or request.runs[idx].test_type.value),
+                        artifacts_root=Path(
+                            rr.command.env.get("UQO_ARTIFACTS_ROOT")
+                            or run_configs[idx].artifacts_root
+                            or "artifacts"
+                        ),
+                        test_kind=str(
+                            rr.command.env.get("UQO_LAST_TEST_TYPE")
+                            or request.runs[idx].test_type.value
+                        ),
                         metadata_context=metadata_context,
                     )
                     if sync_result is not None:

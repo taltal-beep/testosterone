@@ -38,7 +38,9 @@ class ExecutionState:
             self.event_history.append(event)
         self.events_q.put(event)
 
-    def set_done(self, *, status: ExecutionStatus, summary: dict[str, object] | None, error: str | None) -> None:
+    def set_done(
+        self, *, status: ExecutionStatus, summary: dict[str, object] | None, error: str | None
+    ) -> None:
         with self.lock:
             self.status = status
             self.summary = summary
@@ -75,7 +77,9 @@ class ExecutionManager:
         with self._states_lock:
             return self._states.get(execution_id)
 
-    def read_events_since(self, execution_id: str, offset: int) -> tuple[list[dict[str, object]], int, bool]:
+    def read_events_since(
+        self, execution_id: str, offset: int
+    ) -> tuple[list[dict[str, object]], int, bool]:
         state = self.get(execution_id)
         if state is None:
             raise KeyError(execution_id)
@@ -103,7 +107,9 @@ class ExecutionManager:
                     summary = stop.value.to_dict() if stop.value is not None else None
                     if summary is not None:
                         state.append_event({"event": "summary", "data": summary})
-                        status: ExecutionStatus = "completed" if int(summary.get("exit_code", 1)) == 0 else "failed"
+                        status: ExecutionStatus = (
+                            "completed" if int(summary.get("exit_code", 1)) == 0 else "failed"
+                        )
                     else:
                         status = "failed"
                     state.set_done(status=status, summary=summary, error=None)
@@ -121,13 +127,17 @@ class ExecutionManager:
                         }
                     )
                 elif isinstance(payload, RunResult):
-                    run_id = payload.command.env.get("UQO_AUDIT_RUN_ID") or payload.command.env.get("UQO_RUN_ID")
+                    run_id = payload.command.env.get("UQO_AUDIT_RUN_ID") or payload.command.env.get(
+                        "UQO_RUN_ID"
+                    )
                     state.append_event(
                         {
                             "event": "run_result",
                             "data": {
                                 "run_id": run_id,
-                                "test_type": str(payload.command.env.get("UQO_LAST_TEST_TYPE") or "unknown"),
+                                "test_type": str(
+                                    payload.command.env.get("UQO_LAST_TEST_TYPE") or "unknown"
+                                ),
                                 "returncode": int(payload.returncode),
                                 "started_at": float(payload.started_at),
                                 "finished_at": float(payload.finished_at),

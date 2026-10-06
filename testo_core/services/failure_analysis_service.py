@@ -50,10 +50,14 @@ class FailureAnalysisService:
         self,
         *,
         settings_store: InMemoryAiSettingsStore,
-        run_lookup: Callable[[str], CompletedRunView | None] = lambda run_id: get_run(run_id=run_id),
-        metadata_lookup: Callable[[str], dict[str, Any] | None] = lambda run_id: get_run_metadata(run_id=run_id),
-        metadata_upsert: Callable[[str, dict[str, Any]], bool] = lambda run_id, patch: upsert_run_metadata(
-            run_id=run_id, metadata_patch=patch
+        run_lookup: Callable[[str], CompletedRunView | None] = lambda run_id: get_run(
+            run_id=run_id
+        ),
+        metadata_lookup: Callable[[str], dict[str, Any] | None] = lambda run_id: get_run_metadata(
+            run_id=run_id
+        ),
+        metadata_upsert: Callable[[str, dict[str, Any]], bool] = lambda run_id, patch: (
+            upsert_run_metadata(run_id=run_id, metadata_patch=patch)
         ),
     ) -> None:
         self._settings_store = settings_store
@@ -66,14 +70,24 @@ class FailureAnalysisService:
         stored = metadata.get("ai_summary_v1")
         if isinstance(stored, dict):
             return _summary_from_stored(stored, run_id=run_id)
-        return self._fallback(run_id=run_id, error_code="summary_not_available", limitations=("summary_not_generated",))
+        return self._fallback(
+            run_id=run_id,
+            error_code="summary_not_available",
+            limitations=("summary_not_generated",),
+        )
 
-    def generate_summary(self, *, run_id: str, force_refresh: bool = False) -> FailureAnalysisSummary:
+    def generate_summary(
+        self, *, run_id: str, force_refresh: bool = False
+    ) -> FailureAnalysisSummary:
         run = self._run_lookup(run_id)
         if run is None:
-            return self._fallback(run_id=run_id, error_code="summary_not_available", limitations=("run_not_found",))
+            return self._fallback(
+                run_id=run_id, error_code="summary_not_available", limitations=("run_not_found",)
+            )
         if run.returncode == 0:
-            return self._fallback(run_id=run_id, error_code="summary_not_available", limitations=("run_not_failed",))
+            return self._fallback(
+                run_id=run_id, error_code="summary_not_available", limitations=("run_not_failed",)
+            )
 
         existing = self.get_summary(run_id=run_id)
         if existing.status == "available" and not force_refresh:
@@ -81,10 +95,16 @@ class FailureAnalysisService:
 
         settings = self._settings_store.get()
         if not settings.enabled:
-            return self._fallback(run_id=run_id, error_code="ai_feature_disabled", limitations=("feature_disabled",))
+            return self._fallback(
+                run_id=run_id, error_code="ai_feature_disabled", limitations=("feature_disabled",)
+            )
         cfg: AiProviderConfig = settings.to_provider_config()
         metadata = self._metadata_lookup(run_id) or {}
-        context = build_failure_context(run=run, metadata=metadata, budget=FailureContextBudget(max_total_chars=cfg.max_input_chars))
+        context = build_failure_context(
+            run=run,
+            metadata=metadata,
+            budget=FailureContextBudget(max_total_chars=cfg.max_input_chars),
+        )
         try:
             provider = build_ai_provider(config=cfg, runtime_api_key=settings.runtime_api_key)
             result = provider.generate(
@@ -108,13 +128,23 @@ class FailureAnalysisService:
                 error_code=None,
             )
         except ProviderMisconfiguredError:
-            summary = self._fallback(run_id=run_id, error_code="provider_misconfigured", limitations=context.limitations)
+            summary = self._fallback(
+                run_id=run_id, error_code="provider_misconfigured", limitations=context.limitations
+            )
         except ProviderTimeoutError:
-            summary = self._fallback(run_id=run_id, error_code="provider_timeout", limitations=context.limitations)
+            summary = self._fallback(
+                run_id=run_id, error_code="provider_timeout", limitations=context.limitations
+            )
         except ProviderRateLimitError:
-            summary = self._fallback(run_id=run_id, error_code="provider_rate_limited", limitations=context.limitations)
+            summary = self._fallback(
+                run_id=run_id, error_code="provider_rate_limited", limitations=context.limitations
+            )
         except UnsupportedProviderModelError:
-            summary = self._fallback(run_id=run_id, error_code="unsupported_provider_model", limitations=context.limitations)
+            summary = self._fallback(
+                run_id=run_id,
+                error_code="unsupported_provider_model",
+                limitations=context.limitations,
+            )
         except (ProviderUnavailableError, AiProviderError) as exc:
             summary = self._fallback(
                 run_id=run_id,
@@ -126,7 +156,9 @@ class FailureAnalysisService:
         return summary
 
     @staticmethod
-    def _fallback(*, run_id: str, error_code: str, limitations: tuple[str, ...]) -> FailureAnalysisSummary:
+    def _fallback(
+        *, run_id: str, error_code: str, limitations: tuple[str, ...]
+    ) -> FailureAnalysisSummary:
         return FailureAnalysisSummary(
             schema_version="v1",
             run_id=run_id,

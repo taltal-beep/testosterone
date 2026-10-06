@@ -36,8 +36,10 @@ def run_configured_reporters(
     run_report_root: Path | None = None,
 ) -> list:
     """Collect artifacts and run all active reporters. No-op when none configured."""
-    reporters_tuple = config_reporters if config_reporters is not None else (
-        cfg.reporters if cfg is not None else ()
+    reporters_tuple = (
+        config_reporters
+        if config_reporters is not None
+        else (cfg.reporters if cfg is not None else ())
     )
     if not reporters_tuple and not reporter_override:
         return []
@@ -78,7 +80,9 @@ def run_configured_reporters(
         open_browser=not ci and not generate_only,
     )
 
-    outcomes = ReporterFactory.run_all(active_reporters, results=results, context=context, console=console)
+    outcomes = ReporterFactory.run_all(
+        active_reporters, results=results, context=context, console=console
+    )
     for outcome in outcomes:
         if console is None:
             continue

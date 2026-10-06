@@ -35,9 +35,9 @@ class ExtentReporter(BaseReporter):
             if context.run_report_root is not None
             else context.artifacts_root / "reports" / "extent"
         )
-        output_dir = Path(
-            self._options.get("output_dir") or str(default_dir)
-        ).expanduser().resolve()
+        output_dir = (
+            Path(self._options.get("output_dir") or str(default_dir)).expanduser().resolve()
+        )
         output_dir.mkdir(parents=True, exist_ok=True)
 
         aggregate = parse_collected_results(results)

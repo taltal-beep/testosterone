@@ -69,9 +69,10 @@ def test_plugin_failure_is_captured(cleanup_ledger, e2e_run_id: str) -> None:
         executor=_Executor(),
         verifiers=[_PluginVerifier()],
     )
-    ctx = FlowContext(run_id=e2e_run_id, provider="github", metadata={"simulate_plugin_failure": True})
+    ctx = FlowContext(
+        run_id=e2e_run_id, provider="github", metadata={"simulate_plugin_failure": True}
+    )
 
     result = run_flow_scenario(scenario, ctx, cleanup_ledger)
 
     assert result.status == "failed"
-

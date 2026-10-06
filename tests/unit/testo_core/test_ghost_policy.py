@@ -10,7 +10,9 @@ def test_resolve_ghost_mode_defaults_to_local() -> None:
 
 
 def test_resolve_ghost_mode_env_auto_detect() -> None:
-    out = resolve_ghost_mode(ghost_flag=False, no_ghost_flag=False, ci_flag=False, env={"GITHUB_ACTIONS": "true"})
+    out = resolve_ghost_mode(
+        ghost_flag=False, no_ghost_flag=False, ci_flag=False, env={"GITHUB_ACTIONS": "true"}
+    )
     assert out.enabled is True
     assert out.reason == "env_detected"
 
@@ -28,6 +30,8 @@ def test_resolve_ghost_mode_force_on_beats_env() -> None:
 
 
 def test_resolve_ghost_mode_force_off_beats_everything() -> None:
-    out = resolve_ghost_mode(ghost_flag=True, no_ghost_flag=True, ci_flag=True, env={"GITHUB_ACTIONS": "true"})
+    out = resolve_ghost_mode(
+        ghost_flag=True, no_ghost_flag=True, ci_flag=True, env={"GITHUB_ACTIONS": "true"}
+    )
     assert out.enabled is False
     assert out.reason == "flag_no_ghost"

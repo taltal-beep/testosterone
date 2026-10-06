@@ -78,4 +78,3 @@ def create_plugin_manager(*, load_dropins: bool = True) -> pluggy.PluginManager:
         load_plugins(pm)
 
     return pm
-

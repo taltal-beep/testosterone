@@ -26,7 +26,9 @@ def _as_test_type(value: Any) -> TestType:
         return TestType(str(value))
     except Exception as exc:
         allowed = ", ".join([t.value for t in TestType])
-        raise ConfigValidationError(f"Invalid `test_type`: {value}. Allowed values: {allowed}.") from exc
+        raise ConfigValidationError(
+            f"Invalid `test_type`: {value}. Allowed values: {allowed}."
+        ) from exc
 
 
 def _parse_run_item(item: dict[str, Any], *, config_dir: Path) -> EngineRunSpec:
@@ -114,4 +116,6 @@ def load_run_specs_from_yaml(config_path: Path) -> tuple[EngineRunSpec, ...]:
     if isinstance(raw, dict):
         return (_parse_run_item(raw, config_dir=config_dir),)
 
-    raise ConfigValidationError("Unsupported config format. Use an object, list, or {runs: [...]} format.")
+    raise ConfigValidationError(
+        "Unsupported config format. Use an object, list, or {runs: [...]} format."
+    )

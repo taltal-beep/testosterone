@@ -30,7 +30,9 @@ def test_run_native_behave_emits_and_returns(tmp_path: Path) -> None:
         kwargs["emit"]("stdout", "ok\n")
         return 0, 1.0, 2.0
 
-    with patch("testo_core.runners._run_in_ephemeral_container_streaming", side_effect=fake_docker_run):
+    with patch(
+        "testo_core.runners._run_in_ephemeral_container_streaming", side_effect=fake_docker_run
+    ):
         gen = run_native_behave(target_repo=tmp_path, artifacts_root=tmp_path)
         ev = next(gen)
         assert isinstance(ev, LogEvent)
@@ -41,4 +43,3 @@ def test_run_native_behave_emits_and_returns(tmp_path: Path) -> None:
             rr = e.value
     assert isinstance(rr, RunResult)
     assert rr.returncode == 0
-

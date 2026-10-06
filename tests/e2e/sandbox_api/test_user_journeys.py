@@ -31,7 +31,9 @@ _JOURNEYS: list[tuple[str, str, str]] = [
 ]
 
 
-@pytest.mark.parametrize("journey_id,username,item_name", _JOURNEYS, ids=lambda x: x if isinstance(x, str) else str(x))
+@pytest.mark.parametrize(
+    "journey_id,username,item_name", _JOURNEYS, ids=lambda x: x if isinstance(x, str) else str(x)
+)
 def test_full_user_journey(journey_id: str, username: str, item_name: str, fastapi_client) -> None:
     """
     E2E journey (sequential & stateful within the test):
@@ -83,4 +85,3 @@ def test_full_user_journey(journey_id: str, username: str, item_name: str, fasta
         bad = {"Authorization": f"Bearer {token}x"}
         rej = fastapi_client.get("/secure", headers=bad)
     assert rej.status_code == 401
-

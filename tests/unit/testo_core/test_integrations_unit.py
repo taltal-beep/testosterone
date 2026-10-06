@@ -17,4 +17,3 @@ def test_test_prometheus_pushgateway_ok() -> None:
 def test_test_prometheus_pushgateway_empty_url() -> None:
     ok, msg = integrations.test_prometheus_pushgateway(pushgateway_url=None)
     assert ok is False and "PROMETHEUS" in msg
-

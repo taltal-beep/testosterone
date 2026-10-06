@@ -105,7 +105,9 @@ def build_cycle_zip_bytes(
     return buf.getvalue(), summary, exit_code
 
 
-def extract_archive_to_plan_dir(*, zip_bytes: bytes, dest_artifacts_root: Path, plan_name: str) -> Path:
+def extract_archive_to_plan_dir(
+    *, zip_bytes: bytes, dest_artifacts_root: Path, plan_name: str
+) -> Path:
     """Extract a stored zip so paths match ``plan_artifacts_dir`` layout."""
     dest = plan_artifacts_dir(dest_artifacts_root, plan_name)
     dest.mkdir(parents=True, exist_ok=True)

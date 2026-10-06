@@ -55,7 +55,10 @@ def test_multi_run_suppresses_per_config_done_markers() -> None:
     assert len(done_lines) == 1
     assert "run-1 output\n" in log_lines
     assert "run-2 output\n" in log_lines
-    assert [item.command.env["UQO_RUN_ID"] for item in items if isinstance(item, RunResult)] == ["run-1", "run-2"]
+    assert [item.command.env["UQO_RUN_ID"] for item in items if isinstance(item, RunResult)] == [
+        "run-1",
+        "run-2",
+    ]
 
 
 def test_multi_run_result_keeps_polling_until_last_result() -> None:

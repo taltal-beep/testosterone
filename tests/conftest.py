@@ -151,7 +151,10 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
             _add_marker_if_missing(item, "tier_heavy")
             continue
 
-        if "/tests/integration/test_runner_image_mode_smoke.py" in p or "/tests/integration/ui/" in p:
+        if (
+            "/tests/integration/test_runner_image_mode_smoke.py" in p
+            or "/tests/integration/ui/" in p
+        ):
             _add_marker_if_missing(item, "tier_heavy")
             continue
 
@@ -193,7 +196,9 @@ class CleanupLedger:
         self.run_id = run_id
         self.records: list[CleanupRecord] = []
 
-    def add(self, *, resource_type: str, resource_id: str, provider: str, status: str, detail: str = "") -> None:
+    def add(
+        self, *, resource_type: str, resource_id: str, provider: str, status: str, detail: str = ""
+    ) -> None:
         self.records.append(
             CleanupRecord(
                 resource_type=resource_type,
@@ -304,7 +309,9 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[Any]):
     if kind == "unit" and item.get_closest_marker("attach_http_on_fail") is None:
         return
 
-    rec: ApiRecorder | None = item.funcargs.get("api_recorder") if hasattr(item, "funcargs") else None  # type: ignore[attr-defined]
+    rec: ApiRecorder | None = (
+        item.funcargs.get("api_recorder") if hasattr(item, "funcargs") else None
+    )  # type: ignore[attr-defined]
     if rec is None or rec.last is None:
         return
 
@@ -331,7 +338,10 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[Any]):
         from tests._allure_utils import attach_json
 
         attach_json("http_request_json", last.request_json)
-        attach_json("http_response_json", last.response_json if last.response_json is not None else {"text": last.response_text})
+        attach_json(
+            "http_response_json",
+            last.response_json if last.response_json is not None else {"text": last.response_text},
+        )
     except Exception:
         pass
 
@@ -415,7 +425,15 @@ def fastapi_client(mock_api_app, api_recorder: ApiRecorder):
     client = TestClient(mock_api_app)
 
     class _Client:
-        def request(self, method: str, url: str, *, json: Any | None = None, headers: dict[str, str] | None = None, timeout: float | None = None):
+        def request(
+            self,
+            method: str,
+            url: str,
+            *,
+            json: Any | None = None,
+            headers: dict[str, str] | None = None,
+            timeout: float | None = None,
+        ):
             # TestClient ignores `timeout`, but keep signature parallel to requests.
             hdrs = dict(headers or {})
             resp = client.request(method, url, json=json, headers=hdrs)
@@ -496,5 +514,3 @@ def sandbox_server() -> str:
         yield str(sa.MOCK_BASE_URL)
     finally:
         sa.stop_sandbox_if_managed()
-
-

@@ -107,7 +107,9 @@ def _git_run(argv: list[str], cwd: Path) -> tuple[int, str, str]:
     return proc.returncode, proc.stdout or "", proc.stderr or ""
 
 
-def _repo_paths_to_anchor_relative(repo_root: Path, anchor: Path, repo_rel_paths: Iterable[str]) -> set[str]:
+def _repo_paths_to_anchor_relative(
+    repo_root: Path, anchor: Path, repo_rel_paths: Iterable[str]
+) -> set[str]:
     anchor_r = anchor.resolve()
     repo_r = repo_root.resolve()
     out: set[str] = set()

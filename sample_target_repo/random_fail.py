@@ -36,7 +36,5 @@ def roll_fail(label: str) -> None:
     if p <= 0.0:
         return
     if random.random() < p:
-        msg = (
-            f"Random failure injection (TESTO_SAMPLE_RANDOM_FAIL_P={p:g}): {label}"
-        )
+        msg = f"Random failure injection (TESTO_SAMPLE_RANDOM_FAIL_P={p:g}): {label}"
         raise AssertionError(msg)

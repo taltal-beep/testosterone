@@ -126,7 +126,9 @@ def drain_stream_into_buffer(
         return
 
 
-def merged_env(parent: Mapping[str, str], extra: Iterable[tuple[str, str]] | None) -> dict[str, str]:
+def merged_env(
+    parent: Mapping[str, str], extra: Iterable[tuple[str, str]] | None
+) -> dict[str, str]:
     """Return a copy of ``parent`` overlaid with ``extra`` env vars."""
     out = dict(parent)
     for k, v in extra or ():

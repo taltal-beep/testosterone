@@ -26,7 +26,9 @@ def prepare_allure_results_dir(
     - mode="archive": move shared_dir to archive_root/<timestamp>_<run_id>/ and recreate
     """
     shared_dir = shared_dir.expanduser().resolve()
-    archive_root = (archive_root or (shared_dir.parent / "allure-results-archive")).expanduser().resolve()
+    archive_root = (
+        (archive_root or (shared_dir.parent / "allure-results-archive")).expanduser().resolve()
+    )
 
     if not shared_dir.exists():
         shared_dir.mkdir(parents=True, exist_ok=True)
@@ -49,4 +51,3 @@ def prepare_allure_results_dir(
 
     shared_dir.mkdir(parents=True, exist_ok=True)
     return PrepareResult(shared_dir=shared_dir, archived_to=archived_to)
-

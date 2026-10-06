@@ -16,12 +16,16 @@ from typing import Any, TypeGuard
 from testo_core.runners import LogEvent, RunResult
 
 # region agent log
-_UQO_DEBUG_LOG_PATH = "/Users/taltal/unified-quality-orchestration-reporting-dashboard/.cursor/debug-075c10.log"
+_UQO_DEBUG_LOG_PATH = (
+    "/Users/taltal/unified-quality-orchestration-reporting-dashboard/.cursor/debug-075c10.log"
+)
 _UQO_DEBUG_SESSION_ID = "075c10"
 _UQO_DEBUG_DRAIN_SEEN = 0
 
 
-def _uqo_debug_log(*, hypothesis_id: str, location: str, message: str, data: dict[str, Any] | None = None) -> None:
+def _uqo_debug_log(
+    *, hypothesis_id: str, location: str, message: str, data: dict[str, Any] | None = None
+) -> None:
     # NDJSON append; best-effort only.
     try:
         payload = {

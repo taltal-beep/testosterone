@@ -15,6 +15,7 @@ if pluggy is not None:
     hookspec = pluggy.HookspecMarker("uqo")
     hookimpl = pluggy.HookimplMarker("uqo")
 else:  # pragma: no cover
+
     def _noop_marker(*args, **kwargs):  # type: ignore[no-redef]
         def _decorator(fn):
             return fn

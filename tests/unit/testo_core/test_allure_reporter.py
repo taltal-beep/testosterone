@@ -17,12 +17,20 @@ def _fake_results(tmp_path: Path) -> CollectedResults:
         d = tmp_path / framework
         d.mkdir(parents=True)
         stages.append(
-            StageCollection(plan="p", stage=f"{framework}-stage", framework=framework, results_dir=d, log_path=None)
+            StageCollection(
+                plan="p",
+                stage=f"{framework}-stage",
+                framework=framework,
+                results_dir=d,
+                log_path=None,
+            )
         )
     return CollectedResults(artifacts_root=tmp_path, stages=stages)
 
 
-def test_publish_generates_one_report_per_framework_when_run_report_root_set(tmp_path: Path) -> None:
+def test_publish_generates_one_report_per_framework_when_run_report_root_set(
+    tmp_path: Path,
+) -> None:
     results = _fake_results(tmp_path)
     run_report_root = tmp_path / "history" / "rid-1"
     context = ReportContext(

@@ -12,7 +12,9 @@ from testo_core.services.headless_engine import EngineEvent, EngineRunSpec, Engi
 
 
 @pytest.mark.contract
-def test_ghost_mode_stream_json_emits_ndjson_then_summary(monkeypatch, capsys, tmp_path: Path) -> None:  # noqa: ANN001
+def test_ghost_mode_stream_json_emits_ndjson_then_summary(
+    monkeypatch, capsys, tmp_path: Path
+) -> None:  # noqa: ANN001
     from testo_core import cli
 
     target = tmp_path / "repo"
@@ -33,7 +35,9 @@ def test_ghost_mode_stream_json_emits_ndjson_then_summary(monkeypatch, capsys, t
     class FakeEngine:
         def stream(self, request):  # noqa: ANN001
             del request
-            yield EngineEvent(kind="log", payload=LogEvent(ts=time.time(), stream="stdout", line="ok\n"))
+            yield EngineEvent(
+                kind="log", payload=LogEvent(ts=time.time(), stream="stdout", line="ok\n")
+            )
             yield EngineEvent(kind="run_result", payload=rr)
             return EngineSummary(
                 schema_version="1",

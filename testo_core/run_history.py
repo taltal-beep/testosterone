@@ -71,7 +71,9 @@ def _utcnow() -> datetime:
     return datetime.now(tz=UTC)
 
 
-def create_run(*, status: RunStatus = RunStatus.PENDING, metadata: dict[str, Any] | None = None) -> uuid.UUID:
+def create_run(
+    *, status: RunStatus = RunStatus.PENDING, metadata: dict[str, Any] | None = None
+) -> uuid.UUID:
     """
     Initializes a new record in the DB.
 
@@ -81,7 +83,9 @@ def create_run(*, status: RunStatus = RunStatus.PENDING, metadata: dict[str, Any
     return rr.id
 
 
-def update_run_status(run_id: uuid.UUID | str, status: RunStatus, metadata: dict[str, Any] | None = None) -> None:
+def update_run_status(
+    run_id: uuid.UUID | str, status: RunStatus, metadata: dict[str, Any] | None = None
+) -> None:
     """
     Updates an existing record (or creates it if missing).
     """
@@ -291,7 +295,9 @@ def list_run_sessions(*, limit: int = 30, db_path: Path | None = None) -> list[R
         if allure_reports_dir.is_dir():
             for fw_dir in sorted(allure_reports_dir.iterdir()):
                 if fw_dir.is_dir() and (fw_dir / "index.html").is_file():
-                    links[fw_dir.name] = f"history/{r.run_id}/allure_reports/{fw_dir.name}/index.html"
+                    links[fw_dir.name] = (
+                        f"history/{r.run_id}/allure_reports/{fw_dir.name}/index.html"
+                    )
         extent_index = base / "extent_report" / "index.html"
         if extent_index.is_file():
             links["extent"] = f"history/{r.run_id}/extent_report/index.html"
@@ -302,7 +308,9 @@ def list_run_sessions(*, limit: int = 30, db_path: Path | None = None) -> list[R
         if native_reports_dir.is_dir():
             for fw_dir in sorted(native_reports_dir.iterdir()):
                 if fw_dir.is_dir() and (fw_dir / "index.html").is_file():
-                    links[f"{fw_dir.name}-native"] = f"history/{r.run_id}/native_reports/{fw_dir.name}/index.html"
+                    links[f"{fw_dir.name}-native"] = (
+                        f"history/{r.run_id}/native_reports/{fw_dir.name}/index.html"
+                    )
         # Back-compat: older snapshots (single unified output) — map to pytest view for legacy history.
         if "pytest" not in links and (base / "allure_report" / "index.html").is_file():
             links["pytest"] = f"history/{r.run_id}/allure_report/index.html"
@@ -350,7 +358,9 @@ def record_completed_run(
         return RunSyncStatus(
             run_id=None,
             db_finalize=SyncOperationStatus(status="failed", attempts=0, error="missing_run_id"),
-            artifact_upload=SyncOperationStatus(status="failed", attempts=0, error="missing_run_id"),
+            artifact_upload=SyncOperationStatus(
+                status="failed", attempts=0, error="missing_run_id"
+            ),
         )
 
     ar = artifacts_root.expanduser().resolve()
@@ -429,8 +439,12 @@ def record_completed_run(
         "total_tests": int(total_t) if total_t is not None else None,
         "passed": int(passed) if passed is not None else None,
         "failed": int(failed) if failed is not None else None,
-        "broken": int(getattr(m, "broken", 0)) if m is not None and getattr(m, "broken", None) is not None else None,
-        "skipped": int(getattr(m, "skipped", 0)) if m is not None and getattr(m, "skipped", None) is not None else None,
+        "broken": int(getattr(m, "broken", 0))
+        if m is not None and getattr(m, "broken", None) is not None
+        else None,
+        "skipped": int(getattr(m, "skipped", 0))
+        if m is not None and getattr(m, "skipped", None) is not None
+        else None,
         "avg_case_ms": float(avg_case) if avg_case is not None else None,
         "health_pct": float(health) if health is not None else None,
         "target_repo": str(target_repo),
@@ -441,12 +455,16 @@ def record_completed_run(
     if metadata_context:
         payload.update({str(k): v for k, v in metadata_context.items()})
     if int(rr.returncode) != 0:
-        failure_context, trace_excerpt = _extract_failure_context_from_allure(results_dir=results_dir)
+        failure_context, trace_excerpt = _extract_failure_context_from_allure(
+            results_dir=results_dir
+        )
         if failure_context:
             payload.setdefault("failure_context", failure_context)
             failed_cases = failure_context.get("failed_cases")
             if isinstance(failed_cases, list) and failed_cases:
-                first_message = failed_cases[0].get("message") if isinstance(failed_cases[0], dict) else None
+                first_message = (
+                    failed_cases[0].get("message") if isinstance(failed_cases[0], dict) else None
+                )
                 if first_message:
                     payload.setdefault("error_message", str(first_message))
         if trace_excerpt:
@@ -459,7 +477,9 @@ def record_completed_run(
         payload.setdefault("error", "timeout")
         payload.setdefault("error_message", "Container exceeded timeout and was force-killed.")
     status = RunStatus.COMPLETED if int(rr.returncode) == 0 else RunStatus.FAILED
-    db_attempts, db_error = _run_with_retry(lambda: update_run_status(run_id, status=status, metadata=payload))
+    db_attempts, db_error = _run_with_retry(
+        lambda: update_run_status(run_id, status=status, metadata=payload)
+    )
 
     db_status = "success" if db_error is None else "failed"
     if artifact_error is not None:
@@ -471,7 +491,9 @@ def record_completed_run(
 
     return RunSyncStatus(
         run_id=str(run_id),
-        db_finalize=SyncOperationStatus(status=db_status, attempts=db_attempts, error=str(db_error) if db_error else None),
+        db_finalize=SyncOperationStatus(
+            status=db_status, attempts=db_attempts, error=str(db_error) if db_error else None
+        ),
         artifact_upload=SyncOperationStatus(
             status=artifact_status,
             attempts=max(1, snapshot_attempts + upload_attempts),
@@ -533,7 +555,9 @@ def _upload_allure_html_report_to_s3(*, run_id: str, artifacts_root: Path, test_
         with tempfile.TemporaryDirectory(prefix="testo-allure-html-") as td:
             out_dir = Path(td) / "report"
             try:
-                completed = run_generate(result_dirs=include_dirs, out_dir=out_dir, clean=True, single_file=False)
+                completed = run_generate(
+                    result_dirs=include_dirs, out_dir=out_dir, clean=True, single_file=False
+                )
             except AllureCLINotFoundError as exc:
                 logger.warning("Allure HTML generation skipped: %s", exc)
                 return 0
@@ -598,7 +622,17 @@ def _upload_allure_results_to_s3(*, run_id: str, artifacts_root: Path, test_kind
             # Keep only valid Allure result payloads/attachments.
             # - JSON: result/container/categories/executors
             # - attachments: binary/text blobs referenced by tests
-            if path.suffix.lower() not in {".json", ".txt", ".png", ".jpg", ".jpeg", ".gif", ".xml", ".csv", ".log"}:
+            if path.suffix.lower() not in {
+                ".json",
+                ".txt",
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".xml",
+                ".csv",
+                ".log",
+            }:
                 # Still allow attachment files without suffix.
                 if path.suffix:
                     continue
@@ -612,7 +646,9 @@ def _upload_allure_results_to_s3(*, run_id: str, artifacts_root: Path, test_kind
             uploaded += 1
 
     if uploaded:
-        logger.info("Uploaded %s Allure result file(s) to s3://%s/%s", uploaded, storage.bucket_name, prefix)
+        logger.info(
+            "Uploaded %s Allure result file(s) to s3://%s/%s", uploaded, storage.bucket_name, prefix
+        )
     return int(uploaded) + int(html_count)
 
 
@@ -672,7 +708,9 @@ def _completed_view_from_record(r: RunRecord) -> CompletedRunView | None:
         cycle=str(md["plan"]) if md.get("plan") else None,
         returncode=_returncode_from_metadata(md),
         wall_duration_ms=_wall_duration_ms_from_metadata(md),
-        metrics_duration_ms=int(md["metrics_duration_ms"]) if md.get("metrics_duration_ms") is not None else None,
+        metrics_duration_ms=int(md["metrics_duration_ms"])
+        if md.get("metrics_duration_ms") is not None
+        else None,
         total_tests=int(md["total_tests"]) if md.get("total_tests") is not None else None,
         passed=int(md["passed"]) if md.get("passed") is not None else None,
         failed=int(md["failed"]) if md.get("failed") is not None else None,
@@ -810,7 +848,11 @@ def snapshot_files_for_download(*, record: CompletedRunView) -> list[tuple[str, 
 
 
 def _extract_failure_context_from_allure(
-    *, results_dir: Path, max_cases: int = 20, message_max_chars: int = 2000, trace_max_chars: int = 4000
+    *,
+    results_dir: Path,
+    max_cases: int = 20,
+    message_max_chars: int = 2000,
+    trace_max_chars: int = 4000,
 ) -> tuple[dict[str, Any] | None, str | None]:
     """Collect failed-case context from an Allure ``results_dir``.
 

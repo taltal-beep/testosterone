@@ -92,7 +92,9 @@ def write_metrics_json(metrics: RunMetrics, *, out_path: Path) -> Path:
     return out_path
 
 
-def list_run_history(*, archive_root: Path, current_results_dir: Path | None = None) -> list[RunMetrics]:
+def list_run_history(
+    *, archive_root: Path, current_results_dir: Path | None = None
+) -> list[RunMetrics]:
     """
     Best-effort: build a history list from archived results folders + current results.
 
@@ -177,4 +179,3 @@ def _read_run_id(results_dir: Path) -> str | None:
         maybe = name.split("_", 1)[1]
         return maybe or None
     return None
-

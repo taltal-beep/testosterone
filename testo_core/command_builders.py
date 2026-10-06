@@ -54,7 +54,9 @@ class BuiltCommand:
     env: dict[str, str]
 
 
-def _base_env(*, shared_allure_results_dir: Path, extra_env: Mapping[str, str] | None) -> dict[str, str]:
+def _base_env(
+    *, shared_allure_results_dir: Path, extra_env: Mapping[str, str] | None
+) -> dict[str, str]:
     env: dict[str, str] = {}
     env["UQO_SHARED_ALLURE_RESULTS_DIR"] = str(shared_allure_results_dir.resolve())
     if extra_env:
@@ -114,7 +116,8 @@ def _build_behave_native(cfg: RunConfig, shared_dir: Path) -> list[str]:
     argv.extend(list(cfg.behave_native_args))
 
     has_explicit_target = any(
-        (a and not str(a).startswith("-")) or str(a).endswith(".feature") or "--paths" in str(a) for a in cfg.behave_native_args
+        (a and not str(a).startswith("-")) or str(a).endswith(".feature") or "--paths" in str(a)
+        for a in cfg.behave_native_args
     )
     if not has_explicit_target:
         argv.append(str((cfg.target_repo.expanduser().resolve() / "features").resolve()))
@@ -193,4 +196,3 @@ def ensure_dir(p: Path) -> Path:
 def stringify_argv(argv: Sequence[str]) -> str:
     # For display only; avoid shell quoting complexities by showing argv as-is.
     return " ".join(argv)
-

@@ -36,7 +36,9 @@ def test_create_run_returns_record_with_metadata(sqlite_repo) -> None:
 def test_get_run_by_string_id_and_uuid(sqlite_repo) -> None:
     sqlite_repo.create_run(status=RunStatus.PENDING)
     ext_id = "my-external-run"
-    sqlite_repo.update_run_status(ext_id, status=RunStatus.COMPLETED, metadata={"run_id": ext_id, "returncode": 0})
+    sqlite_repo.update_run_status(
+        ext_id, status=RunStatus.COMPLETED, metadata={"run_id": ext_id, "returncode": 0}
+    )
 
     by_str = sqlite_repo.get_run(ext_id)
     assert by_str is not None

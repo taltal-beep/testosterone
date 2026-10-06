@@ -4,7 +4,9 @@ from tests.conftest import CleanupLedger
 from tests.e2e.flows.flow_scenario import FlowContext, FlowResult, FlowScenario
 
 
-def run_flow_scenario(scenario: FlowScenario, ctx: FlowContext, ledger: CleanupLedger) -> FlowResult:
+def run_flow_scenario(
+    scenario: FlowScenario, ctx: FlowContext, ledger: CleanupLedger
+) -> FlowResult:
     """
     Canonical flow lifecycle: provision -> execute -> poll -> verify -> cleanup.
     Cleanup always runs and writes a ledger entry.
@@ -35,4 +37,3 @@ def run_flow_scenario(scenario: FlowScenario, ctx: FlowContext, ledger: CleanupL
                 status="cleanup_failed",
                 detail=str(cleanup_exc),
             )
-

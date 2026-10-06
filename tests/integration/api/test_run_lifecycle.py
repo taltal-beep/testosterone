@@ -15,7 +15,9 @@ from testo_core.services.headless_engine import EngineEvent, EngineRunRecord, En
 class _FakeEngine:
     def stream(self, request):  # noqa: ANN001
         del request
-        yield EngineEvent(kind="log", payload=LogEvent(ts=time.time(), stream="stdout", line="hello\n"))
+        yield EngineEvent(
+            kind="log", payload=LogEvent(ts=time.time(), stream="stdout", line="hello\n")
+        )
         rr = RunResult(
             returncode=0,
             started_at=time.time() - 0.2,

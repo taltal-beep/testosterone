@@ -24,10 +24,14 @@ from testo_core.runners import RunResult
 def _pg_ready() -> bool:
     import os
 
-    return bool(os.getenv("POSTGRES_USER") and os.getenv("POSTGRES_PASSWORD") and os.getenv("POSTGRES_DB"))
+    return bool(
+        os.getenv("POSTGRES_USER") and os.getenv("POSTGRES_PASSWORD") and os.getenv("POSTGRES_DB")
+    )
 
 
-pytestmark = pytest.mark.skipif(not _pg_ready(), reason="Postgres env vars not set for run_history tests")
+pytestmark = pytest.mark.skipif(
+    not _pg_ready(), reason="Postgres env vars not set for run_history tests"
+)
 
 
 def test_init_and_list_recent_empty(tmp_path: Path) -> None:
@@ -52,7 +56,9 @@ def test_compare_latest_two_none_when_insufficient(tmp_path: Path) -> None:
     assert compare_latest_two() is None
 
 
-def test_list_run_sessions_maps_new_allure_reports_layout(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_list_run_sessions_maps_new_allure_reports_layout(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     # Point the static history root at a temp directory so we can create fake snapshots.
     fake_static_history = tmp_path / "static" / "history"
     monkeypatch.setattr("testo_core.run_history.STATIC_HISTORY_ROOT", fake_static_history)

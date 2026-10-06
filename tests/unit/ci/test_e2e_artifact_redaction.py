@@ -14,4 +14,3 @@ def test_artifact_redaction_check_rejects_token_leak(monkeypatch: pytest.MonkeyP
     monkeypatch.setenv("UQO_E2E_GITLAB_TOKEN", "secret-gl")
     with pytest.raises(AssertionError):
         assert_artifact_content_redacted("leaked token: secret-gl")
-

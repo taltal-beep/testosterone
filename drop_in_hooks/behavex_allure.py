@@ -73,7 +73,9 @@ class BehavexAllureExporter:
     def launch_json_formatter(self, json_output: dict[str, Any]) -> None:
         raw_dir = os.environ.get("UQO_SHARED_ALLURE_RESULTS_DIR")
         if not raw_dir:
-            print("[BehavexAllureExporter] UQO_SHARED_ALLURE_RESULTS_DIR is not set; skipping Allure export.")
+            print(
+                "[BehavexAllureExporter] UQO_SHARED_ALLURE_RESULTS_DIR is not set; skipping Allure export."
+            )
             return
 
         out_dir = Path(raw_dir).expanduser().resolve()
@@ -100,7 +102,9 @@ class BehavexAllureExporter:
             print("[BehavexAllureExporter] Native BehaveX HTML report generation failed:")
             traceback.print_exc()
 
-    def _emit_scenario(self, out_dir: Path, feature_name: str, feature_file: str, scenario: dict[str, Any]) -> None:
+    def _emit_scenario(
+        self, out_dir: Path, feature_name: str, feature_file: str, scenario: dict[str, Any]
+    ) -> None:
         name = str(scenario.get("name") or "scenario")
         full_name = f"{feature_file}::{name}" if feature_file else name
         st = _map_status(scenario.get("status"))

@@ -42,9 +42,13 @@ class AllureReporter(BaseReporter):
             return self._publish_per_framework(results=results, context=context, console=console)
 
         out_dir = (
-            context.out_dir
-            or Path(self._options.get("out_dir", str(context.artifacts_root / "allure-report")))
-        ).expanduser().resolve()
+            (
+                context.out_dir
+                or Path(self._options.get("out_dir", str(context.artifacts_root / "allure-report")))
+            )
+            .expanduser()
+            .resolve()
+        )
 
         from testo_core.reporting.allure import AllureCLINotFoundError, generate_html
 
@@ -80,7 +84,9 @@ class AllureReporter(BaseReporter):
             console.print(
                 f"[muted]Port {context.port} is in use; serving the dashboard on[/] [bold]{serve_port}[/] instead."
             )
-        code = open_generated_report(report_dir=outcome.out_dir.resolve(), host=context.host, port=serve_port)
+        code = open_generated_report(
+            report_dir=outcome.out_dir.resolve(), host=context.host, port=serve_port
+        )
         if code == 127:
             return ReporterResult(
                 ok=True,

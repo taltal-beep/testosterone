@@ -142,12 +142,16 @@ cycles:
 def test_git_trigger_matches_changed_file(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
-    init = subprocess.run(["git", "init", "-b", "main"], cwd=repo, capture_output=True, text=True, timeout=30)
+    init = subprocess.run(
+        ["git", "init", "-b", "main"], cwd=repo, capture_output=True, text=True, timeout=30
+    )
     if init.returncode != 0:
         init = subprocess.run(["git", "init"], cwd=repo, capture_output=True, text=True, timeout=30)
     if init.returncode != 0:
         pytest.skip(f"git init failed: {init.stderr}")
-    subprocess.run(["git", "config", "user.email", "t@test"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "t@test"], cwd=repo, check=True, capture_output=True
+    )
     subprocess.run(["git", "config", "user.name", "t"], cwd=repo, check=True, capture_output=True)
     (repo / "services").mkdir()
     (repo / "services" / "db").mkdir(parents=True)

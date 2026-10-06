@@ -29,9 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         from streamlit.web import cli as stcli  # type: ignore[import-not-found]
     except ModuleNotFoundError:
-        sys.stderr.write(
-            "streamlit is not installed. Run `pip install testo-core[ui]` first.\n"
-        )
+        sys.stderr.write("streamlit is not installed. Run `pip install testo-core[ui]` first.\n")
         return 1
 
     args = ["streamlit", "run", str(_APP_PATH), "--server.headless=true"]

@@ -36,7 +36,9 @@ class _Verifier:
 
 def test_flow_runner_success_records_cleanup() -> None:
     provisioner = _Provisioner()
-    scenario = FlowScenario(name="s1", provisioner=provisioner, executor=_Executor(), verifiers=[_Verifier()])
+    scenario = FlowScenario(
+        name="s1", provisioner=provisioner, executor=_Executor(), verifiers=[_Verifier()]
+    )
     ctx = FlowContext(run_id="rid", provider="local")
     ledger = CleanupLedger(run_id="rid")
 
@@ -49,7 +51,9 @@ def test_flow_runner_success_records_cleanup() -> None:
 
 def test_flow_runner_failure_still_cleans_up() -> None:
     provisioner = _Provisioner(fail_provision=True)
-    scenario = FlowScenario(name="s2", provisioner=provisioner, executor=_Executor(), verifiers=[_Verifier()])
+    scenario = FlowScenario(
+        name="s2", provisioner=provisioner, executor=_Executor(), verifiers=[_Verifier()]
+    )
     ctx = FlowContext(run_id="rid", provider="local")
     ledger = CleanupLedger(run_id="rid")
 
@@ -58,4 +62,3 @@ def test_flow_runner_failure_still_cleans_up() -> None:
     assert result.status == "failed"
     assert provisioner.cleaned is True
     assert ledger.records and ledger.records[-1].status == "cleaned"
-

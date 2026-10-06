@@ -70,7 +70,9 @@ def run_plan(
     on_chunk = _make_on_chunk(renderer, stream=renderer.wants_streaming)
 
     with _NdjsonRecorder(events_path) as recorder:
-        recorder.write({"event": "plan_started", "plan": plan.name, "stage_count": len(plan.stages)})
+        recorder.write(
+            {"event": "plan_started", "plan": plan.name, "stage_count": len(plan.stages)}
+        )
 
         for idx, stage in enumerate(plan.stages, start=1):
             renderer.handle(
@@ -235,5 +237,3 @@ def _internal_failure_result(*, stage, exc: Exception) -> StageResult:  # type: 
         error=f"internal error: {exc}",
         internal_failure=True,
     )
-
-

@@ -10,4 +10,3 @@ class MockGitlabProvisioner:
 
     def cleanup(self, ctx: FlowContext) -> None:
         ctx.resources.pop("gitlab_project", None)
-

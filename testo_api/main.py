@@ -43,7 +43,11 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     app = FastAPI(title="UQO API", version="1.0.0", lifespan=_lifespan)
 
-    allowed_origins = [origin.strip() for origin in os.getenv("UQO_API_CORS_ORIGINS", "*").split(",") if origin.strip()]
+    allowed_origins = [
+        origin.strip()
+        for origin in os.getenv("UQO_API_CORS_ORIGINS", "*").split(",")
+        if origin.strip()
+    ]
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins or ["*"],
@@ -106,7 +110,9 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:  # type: ignore[no-redef]
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:  # type: ignore[no-redef]
         return JSONResponse(
             status_code=422,
             content={
@@ -118,6 +124,7 @@ def create_app() -> FastAPI:
                 "request_id": getattr(request.state, "request_id", str(uuid4())),
             },
         )
+
     return app
 
 
@@ -137,9 +144,7 @@ def run(argv: list[str] | None = None) -> int:
     try:
         import uvicorn  # type: ignore[import-not-found]
     except ModuleNotFoundError:
-        sys.stderr.write(
-            "uvicorn is not installed. Run `pip install testo-core[api]` first.\n"
-        )
+        sys.stderr.write("uvicorn is not installed. Run `pip install testo-core[api]` first.\n")
         return 1
 
     host = os.environ.get("TESTO_API_HOST", "127.0.0.1")
@@ -147,4 +152,3 @@ def run(argv: list[str] | None = None) -> int:
     reload = os.environ.get("TESTO_API_RELOAD", "0") in ("1", "true", "True")
     uvicorn.run("testo_api.main:app", host=host, port=port, reload=reload)
     return 0
-

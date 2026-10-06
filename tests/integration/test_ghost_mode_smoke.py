@@ -31,7 +31,9 @@ def test_cli_ghost_auto_detect_smoke_with_mocked_sync(monkeypatch, capsys) -> No
         create_calls.append({"status": status, "metadata": dict(metadata or {})})
         return uuid.uuid4()
 
-    def fake_record_completed_run(*, rr, artifacts_root, test_kind, metadata_context, audit_health_pct=None, db_path=None):  # noqa: ANN001
+    def fake_record_completed_run(
+        *, rr, artifacts_root, test_kind, metadata_context, audit_health_pct=None, db_path=None
+    ):  # noqa: ANN001
         del rr, artifacts_root, test_kind, audit_health_pct, db_path
         complete_calls.append(dict(metadata_context or {}))
         return RunSyncStatus(
@@ -61,13 +63,17 @@ def test_cli_ghost_auto_detect_smoke_with_mocked_sync(monkeypatch, capsys) -> No
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
     monkeypatch.setattr("testo_core.services.headless_engine.create_run", fake_create_run)
-    monkeypatch.setattr("testo_core.services.headless_engine.record_completed_run", fake_record_completed_run)
+    monkeypatch.setattr(
+        "testo_core.services.headless_engine.record_completed_run", fake_record_completed_run
+    )
     monkeypatch.setattr(
         cli,
         "HeadlessEngineService",
         lambda: HeadlessEngineService(run_streaming_fn=fake_streaming),
     )
-    monkeypatch.setattr(cli.os, "environ", {"GITHUB_ACTIONS": "true", "GITHUB_RUN_ID": "777", "GITHUB_JOB": "smoke"})
+    monkeypatch.setattr(
+        cli.os, "environ", {"GITHUB_ACTIONS": "true", "GITHUB_RUN_ID": "777", "GITHUB_JOB": "smoke"}
+    )
 
     code = cli.main(["run", "--config", str(fixture), "--stream-json"])
     captured = capsys.readouterr()

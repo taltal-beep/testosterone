@@ -16,7 +16,14 @@ def test_extract_from_summary_json_parses_duration(tmp_path: Path) -> None:
     p.write_text(
         json.dumps(
             {
-                "statistic": {"passed": 2, "failed": 1, "broken": 0, "skipped": 0, "unknown": 0, "total": 3},
+                "statistic": {
+                    "passed": 2,
+                    "failed": 1,
+                    "broken": 0,
+                    "skipped": 0,
+                    "unknown": 0,
+                    "total": 3,
+                },
                 "time": {"sumDuration": 1234},
             }
         ),
@@ -38,5 +45,3 @@ def test_extract_from_report_dir_widgets(tmp_path: Path) -> None:
     m = extract_from_report_dir(report_dir=rep)
     assert m is not None
     assert m.passed == 1
-
-

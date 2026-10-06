@@ -93,7 +93,9 @@ def test_audit_does_not_generate_unified_allure_html(tmp_path: Path) -> None:
         with patch("testo_core.runners.generate_allure_html", side_effect=spy_generate_allure_html):
             with patch("testo_core.runners.sync_all_reports_to_static", return_value={}):
                 with patch("testo_core.runners.collect_behavex_native_report", return_value=None):
-                    gen = run_audit_streaming(target_repo=tmp_path, artifacts_root=tmp_path / "artifacts")
+                    gen = run_audit_streaming(
+                        target_repo=tmp_path, artifacts_root=tmp_path / "artifacts"
+                    )
                     with pytest.raises(StopIteration):
                         while True:
                             next(gen)
@@ -117,7 +119,9 @@ def test_run_native_behave_streams_container_output(tmp_path: Path) -> None:
         return 0, 0.0, 1.0
 
     seen: list[str] = []
-    with patch("testo_core.runners._run_in_ephemeral_container_streaming", side_effect=fake_docker_run) as docker_run:
+    with patch(
+        "testo_core.runners._run_in_ephemeral_container_streaming", side_effect=fake_docker_run
+    ) as docker_run:
         gen = run_native_behave(target_repo=tmp_path, artifacts_root=tmp_path / "artifacts")
         try:
             while True:
@@ -128,4 +132,3 @@ def test_run_native_behave_streams_container_output(tmp_path: Path) -> None:
     assert docker_run.called is True
     assert any("line1" in line for line in seen)
     assert any("line2" in line for line in seen)
-

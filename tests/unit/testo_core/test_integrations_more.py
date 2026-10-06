@@ -51,7 +51,9 @@ def test_push_to_prometheus_http_error(sample_metrics: RunMetrics) -> None:
 
     with patch("testo_core.integrations.requests.post") as post:
         post.return_value = MagicMock(status_code=400, text="bad")
-        ok, msg = push_to_prometheus(sample_metrics, pushgateway_url="http://x:9091", job_name="uqo")
+        ok, msg = push_to_prometheus(
+            sample_metrics, pushgateway_url="http://x:9091", job_name="uqo"
+        )
     assert ok is False
     assert "HTTP 400" in msg
 
@@ -87,4 +89,3 @@ def test_auto_push_metrics_happy_path(tmp_path: Path, sample_metrics: RunMetrics
     targets = [t for t, _ok, _msg in out]
     assert "influxdb" in targets
     assert "prometheus" in targets
-

@@ -90,7 +90,9 @@ class CycleExecutionManager:
         ci: bool = True,
     ) -> CycleExecutionState:
         execution_id = str(uuid4())
-        state = CycleExecutionState(execution_id=execution_id, cycle=str(cycle), created_at=time.time())
+        state = CycleExecutionState(
+            execution_id=execution_id, cycle=str(cycle), created_at=time.time()
+        )
 
         with self._states_lock:
             existing = self._active_by_cycle.get(str(cycle))
@@ -157,7 +159,9 @@ class CycleExecutionManager:
             if not resolved_stages:
                 raise ValueError(f"plan {plan.name!r} has no stages enabled in this environment.")
 
-            artifacts_root = (artifacts_root_override or cfg.defaults.artifacts_root).expanduser().resolve()
+            artifacts_root = (
+                (artifacts_root_override or cfg.defaults.artifacts_root).expanduser().resolve()
+            )
             plan_artifacts = (artifacts_root / plan.name).resolve()
             events_path = plan_artifacts / "events.ndjson"
             plan_result_path = plan_artifacts / "plan_result.json"
@@ -209,7 +213,9 @@ class CycleExecutionManager:
                     return
 
             renderer = _NullRenderer()
-            effective_plan = _apply_workers_override(plan=plan, stages=resolved_stages, workers_override=workers_override)
+            effective_plan = _apply_workers_override(
+                plan=plan, stages=resolved_stages, workers_override=workers_override
+            )
             # Stage subprocesses resolve tools (pytest/behave/...) via PATH. The API server
             # may be launched without an activated venv, so prepend this interpreter's bin
             # dir to guarantee stages run against the same environment as the engine.
@@ -292,7 +298,9 @@ class CycleExecutionManager:
                     self._active_by_cycle.pop(state.cycle, None)
 
 
-def _apply_workers_override(*, plan: Plan, stages: tuple[Stage, ...], workers_override: int | None) -> Plan:
+def _apply_workers_override(
+    *, plan: Plan, stages: tuple[Stage, ...], workers_override: int | None
+) -> Plan:
     if workers_override is None:
         return Plan(
             name=plan.name,
@@ -365,4 +373,3 @@ def iter_sse_from_ndjson_file(
                 return
         yield ": keep-alive\n\n"
         time.sleep(float(poll_interval_s))
-

@@ -69,8 +69,11 @@ from testo_core.services.ui_mode import resolve_ui_mode
 
 _ENGINE = HeadlessEngineService()
 
+
 # region agent log
-def _uqo_debug_log(*, hypothesis_id: str, location: str, message: str, data: dict | None = None) -> None:
+def _uqo_debug_log(
+    *, hypothesis_id: str, location: str, message: str, data: dict | None = None
+) -> None:
     # NDJSON append; best-effort only (never raise in Streamlit render).
     try:
         payload = {
@@ -139,7 +142,9 @@ def init_state() -> None:
     st.session_state.setdefault("influx_org", os.getenv("INFLUXDB_ORG", ""))
     st.session_state.setdefault("influx_bucket", os.getenv("INFLUXDB_BUCKET", ""))
     st.session_state.setdefault("influx_token", os.getenv("INFLUXDB_TOKEN", ""))
-    st.session_state.setdefault("prometheus_pushgateway_url", os.getenv("PROMETHEUS_PUSHGATEWAY_URL", ""))
+    st.session_state.setdefault(
+        "prometheus_pushgateway_url", os.getenv("PROMETHEUS_PUSHGATEWAY_URL", "")
+    )
     st.session_state.setdefault("influx_test_ok", None)
     st.session_state.setdefault("prometheus_test_ok", None)
 
@@ -159,7 +164,9 @@ def init_state() -> None:
         st.session_state["run_configurations"] = [
             {
                 "id": str(uuid4()),
-                "targetRepoPath": str(st.session_state.get("target_repo") or str(Path(".").resolve())),
+                "targetRepoPath": str(
+                    st.session_state.get("target_repo") or str(Path(".").resolve())
+                ),
                 "testType": _tt,
                 "cliArgs": str(st.session_state.get("extra_args") or ""),
                 "consoleBuffer": int(st.session_state.get("log_max_lines") or 2000),
@@ -324,7 +331,9 @@ def _start_worker_multi(specs: list[EngineRunSpec], *, ci_mode: bool = False) ->
                     line=f"[orchestrator worker error] {exc}\n{traceback.format_exc()}\n",
                 )
             )
-            events_q.put(LogEvent(ts=time.time(), stream="meta", line=f"{UQO_DONE_MARKER} returncode=-1\n"))
+            events_q.put(
+                LogEvent(ts=time.time(), stream="meta", line=f"{UQO_DONE_MARKER} returncode=-1\n")
+            )
 
     t = threading.Thread(target=worker, daemon=True)
     st.session_state.events_q = events_q
@@ -368,7 +377,9 @@ def _apply_run_result_to_session(item: RunResult) -> None:
                 "returncode": int(getattr(item, "returncode", -999)),
                 "before_running": bool(st.session_state.get("running")),
                 "before_multi_run_active": bool(st.session_state.get("multi_run_active")),
-                "before_multi_runs_remaining": int(st.session_state.get("multi_runs_remaining") or 0),
+                "before_multi_runs_remaining": int(
+                    st.session_state.get("multi_runs_remaining") or 0
+                ),
             },
             "timestamp": int(time.time() * 1000),
         }
@@ -404,7 +415,9 @@ def _apply_run_result_to_session(item: RunResult) -> None:
                 "after_running": bool(st.session_state.get("running")),
                 "after_run_completed": bool(st.session_state.get("run_completed")),
                 "after_multi_run_active": bool(st.session_state.get("multi_run_active")),
-                "after_multi_runs_remaining": int(st.session_state.get("multi_runs_remaining") or 0),
+                "after_multi_runs_remaining": int(
+                    st.session_state.get("multi_runs_remaining") or 0
+                ),
             },
             "timestamp": int(time.time() * 1000),
         }
@@ -440,7 +453,8 @@ def _apply_run_result_to_session(item: RunResult) -> None:
                 influx_token=st.session_state.get("influx_token") or None,
                 influx_org=st.session_state.get("influx_org") or None,
                 influx_bucket=st.session_state.get("influx_bucket") or None,
-                prometheus_pushgateway_url=st.session_state.get("prometheus_pushgateway_url") or None,
+                prometheus_pushgateway_url=st.session_state.get("prometheus_pushgateway_url")
+                or None,
             )
             for _name, ok, msg in logs:
                 _append_line(f"[auto-push] {'OK' if ok else 'FAIL'} {_name}: {msg}")
@@ -451,7 +465,9 @@ def _apply_run_result_to_session(item: RunResult) -> None:
 def _apply_run_log_line_to_session(stream: str, line: str) -> None:
     done_sentinel = UQO_DONE_MARKER in line
     in_multi_run = str(st.session_state.get("last_test_type") or "") == "multi"
-    batch_still_running = bool(in_multi_run and int(st.session_state.get("multi_runs_remaining") or 0) > 0)
+    batch_still_running = bool(
+        in_multi_run and int(st.session_state.get("multi_runs_remaining") or 0) > 0
+    )
 
     # region agent log
     if done_sentinel:
@@ -546,7 +562,12 @@ def _drain_events() -> None:
         qsize = int(getattr(q, "qsize", lambda: 0)())
         started_at = float(st.session_state.get("run_started_at") or 0.0)
         grace_s = 2.0
-        if bool(st.session_state.get("running")) and (not worker_alive) and qsize <= 0 and started_at > 0:
+        if (
+            bool(st.session_state.get("running"))
+            and (not worker_alive)
+            and qsize <= 0
+            and started_at > 0
+        ):
             if (time.time() - started_at) >= grace_s:
                 st.session_state.running = False
                 st.session_state.run_completed = True
@@ -558,7 +579,11 @@ def _drain_events() -> None:
                     hypothesis_id="H4",
                     location="app.py:_drain_events",
                     message="aborted stale run",
-                    data={"qsize": qsize, "worker_alive": worker_alive, "age_s": round(time.time() - started_at, 3)},
+                    data={
+                        "qsize": qsize,
+                        "worker_alive": worker_alive,
+                        "age_s": round(time.time() - started_at, 3),
+                    },
                 )
                 # endregion agent log
     except Exception:
@@ -658,7 +683,9 @@ init_state()
 # region agent log
 if not bool(st.session_state.get("_uqo_debug_startup_logged")):
     st.session_state["_uqo_debug_startup_logged"] = True
-    _uqo_debug_log(hypothesis_id="H0", location="app.py:startup", message="streamlit app loaded (once)")
+    _uqo_debug_log(
+        hypothesis_id="H0", location="app.py:startup", message="streamlit app loaded (once)"
+    )
 # endregion agent log
 ui_mode = resolve_ui_mode(os.getenv("UQO_UI_MODE"))
 
@@ -709,7 +736,11 @@ with tab_exec:
                 st.caption(f"Mock API base: `{MOCK_BASE_URL}`")
                 col_stop, _ = st.columns([1, 1])
                 with col_stop:
-                    if st.button("Stop Sandbox API", disabled=bool(st.session_state.running), key="stop_sandbox_btn"):
+                    if st.button(
+                        "Stop Sandbox API",
+                        disabled=bool(st.session_state.running),
+                        key="stop_sandbox_btn",
+                    ):
                         stop_sandbox_if_managed()
                         st.toast("Sandbox API stopped.")
                         st.rerun()
@@ -740,9 +771,13 @@ with tab_exec:
             )
             if uploaded is not None:
                 try:
-                    st.session_state["run_configurations"] = handle_import_config(uploaded.getvalue())
+                    st.session_state["run_configurations"] = handle_import_config(
+                        uploaded.getvalue()
+                    )
                     st.session_state["import_config_text"] = ""
-                    st.session_state["config_ui_seed"] = int(st.session_state.get("config_ui_seed") or 0) + 1
+                    st.session_state["config_ui_seed"] = (
+                        int(st.session_state.get("config_ui_seed") or 0) + 1
+                    )
                     st.toast("Configuration imported.")
                     st.rerun()
                 except Exception as exc:
@@ -760,7 +795,9 @@ with tab_exec:
 
         with st.container(border=True):
             _section_label("IMPORT FROM RAW JSON TEXT")
-            st.caption("Paste a JSON array of configurations and click Import. This will overwrite the current cards.")
+            st.caption(
+                "Paste a JSON array of configurations and click Import. This will overwrite the current cards."
+            )
             st.text_area(
                 "Paste JSON here",
                 key="import_config_text",
@@ -778,8 +815,12 @@ with tab_exec:
                     st.session_state["run_configurations"] = handle_import_config_text(
                         str(st.session_state.get("import_config_text") or "")
                     )
-                    st.session_state["import_uploader_key"] = int(st.session_state.get("import_uploader_key") or 0) + 1
-                    st.session_state["config_ui_seed"] = int(st.session_state.get("config_ui_seed") or 0) + 1
+                    st.session_state["import_uploader_key"] = (
+                        int(st.session_state.get("import_uploader_key") or 0) + 1
+                    )
+                    st.session_state["config_ui_seed"] = (
+                        int(st.session_state.get("config_ui_seed") or 0) + 1
+                    )
                     st.toast("Configuration imported from text.")
                     st.rerun()
                 except Exception as exc:
@@ -843,8 +884,11 @@ with tab_exec:
                 test_type = st.selectbox(
                     "Test type",
                     options=[t.value for t in TestType],
-                    index=[t.value for t in TestType].index(str(cfg_state.get("testType") or TestType.PYTEST.value))
-                    if str(cfg_state.get("testType") or TestType.PYTEST.value) in [t.value for t in TestType]
+                    index=[t.value for t in TestType].index(
+                        str(cfg_state.get("testType") or TestType.PYTEST.value)
+                    )
+                    if str(cfg_state.get("testType") or TestType.PYTEST.value)
+                    in [t.value for t in TestType]
                     else 0,
                     disabled=bool(st.session_state.running),
                     key=f"test_{cfg_id}_{ui_seed}",
@@ -870,7 +914,9 @@ with tab_exec:
                     )
                 )
 
-                ok_card, msg_card = validate_target_repo(coerce_path(target_repo_str) if target_repo_str else Path("."))
+                ok_card, msg_card = validate_target_repo(
+                    coerce_path(target_repo_str) if target_repo_str else Path(".")
+                )
                 if not ok_card:
                     st.warning(f"Target repo: {msg_card}")
 
@@ -891,15 +937,17 @@ with tab_exec:
                 st.session_state["config_names_by_id"] = names_by_id
             except Exception:
                 pass
-            st.session_state["run_configurations"] = [c for c in updated if str(c.get("id")) != remove_id] or [
-                _new_run_configuration(default_target=str(Path(".").resolve()))
-            ]
+            st.session_state["run_configurations"] = [
+                c for c in updated if str(c.get("id")) != remove_id
+            ] or [_new_run_configuration(default_target=str(Path(".").resolve()))]
             st.rerun()
 
         st.session_state["run_configurations"] = updated
         if updated:
             st.session_state["target_repo"] = (
-                sandbox_path if st.session_state.sandbox_mode else str(updated[0].get("targetRepoPath") or "")
+                sandbox_path
+                if st.session_state.sandbox_mode
+                else str(updated[0].get("targetRepoPath") or "")
             )
         if st.session_state.sandbox_mode:
             st.session_state["target_repo"] = sandbox_path
@@ -960,7 +1008,9 @@ with tab_exec:
         with col_a:
             run_clicked = st.button("Run", type="primary", disabled=bool(st.session_state.running))
         with col_b:
-            clear_clicked = st.button("Clear console", type="secondary", disabled=bool(st.session_state.running))
+            clear_clicked = st.button(
+                "Clear console", type="secondary", disabled=bool(st.session_state.running)
+            )
 
         if clear_clicked:
             st.session_state.log_lines = []
@@ -979,7 +1029,11 @@ with tab_exec:
             # endregion agent log
             bad: list[str] = []
             for i, c in enumerate(updated):
-                target_repo = coerce_path(c.get("targetRepoPath") or "") if c.get("targetRepoPath") else Path(".")
+                target_repo = (
+                    coerce_path(c.get("targetRepoPath") or "")
+                    if c.get("targetRepoPath")
+                    else Path(".")
+                )
                 ok_i, msg_i = validate_target_repo(target_repo)
                 if not ok_i:
                     bad.append(f"Configuration {i + 1}: {msg_i}")
@@ -995,7 +1049,11 @@ with tab_exec:
 
                 for c in updated:
                     test_type = str(c.get("testType") or TestType.PYTEST.value)
-                    target_repo = coerce_path(c.get("targetRepoPath") or "") if c.get("targetRepoPath") else Path(".")
+                    target_repo = (
+                        coerce_path(c.get("targetRepoPath") or "")
+                        if c.get("targetRepoPath")
+                        else Path(".")
+                    )
                     argv_extra = [a for a in str(c.get("cliArgs") or "").split() if a.strip()]
                     run_specs.append(
                         EngineRunSpec(
@@ -1064,7 +1122,9 @@ with tab_exec:
                     "duration_s": round(rr.finished_at - rr.started_at, 3),
                     "cwd": str(rr.command.cwd),
                     "argv": rr.command.argv,
-                    "allure_results_dir": str(rr.command.env.get("UQO_SHARED_ALLURE_RESULTS_DIR", "")),
+                    "allure_results_dir": str(
+                        rr.command.env.get("UQO_SHARED_ALLURE_RESULTS_DIR", "")
+                    ),
                 }
                 if rr.audit_mode:
                     payload["audit"] = {
@@ -1078,7 +1138,9 @@ with tab_exec:
 
 with tab_analytics:
     st.subheader("Analytics")
-    st.caption("After a run completes, native HTML is mirrored under `./static/` for Streamlit static serving.")
+    st.caption(
+        "After a run completes, native HTML is mirrored under `./static/` for Streamlit static serving."
+    )
 
     has_allure = _static_paths_exist()
     last_tt = st.session_state.get("last_test_type")
@@ -1090,7 +1152,9 @@ with tab_analytics:
         if hp is not None:
             st.metric("Overall system health score", f"{float(hp):.1f}%")
         if st.session_state.get("audit_partial_success"):
-            st.warning("Partial success: at least one audit phase failed; see Execution logs for phase exit codes.")
+            st.warning(
+                "Partial success: at least one audit phase failed; see Execution logs for phase exit codes."
+            )
 
     if st.session_state.get("run_completed"):
         st.success("Last run finished (see Execution tab for exit code).")
@@ -1252,8 +1316,12 @@ with tab_history:
                 cache_buster = int(time.time())
 
                 # Allure Server link (per run_id project) when available.
-                if (s.status == RunStatus.COMPLETED) or (str(getattr(s, "status", "")) == str(RunStatus.COMPLETED)):
-                    allure_base = (os.getenv("ALLURE_SERVER_URL") or "http://localhost:5050").rstrip("/")
+                if (s.status == RunStatus.COMPLETED) or (
+                    str(getattr(s, "status", "")) == str(RunStatus.COMPLETED)
+                ):
+                    allure_base = (
+                        os.getenv("ALLURE_SERVER_URL") or "http://localhost:5050"
+                    ).rstrip("/")
                     st.link_button(
                         "Open Allure Server report",
                         f"{allure_base.rstrip('/')}/reports/{s.run_id}/index.html",
@@ -1289,9 +1357,16 @@ with tab_history:
                     st.markdown("**Test summary**")
                     cols = st.columns(4)
                     cols[0].metric("Passed", int(rr.passed) if rr.passed is not None else 0)
-                    cols[1].metric("Failed", int(rr.failed) if getattr(rr, "failed", None) is not None else 0)
-                    cols[2].metric("Skipped", int(rr.skipped) if getattr(rr, "skipped", None) is not None else 0)
-                    cols[3].metric("Broken", int(rr.broken) if getattr(rr, "broken", None) is not None else 0)
+                    cols[1].metric(
+                        "Failed", int(rr.failed) if getattr(rr, "failed", None) is not None else 0
+                    )
+                    cols[2].metric(
+                        "Skipped",
+                        int(rr.skipped) if getattr(rr, "skipped", None) is not None else 0,
+                    )
+                    cols[3].metric(
+                        "Broken", int(rr.broken) if getattr(rr, "broken", None) is not None else 0
+                    )
 
                 files = snapshot_files_for_download(record=rr) if rr else []
                 with st.expander("Download Artifacts", expanded=False):
@@ -1310,7 +1385,9 @@ with tab_history:
     st.divider()
     st.subheader("Allure folder history (archives)")
     archive_root = artifacts_root / "allure-results-archive"
-    history = MetricsService.list_run_history(archive_root=archive_root, current_results_dir=paths.results_dir)
+    history = MetricsService.list_run_history(
+        archive_root=archive_root, current_results_dir=paths.results_dir
+    )
     if history:
         rows = []
         for m in history:
@@ -1379,7 +1456,11 @@ with tab_integrations:
 
         b1, b2 = st.columns(2)
         with b1:
-            if st.button("Test InfluxDB connection", disabled=bool(st.session_state.running), key="test_influx_btn"):
+            if st.button(
+                "Test InfluxDB connection",
+                disabled=bool(st.session_state.running),
+                key="test_influx_btn",
+            ):
                 try:
                     ok_t, msg_t = test_influxdb_connection(
                         url=st.session_state.get("influx_url") or None,
@@ -1395,14 +1476,25 @@ with tab_integrations:
                     st.session_state["influx_test_ok"] = False
                     st.toast(f"InfluxDB test failed: {exc}")
         with b2:
-            if st.button("Push metrics now (InfluxDB)", disabled=bool(st.session_state.running), key="push_influx_btn"):
+            if st.button(
+                "Push metrics now (InfluxDB)",
+                disabled=bool(st.session_state.running),
+                key="push_influx_btn",
+            ):
                 try:
-                    em = MetricsService.extract_best(report_dir=paths.report_dir, results_dir=paths.results_dir)
+                    em = MetricsService.extract_best(
+                        report_dir=paths.report_dir, results_dir=paths.results_dir
+                    )
                     if em is None:
-                        st.error("No Allure data to push. Run tests or generate the Allure report first.")
+                        st.error(
+                            "No Allure data to push. Run tests or generate the Allure report first."
+                        )
                     else:
                         rm = to_run_metrics(
-                            em, run_id=MetricsService.parse_allure_results_dir(paths.results_dir).run_id
+                            em,
+                            run_id=MetricsService.parse_allure_results_dir(
+                                paths.results_dir
+                            ).run_id,
                         )
                         ok_push, msg_push = push_to_influxdb(
                             rm,
@@ -1443,7 +1535,9 @@ with tab_integrations:
 
         b3, b4 = st.columns(2)
         with b3:
-            if st.button("Test Pushgateway", disabled=bool(st.session_state.running), key="test_prom_btn"):
+            if st.button(
+                "Test Pushgateway", disabled=bool(st.session_state.running), key="test_prom_btn"
+            ):
                 try:
                     ok_t, msg_t = test_prometheus_pushgateway(
                         pushgateway_url=st.session_state.get("prometheus_pushgateway_url") or None
@@ -1457,18 +1551,30 @@ with tab_integrations:
                     st.session_state["prometheus_test_ok"] = False
                     st.toast(f"Prometheus test failed: {exc}")
         with b4:
-            if st.button("Push metrics now (Prometheus)", disabled=bool(st.session_state.running), key="push_prom_btn"):
+            if st.button(
+                "Push metrics now (Prometheus)",
+                disabled=bool(st.session_state.running),
+                key="push_prom_btn",
+            ):
                 try:
-                    em = MetricsService.extract_best(report_dir=paths.report_dir, results_dir=paths.results_dir)
+                    em = MetricsService.extract_best(
+                        report_dir=paths.report_dir, results_dir=paths.results_dir
+                    )
                     if em is None:
-                        st.error("No Allure data to push. Run tests or generate the Allure report first.")
+                        st.error(
+                            "No Allure data to push. Run tests or generate the Allure report first."
+                        )
                     else:
                         rm = to_run_metrics(
-                            em, run_id=MetricsService.parse_allure_results_dir(paths.results_dir).run_id
+                            em,
+                            run_id=MetricsService.parse_allure_results_dir(
+                                paths.results_dir
+                            ).run_id,
                         )
                         ok_push, msg_push = push_to_prometheus(
                             rm,
-                            pushgateway_url=st.session_state.get("prometheus_pushgateway_url") or None,
+                            pushgateway_url=st.session_state.get("prometheus_pushgateway_url")
+                            or None,
                         )
                         if ok_push:
                             st.success(msg_push)
@@ -1483,7 +1589,9 @@ with tab_integrations:
             missing.append("INFLUXDB_TOKEN (or enter Token in the form above)")
         if not os.getenv("INFLUXDB_URL") and not st.session_state.get("influx_url"):
             missing.append("INFLUXDB_URL")
-        if not os.getenv("PROMETHEUS_PUSHGATEWAY_URL") and not st.session_state.get("prometheus_pushgateway_url"):
+        if not os.getenv("PROMETHEUS_PUSHGATEWAY_URL") and not st.session_state.get(
+            "prometheus_pushgateway_url"
+        ):
             missing.append("PROMETHEUS_PUSHGATEWAY_URL (optional)")
         if missing:
             st.warning("Optional gaps for full automation: " + "; ".join(missing))

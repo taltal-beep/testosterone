@@ -34,7 +34,9 @@ def _parse_runner_prebuilt(value: str) -> str:
     return "auto"
 
 
-def build_command(*, config_path: str, ci_mode: bool, stream_json: bool, persist: bool, ghost_mode: str) -> list[str]:
+def build_command(
+    *, config_path: str, ci_mode: bool, stream_json: bool, persist: bool, ghost_mode: str
+) -> list[str]:
     cmd = ["uqo", "run", "--config", config_path]
     if ci_mode:
         cmd.append("--ci")

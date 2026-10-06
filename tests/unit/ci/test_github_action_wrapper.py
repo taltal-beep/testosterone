@@ -24,7 +24,16 @@ def test_build_command_includes_expected_flags() -> None:
         persist=False,
         ghost_mode="true",
     )
-    assert cmd == ["uqo", "run", "--config", "config.yml", "--ci", "--ghost", "--stream-json", "--no-persist"]
+    assert cmd == [
+        "uqo",
+        "run",
+        "--config",
+        "config.yml",
+        "--ci",
+        "--ghost",
+        "--stream-json",
+        "--no-persist",
+    ]
 
 
 def test_extract_summary_uses_last_summary_json_line() -> None:

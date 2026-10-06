@@ -243,14 +243,26 @@ def _run_in_ephemeral_container_streaming(
                         assert proc is not None
                         out = proc.stdout
                         if out is None:
-                            q.put(LogEvent(ts=time.time(), stream="meta", line="[subprocess] no stdout pipe\n"))
+                            q.put(
+                                LogEvent(
+                                    ts=time.time(),
+                                    stream="meta",
+                                    line="[subprocess] no stdout pipe\n",
+                                )
+                            )
                             return
                         for line in out:
                             lf.write(line)
                             lf.flush()
                             q.put(LogEvent(ts=time.time(), stream="stdout", line=line))
                     except Exception as exc:
-                        q.put(LogEvent(ts=time.time(), stream="meta", line=f"[subprocess stream error] {exc}\n"))
+                        q.put(
+                            LogEvent(
+                                ts=time.time(),
+                                stream="meta",
+                                line=f"[subprocess stream error] {exc}\n",
+                            )
+                        )
                     finally:
                         q.put(None)
 
@@ -272,12 +284,16 @@ def _run_in_ephemeral_container_streaming(
                         pass
 
                     now = time.time()
-                    if float(cfg_heartbeat_s) > 0 and (now - last_output_ts) >= float(cfg_heartbeat_s):
+                    if float(cfg_heartbeat_s) > 0 and (now - last_output_ts) >= float(
+                        cfg_heartbeat_s
+                    ):
                         last_output_ts = now
                         emit("meta", "[still running...]\n")
 
                     if cfg_timeout_s is not None and (now - started_at) >= float(cfg_timeout_s):
-                        emit("meta", f"[timeout after {cfg_timeout_s}s] terminating subprocess...\n")
+                        emit(
+                            "meta", f"[timeout after {cfg_timeout_s}s] terminating subprocess...\n"
+                        )
                         with contextlib.suppress(Exception):
                             assert proc is not None
                             proc.kill()
@@ -321,7 +337,9 @@ def _run_in_ephemeral_container_streaming(
     env_for_container = dict(cmd.env)
     shared_dir = env_for_container.get("UQO_SHARED_ALLURE_RESULTS_DIR")
     if shared_dir:
-        env_for_container["UQO_SHARED_ALLURE_RESULTS_DIR"] = _to_container_path(Path(shared_dir), target_root=target_root)
+        env_for_container["UQO_SHARED_ALLURE_RESULTS_DIR"] = _to_container_path(
+            Path(shared_dir), target_root=target_root
+        )
     container_argv = [_rewrite_container_arg(str(a), target_root=target_root) for a in cmd.argv]
 
     # Ensure the container can import orchestrator/drop-in code when plugins need it.
@@ -348,7 +366,10 @@ def _run_in_ephemeral_container_streaming(
     container = None
     returncode: int | None = None
     try:
-        emit("meta", f"[docker] image={runner_image} network={DOCKER_NETWORK} prebuilt={str(runner_prebuilt).lower()}\n")
+        emit(
+            "meta",
+            f"[docker] image={runner_image} network={DOCKER_NETWORK} prebuilt={str(runner_prebuilt).lower()}\n",
+        )
         emit("meta", f"[docker] mounts {_container_display_mounts(target_root)}\n")
         emit("meta", f"[docker] $ (cwd={container_cwd}) bash -lc {bash_cmd}\n")
 
@@ -380,7 +401,11 @@ def _run_in_ephemeral_container_streaming(
                             lf.flush()
                             q.put(LogEvent(ts=time.time(), stream="stdout", line=line))
             except Exception as exc:
-                q.put(LogEvent(ts=time.time(), stream="meta", line=f"[docker log stream error] {exc}\n"))
+                q.put(
+                    LogEvent(
+                        ts=time.time(), stream="meta", line=f"[docker log stream error] {exc}\n"
+                    )
+                )
             finally:
                 q.put(None)
 
@@ -436,6 +461,7 @@ def _run_in_ephemeral_container_streaming(
         if container is not None:
             with contextlib.suppress(Exception):
                 container.remove(force=True)
+
 
 @dataclass(frozen=True)
 class LogEvent:
@@ -525,7 +551,9 @@ def run_streaming(
     # when launched from Streamlit workers where sys.path differs from the target venv).
     site_packages = cmd.env.pop("_UQO_BEHAVEX_SITE_PACKAGES", None)
     if site_packages:
-        cmd.env["PYTHONPATH"] = os.pathsep.join([site_packages, cmd.env.get("PYTHONPATH", "")]).strip(os.pathsep)
+        cmd.env["PYTHONPATH"] = os.pathsep.join(
+            [site_packages, cmd.env.get("PYTHONPATH", "")]
+        ).strip(os.pathsep)
 
     cmd.env["PYTHONUNBUFFERED"] = "1"
 
@@ -596,7 +624,9 @@ def run_streaming(
                 artifacts_root=artifacts_root,
             )
             if dest:
-                yield LogEvent(ts=time.time(), stream="meta", line=f"[behavex native report] {dest}\n")
+                yield LogEvent(
+                    ts=time.time(), stream="meta", line=f"[behavex native report] {dest}\n"
+                )
         except Exception:
             pass
 
@@ -742,9 +772,15 @@ def run_audit_streaming(
             input_dirs=[shared_allure / fw],
         )
         if ok_gen:
-            yield LogEvent(ts=time.time(), stream="meta", line=f"[AUDIT] Allure HTML ({fw}): {msg_gen}\n")
+            yield LogEvent(
+                ts=time.time(), stream="meta", line=f"[AUDIT] Allure HTML ({fw}): {msg_gen}\n"
+            )
         else:
-            yield LogEvent(ts=time.time(), stream="meta", line=f"[AUDIT] Allure generate failed ({fw}): {msg_gen}\n")
+            yield LogEvent(
+                ts=time.time(),
+                stream="meta",
+                line=f"[AUDIT] Allure generate failed ({fw}): {msg_gen}\n",
+            )
 
     # Health score is a metric computed from results JSON across isolated dirs.
     health_pct = compute_system_health_pct(shared_allure)
@@ -756,7 +792,9 @@ def run_audit_streaming(
             line=f"{UQO_AUDIT_HEALTH} {health_pct:.4f}\n",
         )
 
-    yield LogEvent(ts=time.time(), stream="meta", line="[report sync] copying artifacts into ./static/ …\n")
+    yield LogEvent(
+        ts=time.time(), stream="meta", line="[report sync] copying artifacts into ./static/ …\n"
+    )
     try:
         synced = sync_all_reports_to_static(artifacts_root=artifacts_root, run_id=audit_run_id)
         if any(synced.values()):
@@ -872,7 +910,9 @@ def run_native_behave(
 
     cmd = BuiltCommand(argv=list(argv), cwd=repo_root, env=env)
 
-    yield LogEvent(ts=time.time(), stream="meta", line=f"[behave_native] running: {' '.join(argv)}\n")
+    yield LogEvent(
+        ts=time.time(), stream="meta", line=f"[behave_native] running: {' '.join(argv)}\n"
+    )
 
     run_id_eff = str(run_id or uuid.uuid4())
     local_run_log = (_host_repo_root() / "logs" / f"{run_id_eff}.log").resolve()
@@ -900,7 +940,9 @@ def run_native_behave(
         except queue.Empty:
             break
 
-    return RunResult(returncode=int(rc), started_at=started_at, finished_at=finished_at, command=cmd)
+    return RunResult(
+        returncode=int(rc), started_at=started_at, finished_at=finished_at, command=cmd
+    )
 
 
 def _collect_behavex_allure_json_into_shared_dir(
@@ -959,7 +1001,3 @@ def _collect_behavex_allure_json_into_shared_dir(
             continue
 
     return copied
-
-
-
-

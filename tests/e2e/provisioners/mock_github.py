@@ -10,4 +10,3 @@ class MockGithubProvisioner:
 
     def cleanup(self, ctx: FlowContext) -> None:
         ctx.resources.pop("github_repo", None)
-

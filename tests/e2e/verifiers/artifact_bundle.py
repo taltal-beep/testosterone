@@ -30,4 +30,3 @@ def assert_artifact_content_redacted(content: str) -> None:
     for candidate in secret_candidates:
         if candidate and candidate in content:
             raise AssertionError("sensitive token content found in artifact output")
-

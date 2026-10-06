@@ -14,7 +14,9 @@ def _make_plan(*, name: str, stages: tuple[Stage, ...]) -> Plan:
     return Plan(name=name, description=None, stages=stages)
 
 
-def test_copies_behavex_native_report_and_derives_index_html(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_copies_behavex_native_report_and_derives_index_html(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     artifacts_root = tmp_path / "artifacts"
     static_history = tmp_path / "static" / "history"
     monkeypatch.setattr("testo_core.run_history.STATIC_HISTORY_ROOT", static_history)
@@ -36,7 +38,9 @@ def test_copies_behavex_native_report_and_derives_index_html(tmp_path: Path, mon
     assert (dest / "index.html").read_text(encoding="utf-8") == "<html>native</html>"
 
 
-def test_pytest_and_behave_stages_produce_no_native_reports(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_pytest_and_behave_stages_produce_no_native_reports(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     artifacts_root = tmp_path / "artifacts"
     static_history = tmp_path / "static" / "history"
     monkeypatch.setattr("testo_core.run_history.STATIC_HISTORY_ROOT", static_history)

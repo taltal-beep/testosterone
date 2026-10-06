@@ -24,4 +24,3 @@ def common_string_cases() -> list[StringCase]:
         StringCase("null_byte", "a\0b"),
         StringCase("long_1k", "x" * 1024),
     ]
-

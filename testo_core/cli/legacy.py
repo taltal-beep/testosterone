@@ -31,6 +31,7 @@ def _cli_pkg() -> Any:
 
     return _cli
 
+
 SUMMARY_SCHEMA_KEYS: tuple[str, ...] = (
     "schema_version",
     "trigger_source",
@@ -53,13 +54,25 @@ def _build_parser() -> argparse.ArgumentParser:
 
     run_parser = subparsers.add_parser("run", help="Execute one or more runs from a YAML config")
     run_parser.add_argument("--config", required=True, help="Path to YAML config file")
-    run_parser.add_argument("--ci", action="store_true", help="CI mode: strict machine-readable stdout")
+    run_parser.add_argument(
+        "--ci", action="store_true", help="CI mode: strict machine-readable stdout"
+    )
     ghost_group = run_parser.add_mutually_exclusive_group()
-    ghost_group.add_argument("--ghost", action="store_true", help="Force ghost mode (non-interactive CI behavior)")
-    ghost_group.add_argument("--no-ghost", action="store_true", help="Disable ghost mode even when CI env is detected")
-    run_parser.add_argument("--json", action="store_true", help="Print final summary JSON to stdout")
-    run_parser.add_argument("--stream-json", action="store_true", help="Emit NDJSON event objects to stdout")
-    run_parser.add_argument("--no-persist", action="store_true", help="Run without DB/history persistence")
+    ghost_group.add_argument(
+        "--ghost", action="store_true", help="Force ghost mode (non-interactive CI behavior)"
+    )
+    ghost_group.add_argument(
+        "--no-ghost", action="store_true", help="Disable ghost mode even when CI env is detected"
+    )
+    run_parser.add_argument(
+        "--json", action="store_true", help="Print final summary JSON to stdout"
+    )
+    run_parser.add_argument(
+        "--stream-json", action="store_true", help="Emit NDJSON event objects to stdout"
+    )
+    run_parser.add_argument(
+        "--no-persist", action="store_true", help="Run without DB/history persistence"
+    )
     return parser
 
 

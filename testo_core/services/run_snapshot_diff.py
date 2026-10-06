@@ -11,7 +11,9 @@ from testo_core.run_history import CompletedRunView, snapshot_files_for_download
 from testo_core.services.report_archive_diff import CaseChange, _load_cases, diff_case_maps
 
 
-def diff_run_snapshots(*, baseline: CompletedRunView, current: CompletedRunView, tmp: Path) -> list[CaseChange]:
+def diff_run_snapshots(
+    *, baseline: CompletedRunView, current: CompletedRunView, tmp: Path
+) -> list[CaseChange]:
     """Materialize both runs' snapshots under ``tmp`` and return case-level changes."""
     base_root = _materialize_snapshot(record=baseline, dest=tmp / "baseline")
     cur_root = _materialize_snapshot(record=current, dest=tmp / "current")

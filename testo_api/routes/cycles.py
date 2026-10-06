@@ -75,13 +75,17 @@ def get_cycle(cycle: str, config_path: str | None = None) -> CycleDetailResponse
             )
             for stage in plan.stages
         ],
-        trigger=CycleTriggerSummary(paths=list(plan.trigger.paths), since_ref=plan.trigger.since_ref)
+        trigger=CycleTriggerSummary(
+            paths=list(plan.trigger.paths), since_ref=plan.trigger.since_ref
+        )
         if plan.trigger
         else None,
     )
 
 
-@router.post("/cycles/{cycle}/executions", response_model=CycleExecutionAcceptedResponse, status_code=202)
+@router.post(
+    "/cycles/{cycle}/executions", response_model=CycleExecutionAcceptedResponse, status_code=202
+)
 def create_cycle_execution(
     cycle: str,
     payload: CycleExecutionRequest,
@@ -91,12 +95,18 @@ def create_cycle_execution(
     try:
         state = manager.create_execution(
             cycle=str(cycle),
-            config_path=Path(payload.config_path).expanduser().resolve() if payload.config_path else None,
-            artifacts_root_override=Path(payload.artifacts_root).expanduser().resolve() if payload.artifacts_root else None,
+            config_path=Path(payload.config_path).expanduser().resolve()
+            if payload.config_path
+            else None,
+            artifacts_root_override=Path(payload.artifacts_root).expanduser().resolve()
+            if payload.artifacts_root
+            else None,
             persist=bool(payload.persist),
             force=bool(payload.force),
             fail_fast=bool(payload.fail_fast),
-            reporter_override=list(payload.reporter_override) if payload.reporter_override else None,
+            reporter_override=list(payload.reporter_override)
+            if payload.reporter_override
+            else None,
             report_db=bool(payload.report_db),
             async_report_db=bool(payload.async_report_db),
             workers_override=payload.workers_override,
@@ -169,4 +179,3 @@ def stream_cycle_execution_events(
         ),
         media_type="text/event-stream",
     )
-

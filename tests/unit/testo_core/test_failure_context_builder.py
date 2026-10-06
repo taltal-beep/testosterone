@@ -33,10 +33,14 @@ def test_failure_context_applies_budget_truncation() -> None:
     context = build_failure_context(
         run=_run(),
         metadata={"error_message": "x" * 200},
-        budget=FailureContextBudget(max_total_chars=120, max_log_chars=40, max_trace_chars=20, max_metadata_chars=20),
+        budget=FailureContextBudget(
+            max_total_chars=120, max_log_chars=40, max_trace_chars=20, max_metadata_chars=20
+        ),
     )
     assert context.context_stats["prompt_chars"] <= 120
-    assert "log_truncated" in context.limitations or "context_budget_truncated" in context.limitations
+    assert (
+        "log_truncated" in context.limitations or "context_budget_truncated" in context.limitations
+    )
 
 
 def test_failure_context_redacts_secrets_from_prompt() -> None:

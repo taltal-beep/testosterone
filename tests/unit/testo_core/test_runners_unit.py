@@ -31,7 +31,9 @@ def minimal_target_repo(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_resolve_subprocess_uses_shutil_which(monkeypatch: pytest.MonkeyPatch, minimal_target_repo: Path) -> None:
+def test_resolve_subprocess_uses_shutil_which(
+    monkeypatch: pytest.MonkeyPatch, minimal_target_repo: Path
+) -> None:
     called: dict[str, str] = {}
 
     def fake_which(name: str) -> str | None:
@@ -60,7 +62,9 @@ def test_run_streaming_uses_docker_execution_seam(minimal_target_repo: Path) -> 
         kwargs["emit"]("stdout", "one line of output\n")
         return 0, 1.0, 2.0
 
-    with patch("testo_core.runners._run_in_ephemeral_container_streaming", side_effect=fake_docker_run):
+    with patch(
+        "testo_core.runners._run_in_ephemeral_container_streaming", side_effect=fake_docker_run
+    ):
         events: list[object] = []
         gen = run_streaming(cfg, prepare_allure=False, emit_done_marker=False, sync_static=False)
         for item in gen:
@@ -95,8 +99,14 @@ def test_docker_mapping_rewrites_host_paths_for_container(tmp_path: Path) -> Non
     repo_root = Path(__file__).resolve().parents[3]
     multi_arg = f"{target_repo / 'conftest.py'},{repo_root / 'drop_in_hooks' / 'pytest_custom' / 'plugin.py'}"
 
-    assert _to_container_path(allure_dir, target_root=target_repo) == "/app/artifacts/allure-results/pytest"
-    assert _rewrite_container_arg(str(allure_dir), target_root=target_repo) == "/app/artifacts/allure-results/pytest"
+    assert (
+        _to_container_path(allure_dir, target_root=target_repo)
+        == "/app/artifacts/allure-results/pytest"
+    )
+    assert (
+        _rewrite_container_arg(str(allure_dir), target_root=target_repo)
+        == "/app/artifacts/allure-results/pytest"
+    )
 
     rewritten = _rewrite_container_arg(multi_arg, target_root=target_repo)
     assert rewritten.startswith("/app/conftest.py,")
@@ -133,7 +143,10 @@ def test_local_subprocess_fallback_streams_stdout_stderr_and_writes_log(
     assert ("stdout", "hello fallback\n") in emitted
     assert ("stdout", "stderr merged\n") in emitted
     assert any("docker unavailable" in line for stream, line in emitted if stream == "meta")
-    assert set(log_path.read_text(encoding="utf-8").splitlines()) == {"hello fallback", "stderr merged"}
+    assert set(log_path.read_text(encoding="utf-8").splitlines()) == {
+        "hello fallback",
+        "stderr merged",
+    }
 
 
 def test_local_subprocess_fallback_times_out_and_emits_124(

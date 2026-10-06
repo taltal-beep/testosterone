@@ -41,7 +41,9 @@ def test_snapshot_files_for_download_empty_snapshot_dir() -> None:
     assert snapshot_files_for_download(record=r) == []
 
 
-def test_snapshot_files_for_download_lists_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_snapshot_files_for_download_lists_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import testo_core.run_history as rh
 
     monkeypatch.setattr(rh, "ORCHESTRATOR_ROOT", tmp_path)
@@ -84,12 +86,18 @@ def test_record_completed_run_uses_scoped_results_dir_for_metrics(
     other = tmp_path / "artifacts" / "allure-results" / "pytest" / "other"
     scoped.mkdir(parents=True)
     other.mkdir(parents=True)
-    (scoped / "a-result.json").write_text('{"status":"passed","start":0,"stop":10}', encoding="utf-8")
-    (other / "b-result.json").write_text('{"status":"failed","start":0,"stop":10}', encoding="utf-8")
+    (scoped / "a-result.json").write_text(
+        '{"status":"passed","start":0,"stop":10}', encoding="utf-8"
+    )
+    (other / "b-result.json").write_text(
+        '{"status":"failed","start":0,"stop":10}', encoding="utf-8"
+    )
 
     captured: dict[str, object] = {}
     monkeypatch.setattr(rh, "_snapshot_reports", lambda **_: None)
-    monkeypatch.setattr(rh, "update_run_status", lambda _run_id, *, status, metadata: captured.update(metadata))
+    monkeypatch.setattr(
+        rh, "update_run_status", lambda _run_id, *, status, metadata: captured.update(metadata)
+    )
 
     cmd = BuiltCommand(
         argv=["pytest"],

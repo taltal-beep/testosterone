@@ -67,7 +67,9 @@ class SQLReportArchiveRepository:
             return r
 
     def list_recent(self, *, limit: int = 30) -> list[ReportArchive]:
-        stmt = select(ReportArchive).order_by(col(ReportArchive.created_at).desc()).limit(int(limit))
+        stmt = (
+            select(ReportArchive).order_by(col(ReportArchive.created_at).desc()).limit(int(limit))
+        )
         with Session(self._engine) as session:
             rows = list(session.exec(stmt).all())
             for r in rows:

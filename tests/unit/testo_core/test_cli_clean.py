@@ -16,14 +16,18 @@ def runner() -> CliRunner:
     return CliRunner()
 
 
-def test_clean_refuses_without_yes(runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_clean_refuses_without_yes(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(app, ["clean"])
     assert result.exit_code == int(EngineExitCode.INVALID_INPUT)
     assert "Refusing to delete without --yes" in result.stdout
 
 
-def test_clean_removes_artifacts_and_temp(runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_clean_removes_artifacts_and_temp(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     cfg = tmp_path / "testosterone.yaml"
     cfg.write_text(
@@ -57,7 +61,9 @@ def test_clean_with_missing_config_falls_back_to_default_artifacts(
     assert not artifacts.exists()
 
 
-def test_clean_reports_nothing_to_remove(runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_clean_reports_nothing_to_remove(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(app, ["clean", "--yes"])
     assert result.exit_code == 0, result.stdout
@@ -70,7 +76,9 @@ def test_clean_docker_prune_missing_cli_warns_but_succeeds(
     monkeypatch.chdir(tmp_path)
     from testo_core.cli import cleanup as cleanup_mod
 
-    monkeypatch.setattr(cleanup_mod, "docker_prune_stopped_with_label", lambda: (127, "docker: command not found"))
+    monkeypatch.setattr(
+        cleanup_mod, "docker_prune_stopped_with_label", lambda: (127, "docker: command not found")
+    )
     result = runner.invoke(app, ["clean", "--yes", "--docker"])
     assert result.exit_code == 0, result.stdout
     assert "docker CLI not found" in result.stdout

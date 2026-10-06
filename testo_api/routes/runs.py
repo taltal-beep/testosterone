@@ -50,6 +50,10 @@ def get_execution(
             execution_id=execution_id,
             status=state.status,
             summary=state.summary,
-            run_ids=[str(run.get("run_id")) for run in (state.summary or {}).get("runs", []) if run.get("run_id")],
+            run_ids=[
+                str(run.get("run_id"))
+                for run in (state.summary or {}).get("runs", [])
+                if run.get("run_id")
+            ],
             error=state.error,
         )

@@ -27,7 +27,9 @@ def test_extract_failure_context_from_allure_collects_failed_cases(tmp_path: Pat
     (results_dir / "a-result.json").write_text(json.dumps(failed_payload), encoding="utf-8")
     (results_dir / "b-result.json").write_text(json.dumps(passed_payload), encoding="utf-8")
 
-    context, trace_excerpt = run_history._extract_failure_context_from_allure(results_dir=results_dir)
+    context, trace_excerpt = run_history._extract_failure_context_from_allure(
+        results_dir=results_dir
+    )
 
     assert context is not None
     assert context["schema_version"] == "v1"
@@ -43,7 +45,9 @@ def test_read_run_log_tail_reads_from_orchestrator_logs(tmp_path: Path, monkeypa
     logs_dir = tmp_path / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
     run_id = "run-123"
-    (logs_dir / f"{run_id}.log").write_text("line1\nline2\nline3 token=abcdefghi\n", encoding="utf-8")
+    (logs_dir / f"{run_id}.log").write_text(
+        "line1\nline2\nline3 token=abcdefghi\n", encoding="utf-8"
+    )
     monkeypatch.setattr(run_history, "ORCHESTRATOR_ROOT", tmp_path)
 
     tail = run_history._read_run_log_tail(run_id=run_id, max_chars=12)
