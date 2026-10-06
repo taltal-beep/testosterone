@@ -89,3 +89,37 @@ def test_exporter_and_frontend_shim_agree_on_the_file_layout() -> None:
     for name in ("reports", "pyramid", "ai-summary"):
         assert f"{name}.json" in exporter, f"exporter no longer writes {name}.json"
         assert name in shim, f"the static backend no longer maps /{name}"
+
+
+GITHUB_PAGES_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "pages-demo.yml"
+
+
+def _github_pages_workflow() -> dict:
+    return yaml.safe_load(GITHUB_PAGES_WORKFLOW.read_text(encoding="utf-8"))
+
+
+def test_github_pages_workflow_runs_the_same_cycles_and_build() -> None:
+    build = _github_pages_workflow()["jobs"]["build"]
+    steps = {step.get("name"): step for step in build["steps"] if step.get("name")}
+    script = "\n".join(str(step.get("run", "")) for step in build["steps"])
+
+    assert 'git clone --depth 1 --branch "$FAKE_API_REF" "$FAKE_API_REPO" .demo/fake-api' in script
+    self_test = steps["Testosterone tests itself"]["run"]
+    assert "pipefail" in self_test and "|| true" not in self_test
+    assert steps["Testosterone tests fake-api (fails on purpose)"]["run"].endswith("|| true")
+    assert "scripts/export_static_site.py" in script
+
+    ui_env = steps["Build the UI in static mode"]["env"]
+    assert {"VITE_BASE", "VITE_STATIC_DATA_BASE", "VITE_API_BASE_URL"} <= set(ui_env)
+    assert "cp public/index.html public/404.html" in script
+
+
+def test_github_pages_workflow_deploys_only_outside_pull_requests() -> None:
+    workflow = _github_pages_workflow()
+    deploy = workflow["jobs"]["deploy"]
+    assert deploy["needs"] == "build"
+    assert deploy["if"] == "github.event_name != 'pull_request'"
+    assert deploy["environment"]["name"] == "github-pages"
+    assert deploy["permissions"] == {"pages": "write", "id-token": "write"}
+    # Workflow-wide token stays read-only; only the deploy job may write Pages.
+    assert workflow["permissions"] == {"contents": "read"}

@@ -5,9 +5,17 @@ tags: [ci, gitlab, pages, frontend, demo]
 
 # GitLab Pages Demo
 
-A public, link-shareable demo of Testo: a GitLab pipeline runs **real** `testo run`
-cycles, then publishes the React UI to GitLab Pages showing the results of those
-runs. It runs two things:
+A public, link-shareable demo of Testo: a CI pipeline runs **real** `testo run`
+cycles, then publishes the React UI to a static Pages site showing the results of
+those runs. The same pipeline exists twice:
+
+- **GitHub Pages** (`.github/workflows/pages-demo.yml`) at
+  `https://taltal-beep.github.io/testosterone/`. This is the main demo link; see
+  [[#GitHub Pages]].
+- **GitLab Pages** (`.gitlab-ci.yml`), for showing the same thing on GitLab; see
+  [[#What you have to do on GitLab]].
+
+It runs two things:
 
 - **Testosterone testing itself**: its own fast Python suite, split into a unit
   and an integration/contract stage so the dashboard's pyramid is real.
@@ -131,6 +139,25 @@ stream is likewise absent: a static host cannot stream a run that is not running
 
 Report links work: `static/history/<run_id>/` is copied into the published site,
 so the Allure reports for each framework open from the Run detail page.
+
+## GitHub Pages
+
+`.github/workflows/pages-demo.yml` has the same steps as the GitLab job, in one
+`build` job and a `deploy` job:
+
+| Trigger | What happens |
+|---------|--------------|
+| Push to `main`, nightly schedule, manual run | Build, then deploy to Pages. |
+| Pull request touching the demo files | Build only, so a broken demo fails the PR instead of the site. |
+
+Run history is restored from and saved to the Actions cache under a fresh key
+per run (`testo-demo-history-<run_id>`, restored by prefix), because Actions
+caches cannot be overwritten. Only the `deploy` job gets `pages: write`.
+
+One-time setup: **Settings → Pages → Source → GitHub Actions**. The first
+deployment happens on the next push to `main` (or Actions → Pages demo → Run
+workflow); the URL then also shows on the workflow run and under
+Settings → Pages.
 
 ## What you have to do on GitLab
 
