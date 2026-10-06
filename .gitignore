@@ -48,6 +48,8 @@ artifacts/history/
 artifacts/allure-report/
 artifacts/allure-results/
 artifacts/allure-results-archive/
+artifacts/allure-report.zip
+artifacts/metrics.json
 
 # Runtime logs
 logs/
