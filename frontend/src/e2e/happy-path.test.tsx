@@ -80,7 +80,6 @@ describe("happy path", () => {
               },
               report_links: {
                 allure: { url: "http://allure/report", state: "available" },
-                locust: { url: "history/run-1/locust_report.html", state: "available" },
                 behave: { url: "history/run-1/behave/index.html", state: "available" }
               },
               recent_runs: [

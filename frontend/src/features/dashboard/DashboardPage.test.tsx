@@ -31,7 +31,6 @@ function overviewPayload(overrides: Record<string, unknown> = {}) {
     },
     report_links: {
       allure: { url: "http://allure/run-1", state: "available" },
-      locust: { url: "/history/run-1/locust_report.html", state: "available" },
       behave: { url: "/history/run-1/allure_reports/behavex/index.html", state: "available" }
     },
     recent_runs: [
@@ -123,7 +122,6 @@ describe("DashboardPage", () => {
       overviewPayload({
         report_links: {
           allure: { url: null, state: "unknown" },
-          locust: { url: null, state: "missing" },
           behave: { url: null, state: "missing" }
         },
         data_freshness: { generated_at: 1, source_window_size: 1, degraded: true, notes: ["single_run_window"] }
@@ -133,7 +131,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => expect(screen.getByText(/Some metrics are degraded:/)).toBeInTheDocument());
     expect(screen.getByText("Allure report (state unknown)")).toBeInTheDocument();
-    expect(screen.getByText("Locust report (not available)")).toBeInTheDocument();
+    expect(screen.getByText("Behave report (not available)")).toBeInTheDocument();
   });
 
   it("maps trend semantics correctly", () => {

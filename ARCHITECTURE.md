@@ -148,6 +148,11 @@ static/history/<run_id>/      # per-run reporter output, served at /history
   (`HeadlessEngineService` → `runners.py`) and a Streamlit UI existed beside it; they were
   removed and their unique features (CI provenance, failure context, metrics push, ad-hoc
   runs) moved onto the engine.
+- **One typed contract from Pydantic to React.** `testo_api/models.py` is the only place the
+  HTTP contract is written. `scripts/export_openapi.py` exports FastAPI's OpenAPI schema to
+  `frontend/openapi.json`, and `openapi-typescript` generates `frontend/src/lib/api-schema.ts`
+  from it. CI fails if either file is stale or `tsc` finds a mismatch, so a backend change
+  that breaks the UI fails the build instead of the browser.
 - **Events as the integration seam.** The engine emits typed events; renderers decide
   presentation. `events.ndjson` doubles as the durable log the API streams from, so the API
   never holds run output in memory and the same file is available after the run.
