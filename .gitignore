@@ -74,3 +74,7 @@ tests/artifacts/
 # Local ReportPortal Postgres data volume
 data/
 
+
+# GitLab Pages demo output (scripts/export_static_site.py + the Pages job)
+/public/
+/.ci-history/

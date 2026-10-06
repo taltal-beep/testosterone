@@ -1,0 +1,106 @@
+# GitLab pipeline for the public Testo demo.
+#
+# It does two things:
+#   1. runs real `testo run` cycles against sample_target_repo, the same way a
+#      user would locally (pytest + Behave + BehaveX, with Allure HTML output);
+#   2. publishes the React UI to GitLab Pages as a read-only snapshot of those
+#      runs, because Pages serves static files and so cannot host the FastAPI
+#      backend the UI normally talks to.
+#
+# The bridge between the two is scripts/export_static_site.py: it calls every
+# read-only API endpoint the UI uses in-process and writes each response to a
+# JSON file, and frontend/src/lib/static-backend.ts serves those files to the
+# unchanged pages. So the published dashboard shows real run data, not fixtures.
+#
+# Reusable CI template for running Testo in *your own* project lives in
+# ci/gitlab/testo.gitlab-ci.yml — this file is the demo of this repository.
+#
+# See docs/Processes & Guides/GitLab Pages Demo.md.
+
+stages:
+  - demo
+  - deploy
+
+variables:
+  # Both demo cycles are defined in testosterone.yaml at the repo root.
+  TESTO_BASELINE_CYCLE: "sample-all-frameworks"
+  TESTO_CURRENT_CYCLE: "sample-all-frameworks-stochastic"
+  # File-backed SQLite keeps the run history in the job workspace: no service
+  # containers, no credentials, nothing to provision before the first run.
+  DATABASE_URL: "sqlite:///$CI_PROJECT_DIR/.ci-history/testo.db"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  GIT_DEPTH: "20"
+
+.python_node:
+  image: python:3.11-slim-bookworm
+  before_script:
+    # Node is needed for the Allure 3 CLI that renders the HTML reports.
+    - apt-get update -qq
+    - apt-get install -y -qq --no-install-recommends git nodejs npm
+    - python -m pip install --upgrade pip
+  cache:
+    key: "testo-demo-$CI_COMMIT_REF_SLUG"
+    paths:
+      - .cache/pip
+      - node_modules
+      - frontend/node_modules
+
+run_demo_cycles:
+  stage: demo
+  extends: .python_node
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  script:
+    - pip install -e ".[api,db]" httpx
+    - npm install --no-audit --no-fund
+    - mkdir -p .ci-history
+    # Baseline: the deterministic green cycle.
+    - testo run --cycle "$TESTO_BASELINE_CYCLE" --ci | tee baseline.ndjson
+    # Current: the same stages with injected random failures, so the published
+    # Compare and Dashboard pages show a real regression rather than a flat diff.
+    # It is expected to exit non-zero; the demo is the data it produces.
+    - testo run --cycle "$TESTO_CURRENT_CYCLE" --ci | tee current.ndjson || true
+    - python scripts/export_static_site.py --out public --site-url "$CI_PAGES_URL"
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths:
+      - public
+      - baseline.ndjson
+      - current.ndjson
+
+pages:
+  stage: deploy
+  extends: .python_node
+  needs:
+    - job: run_demo_cycles
+      artifacts: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+  script:
+    # Project Pages live under a subpath (/<project>/), user/group Pages at the
+    # root; both are derived from CI_PAGES_URL so nothing is hardcoded.
+    - PAGES_PATH=$(printf '%s' "$CI_PAGES_URL" | sed -E 's#^https?://[^/]+##')
+    - export VITE_BASE="${PAGES_PATH}/"
+    - export VITE_STATIC_DATA_BASE="${PAGES_PATH}/data"
+    # Report links are rendered as "<API base>/history/...", which on Pages is
+    # the copy of static/history/ published beside the UI.
+    - export VITE_API_BASE_URL="$CI_PAGES_URL"
+    - echo "Publishing to $CI_PAGES_URL (base $VITE_BASE)"
+    - cd frontend
+    - npm ci --no-audit --no-fund
+    - npm run build
+    - cd ..
+    - cp -r frontend/dist/. public/
+    # GitLab Pages has no SPA rewrite; serving index.html for unknown paths is
+    # what makes deep links such as /runs/<id> work on a refresh.
+    - cp public/index.html public/404.html
+  artifacts:
+    paths:
+      - public

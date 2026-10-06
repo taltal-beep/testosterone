@@ -10,6 +10,7 @@ export function RunDetailPage() {
   const params = useParams();
   const runId = params.runId ?? "";
   const [artifactsExpanded, setArtifactsExpanded] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const runQuery = useQuery({
     queryKey: ["run", runId],
     queryFn: () => apiClient.getRun(runId),
@@ -182,12 +183,18 @@ export function RunDetailPage() {
         <Button
           className="mt-3"
           onClick={async () => {
-            await apiClient.generateRunAiSummary(runId, true);
-            await aiSummaryQuery.refetch();
+            setAiError(null);
+            try {
+              await apiClient.generateRunAiSummary(runId, true);
+              await aiSummaryQuery.refetch();
+            } catch (err) {
+              setAiError(err instanceof Error ? err.message : String(err));
+            }
           }}
         >
           Generate AI Summary
         </Button>
+        {aiError ? <p className="mt-2 text-sm text-danger-400">{aiError}</p> : null}
       </Card>
     </section>
   );

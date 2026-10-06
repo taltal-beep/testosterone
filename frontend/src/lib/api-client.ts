@@ -321,7 +321,11 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     ...init
   });
   if (!resp.ok) {
-    throw new Error(`API error ${resp.status}`);
+    // The API answers errors with {error: {code, message}}; surfacing that message
+    // beats "API error 405" in the UI (and tells visitors of the read-only static
+    // build why an action did nothing).
+    const body = (await resp.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(body?.error?.message ?? `API error ${resp.status}`);
   }
   return (await resp.json()) as T;
 }
