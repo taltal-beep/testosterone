@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from testo_core import triggers
+from testo_core.config import triggers
 from testo_core.config.loader import load_config
 from testo_core.config.triggers import (
     evaluate_cycle_trigger,
