@@ -9,6 +9,7 @@ environment.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import re
 from collections.abc import Mapping
@@ -48,16 +49,14 @@ def resolve_stages_for_plan(
             continue
         resolved_args = tuple(_interpolate(arg, env=env_map) for arg in stage.args)
         resolved_extra_env = tuple((k, _interpolate(v, env=env_map)) for k, v in stage.extra_env)
+        # dataclasses.replace keeps every other field (tier, junit_xml, ...)
+        # so a field added to Stage later can't be dropped here by accident.
         out.append(
-            Stage(
-                name=stage.name,
-                framework=stage.framework,
-                target_repo=stage.target_repo,
+            dataclasses.replace(
+                stage,
                 args=resolved_args,
-                workers=stage.workers,
-                timeout_s=stage.timeout_s,
-                if_expr=None,  # already evaluated
                 extra_env=resolved_extra_env,
+                if_expr=None,  # already evaluated
             )
         )
     return tuple(out)

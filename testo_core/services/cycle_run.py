@@ -240,17 +240,7 @@ def apply_workers_override(
     """Return *plan* with only the resolved *stages*, each forced to *workers_override* when set."""
     if workers_override is not None:
         stages = [
-            Stage(
-                name=s.name,
-                framework=s.framework,
-                target_repo=s.target_repo,
-                args=s.args,
-                workers=int(workers_override),
-                timeout_s=s.timeout_s,
-                if_expr=None,
-                extra_env=s.extra_env,
-            )
-            for s in stages
+            dataclasses.replace(s, workers=int(workers_override), if_expr=None) for s in stages
         ]
     return Plan(
         name=plan.name, description=plan.description, stages=tuple(stages), trigger=plan.trigger

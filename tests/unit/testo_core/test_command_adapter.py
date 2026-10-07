@@ -18,6 +18,8 @@ from testo_core.engine.executor import run_stage
 from testo_core.frameworks.base import get_adapter
 from testo_core.frameworks.command_adapter import CommandAdapter
 from testo_core.reporting.junit_import import import_junit_reports
+from testo_core.services.cycle_run import CycleRunOptions, CycleRunService
+from tests.fixtures.engine import NoopRenderer
 
 pytestmark = [pytest.mark.unit, pytest.mark.tier_fast]
 
@@ -227,6 +229,48 @@ def test_command_stage_runs_and_imports_its_junit(tmp_path: Path) -> None:
     log = (tmp_path / "artifacts" / "app" / "jest" / "run.log").read_text()
     assert "ran with ['--ci']" in log
     assert "[testo] junit_xml: imported 4 test(s) from 1 file(s)" in log
+
+
+def test_command_cycle_imports_its_junit_through_testo_run(tmp_path: Path) -> None:
+    """The same stage defined in YAML and run the way ``testo run`` runs it."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    script = _script(
+        tmp_path,
+        f"""
+        import pathlib
+        pathlib.Path("reports").mkdir(exist_ok=True)
+        pathlib.Path("reports/junit.xml").write_text({JUNIT!r})
+        """,
+    )
+    cfg_path = _write_config(
+        tmp_path,
+        textwrap.dedent(
+            f"""\
+            - name: jest
+              equipment: command
+              target_repo: repo
+              tier: e2e
+              args: [{json.dumps(sys.executable)}, {json.dumps(str(script))}]
+              junit_xml: [reports/junit.xml]
+            """
+        ),
+    )
+    cfg = load_config(cfg_path)
+
+    outcome = CycleRunService().run(
+        cfg=cfg,
+        plan=cfg.cycles["app"],
+        renderer=NoopRenderer(),
+        options=CycleRunOptions(
+            persist=False, report_db=False, artifacts_root=tmp_path / "artifacts"
+        ),
+    )
+
+    assert outcome.plan.stages[0].junit_xml == ("reports/junit.xml",)
+    assert outcome.plan.stages[0].tier == "e2e"
+    results_dir = tmp_path / "artifacts" / "app" / "jest" / "allure-results" / "command"
+    assert len(_results(results_dir)) == 4
 
 
 def test_missing_report_is_logged_not_raised(tmp_path: Path) -> None:
