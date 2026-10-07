@@ -8,14 +8,13 @@ import pytest
 
 from testo_core.db import get_repository, reset_repository_cache
 from testo_core.db_config import reset_engine_cache
-from testo_core.history import s3_snapshots
 from testo_core.history.read_model import (
     get_run,
     get_run_metadata,
     list_recent_runs,
     list_run_sessions,
 )
-from testo_core.history.report_links import allure_report_url_for_run, report_links
+from testo_core.history.report_links import allure_report_url_for_run
 from testo_core.history.snapshots import snapshot_files_for_download
 from testo_core.history.views import (
     CompletedRunView,
@@ -76,7 +75,6 @@ def _view(**overrides: object) -> CompletedRunView:
 @pytest.mark.parametrize(
     ("metadata", "expected"),
     [
-        ({"wall_duration_ms": 1234.0, "duration_s": 9.0}, 1234.0),
         ({"duration_s": 1.5}, 1500.0),
         ({"started_at": 10.0, "finished_at": 12.25}, 2250.0),
         ({}, 0.0),
@@ -155,21 +153,6 @@ def test_list_run_sessions_maps_report_layout(sqlite_repo, static_history: Path)
 # --- report links and snapshots --------------------------------------------------
 
 
-def test_report_links_fall_back_to_s3_only_for_s3_snapshots(
-    monkeypatch: pytest.MonkeyPatch, static_history: Path
-) -> None:
-    calls: list[str] = []
-    monkeypatch.setattr(
-        s3_snapshots,
-        "report_links",
-        lambda prefix: calls.append(prefix) or {"pytest": "http://minio"},
-    )
-
-    assert report_links(_view(snapshot_dir="artifacts/smoke")) == {}
-    assert report_links(_view(snapshot_dir="runs/rid/artifacts")) == {"pytest": "http://minio"}
-    assert calls == ["runs/rid/artifacts"]
-
-
 def test_allure_report_url_for_run(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALLURE_SERVER_URL", "http://localhost:5050/")
     assert (
@@ -189,60 +172,4 @@ def test_snapshot_files_for_download_reads_local_dir(
     assert snapshot_files_for_download(record=_view(snapshot_dir="artifacts/missing")) == []
     assert snapshot_files_for_download(record=_view(snapshot_dir="artifacts/smoke")) == [
         ("unit/run.log", b"x")
-    ]
-
-
-def test_snapshot_files_for_download_routes_s3_prefixes(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(s3_snapshots, "snapshot_files", lambda prefix: [("a.txt", prefix.encode())])
-    assert snapshot_files_for_download(record=_view(snapshot_dir="runs/rid/artifacts")) == [
-        ("a.txt", b"runs/rid/artifacts")
-    ]
-
-
-def test_s3_lookups_degrade_to_empty_without_minio(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("MINIO_ROOT_USER", raising=False)
-    monkeypatch.delenv("MINIO_ROOT_PASSWORD", raising=False)
-    from testo_core.s3_client import ArtifactS3Storage
-
-    ArtifactS3Storage.reset_instance_for_tests()
-    assert s3_snapshots.report_links("runs/rid/artifacts") == {}
-    assert s3_snapshots.snapshot_files("runs/rid/artifacts") == []
-
-
-class _FakeS3:
-    def __init__(self, objects: dict[str, bytes]) -> None:
-        self._objects = objects
-
-    def object_exists(self, key: str) -> bool:
-        return key in self._objects
-
-    def public_url_for_key(self, key: str) -> str:
-        return f"http://minio/{key}"
-
-    def list_keys_under_prefix(self, prefix: str) -> list[str]:
-        return [k for k in self._objects if k.startswith(prefix)]
-
-    def get_object_bytes(self, key: str) -> bytes:
-        return self._objects[key]
-
-
-def test_s3_lookups_read_pre_v11_layout(monkeypatch: pytest.MonkeyPatch) -> None:
-    prefix = "runs/rid/artifacts"
-    fake = _FakeS3(
-        {
-            f"{prefix}/allure_report/index.html": b"<html>",
-            f"{prefix}/behave/index.html": b"<html>",
-            f"{prefix}/run.log": b"log",
-        }
-    )
-    monkeypatch.setattr(s3_snapshots, "_storage", lambda: fake)
-
-    assert s3_snapshots.report_links(prefix) == {
-        "pytest": f"http://minio/{prefix}/allure_report/index.html",
-        "behavex": f"http://minio/{prefix}/behave/index.html",
-    }
-    assert [rel for rel, _ in s3_snapshots.snapshot_files(prefix)] == [
-        "allure_report/index.html",
-        "behave/index.html",
-        "run.log",
     ]

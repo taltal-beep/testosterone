@@ -106,8 +106,9 @@ class Exporter:
     def _get(self, path: str) -> Any | None:
         """GET ``path``, returning the decoded body, or None when it is unusable.
 
-        ``/health/ready`` answers 503 while still carrying its payload, which is
-        exactly what the UI renders, so non-2xx bodies are kept when they parse.
+        ``/health/ready`` answers 503 when a check is degraded while still carrying
+        its payload, which is exactly what the UI renders, so non-2xx bodies are
+        kept when they parse.
         """
         resp = self.client.get(path)
         try:

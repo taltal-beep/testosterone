@@ -1,6 +1,6 @@
 # Command Reference
 
-Entry point: **`testo`** (`pyproject.toml` → `testo_core.cli.app:main`). Deprecated alias: **`uqo`** (forwards to `testo` with a notice on stderr).
+Entry point: **`testo`** (`pyproject.toml` → `testo_core.cli.app:main`).
 
 Parent index: [[Index]]. Architecture: [[Architecture Overview]]. Run lifecycle: [[QA Strategies]].
 
@@ -107,7 +107,7 @@ testo report pyramid <run-id>
 | `testo report open --id <uuid>` | Extract archive and regenerate/serve Allure |
 | `testo report compare` | Rich diff + Allure comparison (optional baseline/current UUIDs) |
 | `testo report native [ROUTINE]` | List or open BehaveX/pytest native HTML under stage dirs |
-| `testo report pyramid RUN_ID [-c CONFIG]` | ASCII unit/integration/e2e test pyramid for a completed run (`run_id`, not the archive UUID); stage→tier comes from each stage's `tier:` in `testosterone.yaml` (default inferred from `equipment`: pytest→unit, behave→integration, behavex→e2e). See [[Architecture Overview#Test pyramid]]. |
+| `testo report pyramid RUN_ID [-c CONFIG]` | ASCII unit/integration/e2e test pyramid for a completed run (`run_id`, not the archive UUID); stage→tier is the stage's `tier:` (default inferred from `equipment`: pytest→unit, behave→integration, behavex→e2e) as recorded in the run when it executed; `-c` is only read for older runs that predate recorded tiers. See [[Architecture Overview#Test pyramid]]. |
 
 ---
 
@@ -242,10 +242,9 @@ testo -v
 
 | Command | Package | Role |
 |---------|---------|------|
-| `uqo …` | `testo_core.cli.deprecated` | Deprecated alias for `testo` |
 | `testo-api` | `testo_api` | FastAPI server (React UI backend) |
 
-The v1.0 `uqo run --config` headless format (`--ghost`, `--json`, `--stream-json`) and the `testo-ui` Streamlit app were removed in v1.1; use `testo run --cycle … --ci` and the React frontend.
+The v1.0 `uqo` command, its `uqo run --config` headless format (`--ghost`, `--json`, `--stream-json`) and the `testo-ui` Streamlit app were removed; use `testo run --cycle … --ci` and the React frontend.
 
 ---
 
@@ -257,6 +256,10 @@ The v1.0 `uqo run --config` headless format (`--ghost`, `--json`, `--stream-json
 | `INFLUXDB_URL`, `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, `INFLUXDB_BUCKET` | Push run KPIs to InfluxDB after each run |
 | `PROMETHEUS_PUSHGATEWAY_URL`, `PROMETHEUS_JOB_NAME` | Push run KPIs to a Prometheus Pushgateway after each run |
 | Reporter tokens | e.g. `REPORTPORTAL_TOKEN`, `SLACK_WEBHOOK` via `${env:…}` in YAML |
+| `TESTO_API_HOST`, `TESTO_API_PORT`, `TESTO_API_RELOAD` | `testo-api` bind address (default `127.0.0.1:8000`) and auto-reload |
+| `TESTO_API_TOKEN` | When set, `testo-api` requires `Authorization: Bearer <token>` on mutating requests (`401` otherwise) |
+| `TESTO_CORS_ORIGINS` | Comma-separated browser origins allowed by `testo-api` (default: Vite dev/preview on `:5173`/`:4173`); writes from other origins get `403` |
+| `VITE_TESTO_API_TOKEN` | Frontend build-time token sent to the API (or set `localStorage["testo.apiToken"]`) |
 
 ---
 

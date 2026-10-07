@@ -23,7 +23,7 @@ _COMMAND_REFERENCE = _DOCS_ROOT / "CLI Commands" / "Command Reference.md"
 
 # Headers documenting entry points that are intentionally outside the `testo`
 # Typer tree (see "Other entry points (not `testo` Typer tree)" in the doc).
-_NON_TYPER_ENTRY_POINTS = {"uqo", "testo-api", "testo-ui"}
+_NON_TYPER_ENTRY_POINTS = {"testo-api", "testo-ui"}
 
 _HEADER_RE = re.compile(r"^## .*$", re.MULTILINE)
 _COMMAND_TOKEN_RE = re.compile(r"`testo ([a-z][a-z-]*)`")

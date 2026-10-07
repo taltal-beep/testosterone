@@ -1,4 +1,4 @@
-name: uqo-e2e-heavy
+name: testo-e2e-heavy
 on:
   workflow_dispatch:
 jobs:

@@ -38,41 +38,7 @@ def test_public_version_matches_distribution_metadata() -> None:
 
 
 @pytest.mark.contract
-def test_console_script_uqo_is_available() -> None:
-    which_path = shutil.which("uqo")
-    if which_path:
-        assert Path(which_path).is_file()
-        return
-    venv_script = Path(sys.prefix).resolve() / "bin" / "uqo"
-    assert venv_script.is_file()
-
-
-@pytest.mark.contract
-def test_console_script_help_works() -> None:
-    uqo_path = shutil.which("uqo")
-    if uqo_path is None:
-        uqo_path = str(Path(sys.prefix).resolve() / "bin" / "uqo")
-    proc = subprocess.run(  # noqa: S603
-        [uqo_path, "run", "--help"],
-        check=False,
-        capture_output=True,
-        text=True,
-        env=_help_env(),
-    )
-    assert proc.returncode == 0
-    stdout = _strip_ansi(proc.stdout)
-    stderr = _strip_ansi(proc.stderr)
-    # Typer renders the help with capitalised ``Usage:``; remain format-agnostic.
-    assert "Usage:" in stdout
-    assert "run " in stdout
-    # The new Typer CLI replaces ``--stream-json`` with ``--ci`` (NDJSON events).
-    assert "--ci" in stdout
-    # Deprecation banner must be emitted on stderr from the legacy ``uqo`` shim.
-    assert "deprecated" in stderr.lower()
-
-
-@pytest.mark.contract
-def test_new_console_script_testo_works() -> None:
+def test_console_script_testo_help_works() -> None:
     testo_path = shutil.which("testo")
     if testo_path is None:
         testo_path = str(Path(sys.prefix).resolve() / "bin" / "testo")

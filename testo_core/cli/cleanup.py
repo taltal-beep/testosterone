@@ -6,7 +6,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-PROJECT_DOCKER_LABEL = "com.testosterone.project=uqo"
+PROJECT_DOCKER_LABEL = "com.testosterone.project=testo"
 
 
 def remove_tree_if_exists(path: Path) -> bool:

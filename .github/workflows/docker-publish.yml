@@ -62,9 +62,9 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            UQO_VERSION=${{ github.event.release.tag_name }}
-            UQO_COMMIT_SHA=${{ github.sha }}
-            UQO_CREATED=${{ github.event.release.created_at }}
+            TESTO_VERSION=${{ github.event.release.tag_name }}
+            TESTO_COMMIT_SHA=${{ github.sha }}
+            TESTO_CREATED=${{ github.event.release.created_at }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

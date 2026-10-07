@@ -18,11 +18,6 @@
     "name": "Auth Errors",
     "matchedStatuses": ["failed", "broken"],
     "messageRegex": ".*(401|unauthorized|token|jwt|bearer).*"
-  },
-  {
-    "name": "Flaky Demo Failures",
-    "matchedStatuses": ["failed"],
-    "messageRegex": ".*Flaky demo failure.*"
   }
 ]
 

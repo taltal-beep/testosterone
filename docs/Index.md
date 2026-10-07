@@ -60,7 +60,6 @@ This vault is the map of content for the project. Start here, then drill into th
 
 - Configuration file: `testosterone.yaml` at repo root — [[Command Reference#`testo config`]], [[QA Strategies#Defining work in `testosterone.yaml`]]
 - Sample cycles: `sample-pytests`, `sample-behave`, `behavex-flow-tests` in `testosterone.yaml`
-- Deprecated alias: `uqo` (forwards to `testo`)
 - Optional surfaces: FastAPI (`testo-api`) + React frontend (`frontend/`) — same `CycleRunService` as the CLI
 
 ## Typical flows
@@ -88,5 +87,5 @@ For CI-style machine output, use `testo run --ci` (NDJSON on stdout). See [[QA S
 
 ## Related reading in-repo
 
-- `ARCHITECTURE.md` — system diagram, layers and design decisions; legacy UQO platform (Docker, MinIO, Postgres, Allure Server) at the end
+- `ARCHITECTURE.md` — system diagram, layers and design decisions; storage and design decisions
 - `README.md` — quickstart and infrastructure compose stack
