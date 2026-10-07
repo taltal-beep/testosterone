@@ -74,7 +74,16 @@ export function CycleDetailPage() {
                     )
                   },
                   { label: "Timeout", value: stage.timeout_s !== null ? `${stage.timeout_s}s` : "none" },
-                  { label: "Workers", value: stage.workers ?? "default" }
+                  // The API leaves workers null for single-process frameworks (behave, command).
+                  ...(stage.workers !== null
+                    ? [
+                        {
+                          label: "Workers",
+                          value:
+                            stage.equipment === "pytest" ? `${stage.workers} (with pytest-xdist)` : stage.workers
+                        }
+                      ]
+                    : [])
                 ]}
               />
             </li>

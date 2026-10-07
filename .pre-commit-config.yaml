@@ -1,5 +1,4 @@
-# Local git hooks — not to be confused with drop_in_hooks/ (pytest/behave
-# test-framework plugin hooks, a completely different thing). Install once:
+# Local git hooks. Install once:
 #   pip install -e ".[dev]"
 #   pre-commit install
 #

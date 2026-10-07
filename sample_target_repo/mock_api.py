@@ -12,9 +12,9 @@ import jwt
 from fastapi import Body, FastAPI, Header, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 
-app = FastAPI(title="UQO Sandbox Mock API")
+app = FastAPI(title="Testosterone Sandbox Mock API")
 
-JWT_SECRET = "uqo-sandbox-secret"
+JWT_SECRET = "testo-sandbox-secret"
 JWT_ALG = "HS256"
 
 

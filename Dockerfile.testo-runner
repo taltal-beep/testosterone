@@ -1,6 +1,6 @@
-ARG UQO_RUNNER_BASE=python:3.11.9-slim-bookworm
+ARG TESTO_RUNNER_BASE=python:3.11.9-slim-bookworm
 
-FROM ${UQO_RUNNER_BASE} AS builder
+FROM ${TESTO_RUNNER_BASE} AS builder
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -13,17 +13,17 @@ COPY testo_core ./testo_core
 RUN python -m pip install --upgrade pip build && \
     python -m build --wheel --outdir /dist
 
-FROM ${UQO_RUNNER_BASE} AS runtime
+FROM ${TESTO_RUNNER_BASE} AS runtime
 
-ARG UQO_VERSION=dev
-ARG UQO_COMMIT_SHA=unknown
-ARG UQO_CREATED=unknown
+ARG TESTO_VERSION=dev
+ARG TESTO_COMMIT_SHA=unknown
+ARG TESTO_CREATED=unknown
 
-LABEL org.opencontainers.image.title="uqo-runner" \
-      org.opencontainers.image.description="Prebuilt runner image for Unified Quality Orchestration CI execution." \
-      org.opencontainers.image.version="${UQO_VERSION}" \
-      org.opencontainers.image.revision="${UQO_COMMIT_SHA}" \
-      org.opencontainers.image.created="${UQO_CREATED}"
+LABEL org.opencontainers.image.title="testo-runner" \
+      org.opencontainers.image.description="Prebuilt runner image for Testosterone CI execution." \
+      org.opencontainers.image.version="${TESTO_VERSION}" \
+      org.opencontainers.image.revision="${TESTO_COMMIT_SHA}" \
+      org.opencontainers.image.created="${TESTO_CREATED}"
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \

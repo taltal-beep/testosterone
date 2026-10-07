@@ -136,7 +136,7 @@ Debounced filesystem events call `testo run` repeatedly; useful for fast feedbac
 4. **`run_stage()`**:
    - Framework adapter builds `argv` (e.g. `pytest` with Allure plugin paths).
    - `subprocess.Popen` in `target_repo` cwd.
-   - Merges `extra_env`; sets `UQO_SHARED_ALLURE_RESULTS_DIR`, `UQO_ARTIFACTS_ROOT`.
+   - Merges `extra_env`; sets `TESTO_SHARED_ALLURE_RESULTS_DIR`, `TESTO_ARTIFACTS_ROOT`.
    - Streams stdout/stderr into `run.log` via `LogBuffer`.
    - Enforces `timeout_s` (SIGTERM → SIGKILL).
 5. **`--fail-fast`** — aborts remaining stages (and `run --cycle all` aborts remaining cycles).
@@ -394,7 +394,7 @@ pytest tests/unit/testo_core/engine tests/unit/testo_core/cli/test_run_*.py \
 pytest tests/unit/testo_core -q
 ```
 
-**With coverage** (default `pytest.ini` adds `--cov=testo_core --cov-fail-under=50`):
+**With coverage** (default `pytest.ini` adds `--cov=testo_core --cov=testo_api --cov-branch --cov-fail-under=65`; the gate is sized for the fast suite or a full run, so narrower selections like this one report coverage but fail the gate):
 
 ```bash
 pytest tests/unit/testo_core/engine tests/unit/testo_core/cli -q
@@ -404,9 +404,9 @@ pytest tests/unit/testo_core/engine tests/unit/testo_core/cli -q
 
 | Workflow | Command | When |
 |----------|---------|------|
-| [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) (`test` job) | `pytest -m "tier_fast and not quarantined" --no-cov` | Every PR; engine unit + contract tests auto-marked `tier_fast` (folds in the old pr-fast workflow) |
-| [`.github/workflows/pr-heavy.yml`](../../.github/workflows/pr-heavy.yml) | `pytest -m "tier_heavy and not tier_external"` | Optional PR deep suite; `test_subprocess_smoke.py` is marked `tier_heavy` explicitly (it also runs in the fast tier — it is deterministic and ~1s) |
-| [`.github/workflows/nightly-external.yml`](../../.github/workflows/nightly-external.yml) | `pytest -m "tier_external and cleanup_required"` | Nightly / release |
+| [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) (`test` job) | `pytest -m "tier_fast and not quarantined" --cov-report=xml` | Every PR and push to main; engine unit + contract tests auto-marked `tier_fast` (folds in the old pr-fast workflow). Enforces the 65% line + branch coverage gate from `pytest.ini` and uploads `coverage.xml` as an artifact |
+| [`.github/workflows/pr-heavy.yml`](../../.github/workflows/pr-heavy.yml) | `pytest -m "tier_heavy and not tier_external" --no-cov` | Optional PR deep suite; `test_subprocess_smoke.py` is marked `tier_heavy` explicitly (it also runs in the fast tier — it is deterministic and ~1s) |
+| [`.github/workflows/nightly-external.yml`](../../.github/workflows/nightly-external.yml) | `pytest -m "tier_external and cleanup_required" --no-cov` | Nightly (and `release-gate.yml`, manual). Needs `TESTO_E2E_GITHUB_*` or `TESTO_E2E_GITLAB_*` repository secrets; the nightly job skips with a notice when neither pair is set |
 
 Install step in CI: `pip install -e ".[dev]"`.
 

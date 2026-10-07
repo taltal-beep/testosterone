@@ -81,7 +81,7 @@ def test_int02_full_testo_run_ci_with_echo_adapter(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     use_echo_adapter(monkeypatch)
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'uqo_history.db'}")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'testo_history.db'}")
     cfg = write_multi_stage_config(
         tmp_path,
         cycle="ci-smoke",

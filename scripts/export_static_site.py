@@ -106,8 +106,9 @@ class Exporter:
     def _get(self, path: str) -> Any | None:
         """GET ``path``, returning the decoded body, or None when it is unusable.
 
-        ``/health/ready`` answers 503 while still carrying its payload, which is
-        exactly what the UI renders, so non-2xx bodies are kept when they parse.
+        ``/health/ready`` answers 503 when a check is degraded while still carrying
+        its payload, which is exactly what the UI renders, so non-2xx bodies are
+        kept when they parse.
         """
         resp = self.client.get(path)
         try:
@@ -169,20 +170,18 @@ class Exporter:
     def export_deltas(self, runs: list[dict[str, Any]]) -> list[list[str]]:
         """Export the run pairs the UI can ask for.
 
-        Same-cycle neighbours come first: those are the comparisons that mean
-        something (this run of ``fake-api`` against the previous one). Then the
-        overall neighbours, because the Dashboard and Runs pages link "compare
-        latest two" across whatever ran last.
+        The Dashboard and Runs pages only ever compare a run with the previous
+        run of the same cycle (this run of ``fake-api`` against the previous
+        one), so those are the pairs exported, newest first across cycles.
         """
-        candidates: list[tuple[str, str]] = []
-        by_cycle: dict[str | None, list[str]] = {}
-        for run in runs:
-            by_cycle.setdefault(run.get("cycle"), []).append(run["run_id"])
-        for ids in by_cycle.values():
-            candidates.extend(zip(ids, ids[1:], strict=False))
-        ids = [r["run_id"] for r in runs]
-        candidates.extend(zip(ids, ids[1:], strict=False))
-        pairs = list(dict.fromkeys(candidates))
+        pairs: list[tuple[str, str]] = []
+        previous_by_cycle: dict[str | None, str] = {}
+        for run in reversed(runs):  # oldest first
+            cycle = run.get("cycle")
+            if cycle in previous_by_cycle:
+                pairs.append((run["run_id"], previous_by_cycle[cycle]))
+            previous_by_cycle[cycle] = run["run_id"]
+        pairs.reverse()
 
         exported: list[list[str]] = []
         for current, baseline in pairs[: self.delta_pairs]:

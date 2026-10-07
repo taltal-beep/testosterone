@@ -55,7 +55,7 @@ Variables: `TESTO_CONFIG_PATH` (empty = discovery), `TESTO_CYCLE` (empty = the o
 
 ## Tiered test harness commands
 
-Tier selection is marker-driven and shared across local, GitHub Actions, and GitLab CI:
+Tier selection is marker-driven and shared between local runs and GitHub Actions:
 
 - Fast required gate:
   - `python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1 --no-cov`
@@ -67,7 +67,6 @@ Tier selection is marker-driven and shared across local, GitHub Actions, and Git
 Reference CI definitions:
 
 - GitHub: `.github/workflows/ci.yml` (unified format → test → deploy pipeline; the fast-required gate lives in its `test` job), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`. Code review runs via a local pre-push hook (`.claude/settings.json`), not in CI.
-- GitLab: `ci/gitlab/testo.tests.gitlab-ci.yml`, `ci/gitlab/testo.external.gitlab-ci.yml`
 
 All tier jobs upload diagnostics artifacts (`logs`, summary JSON, API responses, screenshots when present) on failure, and external suites run with `external-e2e` concurrency isolation.
 
