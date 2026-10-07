@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
+
+import requests
 
 from testo_core.reporting.allure_results import parse_collected_results
 from testo_core.reporting.collector import CollectedResults
@@ -15,6 +18,8 @@ from testo_core.reporting.reporters.reportportal_client import (
 
 if TYPE_CHECKING:
     from rich.console import Console
+
+logger = logging.getLogger(__name__)
 
 
 class ReportPortalReporter(BaseReporter):
@@ -76,8 +81,10 @@ class ReportPortalReporter(BaseReporter):
             )
             dashboard = client.dashboard_url(launch_uuid)
         except ReportPortalError as exc:
+            logger.warning("ReportPortal rejected the upload: %s", exc)
             return ReporterResult(ok=False, message=str(exc))
-        except Exception as exc:
+        except requests.RequestException as exc:
+            logger.warning("ReportPortal upload failed", exc_info=True)
             return ReporterResult(ok=False, message=f"ReportPortal upload failed: {exc}")
 
         msg = f"ReportPortal launch {launch_uuid} — {dashboard}"

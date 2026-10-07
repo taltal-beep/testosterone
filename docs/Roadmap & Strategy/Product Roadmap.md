@@ -2,7 +2,7 @@
 type: roadmap
 status: current
 created: 2026-06-25
-updated: 2026-10-08
+updated: 2026-10-07
 ---
 
 # Product Roadmap
@@ -29,7 +29,7 @@ Where Testosterone (`testo-core`, CLI `testo`) stands today and what comes next.
 
 - **Repo allow-list for the API.** `testo-api` binds `127.0.0.1` and can require `TESTO_API_TOKEN` on mutating requests; before it runs anywhere shared it also needs an allow-list of target repos.
 - **Parallel stages.** Stages run sequentially; only BehaveX parallelizes internally. Opt-in parallel stages need isolated per-stage artifact trees and aggregated exit classification.
-- **Smaller items** (signal-aware exit codes, reporter failure policy, `mypy testo_api` in CI): see [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md).
+- **Smaller items** (signal-aware exit codes, reporter failure policy): see [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md).
 
 ## How it got here
 

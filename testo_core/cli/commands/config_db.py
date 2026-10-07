@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import typer
 
 from testo_core.engine.exit_codes import EngineExitCode
+
+logger = logging.getLogger(__name__)
 
 
 def config_db(
@@ -114,6 +117,8 @@ def config_db(
         with probe.connect() as conn:
             conn.execute(text("SELECT 1"))
     except Exception as exc:
+        # Broad on purpose: any driver/URL/connection error maps to exit 3 with its message.
+        logger.debug("database connection check failed", exc_info=True)
         console.print(f"[fail]Database connection check failed:[/] {exc}")
         raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE)) from exc
 

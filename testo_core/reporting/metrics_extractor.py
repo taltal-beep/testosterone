@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
 from .metrics import RunMetrics, parse_allure_results_dir
+
+logger = logging.getLogger(__name__)
 
 TrendDirection = Literal["improving", "declining", "flat", "unknown"]
 
@@ -63,10 +66,11 @@ def extract_from_summary_json(*, summary_path: Path) -> ExtractedMetrics | None:
         return None
     try:
         data = json.loads(summary_path.read_text(encoding="utf-8"))
-    except Exception:
+    except (OSError, ValueError):
+        logger.warning("unreadable Allure summary %s", summary_path, exc_info=True)
         return None
 
-    stat = data.get("statistic")
+    stat = data.get("statistic") if isinstance(data, dict) else None
     if not isinstance(stat, dict):
         return None
 
@@ -133,7 +137,8 @@ def extract_best(
     if results_dir is not None and results_dir.expanduser().resolve().is_dir():
         try:
             return extract_from_results_dir(results_dir=results_dir)
-        except Exception:
+        except OSError:
+            logger.warning("could not read Allure results under %s", results_dir, exc_info=True)
             return None
     return None
 

@@ -319,8 +319,8 @@ def snapshot_native_reports(*, plan: Plan, artifacts_root: Path, run_id: str | N
 
     Independent of ``reporters:`` config — this just copies an artifact the
     test framework already wrote (e.g. BehaveX's own HTML report), no Allure
-    CLI or reporters subsystem involved. Best-effort: a missing/unreadable
-    native report for a stage is silently skipped.
+    CLI or reporters subsystem involved. Best-effort: a missing native report
+    is skipped, an unreadable or uncopyable one is skipped with a warning.
     """
     if not run_id:
         return
@@ -335,7 +335,8 @@ def snapshot_native_reports(*, plan: Plan, artifacts_root: Path, run_id: str | N
         try:
             adapter = get_adapter(stage.framework)
             native = adapter.native_report(stage_dir)
-        except Exception:
+        except (ValueError, OSError):
+            logger.warning("native report lookup failed for stage %s", stage.name, exc_info=True)
             continue
         if native is None or not native.root_dir.is_dir():
             continue
@@ -348,4 +349,7 @@ def snapshot_native_reports(*, plan: Plan, artifacts_root: Path, run_id: str | N
             if entry.is_file() and not index.exists():
                 shutil.copy2(entry, index)
         except OSError:
+            logger.warning(
+                "could not snapshot native report of stage %s", stage.name, exc_info=True
+            )
             continue

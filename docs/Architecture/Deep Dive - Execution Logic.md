@@ -220,7 +220,7 @@ subprocess.Popen(argv, cwd=target_repo, stdout=PIPE, stderr=STDOUT)
 
 ### Post-stage hook
 
-For `behavex`, `ensure_behavex_report_html(stage_root)` runs best-effort (exceptions swallowed).
+For `behavex`, `ensure_behavex_report_html(stage_root)` runs best-effort: a failure is logged, appended to `run.log` and set as the stage's `error` (unless a timeout or launch error is already there). The exit code is unchanged.
 
 For any stage with `junit_xml` globs (typically `equipment: command`), `_import_junit` converts the matching JUnit XML (only files inside `target_repo`, only files written since the stage started) into one Allure `*-result.json` per `<testcase>` in `allure-results/<framework>/`: `<failure>` → failed, `<error>` → broken, `<skipped>` → skipped, otherwise passed. It is best-effort, like the BehaveX hook. The process exit code still decides the stage result, and the import outcome (count, or malformed files skipped) is appended to `run.log` as `[testo] junit_xml: ...`.
 
@@ -322,7 +322,7 @@ These are **current code behaviors** worth knowing for CI design and future refa
 | Sequential multi-cycle | `execute_plan_command` with `plan_name == "all"` | Wall-clock time grows linearly with cycle count |
 | Per-stage Allure wipe | `executor` `shutil.rmtree(results_dir)` | Correct isolation; cannot accumulate Allure results across retries within one stage without code changes |
 | Log reader join timeout | `executor` `reader.join(timeout=2.0)` | Rare truncated tail in `output_tail` / last lines of `run.log` under heavy I/O |
-| Reporter errors swallowed | `executor` BehaveX HTML hook; `ReporterFactory` partial failures | Missing native HTML or reporter output may be silent |
+| Reporter failures don't fail the run | `ReporterFactory` partial failures | A failed reporter is logged and returned as `ok=False`, but the exit code stays green |
 
 ### Exit classification reference
 
