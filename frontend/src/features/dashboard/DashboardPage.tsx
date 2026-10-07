@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { DashboardOverviewResponse, DashboardTrendIndicator, apiClient } from "../../lib/api-client";
 import { Badge, Card, HealthBar, PageHeader, RunLabel, Spinner, StatusPill } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
+import { countLabel } from "../../lib/format";
 
 const RECENT_RUNS_REFRESH_MS = 15_000;
 
@@ -234,8 +235,8 @@ function RollupBadges({
 }) {
   return (
     <span className="flex flex-wrap gap-1.5">
-      <Badge tone={summary.regressions > 0 ? "danger" : "neutral"}>{summary.regressions} regressions</Badge>
-      <Badge tone={summary.improvements > 0 ? "success" : "neutral"}>{summary.improvements} improvements</Badge>
+      <Badge tone={summary.regressions > 0 ? "danger" : "neutral"}>{countLabel(summary.regressions, "regression")}</Badge>
+      <Badge tone={summary.improvements > 0 ? "success" : "neutral"}>{countLabel(summary.improvements, "improvement")}</Badge>
       <Badge>{summary.unchanged} unchanged</Badge>
       <Badge>{summary.unknown} unknown</Badge>
     </span>

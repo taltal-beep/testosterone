@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-07
+
+One engine behind every surface. The Docker-based second execution stack, the Streamlit UI, MinIO and the `uqo` command are gone; the CLI, the API and CI all run cycles through `CycleRunService`. The release also adds an API security model, a type-checked API, same-cycle run comparison and a read-only demo on GitHub Pages. Upgrading from 1.0: see "Migrating from v1.0" in the README.
+
 ### Added
 - Docs vault rules: `docs/CLAUDE.md` (schema), `docs/log.md`, frontmatter on every note, and `scripts/docs_vault.py lint` (frontmatter, broken links, wikilinks, orphans, `updated` date on edited notes) as a `docs_vault` CI job and a contract test. `.github/workflows/wiki-sync.yml` regenerates the GitHub wiki from `docs/` on every push to `main` that touches the vault. The root `CLAUDE.md` gains the six second-brain rules, and `docs/Specs & ADRs/` gains decision notes for the 2026-10-06 architecture consolidation and the 2026-10-07 interview fixes
 - Pages demo on GitHub and GitLab: `.github/workflows/pages-demo.yml` (GitHub Pages, `https://<owner>.github.io/<repo>/`) and `.gitlab-ci.yml` (GitLab Pages) each run testosterone's own suite (`self-test` cycle) and the deliberately broken [fake-api](https://github.com/taltal-beep/fake-api) app (`fake-api` cycle), then publishes the React UI as a read-only snapshot of those runs (`scripts/export_static_site.py` freezes the API's own responses; `frontend/src/lib/static-backend.ts` serves them to the unchanged pages). Run history is cached between pipelines. `.github/workflows/mirror-to-gitlab.yml` mirrors `main` to GitLab, inert until configured
@@ -48,6 +52,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Dead code and test-failure injection: `.streamlit/`, `drop_in_hooks/`, `requirements.txt`, `deploy/nginx/`, `examples/gitlab/`, the unused GitLab tier templates, `sample_target_repo/random_fail.py` and the `sample-all-frameworks-stochastic` cycle, and the `UQO_FLAKY_DEMO` / `SANDBOX_API_FLAKY_P` switches in testosterone's own suite. `testo_core/sandbox_api.py` (a uvicorn launcher for the sample mock API, used only by one black-box test on a fixed port) is gone with that test, so it no longer ships in the wheel
 
 ### Fixed
+- Dashboard and Compare badges say "1 improvement" / "1 regression" instead of "1 improvements"
+- `release-gate.yml` reads the `TESTO_E2E_*` repository secrets, matching the nightly job, instead of the old `UQO_E2E_*` names
 - Errors in I/O and reporting paths are no longer swallowed silently: `except Exception: pass` sites in `testo_core/` and `testo_api/` now catch the specific exceptions they expect and log with the module logger, and the deliberate catch-alls (orchestrator, reporter factory, API routes) log with a traceback. A failed BehaveX HTML report now sets the stage's `error` and is written to `run.log`, and a failed Git trigger evaluation logs a warning and says so in the trigger `reason` (exit codes unchanged)
 - The frontend's top nav overflowed the page at phone width. Below 640px the nav links and the Advanced menu now collapse into a menu button (`aria-expanded`, closes on navigation and Escape), and page gutters shrink to 16px; no page of the demo scrolls sideways at 390px any more
 - Dashboard trends and "Compare latest two" (dashboard and Runs page) compared the latest run with whatever ran before it, even another cycle; the baseline is now the previous run of the same cycle, and the dashboard names it. A cycle whose stage crashed without producing results no longer reports the other stages' pass rate (often 100%) as its health
@@ -219,6 +225,7 @@ First public release. Published to PyPI (`testo-core`), GHCR (`testo-runner`), a
 
 ---
 
-[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/taltal-beep/testosterone/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/taltal-beep/testosterone/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/taltal-beep/testosterone/releases/tag/v0.1.0

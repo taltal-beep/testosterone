@@ -10,7 +10,7 @@ import {
   RunListItem,
   apiClient
 } from "../../lib/api-client";
-import { formatRunLabel, runCycle, shortRunId } from "../../lib/format";
+import { countLabel, formatRunLabel, runCycle, shortRunId } from "../../lib/format";
 import { Badge, Card, PageHeader, RunLabel, StackedBar, type StackedBarSegment } from "../../components/ui";
 
 const CASE_KIND_TONE: Record<CaseChangeKind, string> = {
@@ -163,10 +163,10 @@ export function ComparePage() {
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5" data-testid="status-summary">
               <Badge tone={payload.status_summary.regressions.length > 0 ? "danger" : "neutral"}>
-                {payload.status_summary.regressions.length} regressions
+                {countLabel(payload.status_summary.regressions.length, "regression")}
               </Badge>
               <Badge tone={payload.status_summary.improvements.length > 0 ? "success" : "neutral"}>
-                {payload.status_summary.improvements.length} improvements
+                {countLabel(payload.status_summary.improvements.length, "improvement")}
               </Badge>
               <Badge>{payload.status_summary.unchanged.length} unchanged</Badge>
               <Badge>{payload.status_summary.unknown.length} unknown</Badge>
