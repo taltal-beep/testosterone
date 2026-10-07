@@ -276,6 +276,7 @@ class DeltaCaseChangesResponse(ApiModel):
 
 class DashboardHeadlineKpis(ApiModel):
     latest_run_id: str | None = None
+    latest_cycle: str | None = None
     latest_status: str | None = None
     health_pct: float | None = None
     pass_count: int | None = None
@@ -313,6 +314,7 @@ class DashboardReportLinksResponse(ApiModel):
 
 class DashboardRecentRunItem(ApiModel):
     run_id: str
+    cycle: str | None = None
     created_at: float
     status: str | None = None
     returncode: int

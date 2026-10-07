@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { DashboardTrendIndicator, apiClient } from "../../lib/api-client";
+import { formatRunName } from "../../lib/format";
 import { Badge, Card, HealthBar, PageHeader, Spinner, StatusPill } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
 
@@ -37,6 +38,7 @@ export function DashboardPage() {
   }
   const recentRuns = recentRunsQuery.data?.items ?? data.recent_runs ?? [];
   const latestRunId = data.headline_kpis?.latest_run_id;
+  const latestCycle = data.headline_kpis?.latest_cycle;
 
   // First-run experience: nothing has ever executed, so guide instead of showing n/a walls.
   if (!latestRunId && recentRuns.length === 0) {
@@ -47,7 +49,11 @@ export function DashboardPage() {
     <section className="space-y-5">
       <PageHeader
         title="Dashboard"
-        subtitle="Health, reliability, and performance at a glance."
+        subtitle={
+          latestCycle
+            ? `Latest run: ${latestCycle}. Trends compare it with the previous ${latestCycle} run.`
+            : "Health, reliability, and performance at a glance."
+        }
       />
       {data.data_freshness?.degraded ? (
         <p role="status" className="rounded-md border border-warn-500/40 bg-warn-500/10 px-3 py-2 text-sm text-warn-300">
@@ -126,8 +132,8 @@ export function DashboardPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-3">
                     <StatusPill status={run.status ?? "unknown"} returncode={run.returncode} />
-                    <Link to={run.run_detail_url} className="font-mono text-brand-300 hover:text-brand-400 hover:underline">
-                      {run.run_id}
+                    <Link to={run.run_detail_url} className="text-brand-300 hover:text-brand-400 hover:underline">
+                      {formatRunName(run.cycle ?? null, run.created_at)}
                     </Link>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-ink-400">

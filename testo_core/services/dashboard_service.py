@@ -51,6 +51,7 @@ class DashboardReportLinks:
 @dataclass(frozen=True)
 class DashboardRecentRun:
     run_id: str
+    cycle: str | None
     created_at: float
     status: str | None
     returncode: int
@@ -71,6 +72,7 @@ class DashboardDataFreshness:
 @dataclass(frozen=True)
 class DashboardHeadlineKpis:
     latest_run_id: str | None
+    latest_cycle: str | None
     latest_status: str | None
     health_pct: float | None
     pass_count: int | None
@@ -217,6 +219,7 @@ class DashboardService:
             latest_run_id=latest_run.run_id
             if latest_run
             else (latest_session.run_id if latest_session else None),
+            latest_cycle=latest_session.cycle if latest_session else None,
             latest_status=latest_run.status.value
             if latest_run and latest_run.status is not None
             else None,
@@ -319,6 +322,7 @@ class DashboardService:
             )
         return DashboardRecentRun(
             run_id=session.run_id,
+            cycle=session.cycle,
             created_at=session.created_at,
             status=session.status.value if session.status is not None else None,
             returncode=session.returncode,

@@ -10,6 +10,7 @@ function overviewPayload(overrides: Record<string, unknown> = {}) {
   return {
     headline_kpis: {
       latest_run_id: "run-1",
+      latest_cycle: "smoke",
       latest_status: "COMPLETED",
       health_pct: 98,
       pass_count: 12,
@@ -36,6 +37,7 @@ function overviewPayload(overrides: Record<string, unknown> = {}) {
     recent_runs: [
       {
         run_id: "run-1",
+        cycle: "smoke",
         created_at: 1,
         status: "COMPLETED",
         returncode: 0,
@@ -88,6 +90,8 @@ describe("DashboardPage", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument());
     expect(screen.getByTestId("health-trend")).toHaveTextContent("Trend: improved");
+    expect(screen.getByText(/Latest run: smoke\./)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^smoke — / })).toHaveAttribute("href", "/runs/run-1");
     expect(screen.getByRole("link", { name: "Latest run details" })).toHaveAttribute("href", "/runs/run-1");
     expect(screen.getByRole("link", { name: "Compare latest two runs" })).toHaveAttribute(
       "href",

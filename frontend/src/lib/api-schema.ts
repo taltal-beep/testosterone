@@ -647,6 +647,8 @@ export interface components {
             fail_count: number | null;
             /** Health Pct */
             health_pct: number | null;
+            /** Latest Cycle */
+            latest_cycle: string | null;
             /** Latest Run Id */
             latest_run_id: string | null;
             /** Latest Status */
@@ -674,6 +676,8 @@ export interface components {
             compare_url: string | null;
             /** Created At */
             created_at: number;
+            /** Cycle */
+            cycle: string | null;
             /** Duration Ms */
             duration_ms: number | null;
             /** Health Pct */

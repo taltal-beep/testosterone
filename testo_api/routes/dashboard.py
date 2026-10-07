@@ -32,6 +32,7 @@ def get_dashboard_overview(recent_limit: int = 5) -> DashboardOverviewResponse:
     return DashboardOverviewResponse(
         headline_kpis=DashboardHeadlineKpis(
             latest_run_id=payload.headline_kpis.latest_run_id,
+            latest_cycle=payload.headline_kpis.latest_cycle,
             latest_status=payload.headline_kpis.latest_status,
             health_pct=payload.headline_kpis.health_pct,
             pass_count=payload.headline_kpis.pass_count,
@@ -108,6 +109,7 @@ def get_dashboard_recent_runs(limit: int = 10) -> DashboardRecentRunsResponse:
 def _to_recent_run_item(item: DashboardRecentRun) -> DashboardRecentRunItem:
     return DashboardRecentRunItem(
         run_id=item.run_id,
+        cycle=item.cycle,
         created_at=item.created_at,
         status=item.status,
         returncode=item.returncode,

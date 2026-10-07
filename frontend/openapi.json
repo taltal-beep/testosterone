@@ -761,6 +761,17 @@
             ],
             "title": "Health Pct"
           },
+          "latest_cycle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Cycle"
+          },
           "latest_run_id": {
             "anyOf": [
               {
@@ -797,6 +808,7 @@
         },
         "required": [
           "latest_run_id",
+          "latest_cycle",
           "latest_status",
           "health_pct",
           "pass_count",
@@ -874,6 +886,17 @@
             "title": "Created At",
             "type": "number"
           },
+          "cycle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle"
+          },
           "duration_ms": {
             "anyOf": [
               {
@@ -922,6 +945,7 @@
         },
         "required": [
           "run_id",
+          "cycle",
           "created_at",
           "status",
           "returncode",

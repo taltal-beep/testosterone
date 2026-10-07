@@ -20,6 +20,7 @@ def _overview_payload() -> DashboardOverview:
     return DashboardOverview(
         headline_kpis=DashboardHeadlineKpis(
             latest_run_id="run-1",
+            latest_cycle="smoke",
             latest_status="COMPLETED",
             health_pct=97.5,
             pass_count=39,
@@ -54,6 +55,7 @@ def _overview_payload() -> DashboardOverview:
         recent_runs=(
             DashboardRecentRun(
                 run_id="run-1",
+                cycle="smoke",
                 created_at=1.0,
                 status="COMPLETED",
                 returncode=0,
@@ -91,6 +93,7 @@ def test_dashboard_overview_contract(monkeypatch) -> None:  # noqa: ANN001
         "data_freshness",
     }
     assert payload["headline_kpis"]["latest_run_id"] == "run-1"
+    assert payload["headline_kpis"]["latest_cycle"] == "smoke"
     assert payload["trend_indicators"]["health"]["direction"] == "up"
     assert payload["report_links"]["allure"]["state"] == "available"
     assert payload["recent_runs"][0]["run_detail_url"] == "/runs/run-1"
@@ -102,6 +105,7 @@ def test_dashboard_recent_runs_contract(monkeypatch) -> None:  # noqa: ANN001
         lambda self, limit=10: (  # noqa: ARG005
             DashboardRecentRun(
                 run_id="run-9",
+                cycle="smoke",
                 created_at=9.0,
                 status="FAILED",
                 returncode=1,
@@ -118,6 +122,7 @@ def test_dashboard_recent_runs_contract(monkeypatch) -> None:  # noqa: ANN001
     payload = resp.json()
     assert set(payload.keys()) == {"items", "generated_at"}
     assert payload["items"][0]["run_id"] == "run-9"
+    assert payload["items"][0]["cycle"] == "smoke"
 
 
 def test_dashboard_endpoint_validation_errors_follow_error_envelope(monkeypatch) -> None:  # noqa: ANN001
