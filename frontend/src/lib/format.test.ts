@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatRunLabel, shortRunId } from "./format";
+import { countLabel, formatRunLabel, shortRunId } from "./format";
 
 describe("run labels", () => {
   it("names a run by cycle and start time", () => {
@@ -14,5 +14,13 @@ describe("run labels", () => {
 
   it("shortens run ids to eight characters", () => {
     expect(shortRunId("3f9c2a7e1b4d4e0f")).toBe("3f9c2a7e");
+  });
+});
+
+describe("countLabel", () => {
+  it("uses the singular only for exactly one", () => {
+    expect(countLabel(1, "improvement")).toBe("1 improvement");
+    expect(countLabel(0, "improvement")).toBe("0 improvements");
+    expect(countLabel(3, "regression")).toBe("3 regressions");
   });
 });

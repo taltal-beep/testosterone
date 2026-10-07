@@ -17,7 +17,7 @@
 | **Cycles** | **Dashboard on a phone** |
 | [![Cycles page listing the self-test and fake-api cycles with their stages and frameworks](docs/assets/screenshots/cycles.png)](docs/assets/screenshots/cycles.png) | <a href="docs/assets/screenshots/dashboard-phone.png"><img src="docs/assets/screenshots/dashboard-phone.png" width="200" alt="Dashboard at phone width: stacked health, failed, pass count and duration cards"></a> |
 
-What you're looking at: Testosterone testing itself (its own 559-test suite) and `fake-api`, a
+What you're looking at: Testosterone testing itself (its own test suite) and `fake-api`, a
 small app whose routes fail on purpose. CI runs both cycles and publishes the real results as a
 read-only static site.
 

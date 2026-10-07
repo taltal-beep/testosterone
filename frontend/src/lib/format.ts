@@ -28,3 +28,8 @@ export function shortRunId(runId: string): string {
 export function formatRunLabel(run: RunLike): string {
   return `${runCycle(run)} · ${formatRunTime(run.created_at)}`;
 }
+
+/** "1 regression", "3 regressions": a count with its noun in the right number. */
+export function countLabel(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
