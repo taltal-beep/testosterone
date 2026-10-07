@@ -39,11 +39,11 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="UQO API", version="1.0.0", lifespan=_lifespan)
+    app = FastAPI(title="Testosterone API", version="1.0.0", lifespan=_lifespan)
 
     allowed_origins = [
         origin.strip()
-        for origin in os.getenv("UQO_API_CORS_ORIGINS", "*").split(",")
+        for origin in os.getenv("TESTO_API_CORS_ORIGINS", "*").split(",")
         if origin.strip()
     ]
     app.add_middleware(

@@ -5,7 +5,7 @@ The stage's ``args`` are the complete argv (``["npx", "jest", "--ci"]``,
 is injected: such runners don't speak Allure, so their results arrive through
 the stage's ``junit_xml`` globs, which the executor converts into Allure
 result files after the process exits (:mod:`testo_core.reporting.junit_import`).
-The Allure results dir is still exported as ``UQO_SHARED_ALLURE_RESULTS_DIR``
+The Allure results dir is still exported as ``TESTO_SHARED_ALLURE_RESULTS_DIR``
 for runners that can write Allure JSON themselves.
 """
 

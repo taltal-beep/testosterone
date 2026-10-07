@@ -176,7 +176,7 @@ def _default_run_id() -> str:
 
 @pytest.fixture(scope="session")
 def e2e_run_id() -> str:
-    configured = os.getenv("UQO_E2E_RUN_ID")
+    configured = os.getenv("TESTO_E2E_RUN_ID")
     if configured:
         return _sanitize_run_id(configured)
     return _default_run_id()

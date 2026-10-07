@@ -12,12 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      UQO_E2E_EXTERNAL_DRY_RUN: "false"
-      UQO_E2E_GITHUB_TOKEN: ${{ secrets.UQO_E2E_GITHUB_TOKEN }}
-      UQO_E2E_GITHUB_OWNER: ${{ secrets.UQO_E2E_GITHUB_OWNER }}
-      UQO_E2E_GITLAB_TOKEN: ${{ secrets.UQO_E2E_GITLAB_TOKEN }}
-      UQO_E2E_GITLAB_GROUP_ID: ${{ secrets.UQO_E2E_GITLAB_GROUP_ID }}
-      UQO_E2E_GITLAB_BASE_URL: ${{ secrets.UQO_E2E_GITLAB_BASE_URL }}
+      TESTO_E2E_EXTERNAL_DRY_RUN: "false"
+      TESTO_E2E_GITHUB_TOKEN: ${{ secrets.UQO_E2E_GITHUB_TOKEN }}
+      TESTO_E2E_GITHUB_OWNER: ${{ secrets.UQO_E2E_GITHUB_OWNER }}
+      TESTO_E2E_GITLAB_TOKEN: ${{ secrets.UQO_E2E_GITLAB_TOKEN }}
+      TESTO_E2E_GITLAB_GROUP_ID: ${{ secrets.UQO_E2E_GITLAB_GROUP_ID }}
+      TESTO_E2E_GITLAB_BASE_URL: ${{ secrets.UQO_E2E_GITLAB_BASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

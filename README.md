@@ -131,7 +131,7 @@ job, commit and branch. Inputs and outputs: [integrations/github-action/README.m
 
 - **Metrics push:** after each run, test KPIs go to InfluxDB when `INFLUXDB_URL`,
   `INFLUXDB_TOKEN`, `INFLUXDB_ORG` and `INFLUXDB_BUCKET` are set, and to a Prometheus
-  Pushgateway when `PROMETHEUS_PUSHGATEWAY_URL` is set (`PROMETHEUS_JOB_NAME` defaults to `uqo`).
+  Pushgateway when `PROMETHEUS_PUSHGATEWAY_URL` is set (`PROMETHEUS_JOB_NAME` defaults to `testo`).
   Pushes are best-effort and never change the run result.
 - **Reporters:** `allure`, `extent`, `reportportal`, `testbeats` under `reporters:`.
 - **AI failure summaries:** opt in on the AI settings page with an OpenAI or Anthropic key.

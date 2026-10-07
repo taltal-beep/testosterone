@@ -1,15 +1,15 @@
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: uqo-postgres
+    container_name: testo-postgres
     ports:
       # PostgreSQL (DB) exposed on host for local tools
       - "5432:5432"
     environment:
       # Default DB credentials (change for production)
-      POSTGRES_USER: uqo_admin
+      POSTGRES_USER: testo_admin
       POSTGRES_PASSWORD: admin
-      POSTGRES_DB: uqo_history
+      POSTGRES_DB: testo_history
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
