@@ -383,7 +383,7 @@ def report_pyramid(
     from testo_core.config.errors import ConfigError
     from testo_core.config.loader import discover_and_load
     from testo_core.history.read_model import get_run
-    from testo_core.reporting.pyramid_data import build_pyramid_model
+    from testo_core.reporting.pyramid_data import build_pyramid_model, run_needs_config_tiers
     from testo_core.reporting.pyramid_viz import classify_shape, render_pyramid_lines
 
     console = default_console()
@@ -392,8 +392,10 @@ def report_pyramid(
         console.print(f"[fail]no run found with id[/] {run_id!r}")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
+    # Runs record each stage's tier. Only older records without one fall back
+    # to the tiers in the current YAML.
     stages: tuple[Any, ...] = ()
-    if run.cycle:
+    if run.cycle and run_needs_config_tiers(run):
         try:
             cfg = discover_and_load(config_path=config)
         except ConfigError as exc:

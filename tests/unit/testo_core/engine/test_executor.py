@@ -175,6 +175,19 @@ def test_missing_binary_returns_127_with_error(
     assert result.command == ("testo-missing-binary-9c2f4e",)
 
 
+def test_stage_result_records_the_stage_tier(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The run record keeps the tier the stage ran with, so the test pyramid
+    # doesn't depend on whatever testosterone.yaml says later.
+    use_echo_adapter(monkeypatch)
+    stage = Stage(name="flows", framework="pytest", target_repo=Path("."), tier="e2e")
+
+    result = run_stage(stage, plan_name="demo", artifacts_root=tmp_path)
+
+    assert result.tier == "e2e"
+
+
 def test_timeout_kills_stage_and_returns_124(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

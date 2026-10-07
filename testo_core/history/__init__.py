@@ -9,7 +9,6 @@ through :func:`testo_core.db.get_repository`:
 - :mod:`.read_model` — queries the API and services use (list, get, compare, sessions).
 - :mod:`.report_links` — which HTML reports exist for a run, and their URLs.
 - :mod:`.snapshots` — raw artifact files of a run, for download and diffing.
-- :mod:`.s3_snapshots` — the same two lookups for pre-v1.1 runs stored in MinIO.
 - :mod:`.maintenance` — metadata patches and orphaned-run cleanup.
 
 Submodules are imported directly (``from testo_core.history.read_model import get_run``);

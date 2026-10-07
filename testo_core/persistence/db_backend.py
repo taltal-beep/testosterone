@@ -99,6 +99,7 @@ class DbBackend:
                         {
                             "name": s.stage_name,
                             "framework": s.framework,
+                            "tier": s.tier,
                             "returncode": s.returncode,
                             "duration_s": s.duration_s,
                             **{

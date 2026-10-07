@@ -6,8 +6,8 @@ turns the results into reports, dashboards, run-to-run deltas and AI failure sum
 
 There is **one execution engine**. The CLI, the REST API and the React UI are thin
 adapters over the same use case, `CycleRunService`, which drives the engine. Stages run as
-host subprocesses; Docker is only used to host optional infrastructure (Postgres, MinIO,
-Allure) and to package the CLI as a runner image.
+host subprocesses; Docker is only used to host an optional Postgres and to package the CLI
+as a runner image.
 
 ## The big picture
 
@@ -43,7 +43,7 @@ flowchart TD
 | Framework adapters | `testo_core/frameworks/` | Build argv and Allure output dirs per framework. `command` runs any argv and imports its JUnit XML as Allure results. |
 | Persistence | `testo_core/persistence/` | Best-effort backends behind one protocol: `plan_result.json` and a `RunRecord` row with health %, per-stage counts, failure evidence and CI provenance. |
 | Storage | `testo_core/repository/`, `db.py` | Dialect-agnostic repository (SQLite default, Postgres/MySQL via `DATABASE_URL`). The only code that opens a database session. |
-| Run history | `testo_core/history/` | Read side over stored runs: typed views, queries, report links and snapshot files. Reads through the repository only; MinIO lookups for pre-v1.1 runs are isolated in `s3_snapshots.py`. |
+| Run history | `testo_core/history/` | Read side over stored runs: typed views, queries, report links and snapshot files. Reads through the repository only. |
 | Reporting | `testo_core/reporting/` | Collect Allure results from the artifacts tree; generate Allure / Extent / ReportPortal / TestBeats output; `testo report` commands. |
 | Analytics | `testo_core/services/` | Dashboard rollups, run-to-run delta, AI failure analysis (bring-your-own-key providers in `services/ai/`). |
 | Adapters | `testo_core/cli/`, `testo_api/`, `frontend/` | Presentation only: CLI renderers (Rich / NDJSON), FastAPI routes + SSE, React pages. |
@@ -78,7 +78,6 @@ flowchart TD
 
 `testo run`, `testo report …`, `testo cycles …`, `testo diff`, `testo summary`,
 `testo config …`, `testo config-db`, `testo init`, `testo watch`, `testo doctor`, `testo clean`. Full reference: `docs/CLI Commands/Command Reference.md`.
-`uqo` is a deprecated alias that forwards to `testo`.
 
 Exit codes (`testo_core/engine/exit_codes.py`), propagated unchanged to CI:
 
@@ -132,15 +131,14 @@ static/history/<run_id>/      # per-run reporter output, served at /history
 
 ## Storage
 
-- **Run history** (`RunRecord`, one row per cycle execution) is what every UI page and the
-  delta/AI services read. Engine runs are written by `DbBackend`; records from the pre-v1.1
-  headless runner are still readable (`history/views.py` normalises both shapes).
+- **Run history** (`RunRecord`, one row per cycle execution, written by `DbBackend`) is what
+  every UI page and the delta/AI services read.
 - **Report archives** (`ReportArchive`) are zipped report bundles keyed by their own UUID,
   written by `CycleRunService` after each run for `testo report list/open/diff`. They are not
   linked to a run id.
-- `docker-compose.yml` provides Postgres for team setups plus MinIO and Allure Docker Service,
-  which serve report snapshots of runs recorded before v1.1. New runs need none of them: the
-  default database is SQLite and reports are served by the API.
+- Run artifacts and HTML reports stay on local disk (`static/history/<run_id>/`), served by
+  the API. The default database is SQLite; `docker-compose.yml` only provides Postgres for
+  team setups.
 
 ## Design decisions
 

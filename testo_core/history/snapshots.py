@@ -3,20 +3,16 @@
 from __future__ import annotations
 
 from testo_core import paths
-from testo_core.history import s3_snapshots
 from testo_core.history.views import CompletedRunView
 
 
 def snapshot_files_for_download(*, record: CompletedRunView) -> list[tuple[str, bytes]]:
     """``(relative_path, bytes)`` for each file in the run's snapshot, sorted by path.
 
-    Local ``snapshot_dir`` values are relative to the repository root; ``runs/…``
-    prefixes are pre-v1.1 MinIO snapshots.
+    ``snapshot_dir`` is relative to the repository root.
     """
     if not record.snapshot_dir:
         return []
-    if s3_snapshots.is_s3_snapshot(record.snapshot_dir):
-        return s3_snapshots.snapshot_files(record.snapshot_dir)
     base = paths.ORCHESTRATOR_ROOT / record.snapshot_dir
     if not base.is_dir():
         return []
