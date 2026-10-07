@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { CaseChangeKind, DeltaClassification, DeltaMetricNode, apiClient } from "../../lib/api-client";
+import { formatRunName } from "../../lib/format";
 import { StackedBar, type StackedBarSegment } from "../../components/ui";
 
 const CASE_KIND_TONE: Record<CaseChangeKind, string> = {
@@ -20,6 +21,13 @@ const CLASSIFICATION_TONE: Record<DeltaClassification, string> = {
   improvement: "text-success-300",
   neutral: "text-ink-300",
   unknown: "text-ink-400"
+};
+
+const CLASSIFICATION_BADGE: Record<DeltaClassification, string> = {
+  regression: "border-danger-400/40 bg-danger-400/10 text-danger-300",
+  improvement: "border-success-400/40 bg-success-400/10 text-success-300",
+  neutral: "border-ink-700 text-ink-300",
+  unknown: "border-ink-700 text-ink-400"
 };
 
 const RELIABILITY_ORDER: Array<{ key: keyof ReturnType<typeof getReliabilityMetrics>; label: string }> = [
@@ -55,6 +63,10 @@ export function ComparePage() {
   });
 
   const options = useMemo(() => runsQuery.data?.items ?? [], [runsQuery.data?.items]);
+  const runLabel = (runId: string) => {
+    const run = options.find((item) => item.run_id === runId);
+    return run ? formatRunName(run.cycle ?? null, run.created_at) : runId;
+  };
 
   if (runsQuery.isLoading) {
     return <p className="text-sm text-ink-300">Loading runs for comparison...</p>;
@@ -88,7 +100,7 @@ export function ComparePage() {
             <option value="">Select run</option>
             {options.map((run) => (
               <option key={run.run_id} value={run.run_id}>
-                {run.run_id}
+                {formatRunName(run.cycle ?? null, run.created_at)}
               </option>
             ))}
           </select>
@@ -104,7 +116,7 @@ export function ComparePage() {
             <option value="">Select run</option>
             {options.map((run) => (
               <option key={run.run_id} value={run.run_id}>
-                {run.run_id}
+                {formatRunName(run.cycle ?? null, run.created_at)}
               </option>
             ))}
           </select>
@@ -117,8 +129,8 @@ export function ComparePage() {
       {comparisonReady && payload && (
         <>
           <p className="text-sm text-ink-300">
-            Comparing <strong className="text-ink-100">{payload.comparison.current_run_id}</strong> against baseline{" "}
-            <strong className="text-ink-100">{payload.comparison.baseline_run_id}</strong>.
+            Comparing <strong className="text-ink-100">{runLabel(payload.comparison.current_run_id)}</strong> against
+            baseline <strong className="text-ink-100">{runLabel(payload.comparison.baseline_run_id)}</strong>.
           </p>
 
           <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
@@ -126,40 +138,21 @@ export function ComparePage() {
             <div className="space-y-3">
               <div>
                 <p className="mb-1 text-xs font-medium text-ink-400">
-                  Baseline ({payload.comparison.baseline_run_id})
+                  Baseline ({runLabel(payload.comparison.baseline_run_id)})
                 </p>
                 <StackedBar segments={outcomeSegments(getReliabilityMetrics(payload), "baseline_value")} />
               </div>
               <div>
                 <p className="mb-1 text-xs font-medium text-ink-400">
-                  Current ({payload.comparison.current_run_id})
+                  Current ({runLabel(payload.comparison.current_run_id)})
                 </p>
                 <StackedBar segments={outcomeSegments(getReliabilityMetrics(payload), "current_value")} />
               </div>
             </div>
           </section>
 
-          <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
-            <h3 className="mb-2 text-sm font-semibold text-ink-100">Reliability</h3>
-            <ul className="space-y-1 text-sm text-ink-300">
-              {RELIABILITY_ORDER.map(({ key, label }) => (
-                <li key={key}>
-                  <strong className="text-ink-100">{label}</strong>: <MetricRow metric={getReliabilityMetrics(payload)[key]} />
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
-            <h3 className="mb-2 text-sm font-semibold text-ink-100">Performance</h3>
-            <ul className="space-y-1 text-sm text-ink-300">
-              {PERFORMANCE_ORDER.map(({ key, label }) => (
-                <li key={key}>
-                  <strong className="text-ink-100">{label}</strong>: <MetricRow metric={getPerformanceMetrics(payload)[key]} />
-                </li>
-              ))}
-            </ul>
-          </section>
+          <MetricTable title="Reliability" rows={RELIABILITY_ORDER} metrics={getReliabilityMetrics(payload)} />
+          <MetricTable title="Performance" rows={PERFORMANCE_ORDER} metrics={getPerformanceMetrics(payload)} />
 
           {(payload.stage_deltas ?? []).length > 0 && (
             <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
@@ -200,10 +193,12 @@ export function ComparePage() {
 
           <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
             <h3 className="mb-2 text-sm font-semibold text-ink-100">Status Summary</h3>
-            <p className="text-sm text-ink-300">
-              regressions={payload.status_summary.regressions.length} improvements={payload.status_summary.improvements.length}{" "}
-              unchanged={payload.status_summary.unchanged.length} unknown={payload.status_summary.unknown.length}
-            </p>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <SummaryBadge tone="regression" count={payload.status_summary.regressions.length} label="regressions" />
+              <SummaryBadge tone="improvement" count={payload.status_summary.improvements.length} label="improvements" />
+              <SummaryBadge tone="neutral" count={payload.status_summary.unchanged.length} label="unchanged" />
+              <SummaryBadge tone="unknown" count={payload.status_summary.unknown.length} label="unknown" />
+            </div>
           </section>
 
           <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
@@ -224,15 +219,62 @@ export function ComparePage() {
   );
 }
 
-function MetricRow({ metric }: { metric: DeltaMetricNode }) {
-  const absolute = metric.absolute_delta == null ? "n/a" : metric.absolute_delta.toFixed(2);
-  const relative = metric.relative_delta_pct == null ? "n/a" : `${metric.relative_delta_pct.toFixed(2)}%`;
-  const reason = metric.reason ? ` (${metric.reason})` : "";
+function MetricTable({
+  title,
+  rows,
+  metrics
+}: {
+  title: string;
+  rows: Array<{ key: string; label: string }>;
+  metrics: Record<string, DeltaMetricNode>;
+}) {
   return (
-    <span className="font-mono text-xs text-ink-300">
-      current={formatMetricValue(metric.current_value, metric.unit)} baseline={formatMetricValue(metric.baseline_value, metric.unit)} delta=
-      {absolute} relative={relative} state={metric.classification}
-      {reason}
+    <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
+      <h3 className="mb-2 text-sm font-semibold text-ink-100">{title}</h3>
+      <table className="w-full text-left text-sm text-ink-300">
+        <thead>
+          <tr className="text-xs text-ink-400">
+            <th className="pb-1 pr-2 font-medium">Metric</th>
+            <th className="pb-1 pr-2 font-medium">Baseline</th>
+            <th className="pb-1 pr-2 font-medium">Current</th>
+            <th className="pb-1 font-medium">Change</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ key, label }) => {
+            const metric = metrics[key];
+            return (
+              <tr key={key} className="border-t border-ink-800">
+                <td className="py-1.5 pr-2 text-ink-100">{label}</td>
+                <td className="py-1.5 pr-2 font-mono text-xs">{formatMetricValue(metric.baseline_value, metric.unit)}</td>
+                <td className="py-1.5 pr-2 font-mono text-xs">{formatMetricValue(metric.current_value, metric.unit)}</td>
+                <td className={`py-1.5 font-mono text-xs ${CLASSIFICATION_TONE[metric.classification]}`}>{formatChange(metric)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function formatChange(metric: DeltaMetricNode): string {
+  if (metric.absolute_delta == null) {
+    return "n/a";
+  }
+  if (metric.absolute_delta === 0) {
+    return "no change";
+  }
+  const sign = metric.absolute_delta > 0 ? "+" : "\u2212";
+  const magnitude = formatMetricValue(Math.abs(metric.absolute_delta), metric.unit);
+  const relative = metric.relative_delta_pct == null ? "" : ` (${sign}${Math.abs(metric.relative_delta_pct).toFixed(1)}%)`;
+  return `${sign}${magnitude}${relative}`;
+}
+
+function SummaryBadge({ tone, count, label }: { tone: DeltaClassification; count: number; label: string }) {
+  return (
+    <span className={`rounded-full border px-2.5 py-0.5 ${CLASSIFICATION_BADGE[tone]}`}>
+      {count} {label}
     </span>
   );
 }
