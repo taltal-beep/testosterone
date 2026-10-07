@@ -27,7 +27,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Removed
 - The second, Docker-based execution stack: `HeadlessEngineService`, `testo_core/runners.py`, `command_builders.py`, `multi_run.py`, `event_drain.py`, `config_loader.py`, `audit_service.py`, `ghost_policy.py`, `result_management.py`, and the pluggy `orchestrator.py` / `specs.py` / `plugins_builtin.py`. Every run now goes through the cycle engine
-- The v1.0 `uqo run --config <runs.yaml>` contract (`--ghost`, `--no-ghost`, `--json`, `--stream-json`, summary JSON). `uqo` still forwards to `testo`; use `testo run --cycle <name> --ci`
+- The v1.0 `uqo run --config <runs.yaml>` contract (`--ghost`, `--no-ghost`, `--json`, `--stream-json`, summary JSON); use `testo run --cycle <name> --ci`
+- The `uqo` console script (`testo_core/cli/deprecated.py`) and the frontend's legacy route redirects (`/history`, `/runner`, `/execution`, `/advanced/execution`); use `testo` and the current routes. Unknown frontend paths now show a not-found page
 - `POST /api/v1/executions`, `GET /api/v1/executions/{id}` and `GET /api/v1/executions/{id}/events`; use `POST /api/v1/adhoc-executions` or `POST /api/v1/cycles/{cycle}/executions`
 - The Streamlit UI (`testo_ui/`, `testo-ui` script, `ui` extra), as scheduled in 1.0.0
 - The `docker` extra and the `pluggy` runtime dependency

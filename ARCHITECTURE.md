@@ -76,7 +76,6 @@ flowchart TD
 
 `testo run`, `testo report …`, `testo cycles …`, `testo diff`, `testo summary`,
 `testo config …`, `testo config-db`, `testo init`, `testo watch`, `testo doctor`, `testo clean`. Full reference: `docs/CLI Commands/Command Reference.md`.
-`uqo` is a deprecated alias that forwards to `testo`.
 
 Exit codes (`testo_core/engine/exit_codes.py`), propagated unchanged to CI:
 

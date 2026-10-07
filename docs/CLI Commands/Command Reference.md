@@ -1,6 +1,6 @@
 # Command Reference
 
-Entry point: **`testo`** (`pyproject.toml` → `testo_core.cli.app:main`). Deprecated alias: **`uqo`** (forwards to `testo` with a notice on stderr).
+Entry point: **`testo`** (`pyproject.toml` → `testo_core.cli.app:main`).
 
 Parent index: [[Index]]. Architecture: [[Architecture Overview]]. Run lifecycle: [[QA Strategies]].
 
@@ -242,10 +242,9 @@ testo -v
 
 | Command | Package | Role |
 |---------|---------|------|
-| `uqo …` | `testo_core.cli.deprecated` | Deprecated alias for `testo` |
 | `testo-api` | `testo_api` | FastAPI server (React UI backend) |
 
-The v1.0 `uqo run --config` headless format (`--ghost`, `--json`, `--stream-json`) and the `testo-ui` Streamlit app were removed in v1.1; use `testo run --cycle … --ci` and the React frontend.
+The v1.0 `uqo` command, its `uqo run --config` headless format (`--ghost`, `--json`, `--stream-json`) and the `testo-ui` Streamlit app were removed; use `testo run --cycle … --ci` and the React frontend.
 
 ---
 

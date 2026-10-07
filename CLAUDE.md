@@ -4,7 +4,7 @@ Before planning, debugging, or implementing anything in this repo, read [docs/In
 
 ## Quick facts
 
-- Package: `testo-core`. CLI entrypoint: `testo` (Typer). Legacy alias `uqo` is deprecated.
+- Package: `testo-core`. CLI entrypoint: `testo` (Typer).
 - Config: `testosterone.yaml` at repo root defines cycles/stages/reporters.
 - Engine flow: `config/loader.py` → `config/resolver.py` → `engine/orchestrator.run_plan()` → `engine/executor.run_stage()`.
 - Framework adapters: `testo_core/frameworks/` (Pytest, Behave, BehaveX).
