@@ -60,6 +60,8 @@ flowchart TD
    `artifacts/<cycle>/<stage>/run.log` and Allure results, and appends every event to
    `artifacts/<cycle>/events.ndjson`. The CLI renders events live (Rich panels or NDJSON with
    `--ci`); the API tails `events.ndjson` and forwards each line as an SSE message.
+   The API keeps running executions plus the last `TESTO_MAX_FINISHED_EXECUTIONS` (default
+   200) finished ones in memory; older ones are only in the run history.
 5. **Persist.** `JsonBackend` writes `plan_result.json`; `DbBackend` writes a `RunRecord`
    (status, durations, per-stage health, failed cases + traceback + log tail when the run
    failed, CI provider/commit/ref when run in CI). Failures here never fail the run.
