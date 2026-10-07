@@ -256,6 +256,10 @@ The v1.0 `uqo` command, its `uqo run --config` headless format (`--ghost`, `--js
 | `INFLUXDB_URL`, `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, `INFLUXDB_BUCKET` | Push run KPIs to InfluxDB after each run |
 | `PROMETHEUS_PUSHGATEWAY_URL`, `PROMETHEUS_JOB_NAME` | Push run KPIs to a Prometheus Pushgateway after each run |
 | Reporter tokens | e.g. `REPORTPORTAL_TOKEN`, `SLACK_WEBHOOK` via `${env:…}` in YAML |
+| `TESTO_API_HOST`, `TESTO_API_PORT`, `TESTO_API_RELOAD` | `testo-api` bind address (default `127.0.0.1:8000`) and auto-reload |
+| `TESTO_API_TOKEN` | When set, `testo-api` requires `Authorization: Bearer <token>` on mutating requests (`401` otherwise) |
+| `TESTO_CORS_ORIGINS` | Comma-separated browser origins allowed by `testo-api` (default: Vite dev/preview on `:5173`/`:4173`); writes from other origins get `403` |
+| `VITE_TESTO_API_TOKEN` | Frontend build-time token sent to the API (or set `localStorage["testo.apiToken"]`) |
 
 ---
 
