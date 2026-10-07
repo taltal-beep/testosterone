@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-07
+
+One engine behind every surface. The Docker-based second execution stack, the Streamlit UI, MinIO and the `uqo` command are gone; the CLI, the API and CI all run cycles through `CycleRunService`. The release also adds an API security model, a type-checked API, same-cycle run comparison and a read-only demo on GitHub Pages. Upgrading from 1.0: see "Migrating from v1.0" in the README.
+
 ### Added
 - Docs vault rules: `docs/CLAUDE.md` (schema), `docs/log.md`, frontmatter on every note, and `scripts/docs_vault.py lint` (frontmatter, broken links, wikilinks, orphans, `updated` date on edited notes) as a `docs_vault` CI job and a contract test. `.github/workflows/wiki-sync.yml` regenerates the GitHub wiki from `docs/` on every push to `main` that touches the vault. The root `CLAUDE.md` gains the six second-brain rules, and `docs/Specs & ADRs/` gains decision notes for the 2026-10-06 architecture consolidation and the 2026-10-07 interview fixes
 - Pages demo on GitHub and GitLab: `.github/workflows/pages-demo.yml` (GitHub Pages, `https://<owner>.github.io/<repo>/`) and `.gitlab-ci.yml` (GitLab Pages) each run testosterone's own suite (`self-test` cycle) and the deliberately broken [fake-api](https://github.com/taltal-beep/fake-api) app (`fake-api` cycle), then publishes the React UI as a read-only snapshot of those runs (`scripts/export_static_site.py` freezes the API's own responses; `frontend/src/lib/static-backend.ts` serves them to the unchanged pages). Run history is cached between pipelines. `.github/workflows/mirror-to-gitlab.yml` mirrors `main` to GitLab, inert until configured
@@ -221,6 +225,7 @@ First public release. Published to PyPI (`testo-core`), GHCR (`testo-runner`), a
 
 ---
 
-[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/taltal-beep/testosterone/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/taltal-beep/testosterone/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/taltal-beep/testosterone/releases/tag/v0.1.0
