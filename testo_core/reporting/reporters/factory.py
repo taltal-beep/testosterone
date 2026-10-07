@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
@@ -17,6 +18,8 @@ from testo_core.reporting.reporters.testbeats_reporter import TestBeatsReporter
 
 if TYPE_CHECKING:
     from rich.console import Console
+
+logger = logging.getLogger(__name__)
 
 _REPORTER_REGISTRY: dict[str, type[BaseReporter]] = {
     "allure": AllureReporter,
@@ -107,7 +110,9 @@ class ReporterFactory:
                 try:
                     outcomes.append(future.result())
                 except Exception as exc:
+                    # Broad on purpose: one broken reporter must not stop the others.
                     reporter = futures[future]
+                    logger.warning("%s reporter failed", reporter.reporter_type, exc_info=True)
                     outcomes.append(
                         ReporterResult(
                             ok=False,

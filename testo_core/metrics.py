@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -48,7 +51,11 @@ def parse_allure_results_dir(results_dir: Path) -> RunMetrics:
     for f in files:
         try:
             data = json.loads(f.read_text(encoding="utf-8"))
-        except Exception:
+        except (OSError, ValueError) as exc:
+            logger.warning("skipping unreadable Allure result %s: %s", f, exc)
+            continue
+        if not isinstance(data, dict):
+            logger.warning("skipping Allure result %s: not a JSON object", f)
             continue
 
         status = str(data.get("status") or "unknown").lower()
@@ -113,7 +120,8 @@ def list_run_history(
     for p in sorted([d for d in archive_root.iterdir() if d.is_dir()], reverse=True)[:50]:
         try:
             out.append(parse_allure_results_dir(p))
-        except Exception:
+        except OSError:
+            logger.warning("skipping unreadable archived results %s", p, exc_info=True)
             continue
 
     return out
@@ -134,7 +142,7 @@ def push_influxdb(
     try:
         from influxdb_client import InfluxDBClient, Point  # type: ignore
         from influxdb_client.client.write_api import SYNCHRONOUS  # type: ignore
-    except Exception as exc:
+    except ImportError as exc:
         return False, f"influxdb-client not available: {exc}"
 
     try:
@@ -159,6 +167,8 @@ def push_influxdb(
         client.close()
         return True, "Pushed metrics to InfluxDB."
     except Exception as exc:
+        # Broad on purpose: influxdb-client raises many transport/API types; the caller gets (False, msg).
+        logger.warning("InfluxDB push failed", exc_info=True)
         return False, f"Influx push failed: {exc}"
 
 
@@ -170,8 +180,8 @@ def _read_run_id(results_dir: Path) -> str | None:
             for line in env.read_text(encoding="utf-8").splitlines():
                 if line.startswith("TESTO_RUN_ID="):
                     return line.split("=", 1)[1].strip() or None
-        except Exception:
-            pass
+        except (OSError, ValueError):
+            logger.debug("could not read %s", env, exc_info=True)
 
     # Fallback: parse suffix from archive folder name: "<timestamp>_<runid>"
     name = results_dir.name

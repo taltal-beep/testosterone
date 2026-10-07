@@ -7,12 +7,15 @@ Default (no subcommand): generate / serve / export from Allure results.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
 
 import typer
 
 from testo_core.engine.exit_codes import EngineExitCode
+
+logger = logging.getLogger(__name__)
 
 report_app = typer.Typer(
     name="report",
@@ -251,6 +254,8 @@ def report_list_archived(
     try:
         rows = get_report_archive_repository().list_recent(limit=limit)
     except Exception as exc:
+        # Broad on purpose: any DB/driver error maps to exit 3 with its message.
+        logger.debug("listing archived reports failed", exc_info=True)
         console.print(f"[fail]could not list reports:[/] {exc}")
         raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE)) from exc
 
@@ -334,6 +339,8 @@ def report_open_archived(
     try:
         row = get_report_archive_repository().get(rid)
     except Exception as exc:
+        # Broad on purpose: any DB/driver error maps to exit 3 with its message.
+        logger.debug("loading archived report %s failed", rid, exc_info=True)
         console.print(f"[fail]could not load report:[/] {exc}")
         raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE)) from exc
 

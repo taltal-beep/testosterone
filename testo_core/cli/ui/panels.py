@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,6 +12,8 @@ from rich.table import Table
 from rich.text import Text
 
 from testo_core.metrics import parse_allure_results_dir
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -97,7 +100,8 @@ def render_plan_summary(
                 passed = int(rm.passed)
                 failed = int(rm.failed) + int(rm.broken)
                 skipped = int(rm.skipped)
-            except Exception:
+            except OSError:
+                logger.debug("could not read results for %s", stage.name, exc_info=True)
                 total = passed = failed = skipped = 0
         metrics.add_row(
             stage.name,

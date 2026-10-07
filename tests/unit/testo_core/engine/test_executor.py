@@ -7,6 +7,7 @@ real, just very fast.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 from pathlib import Path
 
@@ -205,6 +206,25 @@ def test_timeout_kills_stage_and_returns_124(
     assert result.returncode == 124
     assert result.error is not None and "timeout_s" in result.error
     assert "hanging" in result.output_tail  # pre-timeout output was captured
+
+
+def test_behavex_report_failure_sets_stage_error_not_returncode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from testo_core.reporting import native_reports
+
+    def broken_report(_stage_dir: Path, *, raise_errors: bool = False) -> None:
+        raise RuntimeError("report.json is truncated")
+
+    use_echo_adapter(monkeypatch)
+    monkeypatch.setattr(native_reports, "ensure_behavex_report_html", broken_report)
+    stage = dataclasses.replace(_stage(args=("--text", "ok")), framework="behavex")
+
+    result = run_stage(stage, plan_name="demo", artifacts_root=tmp_path)
+
+    assert result.returncode == 0
+    assert result.error == "BehaveX HTML report generation failed: report.json is truncated"
+    assert result.error in (tmp_path / "demo" / "echo-stage" / "run.log").read_text()
 
 
 def test_command_records_full_argv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

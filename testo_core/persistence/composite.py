@@ -24,7 +24,8 @@ class _CompositeBackend:
             try:
                 outcome = backend.persist(result)
             except Exception:
-                logger.debug("backend %s failed", type(backend).__name__, exc_info=True)
+                # Broad on purpose: one failing backend must not stop the others.
+                logger.warning("backend %s failed", type(backend).__name__, exc_info=True)
                 continue
             if isinstance(outcome, str) and outcome:
                 run_id = outcome
@@ -44,6 +45,6 @@ def composite_backend(*, artifacts_root: Path, db: bool = True) -> _CompositeBac
             from testo_core.persistence.db_backend import DbBackend
 
             backends.append(DbBackend(artifacts_root))
-        except Exception:
+        except ImportError:
             logger.debug("db backend unavailable, skipping", exc_info=True)
     return _CompositeBackend(backends)

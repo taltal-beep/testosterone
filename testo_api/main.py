@@ -34,7 +34,8 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
         if n:
             logger.warning("Cleaned up %s orphaned RUNNING run(s) on startup.", n)
     except Exception:
-        logger.debug("orphaned-run cleanup skipped (DB unavailable?)", exc_info=True)
+        # Broad on purpose: DB URL, driver and connection errors must not block API startup.
+        logger.warning("orphaned-run cleanup skipped (DB unavailable?)", exc_info=True)
     yield
 
 

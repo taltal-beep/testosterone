@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -21,6 +22,8 @@ from testo_api.models import (
 from testo_core.config.errors import ConfigError, ConfigValidationError
 from testo_core.config.loader import discover_and_load
 from testo_core.config.schema import PARALLEL_FRAMEWORKS
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["cycles"])
 
@@ -130,6 +133,8 @@ def create_cycle_execution(
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
+        # Broad on purpose: existing API contract maps any start-up failure to a structured 400.
+        logger.warning("could not start cycle %s", cycle, exc_info=True)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return _accepted(request, state.execution_id)
