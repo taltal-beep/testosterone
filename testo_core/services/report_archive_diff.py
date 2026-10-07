@@ -6,7 +6,7 @@ import json
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from testo_core.reporting.paths import plan_artifacts_dir
 from testo_core.repository.models import ReportArchive
@@ -79,6 +79,9 @@ def _load_cases(plan_root: Path) -> dict[str, dict[str, Any]]:
     return out
 
 
+CaseChangeKind = Literal["added", "removed", "regression", "fix", "status_change"]
+
+
 @dataclass(frozen=True)
 class CaseChange:
     key: str
@@ -86,7 +89,7 @@ class CaseChange:
     group: str
     baseline_status: str | None
     current_status: str | None
-    kind: str
+    kind: CaseChangeKind
     duration_delta_ms: int | None
 
 
@@ -113,6 +116,7 @@ def diff_case_maps(
         if isinstance(bd, int) and isinstance(cd, int):
             delta = cd - bd
 
+        kind: CaseChangeKind | None
         if b is None and c is not None:
             kind = "added"
         elif b is not None and c is None:
@@ -120,7 +124,7 @@ def diff_case_maps(
         else:
             assert b is not None and c is not None
             if bs == cs:
-                kind = "unchanged"
+                kind = None
             elif bs in {"passed"} and cs in {"failed", "broken"}:
                 kind = "regression"
             elif bs in {"failed", "broken"} and cs in {"passed"}:
@@ -128,7 +132,7 @@ def diff_case_maps(
             else:
                 kind = "status_change"
 
-        if kind not in {"unchanged"}:
+        if kind is not None:
             changes.append(
                 CaseChange(
                     key=key[:80],

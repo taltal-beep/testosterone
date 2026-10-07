@@ -165,13 +165,13 @@ pip install -e ".[dev]"
 pre-commit install
 ruff check .
 ruff format --check .
-mypy testo_core
+mypy testo_core testo_api
 pytest -q -m "tier_fast and not quarantined" --no-cov
 npm --prefix frontend run typecheck
 npm --prefix frontend test
 ```
 
-`ruff check`, `ruff format --check` and `mypy testo_core` are all blocking in CI
+`ruff check`, `ruff format --check` and `mypy testo_core testo_api` are all blocking in CI
 (`.github/workflows/ci.yml`'s `format` job), as are the frontend typecheck and tests.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full checklist. Start with

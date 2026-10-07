@@ -2,7 +2,7 @@
 type: tracker
 status: current
 created: 2026-06-25
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 # Technical Debt Tracker
@@ -39,15 +39,11 @@ Risk: silent degradation (empty reports) without a structured error. Fix: catch 
 
 `testo_core/triggers.py` falls back to snapshot mode on `OSError` / `TimeoutExpired` / `RuntimeError` without telling anyone, which can cause an unexpected full run. Fix: emit `{"event":"trigger_fallback",...}` under `--ci`; `testo doctor` could check git availability.
 
-### 6. `mypy testo_api` is not in CI
-
-`mypy testo_core` is clean and blocking. `testo_api` still has type errors (mostly `cycle_execution_manager.py` and `routes/ai.py`) and is not checked in CI yet.
-
-### 7. Sequential-only orchestrator
+### 6. Sequential-only orchestrator
 
 Stages run one at a time (`engine/orchestrator.py`); parallelism today is framework-internal (e.g. BehaveX `--workers`). Opt-in parallel stages need isolated `artifacts/<cycle>/<stage>/` trees, aggregated exit classification and documented resource limits.
 
-### 8. Log reader join timeout
+### 7. Log reader join timeout
 
 `executor.py` calls `reader.join(timeout=2.0)` after the subprocess exits, so a very large final stdout burst could be cut short. Fix: drain until EOF; add an integration test with a large burst.
 
@@ -64,7 +60,7 @@ Stages run one at a time (`engine/orchestrator.py`); parallelism today is framew
 - `--ci` forces a synchronous report archive; a required archive failure exits **3**.
 - `testo_core/persistence/` (`JsonBackend`, `DbBackend`, `composite_backend()`) replaced the persistence stub.
 - MinIO, the pre-v1.1 snapshot reads and the Docker-stack record shape in `history/` were removed in v1.1.
-- `mypy testo_core` reports 0 errors and blocks CI, as does `ruff format --check`.
+- `mypy testo_core testo_api` reports 0 errors and blocks CI, as does `ruff format --check`.
 
 ## Refreshing this note
 
