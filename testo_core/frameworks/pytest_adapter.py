@@ -43,7 +43,13 @@ class PytestAdapter:
             if ini.is_file():
                 argv.extend(["-c", str(ini.resolve())])
         argv.extend(args)
-        argv.extend(["--alluredir", str(results_dir.resolve())])
+        # One token, not two: pytest picks its rootdir (and so the target's own
+        # config, e.g. ``pythonpath``) from the common ancestor of every
+        # non-option argument that exists on disk, and a separate path token
+        # after ``--alluredir`` counts as one. With results under testosterone's
+        # ``artifacts/``, a target inside the checkout would get testosterone's
+        # rootdir and ``pytest.ini`` instead of its own.
+        argv.append(f"--alluredir={results_dir.resolve()}")
         return argv
 
     def native_report(self, stage_dir: Path) -> NativeReport | None:
