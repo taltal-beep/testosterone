@@ -281,6 +281,10 @@ class DashboardHeadlineKpis(ApiModel):
     pass_count: int | None = None
     fail_count: int | None = None
     duration_ms: float | None = None
+    # Trends compare the latest run with the previous run of the same cycle;
+    # baseline_run_id is null when this is the cycle's first run.
+    cycle: str | None = None
+    baseline_run_id: str | None = None
 
 
 class DashboardTrendIndicator(ApiModel):

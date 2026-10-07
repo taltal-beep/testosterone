@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from testo_api.cycle_execution_manager import CycleExecutionManager, iter_sse_from_ndjson_file
+from testo_api.cycle_execution_manager import CycleExecutionManager, iter_execution_sse
 from testo_api.dependencies import get_cycle_execution_manager
 from testo_api.models import (
     AdhocExecutionRequest,
@@ -20,6 +20,7 @@ from testo_api.models import (
 )
 from testo_core.config.errors import ConfigError, ConfigValidationError
 from testo_core.config.loader import discover_and_load
+from testo_core.config.schema import PARALLEL_FRAMEWORKS
 
 router = APIRouter(prefix="/api/v1", tags=["cycles"])
 
@@ -86,7 +87,9 @@ def get_cycle(cycle: str, config_path: str | None = None) -> CycleDetailResponse
                 target_repo=str(stage.target_repo),
                 args=list(stage.args),
                 timeout_s=stage.timeout_s,
-                workers=stage.workers,
+                # Only frameworks that act on it; showing "Workers 4" on a
+                # single-process behave stage would claim parallelism it lacks.
+                workers=stage.workers if stage.framework in PARALLEL_FRAMEWORKS else None,
             )
             for stage in plan.stages
         ],
@@ -162,6 +165,17 @@ def create_adhoc_execution(
     return _accepted(request, state.execution_id)
 
 
+def _execution_not_found(execution_id: str, manager: CycleExecutionManager) -> HTTPException:
+    return HTTPException(
+        status_code=404,
+        detail=(
+            f"Execution not found: {execution_id}. Only running executions and the last "
+            f"{manager.max_finished} finished ones are kept in memory; completed runs "
+            "remain in the run history (/api/v1/runs)."
+        ),
+    )
+
+
 @router.get("/cycle-executions/{execution_id}", response_model=CycleExecutionStatusResponse)
 def get_cycle_execution(
     execution_id: str,
@@ -169,7 +183,7 @@ def get_cycle_execution(
 ) -> CycleExecutionStatusResponse:
     state = manager.get(execution_id)
     if state is None:
-        raise HTTPException(status_code=404, detail=f"Execution not found: {execution_id}")
+        raise _execution_not_found(execution_id, manager)
     with state.lock:
         return CycleExecutionStatusResponse(
             execution_id=execution_id,
@@ -187,30 +201,9 @@ def stream_cycle_execution_events(
     execution_id: str,
     manager: CycleExecutionManager = Depends(get_cycle_execution_manager),
 ) -> StreamingResponse:
-    state = manager.get(execution_id)
-    if state is None:
-        raise HTTPException(status_code=404, detail=f"Execution not found: {execution_id}")
-
-    try:
-        events_path, start_offset, _done = manager.resolve_events_path(execution_id)
-    except RuntimeError:
-        # execution exists but events not ready yet; treat as empty stream until initialized
-        with state.lock:
-            events_path = state.events_path or Path("artifacts") / state.cycle / "events.ndjson"
-            start_offset = int(state.events_start_offset_bytes or 0)
-
-    def is_done() -> bool:
-        s = manager.get(execution_id)
-        if s is None:
-            return True
-        with s.lock:
-            return bool(s.done)
-
+    if manager.get(execution_id) is None:
+        raise _execution_not_found(execution_id, manager)
     return StreamingResponse(
-        iter_sse_from_ndjson_file(
-            events_path=events_path,
-            start_offset_bytes=start_offset,
-            is_done=is_done,
-        ),
+        iter_execution_sse(manager, execution_id),
         media_type="text/event-stream",
     )

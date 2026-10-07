@@ -68,7 +68,7 @@ Cycles are defined under `cycles:` in YAML (legacy key `plans:` is still accepte
 
 `testo_core/persistence/` provides the `PersistenceBackend` protocol used by the orchestrator (JSON + DB backends, composite fanout). See **Persistence** below.
 
-Execution is **sequential by design**; parallelization today is framework-internal (e.g. BehaveX `--workers`).
+Execution is **sequential by design**; parallelization today is framework-internal through a stage's `workers` (BehaveX always, pytest when pytest-xdist is installed, native behave never; see [[Deep Dive - Execution Logic#Framework level — optional]]).
 
 ### `testo_core/frameworks/`
 
@@ -103,7 +103,7 @@ Optional per-cycle **selective execution**: Git diff or filesystem snapshot agai
 
 Until v1.1 a second, Docker-based execution stack (`HeadlessEngineService` → `runners.py`) and a Streamlit UI shipped beside these; see [[Deep Dive - Execution Logic#Removed: the UQO headless / Docker path]].
 
-**`testo run`** does not require Docker. `docker-compose.yml` provides Postgres for team setups, plus MinIO and Allure Server, which only serve report snapshots of runs recorded before v1.1.
+**`testo run`** does not require Docker. `docker-compose.yml` only provides Postgres for team setups; run artifacts and reports stay on local disk.
 
 ### Official documentation
 
@@ -145,7 +145,7 @@ The collector and `testo report` both assume this layout. See `testo_core/report
 
 ## Test pyramid
 
-Each `Stage` carries a `tier: unit | integration | e2e` (`testo_core/config/schema.py`), explicit in `testosterone.yaml` or inferred from `equipment` (pytest→unit, behave→integration, behavex→e2e). `testo_core/reporting/pyramid_data.py::build_pyramid_model` sums each stage's `total_tests` (from the run's existing `stage_health`, computed by `testo_core/persistence/health.py::compute_stage_health`) into its tier bucket, producing a `PyramidModel(unit, integration, e2e)`.
+Each `Stage` carries a `tier: unit | integration | e2e` (`testo_core/config/schema.py`), explicit in `testosterone.yaml` or inferred from `equipment` (pytest→unit, behave→integration, behavex→e2e). `testo_core/reporting/pyramid_data.py::build_pyramid_model` sums each stage's `total_tests` (from the run's existing `stage_health`, computed by `testo_core/persistence/health.py::compute_stage_health`) into its tier bucket, producing a `PyramidModel(unit, integration, e2e)`. The tier is recorded on each stage row of the run record when the run executes (`StageResult.tier`, persisted by the JSON and DB backends), so renaming or re-tiering a stage later doesn't re-bucket old runs. Only records written before tiers were persisted fall back to the current `testosterone.yaml`.
 
 `testo_core/reporting/pyramid_viz.py` classifies the shape (`HEALTHY`, `TOP_HEAVY`, `MID_BULGE`, `IRREGULAR`) and renders it as ASCII. Reached via `testo report pyramid RUN_ID` ([[Command Reference#testo report]]) and, from the API/UI side, `GET /api/v1/runs/{id}/pyramid` feeding a Run Detail visualization — see the "CLI-UI Parity" note under Specs & ADRs for why this existed as dead code before 2026-07-23.
 
@@ -182,7 +182,7 @@ A `composite_backend()` factory fans out to both; individual backend failures ne
 
 **Two separate, unlinked id spaces** — easy to conflate, worth calling out explicitly (found while building per-test diff for the API, see [[CLI-UI Parity - Pyramid, Graphs, Deep Diff - 2026-07-23]]):
 
-- **Run-history runs** (`RunRecord` / `CompletedRunView`, `testo_core/history/`): one row per `testo run --cycle` execution, keyed by `run_id`. This is what the dashboard, history, run detail, and delta/compare pages all use (`/api/v1/runs/{run_id}`, `/api/v1/analytics/delta`). Carries `stage_health`, `snapshot_dir` (the run's own raw artifact tree, local or S3). For engine runs that is a per-run copy at `static/history/<run_id>/artifacts/`, made by `persistence/db_backend.py` after the run, because the next run of the same cycle overwrites `artifacts/<cycle>/`.
+- **Run-history runs** (`RunRecord` / `CompletedRunView`, `testo_core/history/`): one row per `testo run --cycle` execution, keyed by `run_id`. This is what the dashboard, history, run detail, and delta/compare pages all use (`/api/v1/runs/{run_id}`, `/api/v1/analytics/delta`). Carries `stage_health`, `snapshot_dir` (the run's own raw artifact tree). For engine runs that is a per-run copy at `static/history/<run_id>/artifacts/`, made by `persistence/db_backend.py` after the run, because the next run of the same cycle overwrites `artifacts/<cycle>/`.
 - **Report archives** (`ReportArchive`, `testo_core/repository/report_archive_repository.py`): one row per `testo report list/open/diff` archive, a zipped Allure snapshot keyed by its own UUID (`report_id`), with **no `run_id` column linking it back** to the run that produced it. Populated separately by `CycleRunService` (`testo_core/services/cycle_run.py`) after each run, via `try_persist_cycle_report()`.
 
 Code that needs per-test data for a *run_id* (not a *report_id*) should extract from `CompletedRunView.snapshot_dir` (via `history.snapshots.snapshot_files_for_download()`), not attempt to resolve a `ReportArchive` row — there isn't one to resolve to. See `testo_core/services/run_snapshot_diff.py` for the pattern.

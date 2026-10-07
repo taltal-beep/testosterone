@@ -728,6 +728,28 @@
       },
       "DashboardHeadlineKpis": {
         "properties": {
+          "baseline_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Run Id"
+          },
+          "cycle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle"
+          },
           "duration_ms": {
             "anyOf": [
               {
@@ -801,7 +823,9 @@
           "health_pct",
           "pass_count",
           "fail_count",
-          "duration_ms"
+          "duration_ms",
+          "cycle",
+          "baseline_run_id"
         ],
         "title": "DashboardHeadlineKpis",
         "type": "object"
@@ -2352,7 +2376,7 @@
     }
   },
   "info": {
-    "title": "UQO API",
+    "title": "Testosterone API",
     "version": "1.0.0"
   },
   "openapi": "3.1.0",

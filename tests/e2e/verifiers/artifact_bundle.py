@@ -24,8 +24,8 @@ def write_text_artifact(root: Path, category: str, name: str, content: str) -> P
 
 def assert_artifact_content_redacted(content: str) -> None:
     secret_candidates = [
-        os.getenv("UQO_E2E_GITHUB_TOKEN", ""),
-        os.getenv("UQO_E2E_GITLAB_TOKEN", ""),
+        os.getenv("TESTO_E2E_GITHUB_TOKEN", ""),
+        os.getenv("TESTO_E2E_GITLAB_TOKEN", ""),
     ]
     for candidate in secret_candidates:
         if candidate and candidate in content:

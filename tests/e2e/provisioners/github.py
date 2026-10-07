@@ -24,9 +24,9 @@ class GithubProvisioner:
 
     @classmethod
     def from_env(cls) -> GithubProvisioner:
-        token = os.getenv("UQO_E2E_GITHUB_TOKEN", "")
-        owner = os.getenv("UQO_E2E_GITHUB_OWNER", "")
-        dry_run = str(os.getenv("UQO_E2E_EXTERNAL_DRY_RUN", "true")).lower() == "true"
+        token = os.getenv("TESTO_E2E_GITHUB_TOKEN", "")
+        owner = os.getenv("TESTO_E2E_GITHUB_OWNER", "")
+        dry_run = str(os.getenv("TESTO_E2E_EXTERNAL_DRY_RUN", "true")).lower() == "true"
         return cls(token=token, owner=owner, dry_run=dry_run)
 
     def _headers(self) -> dict[str, str]:
@@ -37,7 +37,7 @@ class GithubProvisioner:
         }
 
     def provision(self, ctx: FlowContext) -> None:
-        repo_name = f"uqo-e2e-{ctx.run_id}-github"
+        repo_name = f"testo-e2e-{ctx.run_id}-github"
         ctx.resources["github_repo"] = repo_name
         if self.dry_run:
             ctx.metadata["pipeline_status"] = "success"

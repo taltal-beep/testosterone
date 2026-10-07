@@ -5,7 +5,6 @@ from fastapi import APIRouter, Response
 from testo_api.models import HealthLiveResponse, HealthReadyResponse, ReadinessCheck
 from testo_core.db import get_repository
 from testo_core.db_config import get_engine
-from testo_core.s3_client import get_artifact_s3
 
 router = APIRouter(prefix="/api/v1/health", tags=["health"])
 
@@ -32,13 +31,6 @@ def ready(response: Response) -> HealthReadyResponse:
         checks["repository"] = ReadinessCheck(status="ok")
     except Exception as exc:  # pragma: no cover - dependency specific
         checks["repository"] = ReadinessCheck(status="degraded", detail=str(exc))
-
-    try:
-        storage = get_artifact_s3()
-        _ = storage.bucket_name
-        checks["s3"] = ReadinessCheck(status="ok")
-    except Exception as exc:  # pragma: no cover - dependency specific
-        checks["s3"] = ReadinessCheck(status="degraded", detail=str(exc))
 
     is_degraded = any(check.status == "degraded" for check in checks.values())
     if is_degraded:

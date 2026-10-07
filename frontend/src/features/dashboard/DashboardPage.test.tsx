@@ -14,7 +14,9 @@ function overviewPayload(overrides: Record<string, unknown> = {}) {
       health_pct: 98,
       pass_count: 12,
       fail_count: 1,
-      duration_ms: 1222
+      duration_ms: 1222,
+      cycle: "smoke",
+      baseline_run_id: "run-0"
     },
     trend_indicators: {
       health: { direction: "up", delta_abs: 2, delta_pct: 2.1 },
@@ -95,6 +97,28 @@ describe("DashboardPage", () => {
       "/compare?current_run_id=run-1&baseline_run_id=run-0"
     );
     expect(screen.getByRole("link", { name: /^fake-api · / })).toHaveAttribute("href", "/runs/run-1");
+  });
+
+  it("names the cycle and the same-cycle run the trends compare against", async () => {
+    stubOverviewFetch(overviewPayload());
+    renderDashboard();
+
+    await waitFor(() => expect(screen.getByTestId("trend-baseline")).toHaveTextContent("Latest run: smoke."));
+    expect(screen.getByRole("link", { name: "previous smoke run" })).toHaveAttribute(
+      "href",
+      "/compare?current_run_id=run-1&baseline_run_id=run-0"
+    );
+  });
+
+  it("says there is no trend for the first run of a cycle", async () => {
+    const payload = overviewPayload();
+    stubOverviewFetch({ ...payload, headline_kpis: { ...payload.headline_kpis, baseline_run_id: null } });
+    renderDashboard();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("trend-baseline")).toHaveTextContent("No earlier run of this cycle")
+    );
+    expect(screen.queryByRole("link", { name: "previous smoke run" })).not.toBeInTheDocument();
   });
 
   it("renders the first-run guide when no runs exist", async () => {

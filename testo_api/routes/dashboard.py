@@ -37,6 +37,8 @@ def get_dashboard_overview(recent_limit: int = 5) -> DashboardOverviewResponse:
             pass_count=payload.headline_kpis.pass_count,
             fail_count=payload.headline_kpis.fail_count,
             duration_ms=payload.headline_kpis.duration_ms,
+            cycle=payload.headline_kpis.cycle,
+            baseline_run_id=payload.headline_kpis.baseline_run_id,
         ),
         trend_indicators={
             "health": DashboardTrendIndicator(
