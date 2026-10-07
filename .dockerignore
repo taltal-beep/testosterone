@@ -10,10 +10,8 @@ __pycache__/
 logs/
 artifacts/
 static/
-allure/
 uqo_history.db
 tests/
-examples/
 docs/
 ci/
 integrations/

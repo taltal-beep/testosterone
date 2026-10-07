@@ -1,7 +1,0 @@
-include:
-  - project: "taltal-beep/testosterone"
-    file: "/ci/gitlab/testo.gitlab-ci.yml"
-
-variables:
-  TESTO_CYCLE: "sample-pytests"
-  TESTO_PERSIST: "true"

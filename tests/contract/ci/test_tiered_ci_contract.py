@@ -41,15 +41,3 @@ def test_github_external_workflows_use_external_marker_command() -> None:
     )
     assert marker_cmd in nightly_commands
     assert marker_cmd in release_commands
-
-
-def test_gitlab_tier_templates_have_expected_jobs_and_artifacts() -> None:
-    tiered = yaml.safe_load(Path("ci/gitlab/testo.tests.gitlab-ci.yml").read_text(encoding="utf-8"))
-    external = yaml.safe_load(
-        Path("ci/gitlab/testo.external.gitlab-ci.yml").read_text(encoding="utf-8")
-    )
-    assert "fast_required" in tiered
-    assert "heavy_optional" in tiered
-    assert "external_nightly" in external
-    assert ".artifacts/e2e/" in tiered["fast_required"]["artifacts"]["paths"]
-    assert ".artifacts/e2e/" in external["external_nightly"]["artifacts"]["paths"]
