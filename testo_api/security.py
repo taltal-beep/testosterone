@@ -34,9 +34,8 @@ def cors_settings() -> tuple[list[str], bool]:
 
     Credentials are only allowed for an explicit origin list: browsers reject
     them with ``*``, and the bundled frontend uses a bearer header, not cookies.
-    ``UQO_API_CORS_ORIGINS`` is still read as a legacy fallback.
     """
-    raw = os.getenv("TESTO_CORS_ORIGINS") or os.getenv("UQO_API_CORS_ORIGINS", "")
+    raw = os.getenv("TESTO_CORS_ORIGINS", "")
     origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
     if not origins:
         return list(DEFAULT_CORS_ORIGINS), False
