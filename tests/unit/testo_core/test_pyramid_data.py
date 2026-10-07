@@ -4,7 +4,7 @@ from pathlib import Path
 
 from testo_core.config.schema import Stage
 from testo_core.history.views import CompletedRunView
-from testo_core.reporting.pyramid_data import build_pyramid_model
+from testo_core.reporting.pyramid_data import build_pyramid_model, run_needs_config_tiers
 
 
 def _run(stage_health: list[dict]) -> CompletedRunView:
@@ -54,6 +54,31 @@ def test_build_pyramid_model_buckets_by_configured_tier() -> None:
     assert model.unit == 100
     assert model.integration == 20
     assert model.e2e == 5
+
+
+def test_build_pyramid_model_prefers_the_tier_recorded_in_the_run() -> None:
+    # The stage was "e2e" when it ran; today's config calls it "unit".
+    run = _run([{"name": "flow-tests", "tier": "e2e", "total_tests": 5}])
+    model = build_pyramid_model(run, stages=(_stage("flow-tests", "unit"),))
+    assert model.e2e == 5
+    assert model.unit == 0
+
+
+def test_build_pyramid_model_uses_config_only_for_rows_without_a_tier() -> None:
+    run = _run(
+        [
+            {"name": "new-run-stage", "tier": "integration", "total_tests": 3},
+            {"name": "old-run-stage", "total_tests": 4},
+        ]
+    )
+    model = build_pyramid_model(run, stages=(_stage("old-run-stage", "e2e"),))
+    assert model.integration == 3
+    assert model.e2e == 4
+
+
+def test_run_needs_config_tiers_only_for_rows_missing_a_tier() -> None:
+    assert run_needs_config_tiers(_run([{"name": "a", "tier": "unit"}])) is False
+    assert run_needs_config_tiers(_run([{"name": "a", "tier": "unit"}, {"name": "b"}])) is True
 
 
 def test_build_pyramid_model_defaults_unknown_stage_to_unit() -> None:

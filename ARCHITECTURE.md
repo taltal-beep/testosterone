@@ -6,8 +6,8 @@ turns the results into reports, dashboards, run-to-run deltas and AI failure sum
 
 There is **one execution engine**. The CLI, the REST API and the React UI are thin
 adapters over the same use case, `CycleRunService`, which drives the engine. Stages run as
-host subprocesses; Docker is only used to host optional infrastructure (Postgres, MinIO,
-Allure) and to package the CLI as a runner image.
+host subprocesses; Docker is only used to host an optional Postgres and to package the CLI
+as a runner image.
 
 ## The big picture
 
@@ -43,7 +43,7 @@ flowchart TD
 | Framework adapters | `testo_core/frameworks/` | Build argv and Allure output dirs per framework. `command` runs any argv and imports its JUnit XML as Allure results. |
 | Persistence | `testo_core/persistence/` | Best-effort backends behind one protocol: `plan_result.json` and a `RunRecord` row with health %, per-stage counts, failure evidence and CI provenance. |
 | Storage | `testo_core/repository/`, `db.py` | Dialect-agnostic repository (SQLite default, Postgres/MySQL via `DATABASE_URL`). The only code that opens a database session. |
-| Run history | `testo_core/history/` | Read side over stored runs: typed views, queries, report links and snapshot files. Reads through the repository only; MinIO lookups for pre-v1.1 runs are isolated in `s3_snapshots.py`. |
+| Run history | `testo_core/history/` | Read side over stored runs: typed views, queries, report links and snapshot files. Reads through the repository only. |
 | Reporting | `testo_core/reporting/` | Collect Allure results from the artifacts tree; generate Allure / Extent / ReportPortal / TestBeats output; `testo report` commands. |
 | Analytics | `testo_core/services/` | Dashboard rollups, run-to-run delta, AI failure analysis (bring-your-own-key providers in `services/ai/`). |
 | Adapters | `testo_core/cli/`, `testo_api/`, `frontend/` | Presentation only: CLI renderers (Rich / NDJSON), FastAPI routes + SSE, React pages. |
@@ -60,6 +60,8 @@ flowchart TD
    `artifacts/<cycle>/<stage>/run.log` and Allure results, and appends every event to
    `artifacts/<cycle>/events.ndjson`. The CLI renders events live (Rich panels or NDJSON with
    `--ci`); the API tails `events.ndjson` and forwards each line as an SSE message.
+   The API keeps running executions plus the last `TESTO_MAX_FINISHED_EXECUTIONS` (default
+   200) finished ones in memory; older ones are only in the run history.
 5. **Persist.** `JsonBackend` writes `plan_result.json`; `DbBackend` writes a `RunRecord`
    (status, durations, per-stage health, failed cases + traceback + log tail when the run
    failed, CI provider/commit/ref when run in CI). Failures here never fail the run.
@@ -76,7 +78,6 @@ flowchart TD
 
 `testo run`, `testo report …`, `testo cycles …`, `testo diff`, `testo summary`,
 `testo config …`, `testo config-db`, `testo init`, `testo watch`, `testo doctor`, `testo clean`. Full reference: `docs/CLI Commands/Command Reference.md`.
-`uqo` is a deprecated alias that forwards to `testo`.
 
 Exit codes (`testo_core/engine/exit_codes.py`), propagated unchanged to CI:
 
@@ -102,6 +103,7 @@ Exit codes (`testo_core/engine/exit_codes.py`), propagated unchanged to CI:
 Named-cycle and ad-hoc executions are the same resource: both return a
 `/cycle-executions/{id}` status URL and event stream, and both run through `CycleRunService`.
 Only one execution per cycle name (`adhoc` included) runs at a time; a second request gets `409`.
+Access control is deliberately small; see [Security model](#security-model).
 
 ### Frontend (`frontend/`, Vite + React + Tailwind)
 
@@ -130,15 +132,14 @@ static/history/<run_id>/      # per-run reporter output, served at /history
 
 ## Storage
 
-- **Run history** (`RunRecord`, one row per cycle execution) is what every UI page and the
-  delta/AI services read. Engine runs are written by `DbBackend`; records from the pre-v1.1
-  headless runner are still readable (`history/views.py` normalises both shapes).
+- **Run history** (`RunRecord`, one row per cycle execution, written by `DbBackend`) is what
+  every UI page and the delta/AI services read.
 - **Report archives** (`ReportArchive`) are zipped report bundles keyed by their own UUID,
   written by `CycleRunService` after each run for `testo report list/open/diff`. They are not
   linked to a run id.
-- `docker-compose.yml` provides Postgres for team setups plus MinIO and Allure Docker Service,
-  which serve report snapshots of runs recorded before v1.1. New runs need none of them: the
-  default database is SQLite and reports are served by the API.
+- Run artifacts and HTML reports stay on local disk (`static/history/<run_id>/`), served by
+  the API. The default database is SQLite; `docker-compose.yml` only provides Postgres for
+  team setups.
 
 ## Design decisions
 
@@ -160,6 +161,45 @@ static/history/<run_id>/      # per-run reporter output, served at /history
   change a run's exit code, except a required report archive under `--ci` (exit `3`).
 - **Config is the source of truth.** Cycles, defaults, reporters and the database URL live in
   `testosterone.yaml`; the UI lists and runs what the file defines rather than keeping its own copy.
+
+## Security model
+
+Testosterone is a **local developer tool**, and the API is a command runner by design:
+`POST /adhoc-executions` takes `framework: command`, any `target_repo`, `args` and `extra_env`.
+The defaults assume one trusted user on one machine:
+
+- `testo-api` binds `127.0.0.1` (`TESTO_API_HOST`). Binding anything else without a token
+  logs a warning at startup.
+- `TESTO_API_TOKEN`, when set, requires `Authorization: Bearer <token>` on every mutating
+  request (constant-time compare, `401` otherwise). Reads stay open. The frontend sends
+  `localStorage["testo.apiToken"]` or the build-time `VITE_TESTO_API_TOKEN`, which ends up in
+  the JS bundle, so only bake it into a UI served to the people who hold the token anyway.
+- CORS allows only the Vite dev/preview servers unless `TESTO_CORS_ORIGINS` lists origins;
+  credentials are allowed only for an explicit list, never with `*`. CORS alone does not
+  stop a cross-site "simple" POST, so mutating requests whose `Origin` is not on that list
+  get `403` even without a token. That is what keeps a random web page (or a DNS-rebinding
+  one) in the developer's browser from starting runs on the localhost API.
+
+A shared token is not multi-user security. Exposing the API to a team would need real
+authentication with per-user audit, an allow-list of repos and commands instead of free-form
+`args`/`extra_env`, and runs in sandboxed, disposable runners (containers with no host
+credentials) rather than as the API's own user.
+
+## Trade-offs and known limits
+
+- **Stages run sequentially.** A cycle is an ordered list; parallelism lives inside a stage
+  and is per framework: `workers` becomes BehaveX `--parallel-processes`, while pytest
+  stages pass xdist's `-n` in `args` and native Behave and `command` stages ignore it.
+- **One execution per cycle at a time.** A second request for a running cycle gets `409`
+  rather than queueing; artifacts are per cycle, so two runs would interleave `events.ndjson`.
+- **In-memory execution registry.** `CycleExecutionManager` keeps execution state in the API
+  process, so it is single-process (no multiple uvicorn workers) and a restart forgets live
+  executions; finished runs survive in the database, and orphaned `RUNNING` rows are marked
+  failed on startup.
+- **SSE is a file tail.** The event stream polls `events.ndjson` from a byte offset. Simple
+  and replayable, but it adds polling latency and assumes the API shares a disk with the run.
+- **SQLite by default.** Zero setup and fine for one user; teams point `database.url` at
+  Postgres for concurrent writers.
 
 ## Extending
 

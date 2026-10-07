@@ -5,8 +5,6 @@ from __future__ import annotations
 import os
 
 from testo_core import paths
-from testo_core.history import s3_snapshots
-from testo_core.history.views import CompletedRunView
 
 
 def local_report_links(run_id: str) -> dict[str, str]:
@@ -38,22 +36,6 @@ def local_report_links(run_id: str) -> dict[str, str]:
                 links[f"{fw_dir.name}-native"] = (
                     f"history/{run_id}/native_reports/{fw_dir.name}/index.html"
                 )
-
-    # Pre-v1.1 layouts: one unified Allure report, BehaveX output under behave/.
-    if "pytest" not in links and (base / "allure_report" / "index.html").is_file():
-        links["pytest"] = f"history/{run_id}/allure_report/index.html"
-    if "pytest" not in links and (base / "allure_report.html").is_file():
-        links["pytest"] = f"history/{run_id}/allure_report.html"
-    if (base / "behave" / "index.html").is_file():
-        links["behavex"] = f"history/{run_id}/behave/index.html"
-    return links
-
-
-def report_links(run: CompletedRunView) -> dict[str, str]:
-    """Report links for ``run``: local reports first, MinIO for pre-v1.1 runs without any."""
-    links = local_report_links(run.run_id)
-    if not links and s3_snapshots.is_s3_snapshot(run.snapshot_dir):
-        links = s3_snapshots.report_links(run.snapshot_dir or "")
     return links
 
 

@@ -359,7 +359,7 @@ ls node_modules/.bin/allure   # after npm install in repo root
 | `allure serve <dirs>` | `allure open <dirs> --port <n>` (generate + serve) |
 | `allure open <reportDir>` | `allure open <reportDir> --port <n>` |
 
-Hosted UQO reports: `{ALLURE_SERVER_URL}/reports/<run_id>/index.html` (nginx static bundle, not `allure-docker-service`).
+Hosted UQO reports: `{ALLURE_SERVER_URL}/reports/<run_id>/index.html` (any static file server, not `allure-docker-service`).
 
 See also: [Allure Report 3 docs](https://allurereport.org/docs/v3/), [[ReportPortal Local Setup Guide]], [Docker Engine](https://docs.docker.com/engine/).
 
@@ -449,7 +449,7 @@ testo config db show    # if configured
 
 ## Removed: `uqo run` headless contract
 
-v1.0 shipped a second CLI contract, `uqo run --config <runs.yaml>` with `--ghost`, `--json` and `--stream-json`, backed by a Docker-based runner. It was removed in v1.1: `uqo` now forwards to `testo`, and CI integrations use `testo run --cycle <name> --ci` (NDJSON events above, `plan_finished` last). Exit codes `0`–`4` mean the same thing in both.
+v1.0 shipped a second CLI contract, `uqo run --config <runs.yaml>` with `--ghost`, `--json` and `--stream-json`, backed by a Docker-based runner. It was removed, together with the `uqo` command itself; CI integrations use `testo run --cycle <name> --ci` (NDJSON events above, `plan_finished` last). Exit codes `0`–`4` mean the same thing in both.
 
 ---
 
