@@ -172,6 +172,7 @@ def run_stage(
     return StageResult(
         stage_name=stage.name,
         framework=stage.framework,
+        tier=stage.tier,
         returncode=int(returncode),
         started_at=started_at,
         finished_at=finished_at,
@@ -217,6 +218,7 @@ def _failure_result(
     return StageResult(
         stage_name=stage.name,
         framework=stage.framework,
+        tier=stage.tier,
         returncode=int(returncode),
         started_at=started_at,
         finished_at=finished_at,

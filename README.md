@@ -14,9 +14,8 @@ The repo ships:
 All of them start runs through the same engine. See [ARCHITECTURE.md](ARCHITECTURE.md) for how
 the pieces fit.
 
-> **Deprecated:** the `uqo` command still works as an alias for `testo` and prints a notice.
-> The Streamlit UI, the `uqo run --config` YAML format and the Docker-based headless runner
-> were removed in v1.1; see [Migrating from v1.0](#migrating-from-v10).
+> The v1.0 `uqo` command, the Streamlit UI, the `uqo run --config` YAML format and the
+> Docker-based headless runner were removed; see [Migrating from v1.0](#migrating-from-v10).
 
 ## Quickstart
 
@@ -167,6 +166,6 @@ for the design notes vault.
 | `POST /api/v1/executions` + `/executions/{id}/events` | `POST /api/v1/adhoc-executions` (one framework) or `POST /api/v1/cycles/{cycle}/executions`; status and SSE under `/cycle-executions/{id}` |
 | "Legacy Execution" page | Quick Run (`/quick-run`) |
 | Tests run in one-off Docker containers (`UQO_RUNNER_IMAGE`, `UQO_RUNNER_PREBUILT`) | stages run as host subprocesses; use `Dockerfile.testo-runner` as the CI job image if you want isolation |
-| Allure results uploaded to MinIO per run | per-run reports under `static/history/<run_id>/` (served at `/history`) and the report archive DB; pre-v1.1 runs keep their MinIO links |
+| Allure results uploaded to MinIO per run | per-run reports under `static/history/<run_id>/` (served at `/history`) and the report archive DB; MinIO is no longer used |
 | `locust` test type | `equipment: command` with `args: [locust, --headless, …]` |
 | Pluggy `plugins/*.py` runner hooks | a framework adapter in `testo_core/frameworks/` |

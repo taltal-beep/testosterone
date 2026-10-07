@@ -30,6 +30,9 @@ class StageResult:
     timed_out: bool = False
     error: str | None = None
     internal_failure: bool = False
+    # Test-pyramid tier the stage was configured with when it ran. Persisted in the
+    # run record so `/runs/{id}/pyramid` doesn't depend on today's YAML.
+    tier: str | None = None
 
 
 @dataclass(frozen=True)

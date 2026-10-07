@@ -41,6 +41,7 @@ def _make_plan_result(
         command=("pytest", "-q"),
         output_tail="1 passed",
         timed_out=False,
+        tier="integration",
     )
     return PlanResult(
         plan_name=plan_name,
@@ -76,6 +77,7 @@ class TestJsonBackend:
         assert data["exit_code"] == 0
         assert len(data["stages"]) == 1
         assert data["stages"][0]["name"] == "api"
+        assert data["stages"][0]["tier"] == "integration"
 
     def test_writes_failure_exit_code(self, tmp_path: Path) -> None:
         backend = JsonBackend(tmp_path)
@@ -146,6 +148,7 @@ class TestDbBackend:
         assert call_kwargs["status"].value == "COMPLETED"
         assert call_kwargs["metadata"]["plan"] == "smoke"
         assert call_kwargs["metadata"]["source"] == "engine"
+        assert call_kwargs["metadata"]["stages"][0]["tier"] == "integration"
 
     @patch("testo_core.db.get_repository")
     def test_health_pct_is_real_pass_rate_not_binary_returncode(
