@@ -19,12 +19,12 @@ def _safe_allure_import():
 
 def _metadata() -> dict[str, str]:
     return {
-        "UQO_RUN_ID": os.environ.get("UQO_RUN_ID", ""),
+        "TESTO_RUN_ID": os.environ.get("TESTO_RUN_ID", ""),
         "python": platform.python_version(),
         "platform": platform.platform(),
         "hostname": socket.gethostname(),
         "cwd": os.getcwd(),
-        "UQO_SHARED_ALLURE_RESULTS_DIR": os.environ.get("UQO_SHARED_ALLURE_RESULTS_DIR", ""),
+        "TESTO_SHARED_ALLURE_RESULTS_DIR": os.environ.get("TESTO_SHARED_ALLURE_RESULTS_DIR", ""),
     }
 
 
@@ -99,7 +99,7 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
         alluredir = None
 
     if not alluredir:
-        alluredir = os.environ.get("UQO_SHARED_ALLURE_RESULTS_DIR", "")
+        alluredir = os.environ.get("TESTO_SHARED_ALLURE_RESULTS_DIR", "")
 
     if not alluredir:
         return

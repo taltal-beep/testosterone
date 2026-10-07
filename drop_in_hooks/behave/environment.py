@@ -15,7 +15,7 @@ def _safe_allure_import():
 
 
 def _force_shared_allure_dir() -> Path | None:
-    raw = os.environ.get("UQO_SHARED_ALLURE_RESULTS_DIR", "").strip()
+    raw = os.environ.get("TESTO_SHARED_ALLURE_RESULTS_DIR", "").strip()
     if not raw:
         return None
 
@@ -38,9 +38,9 @@ def before_scenario(context, scenario):  # noqa: ARG001
         return
 
     if results_dir is not None:
-        allure.dynamic.parameter("UQO_SHARED_ALLURE_RESULTS_DIR", str(results_dir))
+        allure.dynamic.parameter("TESTO_SHARED_ALLURE_RESULTS_DIR", str(results_dir))
 
-    allure.dynamic.parameter("UQO_RUN_ID", os.environ.get("UQO_RUN_ID", ""))
+    allure.dynamic.parameter("TESTO_RUN_ID", os.environ.get("TESTO_RUN_ID", ""))
     allure.dynamic.parameter("python", platform.python_version())
     allure.dynamic.parameter("platform", platform.platform())
     allure.dynamic.parameter("hostname", socket.gethostname())

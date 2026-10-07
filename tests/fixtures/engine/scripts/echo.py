@@ -3,7 +3,7 @@
 The engine test suite launches this script through :class:`EchoAdapter` so a
 "stage" is a real subprocess with fully scripted behaviour:
 
-    echo.py --text hello --exit-code 1 --sleep 0.1 --print-env UQO_LAST_TEST_TYPE
+    echo.py --text hello --exit-code 1 --sleep 0.1 --print-env TESTO_LAST_TEST_TYPE
 """
 
 from __future__ import annotations

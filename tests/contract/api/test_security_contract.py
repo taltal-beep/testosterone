@@ -31,7 +31,7 @@ def _client(manager: _FakeManager | None = None) -> TestClient:
 
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("TESTO_API_TOKEN", "TESTO_CORS_ORIGINS", "UQO_API_CORS_ORIGINS"):
+    for name in ("TESTO_API_TOKEN", "TESTO_CORS_ORIGINS"):
         monkeypatch.delenv(name, raising=False)
 
 

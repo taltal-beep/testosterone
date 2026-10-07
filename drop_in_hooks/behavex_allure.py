@@ -65,16 +65,16 @@ def _write_test_result(out_dir: Path, result: TestResult) -> None:
 class BehavexAllureExporter:
     """
     Declares a preferred subfolder name under the BehaveX output dir (informational).
-    Actual Allure JSON is written to UQO_SHARED_ALLURE_RESULTS_DIR.
+    Actual Allure JSON is written to TESTO_SHARED_ALLURE_RESULTS_DIR.
     """
 
     DEFAULT_OUTPUT_DIR = "allure-results"
 
     def launch_json_formatter(self, json_output: dict[str, Any]) -> None:
-        raw_dir = os.environ.get("UQO_SHARED_ALLURE_RESULTS_DIR")
+        raw_dir = os.environ.get("TESTO_SHARED_ALLURE_RESULTS_DIR")
         if not raw_dir:
             print(
-                "[BehavexAllureExporter] UQO_SHARED_ALLURE_RESULTS_DIR is not set; skipping Allure export."
+                "[BehavexAllureExporter] TESTO_SHARED_ALLURE_RESULTS_DIR is not set; skipping Allure export."
             )
             return
 

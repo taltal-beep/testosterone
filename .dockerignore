@@ -11,6 +11,7 @@ logs/
 artifacts/
 static/
 allure/
+testo_history.db
 uqo_history.db
 tests/
 examples/

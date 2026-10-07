@@ -40,7 +40,7 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="UQO API",
+        title="Testosterone API",
         version="1.0.0",
         lifespan=_lifespan,
         dependencies=[Depends(guard_mutating_request)],

@@ -17,8 +17,8 @@ from testo_core.repository.factory import (
     ("url", "adapter_type"),
     [
         ("sqlite:///:memory:", SQLiteRepositoryAdapter),
-        ("postgresql+psycopg://user:pass@localhost:5432/uqo", PostgreSQLRepositoryAdapter),
-        ("mysql+pymysql://user:pass@localhost:3306/uqo", MySQLRepositoryAdapter),
+        ("postgresql+psycopg://user:pass@localhost:5432/testo", PostgreSQLRepositoryAdapter),
+        ("mysql+pymysql://user:pass@localhost:3306/testo", MySQLRepositoryAdapter),
     ],
 )
 def test_select_repository_adapter_supported(url: str, adapter_type: type[object]) -> None:

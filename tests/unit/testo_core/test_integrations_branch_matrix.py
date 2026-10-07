@@ -46,9 +46,9 @@ def test_escape_prom_label_value_never_contains_raw_newlines(case) -> None:
 )
 def test_prometheus_exposition_contains_expected_gauges(metrics: RunMetrics) -> None:
     body = integrations._prometheus_exposition(metrics)
-    assert "uqo_total_tests" in body
-    assert "uqo_passed" in body
-    assert "uqo_failed" in body
+    assert "testo_total_tests" in body
+    assert "testo_passed" in body
+    assert "testo_failed" in body
     assert f"{int(metrics.total_tests)}" in body
 
 
@@ -66,7 +66,7 @@ def test_push_to_prometheus_http_error_branch() -> None:
     )
     with patch(
         "testo_core.integrations.prometheus_settings_from_env",
-        return_value={"pushgateway_url": "http://x", "job_name": "uqo"},
+        return_value={"pushgateway_url": "http://x", "job_name": "testo"},
     ):
         with patch("testo_core.integrations.requests.post") as post:
             post.return_value = MagicMock(status_code=500, text="boom")
@@ -89,7 +89,7 @@ def test_push_to_prometheus_missing_url_branch() -> None:
     )
     with patch(
         "testo_core.integrations.prometheus_settings_from_env",
-        return_value={"pushgateway_url": None, "job_name": "uqo"},
+        return_value={"pushgateway_url": None, "job_name": "testo"},
     ):
         ok, msg = integrations.push_to_prometheus(m)
     assert ok is False
@@ -109,7 +109,7 @@ def test_push_to_prometheus_missing_url_branch() -> None:
 def test__env_normalization(
     monkeypatch: pytest.MonkeyPatch, env_value: str | None, expected: str | None
 ) -> None:
-    name = "UQO_TEST_ENV_HELPER"
+    name = "TESTO_TEST_ENV_HELPER"
     monkeypatch.delenv(name, raising=False)
     if env_value is not None:
         monkeypatch.setenv(name, env_value)
