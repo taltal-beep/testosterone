@@ -24,25 +24,25 @@ Implementation lives under `tests/e2e/flows/`, `tests/e2e/provisioners/`, and `t
 
 Common:
 
-- `UQO_E2E_RUN_ID` (optional; auto-generated if not set)
-- `UQO_E2E_KEEP_ON_FAIL` (default `false`)
-- `UQO_E2E_MAX_CLEANUP_ATTEMPTS` (default `3`)
-- `UQO_E2E_EXTERNAL_DRY_RUN` (`true` by default; set `false` in external CI gates)
+- `TESTO_E2E_RUN_ID` (optional; auto-generated if not set)
+- `TESTO_E2E_KEEP_ON_FAIL` (default `false`)
+- `TESTO_E2E_MAX_CLEANUP_ATTEMPTS` (default `3`)
+- `TESTO_E2E_EXTERNAL_DRY_RUN` (`true` by default; set `false` in external CI gates)
 
 GitHub external:
 
-- `UQO_E2E_GITHUB_TOKEN`
-- `UQO_E2E_GITHUB_OWNER`
+- `TESTO_E2E_GITHUB_TOKEN`
+- `TESTO_E2E_GITHUB_OWNER`
 
 GitLab external:
 
-- `UQO_E2E_GITLAB_TOKEN`
-- `UQO_E2E_GITLAB_GROUP_ID`
-- `UQO_E2E_GITLAB_BASE_URL` (optional, defaults to `https://gitlab.com/api/v4`)
+- `TESTO_E2E_GITLAB_TOKEN`
+- `TESTO_E2E_GITLAB_GROUP_ID`
+- `TESTO_E2E_GITLAB_BASE_URL` (optional, defaults to `https://gitlab.com/api/v4`)
 
 ## Isolation and naming
 
-- Ephemeral resources are named using `uqo-e2e-<run-id>-<provider>-<scenario>`.
+- Ephemeral resources are named using `testo-e2e-<run-id>-<provider>-<scenario>`.
 - Artifacts are written under `.artifacts/e2e/<run-id>/`.
 - External CI jobs use `external-e2e` concurrency/resource locking.
 

@@ -14,38 +14,33 @@ Related: [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Executi
 
 Timeouts normalize to return code **124** (exit **3**) and engine exceptions to exit **4**, but other signal deaths (e.g. SIGKILL, rc **137**) still classify as exit **1**. This is locked as a known misclassification in `tests/contract/testo_core/test_exit_code_contract.py` until a signal-aware classifier lands.
 
-### 2. Pre-v1.1 history reads
+### 2. Broad `except Exception` in I/O paths
 
-`testo_core/history/` still reads records written by the removed Docker stack (per-framework `test_kind`, MinIO snapshot prefixes). The MinIO reads are isolated in `history/s3_snapshots.py`; once those records age out the module can be deleted, and MinIO can leave `docker-compose.yml`.
-
-### 3. Broad `except Exception` in I/O paths
-
-- `testo_core/history/s3_snapshots.py`: MinIO lookups degrade to empty results
 - `testo_core/reporting/reporters/reportportal_client.py`, `extent_reporter.py`
 
 Risk: silent degradation (empty reports) without a structured error. Fix: catch specific exceptions (`OSError`, `ClientError`, `SQLAlchemyError`), log with `exc_info=True`, and surface exit **3** when the operation was required.
 
-### 4. Swallowed BehaveX / native report errors
+### 3. Swallowed BehaveX / native report errors
 
 `testo_core/engine/executor.py` wraps `ensure_behavex_report_html` in `except Exception: pass`; `testo_core/reporting/native_reports.py` does the same. `testo report native` then finds no HTML and the cause is invisible. Fix: log at DEBUG and set `StageResult.error` so NDJSON and panels show a warning.
 
-### 5. Reporter failures don't fail the run
+### 4. Reporter failures don't fail the run
 
 `testo_core/reporting/reporters/factory.py` catches per-reporter exceptions, so a configured integration can be skipped silently after a green run. Fix: an opt-in `reporters_required: true` that maps a reporter failure to exit **3**, plus a `reporter_failed` NDJSON event.
 
-### 6. Git trigger fallback is silent
+### 5. Git trigger fallback is silent
 
 `testo_core/triggers.py` falls back to snapshot mode on `OSError` / `TimeoutExpired` / `RuntimeError` without telling anyone, which can cause an unexpected full run. Fix: emit `{"event":"trigger_fallback",...}` under `--ci`; `testo doctor` could check git availability.
 
-### 7. `mypy testo_api` is not in CI
+### 6. `mypy testo_api` is not in CI
 
 `mypy testo_core` is clean and blocking. `testo_api` still has type errors (mostly `cycle_execution_manager.py` and `routes/ai.py`) and is not checked in CI yet.
 
-### 8. Sequential-only orchestrator
+### 7. Sequential-only orchestrator
 
 Stages run one at a time (`engine/orchestrator.py`); parallelism today is framework-internal (e.g. BehaveX `--workers`). Opt-in parallel stages need isolated `artifacts/<cycle>/<stage>/` trees, aggregated exit classification and documented resource limits.
 
-### 9. Log reader join timeout
+### 8. Log reader join timeout
 
 `executor.py` calls `reader.join(timeout=2.0)` after the subprocess exits, so a very large final stdout burst could be cut short. Fix: drain until EOF; add an integration test with a large burst.
 
@@ -61,6 +56,7 @@ Stages run one at a time (`engine/orchestrator.py`); parallelism today is framew
 - The second, Docker-based execution stack (`HeadlessEngineService`, `runners.py`, pluggy plugins, `/api/v1/executions`, Streamlit UI) was removed in v1.1; every run goes through `CycleRunService` and the engine.
 - `--ci` forces a synchronous report archive; a required archive failure exits **3**.
 - `testo_core/persistence/` (`JsonBackend`, `DbBackend`, `composite_backend()`) replaced the persistence stub.
+- MinIO, the pre-v1.1 snapshot reads and the Docker-stack record shape in `history/` were removed in v1.1.
 - `mypy testo_core` reports 0 errors and blocks CI, as does `ruff format --check`.
 
 ## Refreshing this note

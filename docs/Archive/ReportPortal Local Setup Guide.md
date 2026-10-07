@@ -5,7 +5,7 @@ Persistent ReportPortal v5.15.x on Docker for end-to-end `ReportPortalReporter` 
 ## Prerequisites
 
 - **Docker Desktop** on macOS with **4–6 GB RAM** allocated (Settings → Resources → Memory).
-- Port **8080** is free on the host (`lsof -i :8080`). This stack is separate from the UQO `docker-compose.yml` (Allure uses 5050).
+- Port **8080** is free on the host (`lsof -i :8080`). This stack is separate from the repo's `docker-compose.yml` (Postgres only).
 
 ### Official documentation
 

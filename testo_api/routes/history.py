@@ -117,15 +117,17 @@ def get_run_reports(run_id: str) -> RunReportsResponse:
 @router.get("/runs/{run_id}/pyramid", response_model=RunPyramidResponse)
 def get_run_pyramid(run_id: str, config_path: str | None = None) -> RunPyramidResponse:
     """Unit/integration/e2e tier composition for a run (UI/API parity with ``testo report pyramid``)."""
-    from testo_core.reporting.pyramid_data import build_pyramid_model
+    from testo_core.reporting.pyramid_data import build_pyramid_model, run_needs_config_tiers
     from testo_core.reporting.pyramid_viz import classify_shape
 
     record = get_run(run_id=run_id)
     if record is None:
         raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
 
+    # Runs record each stage's tier. Only older records without one fall back
+    # to the tiers in the current YAML.
     stages: tuple = ()
-    if record.cycle:
+    if record.cycle and run_needs_config_tiers(record):
         try:
             cfg = discover_and_load(
                 config_path=Path(config_path).expanduser().resolve() if config_path else None

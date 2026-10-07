@@ -16,8 +16,9 @@ describe("ComparePage", () => {
             ok: true,
             json: async () => ({
               items: [
-                { run_id: "run-2", created_at: 2, returncode: 1, status: "FAILED", health_pct: 90, links_under_static: {} },
-                { run_id: "run-1", created_at: 1, returncode: 0, status: "COMPLETED", health_pct: 99, links_under_static: {} }
+                { run_id: "run-3", cycle: "self-test", created_at: 3, returncode: 0, status: "COMPLETED", health_pct: 100, links_under_static: {} },
+                { run_id: "run-2", cycle: "fake-api", created_at: 2, returncode: 1, status: "FAILED", health_pct: 90, links_under_static: {} },
+                { run_id: "run-1", cycle: "fake-api", created_at: 1, returncode: 0, status: "COMPLETED", health_pct: 99, links_under_static: {} }
               ]
             })
           });
@@ -72,18 +73,34 @@ describe("ComparePage", () => {
     );
 
     await waitFor(() => expect(screen.getByText("Run Comparison")).toBeInTheDocument());
-    fireEvent.change(screen.getByLabelText("Current run"), { target: { value: "run-2" } });
-    fireEvent.change(screen.getByLabelText("Baseline run"), { target: { value: "run-1" } });
 
-    await waitFor(() =>
-      expect(
-        screen.getByText((_, element) => element?.textContent?.includes("Comparing run-2 against baseline run-1.") ?? false, {
-          selector: "p"
-        })
-      ).toBeInTheDocument()
-    );
-    expect(screen.getByText(/regressions=5 improvements=2 unchanged=2 unknown=0/)).toBeInTheDocument();
+    // Pickers name runs by cycle and time, grouped by cycle, with the short id secondary.
+    const currentPicker = screen.getByLabelText("Current run");
+    expect(currentPicker.querySelectorAll("optgroup")).toHaveLength(2);
+    expect(currentPicker.querySelector('option[value="run-2"]')?.textContent).toMatch(/^fake-api · .+ · run-2$/);
+
+    // Choosing a cycle selects its latest run as current and the one before it as baseline.
+    fireEvent.change(screen.getByLabelText("Cycle"), { target: { value: "fake-api" } });
+    expect(screen.getByLabelText("Current run")).toHaveValue("run-2");
+    expect(screen.getByLabelText("Baseline run")).toHaveValue("run-1");
+
+    await waitFor(() => expect(screen.getByTestId("status-summary")).toHaveTextContent("5 regressions"));
+    expect(screen.getByTestId("status-summary")).toHaveTextContent("2 improvements");
+
+    const failedRow = screen.getByTestId("metric-failed");
+    expect(failedRow).toHaveTextContent("Failed");
+    expect(failedRow).toHaveTextContent("+6");
+    expect(failedRow).toHaveTextContent("Regression");
+    expect(screen.getByTestId("metric-health_pct")).toHaveTextContent("−6.0 pp");
+    expect(screen.getByTestId("metric-wall_duration_ms")).toHaveTextContent("1.30 s");
+    expect(screen.queryByText(/state=/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.getByText("Failed tests worsened by 6 tests.")).toBeInTheDocument();
+
+    // Mixing cycles is allowed but flagged.
+    fireEvent.change(screen.getByLabelText("Cycle"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Baseline run"), { target: { value: "run-3" } });
+    expect(screen.getByRole("status")).toHaveTextContent("different cycles (self-test and fake-api)");
   });
 });
 

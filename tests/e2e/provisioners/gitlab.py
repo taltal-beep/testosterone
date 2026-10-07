@@ -24,17 +24,17 @@ class GitlabProvisioner:
 
     @classmethod
     def from_env(cls) -> GitlabProvisioner:
-        token = os.getenv("UQO_E2E_GITLAB_TOKEN", "")
-        group_id = os.getenv("UQO_E2E_GITLAB_GROUP_ID", "")
-        api_base = os.getenv("UQO_E2E_GITLAB_BASE_URL", "https://gitlab.com/api/v4")
-        dry_run = str(os.getenv("UQO_E2E_EXTERNAL_DRY_RUN", "true")).lower() == "true"
+        token = os.getenv("TESTO_E2E_GITLAB_TOKEN", "")
+        group_id = os.getenv("TESTO_E2E_GITLAB_GROUP_ID", "")
+        api_base = os.getenv("TESTO_E2E_GITLAB_BASE_URL", "https://gitlab.com/api/v4")
+        dry_run = str(os.getenv("TESTO_E2E_EXTERNAL_DRY_RUN", "true")).lower() == "true"
         return cls(token=token, group_id=group_id, api_base=api_base, dry_run=dry_run)
 
     def _headers(self) -> dict[str, str]:
         return {"PRIVATE-TOKEN": self.token}
 
     def provision(self, ctx: FlowContext) -> None:
-        project_name = f"uqo-e2e-{ctx.run_id}-gitlab"
+        project_name = f"testo-e2e-{ctx.run_id}-gitlab"
         ctx.resources["gitlab_project"] = project_name
         if self.dry_run:
             ctx.metadata["pipeline_status"] = "success"

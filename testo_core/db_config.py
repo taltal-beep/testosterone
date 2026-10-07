@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from sqlalchemy.engine import Engine
 from sqlmodel import SQLModel, create_engine
 
-_DEFAULT_SQLITE_URL: Final[str] = "sqlite:///./uqo_history.db"
+_DEFAULT_SQLITE_URL: Final[str] = "sqlite:///./testo_history.db"
 SUPPORTED_DATABASE_DIALECTS: Final[frozenset[str]] = frozenset({"sqlite", "postgresql", "mysql"})
 
 
@@ -29,7 +29,7 @@ def _postgres_host() -> str:
     host = (os.getenv("POSTGRES_HOST") or "").strip()
     if host:
         return host
-    return "uqo-postgres" if _is_running_in_docker() else "localhost"
+    return "testo-postgres" if _is_running_in_docker() else "localhost"
 
 
 def resolve_database_url() -> str:
@@ -44,7 +44,7 @@ def resolve_database_url() -> str:
     3. Legacy Postgres: if ``POSTGRES_USER``, ``POSTGRES_PASSWORD``, and ``POSTGRES_DB`` are all
        non-empty, build ``postgresql+psycopg://...`` using ``POSTGRES_HOST`` / ``POSTGRES_PORT``
        (with docker-aware host default when host is unset).
-    4. Default file-backed SQLite at ``sqlite:///./uqo_history.db`` for sandbox / zero-config runs.
+    4. Default file-backed SQLite at ``sqlite:///./testo_history.db`` for sandbox / zero-config runs.
     """
     from pathlib import Path
 

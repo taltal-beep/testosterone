@@ -3,7 +3,7 @@
 This repo historically used a flat `tests/` layout. We now split tests by intent:
 
 - `tests/unit/`: pure function + branch-matrix tests (heavy mocking)
-- `tests/integration/`: component interaction / state persistence (FastAPI TestClient or managed sandbox)
+- `tests/integration/`: component interaction / state persistence (FastAPI TestClient)
 - `tests/e2e/`: sequential user journeys (Allure-stepped)
 - `tests/contracts/`: schema/contract enforcement (Pydantic)
 - `tests/contract/`: contract enforcement for CLI/API/CI wrappers (legacy singular path still supported)
@@ -23,11 +23,6 @@ This repo historically used a flat `tests/` layout. We now split tests by intent
 - `quarantined`: temporarily excluded flaky test bucket
 
 ### Migration map (old → new)
-
-#### Sandbox API
-- `tests/test_sandbox_api_unit.py` → `tests/unit/testo_core/test_sandbox_api_unit.py`
-- `tests/test_sandbox_api_more.py` → `tests/unit/testo_core/test_sandbox_api_more.py`
-- `tests/test_sandbox_api_terminate.py` → `tests/unit/testo_core/test_sandbox_api_terminate.py`
 
 #### Engine core (unit)
 - `tests/test_paths.py` → `tests/unit/testo_core/test_paths.py`

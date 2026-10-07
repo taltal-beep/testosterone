@@ -57,37 +57,6 @@ cycles:
         args:
           - features
 
-  # Same as sample-all-frameworks but injects random failures in sample_target_repo
-  # (pytest + Behave + BehaveX). Each stage rolls independently per test/scenario.
-  # Tune probability via TESTO_SAMPLE_RANDOM_FAIL_P in extra_env or export it globally (0–1).
-  sample-all-frameworks-stochastic:
-    description: >
-      Full sample cycle with TESTO_SAMPLE_RANDOM_FAIL_P=0.35 (each run differs).
-      For a stable green run use sample-all-frameworks instead.
-    stages:
-      - name: pytest-sample
-        equipment: pytest
-        target_repo: sample_target_repo
-        args:
-          - -q
-          - tests
-        extra_env:
-          TESTO_SAMPLE_RANDOM_FAIL_P: "0.35"
-      - name: behave-features
-        equipment: behave
-        target_repo: sample_target_repo
-        args:
-          - features
-        extra_env:
-          TESTO_SAMPLE_RANDOM_FAIL_P: "0.35"
-      - name: flow-tests
-        equipment: behavex
-        target_repo: sample_target_repo
-        args:
-          - features
-        extra_env:
-          TESTO_SAMPLE_RANDOM_FAIL_P: "0.35"
-
   # --- GitLab Pages demo (.gitlab-ci.yml) ------------------------------------
   # Testosterone running its own Python suite, split by tier so the dashboard's
   # pyramid is real. The nested pytest gets its own throwaway DB so the suite's
