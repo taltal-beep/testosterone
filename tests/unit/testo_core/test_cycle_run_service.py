@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+import textwrap
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -11,6 +13,8 @@ import testo_core.services.report_archive as report_archive
 from testo_core.config.loader import discover_and_load
 from testo_core.config.resolver import resolve_plan
 from testo_core.config.schema import Plan
+from testo_core.reporting.allure_results import parse_collected_results
+from testo_core.reporting.collector import collect_results
 from testo_core.services import cycle_run as cycle_run_mod
 from testo_core.services.cycle_run import CycleRunOptions, CycleRunService, NoStagesEnabledError
 from testo_core.triggers import TriggerResult
@@ -165,6 +169,52 @@ def test_workers_override_applies_to_every_stage(
     )
 
     assert [s.workers for s in outcome.plan.stages] == [3, 3]
+
+
+_JUNIT_ONE_PASS_ONE_FAIL = textwrap.dedent(
+    """\
+    import pathlib, sys
+    pathlib.Path("r").mkdir(exist_ok=True)
+    pathlib.Path("r/junit.xml").write_text(
+        '<testsuite name="s" tests="2">'
+        '<testcase classname="s" name="ok"/>'
+        '<testcase classname="s" name="bad"><failure message="boom"/></testcase>'
+        "</testsuite>"
+    )
+    sys.exit(1)
+    """
+)
+
+
+@pytest.mark.parametrize("workers_override", [None, 2])
+def test_command_stage_junit_xml_counts_in_cycle_results(
+    tmp_path: Path, workers_override: int | None
+) -> None:
+    """Regression: the resolver and ``--workers`` used to drop ``junit_xml``,
+    so a ``command`` stage reported 0 tests."""
+    script = tmp_path / "runner.py"
+    script.write_text(_JUNIT_ONE_PASS_ONE_FAIL, encoding="utf-8")
+    stage = {
+        "name": "jest",
+        "framework": "command",
+        "args": [sys.executable, str(script)],
+        "junit_xml": "r/*.xml",
+        "tier": "e2e",
+    }
+    cfg, plan = _load(write_cycles_config(tmp_path, cycles={"app": [stage]}), "app")
+
+    outcome = CycleRunService().run(
+        cfg=cfg,
+        plan=plan,
+        renderer=NoopRenderer(),
+        options=CycleRunOptions(workers_override=workers_override, persist=False, report_db=False),
+    )
+
+    assert outcome.exit_code != 0
+    (ran,) = outcome.plan.stages
+    assert (ran.tier, ran.junit_xml) == ("e2e", ("r/*.xml",))
+    aggregate = parse_collected_results(collect_results(tmp_path / "artifacts", plan_name="app"))
+    assert (aggregate.total, aggregate.passed, aggregate.failed) == (2, 1, 1)
 
 
 def test_plan_with_no_enabled_stages_raises(
