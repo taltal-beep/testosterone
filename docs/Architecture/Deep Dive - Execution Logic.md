@@ -163,6 +163,10 @@ per-test `passed`/`failed`/`broken`/`skipped`/`total` counts:
   across every stage divided by the sum of `total` across every stage (not an
   average of the per-stage percentages). This is what the Run Detail page's
   Summary card and the Dashboard/Runs list health figures show.
+- **Crashed stages** — a stage that exited non-zero without producing any
+  results (e.g. it crashed at startup) has no pass rate, so the overall figure
+  is scaled by the share of stages that did not crash: one stage at 100% plus
+  one crashed stage gives 50%, not the 100% the other stage alone would show.
 - **Fallback** — if no stage produced any parseable Allure results (empty
   `total` everywhere), the overall figure falls back to the older binary
   estimate (`passed_stages / len(stages) * 100`, i.e. did each stage

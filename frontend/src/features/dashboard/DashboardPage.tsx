@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
-import { DashboardTrendIndicator, apiClient } from "../../lib/api-client";
+import { DashboardOverviewResponse, DashboardTrendIndicator, apiClient } from "../../lib/api-client";
 import { Badge, Card, HealthBar, PageHeader, Spinner, StatusPill } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
 
@@ -54,6 +54,8 @@ export function DashboardPage() {
           Some metrics are degraded: {data.data_freshness.notes?.join(", ") || "unknown source issue"}.
         </p>
       ) : null}
+
+      <TrendBaseline kpis={data.headline_kpis} />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Health" value={formatPct(data.headline_kpis.health_pct)} trend={data.trend_indicators.health} />
@@ -197,6 +199,33 @@ function GuideStep({ step, title, body }: { step: number; title: string; body: R
         <p className="mt-1 text-sm text-ink-300">{body}</p>
       </Card>
     </li>
+  );
+}
+
+// Trends are only meaningful within one cycle, so say which cycle and which run they compare against.
+function TrendBaseline({ kpis }: { kpis: DashboardOverviewResponse["headline_kpis"] }) {
+  if (!kpis.latest_run_id) {
+    return null;
+  }
+  const cycle = kpis.cycle ?? "unnamed cycle";
+  return (
+    <p data-testid="trend-baseline" className="text-sm text-ink-300">
+      Latest run: <strong className="text-ink-100">{cycle}</strong>.{" "}
+      {kpis.baseline_run_id ? (
+        <>
+          Trends compare it with the{" "}
+          <Link
+            to={`/compare?current_run_id=${kpis.latest_run_id}&baseline_run_id=${kpis.baseline_run_id}`}
+            className="text-brand-300 hover:text-brand-400 hover:underline"
+          >
+            previous {cycle} run
+          </Link>
+          .
+        </>
+      ) : (
+        "No earlier run of this cycle in recent history, so there is no trend."
+      )}
+    </p>
   );
 }
 
