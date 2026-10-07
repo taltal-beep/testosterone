@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from testo_core.report_generator import start_report_server
+from testo_core.reporting.report_generator import start_report_server
 
 
 def test_start_report_server_starts_thread(tmp_path: Path) -> None:
@@ -17,10 +17,11 @@ def test_start_report_server_starts_thread(tmp_path: Path) -> None:
     mock_thread = MagicMock()
 
     with patch(
-        "testo_core.report_generator.http.server.ThreadingHTTPServer", return_value=mock_httpd
+        "testo_core.reporting.report_generator.http.server.ThreadingHTTPServer",
+        return_value=mock_httpd,
     ):
         with patch(
-            "testo_core.report_generator.threading.Thread", return_value=mock_thread
+            "testo_core.reporting.report_generator.threading.Thread", return_value=mock_thread
         ) as thread_cls:
             srv = start_report_server(report_dir=root, port=9123)
     assert srv.port == 9123

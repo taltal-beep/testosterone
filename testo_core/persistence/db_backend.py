@@ -70,7 +70,7 @@ class DbBackend:
 
     def persist(self, result: PlanResult) -> str | None:
         try:
-            from testo_core.db import get_repository
+            from testo_core.repository.db import get_repository
             from testo_core.services.ci_provenance import detect_ci_provenance
 
             repo = get_repository()

@@ -8,9 +8,9 @@ from urllib.parse import urlparse
 
 from sqlalchemy.engine import Engine
 
-from testo_core.db_config import _dialect
 from testo_core.repository.adapters import SQLModelRunRepository
 from testo_core.repository.base import BaseRunRepository
+from testo_core.repository.db_config import _dialect
 
 
 @dataclass(frozen=True)

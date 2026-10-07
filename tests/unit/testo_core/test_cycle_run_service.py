@@ -13,11 +13,11 @@ import testo_core.services.report_archive as report_archive
 from testo_core.config.loader import discover_and_load
 from testo_core.config.resolver import resolve_plan
 from testo_core.config.schema import Plan
+from testo_core.config.triggers import TriggerResult
 from testo_core.reporting.allure_results import parse_collected_results
 from testo_core.reporting.collector import collect_results
 from testo_core.services import cycle_run as cycle_run_mod
 from testo_core.services.cycle_run import CycleRunOptions, CycleRunService, NoStagesEnabledError
-from testo_core.triggers import TriggerResult
 from tests.fixtures.engine import (
     NoopRenderer,
     stage_spec,

@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 # Repository Pattern — Database-Agnostic Refactor
@@ -17,8 +17,8 @@ Teams should adopt Testo without migrating to a mandated database. Run history a
 
 | Piece | Location |
 |-------|----------|
-| URL resolution | `testo_core/db_config.py` — `DATABASE_URL`, legacy `POSTGRES_*`, default SQLite |
-| Service locator | `testo_core/db.py` — `get_repository()`, `get_report_archive_repository()` |
+| URL resolution | `testo_core/repository/db_config.py` — `DATABASE_URL`, legacy `POSTGRES_*`, default SQLite |
+| Service locator | `testo_core/repository/db.py` — `get_repository()`, `get_report_archive_repository()` |
 | Protocol | `testo_core/repository/base.py` — `BaseRunRepository` |
 | Adapters | `testo_core/repository/adapters.py`, `factory.py` |
 | Models | `testo_core/repository/models.py` — dialect-portable JSON columns |

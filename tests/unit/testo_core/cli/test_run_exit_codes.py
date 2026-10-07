@@ -12,8 +12,8 @@ import pytest
 from typer.testing import CliRunner
 
 from testo_core.cli.app import app
+from testo_core.config.triggers import TriggerResult
 from testo_core.engine import orchestrator
-from testo_core.triggers import TriggerResult
 from tests.fixtures.engine import (
     HangAdapter,
     MissingBinaryAdapter,

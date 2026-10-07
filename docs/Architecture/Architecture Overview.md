@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 # Architecture Overview
@@ -96,7 +96,7 @@ Adapters build `argv`, set Allure output under `allure-results/<framework>/`, an
 
 Post-run reporters are invoked from `CycleRunService` (`services/cycle_run.py`) after `run_plan()`, for both `testo run` and API cycle executions, when `reporters:` is set in YAML or `--reporter` is passed.
 
-### `testo_core/triggers.py`
+### `testo_core/config/triggers.py`
 
 Optional per-cycle **selective execution**: Git diff or filesystem snapshot against glob patterns. Skipped cycles exit `0` without running stages (unless `--force`). Documented in [QA Strategies § Selective triggers](../Testing%20Workflows/QA%20Strategies.md#2-selective-triggers).
 
@@ -185,7 +185,7 @@ Two persistence layers exist, each at a different abstraction level:
 
 A `composite_backend()` factory fans out to both; individual backend failures never fail the run. Controlled by `--no-persist`.
 
-**Service-level** (`testo_core/repository/`): Dialect-agnostic adapters selected by `DATABASE_URL` / `database.url` (SQLite default, PostgreSQL/MySQL for teams with existing infra). Used by `DbBackend`, the history read side (`testo_core/history/`), and the report archive system. Nothing outside `repository/` opens a database session. Rationale: [Repository Pattern - Database-Agnostic Refactor](../Specs%20&%20ADRs/Repository%20Pattern%20-%20Database-Agnostic%20Refactor.md). Factory: `testo_core/db.py` → `get_repository()`.
+**Service-level** (`testo_core/repository/`): Dialect-agnostic adapters selected by `DATABASE_URL` / `database.url` (SQLite default, PostgreSQL/MySQL for teams with existing infra). Used by `DbBackend`, the history read side (`testo_core/history/`), and the report archive system. Nothing outside `repository/` opens a database session. Rationale: [Repository Pattern - Database-Agnostic Refactor](../Specs%20&%20ADRs/Repository%20Pattern%20-%20Database-Agnostic%20Refactor.md). Factory: `testo_core/repository/db.py` → `get_repository()`.
 
 **Two separate, unlinked id spaces** — easy to conflate, worth calling out explicitly (found while building per-test diff for the API, see [CLI-UI Parity - Pyramid, Graphs, Deep Diff - 2026-07-23](../Archive/CLI-UI%20Parity%20-%20Pyramid,%20Graphs,%20Deep%20Diff%20-%202026-07-23.md)):
 

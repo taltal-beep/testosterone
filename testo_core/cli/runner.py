@@ -23,8 +23,8 @@ from testo_core.config.errors import ConfigDiscoveryError, ConfigError, PlanNotF
 from testo_core.config.loader import discover_and_load
 from testo_core.config.resolver import resolve_plan
 from testo_core.config.schema import Plan, TestosteroneConfig
+from testo_core.config.triggers import TriggerResult
 from testo_core.engine.exit_codes import EngineExitCode
-from testo_core.triggers import TriggerResult
 
 
 def execute_plan_command(

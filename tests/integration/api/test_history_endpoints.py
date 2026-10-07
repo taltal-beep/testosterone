@@ -19,8 +19,8 @@ def test_health_endpoints() -> None:
 
 
 def test_readiness_is_ready_with_file_sqlite(monkeypatch, tmp_path) -> None:  # noqa: ANN001
-    from testo_core.db import reset_repository_cache
-    from testo_core.db_config import reset_engine_cache
+    from testo_core.repository.db import reset_repository_cache
+    from testo_core.repository.db_config import reset_engine_cache
 
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'history.db'}")
     reset_repository_cache()

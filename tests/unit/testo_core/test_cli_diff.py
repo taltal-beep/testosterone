@@ -10,9 +10,9 @@ import pytest
 from typer.testing import CliRunner
 
 from testo_core.cli.app import app
-from testo_core.db import get_report_archive_repository, reset_repository_cache
-from testo_core.db_config import reset_engine_cache
 from testo_core.engine.exit_codes import EngineExitCode
+from testo_core.repository.db import get_report_archive_repository, reset_repository_cache
+from testo_core.repository.db_config import reset_engine_cache
 from testo_core.repository.report_archive_repository import SQLReportArchiveRepository
 from testo_core.services.report_archive import build_cycle_zip_bytes
 

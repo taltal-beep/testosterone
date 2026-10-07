@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from testo_core import report_generator as rg
-from testo_core.report_generator import generate_allure_html, generate_allure_reports
+from testo_core.reporting import report_generator as rg
+from testo_core.reporting.report_generator import generate_allure_html, generate_allure_reports
 
 
 @pytest.fixture

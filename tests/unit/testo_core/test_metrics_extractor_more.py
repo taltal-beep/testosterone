@@ -1,11 +1,11 @@
-"""More coverage for ``testo_core.metrics_extractor``."""
+"""More coverage for ``testo_core.reporting.metrics_extractor``."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from testo_core.metrics_extractor import (
+from testo_core.reporting.metrics_extractor import (
     extract_from_report_dir,
     extract_from_summary_json,
 )

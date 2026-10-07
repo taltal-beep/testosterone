@@ -37,16 +37,19 @@ flowchart TD
 
 | Layer | Package | Responsibility |
 |-------|---------|----------------|
-| Configuration | `testo_core/config/` | Discover and parse `testosterone.yaml`; immutable `TestosteroneConfig` / `Plan` (cycle) / `Stage` dataclasses; `${env:…}` interpolation and `if:` filtering. |
+| Configuration | `testo_core/config/` | Discover and parse `testosterone.yaml`; immutable `TestosteroneConfig` / `Plan` (cycle) / `Stage` dataclasses; `${env:…}` interpolation and `if:` filtering; `triggers.py` decides whether a cycle's `trigger:` paths changed. |
 | Use case | `testo_core/services/cycle_run.py` | `CycleRunService.run()`: trigger gate, engine call, configured reporters, native-report snapshot, metrics push, report archive. `single_stage_plan()` wraps one framework call as a one-stage `adhoc` cycle. |
 | Engine | `testo_core/engine/` | `run_plan()` runs stages in order and emits typed events; `run_stage()` spawns the subprocess, tees `run.log`, enforces timeouts; `exit_codes.py` is the single exit-code taxonomy. |
 | Framework adapters | `testo_core/frameworks/` | Build argv and Allure output dirs per framework. `command` runs any argv and imports its JUnit XML as Allure results. |
 | Persistence | `testo_core/persistence/` | Best-effort backends behind one protocol: `plan_result.json` and a `RunRecord` row with health %, per-stage counts, failure evidence and CI provenance. |
-| Storage | `testo_core/repository/`, `db.py` | Dialect-agnostic repository (SQLite default, Postgres/MySQL via `DATABASE_URL`). The only code that opens a database session. |
+| Storage | `testo_core/repository/` | Dialect-agnostic repository (SQLite default, Postgres/MySQL via `DATABASE_URL`); `db_config.py` resolves the URL and builds the engine, `db.py` caches the process-wide repository. The only code that opens a database session. |
 | Run history | `testo_core/history/` | Read side over stored runs: typed views, queries, report links and snapshot files. Reads through the repository only. |
-| Reporting | `testo_core/reporting/` | Collect Allure results from the artifacts tree; generate Allure / Extent / ReportPortal / TestBeats output; `testo report` commands. |
+| Reporting | `testo_core/reporting/` | Collect Allure results from the artifacts tree; generate Allure / Extent / ReportPortal / TestBeats output; `testo report` commands; run KPIs (`metrics.py`, `metrics_extractor.py`) and their InfluxDB / Pushgateway push (`integrations.py`). |
 | Analytics | `testo_core/services/` | Dashboard rollups, run-to-run delta, AI failure analysis (bring-your-own-key providers in `services/ai/`). |
 | Adapters | `testo_core/cli/`, `testo_api/`, `frontend/` | Presentation only: CLI renderers (Rich / NDJSON), FastAPI routes + SSE, React pages. |
+
+`testo_core/paths.py` is the only module left at the package root: it defines the
+`artifacts/` and `static/` layout that every layer above shares.
 
 ## One run, end to end
 

@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from testo_core.db_config import create_db_and_tables, get_engine, resolve_database_url
 from testo_core.repository.base import BaseRunRepository
+from testo_core.repository.db_config import create_db_and_tables, get_engine, resolve_database_url
 from testo_core.repository.factory import create_repository_for_url
 from testo_core.repository.report_archive_repository import SQLReportArchiveRepository
 
 
 @lru_cache(maxsize=1)
 def get_repository() -> BaseRunRepository:
-    """Return the cached repository for the active :func:`~testo_core.db_config.resolve_database_url`."""
+    """Return the cached repository for the active :func:`~testo_core.repository.db_config.resolve_database_url`."""
     url = resolve_database_url()
     create_db_and_tables()
     return create_repository_for_url(url=url, engine=get_engine())

@@ -6,8 +6,6 @@ from pathlib import Path
 
 import pytest
 
-from testo_core.db import get_repository, reset_repository_cache
-from testo_core.db_config import reset_engine_cache
 from testo_core.history.read_model import (
     get_run,
     get_run_metadata,
@@ -21,6 +19,8 @@ from testo_core.history.views import (
     view_from_record,
     wall_duration_ms_from_metadata,
 )
+from testo_core.repository.db import get_repository, reset_repository_cache
+from testo_core.repository.db_config import reset_engine_cache
 from testo_core.repository.models import RunRecord, RunStatus
 
 

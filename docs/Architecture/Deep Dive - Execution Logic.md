@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-10-08
+updated: 2026-10-07
 ---
 
 # Deep Dive — Execution Logic
@@ -66,7 +66,7 @@ sequenceDiagram
 | 1. CLI parse | `testo_core/cli/commands/run.py` | Validates flags; defers heavy imports |
 | 2. Config load | `testo_core/config/loader.py` | `discover_and_load()` → `TestosteroneConfig` |
 | 3. Plan resolve | `testo_core/config/resolver.py` | `resolve_plan()` / `resolve_stages_for_plan()` |
-| 4. Trigger gate | `testo_core/services/cycle_run.py` → `triggers.py` | Optional skip (exit 0) unless `--force` |
+| 4. Trigger gate | `testo_core/services/cycle_run.py` → `config/triggers.py` | Optional skip (exit 0) unless `--force` |
 | 5. Renderer pick | `testo_core/cli/runner.py` | Buffered / Stream / CI (NDJSON) |
 | 6. Engine run | `testo_core/engine/orchestrator.py` | `run_plan()` — sequential stages |
 | 7. Subprocess | `testo_core/engine/executor.py` | `run_stage()` per stage |

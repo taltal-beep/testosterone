@@ -22,12 +22,12 @@ from testo_core.engine.exit_codes import EngineExitCode  # noqa: F401
 # :func:`__getattr__` resolves them on first access so ``import testo_core``
 # stays under ~50 ms even when SQLAlchemy is installed.
 _LAZY_EXPORTS: dict[str, str] = {
-    "get_repository": "testo_core.db",
-    "reset_repository_cache": "testo_core.db",
-    "create_db_and_tables": "testo_core.db_config",
-    "get_engine": "testo_core.db_config",
-    "reset_engine_cache": "testo_core.db_config",
-    "resolve_database_url": "testo_core.db_config",
+    "get_repository": "testo_core.repository.db",
+    "reset_repository_cache": "testo_core.repository.db",
+    "create_db_and_tables": "testo_core.repository.db_config",
+    "get_engine": "testo_core.repository.db_config",
+    "reset_engine_cache": "testo_core.repository.db_config",
+    "resolve_database_url": "testo_core.repository.db_config",
     "RunRecord": "testo_core.repository.models",
     "RunStatus": "testo_core.repository.models",
 }
