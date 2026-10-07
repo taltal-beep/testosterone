@@ -17,6 +17,7 @@ single anonymous plan called ``default``.
 
 from __future__ import annotations
 
+import logging
 import tomllib
 from collections.abc import Mapping
 from pathlib import Path, PureWindowsPath
@@ -27,6 +28,7 @@ import yaml
 from testo_core.config.errors import ConfigDiscoveryError, ConfigValidationError
 from testo_core.config.schema import (
     DEFAULT_TIER_BY_FRAMEWORK,
+    PARALLEL_FRAMEWORKS,
     SUPPORTED_FRAMEWORKS,
     SUPPORTED_REPORTER_TYPES,
     SUPPORTED_TIERS,
@@ -37,6 +39,8 @@ from testo_core.config.schema import (
     Stage,
     TestosteroneConfig,
 )
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_PLAN_NAME = "default"
 
@@ -358,6 +362,12 @@ def _parse_stage(*, stage_raw: Mapping[str, Any], defaults: Defaults, config_dir
         raise ConfigValidationError(f"stage {name!r}: 'args' must be a string or list.")
 
     workers = int(stage_raw.get("workers", defaults.workers))
+    if "workers" in stage_raw and framework not in PARALLEL_FRAMEWORKS:
+        logger.warning(
+            "stage %r: 'workers' has no effect on framework %r (it runs single-process).",
+            name,
+            framework,
+        )
     timeout_raw = stage_raw.get("timeout_s", defaults.timeout_s)
     timeout_s = float(timeout_raw) if timeout_raw is not None else None
     if_expr = stage_raw.get("if")

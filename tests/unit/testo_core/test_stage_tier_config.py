@@ -77,3 +77,25 @@ def test_tier_rejects_unsupported_value(tmp_path: Path) -> None:
     )
     with pytest.raises(ConfigValidationError, match="unsupported tier"):
         load_config(yml)
+
+
+def test_workers_on_single_process_framework_warns_but_loads(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    yml = tmp_path / "testosterone.yaml"
+    _write_cycle_yaml(
+        yml,
+        stages_yaml="""
+      - name: behave-stage
+        equipment: behave
+        workers: 4
+      - name: behavex-stage
+        equipment: behavex
+        workers: 4
+""",
+    )
+    with caplog.at_level("WARNING", logger="testo_core.config.loader"):
+        cfg = load_config(yml)
+    assert cfg.cycles["my-cycle"].stages[0].workers == 4
+    assert "'behave-stage': 'workers' has no effect on framework 'behave'" in caplog.text
+    assert "behavex-stage" not in caplog.text
