@@ -37,6 +37,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 - The test pyramid (`testo report pyramid`, `/api/v1/runs/{id}/pyramid`) bucketed a run by the tiers in the *current* `testosterone.yaml`, so renaming a stage re-counted old runs as "unit". Run records now store each stage's `tier`; only older records without one fall back to the YAML
+- A `command` stage's `junit_xml:` reports were never imported by `testo run` or the API, so the stage showed 0 tests and PASS. Cycle resolution and the `--workers` override rebuilt each stage without its `junit_xml` and `tier`; they now copy the stage with `dataclasses.replace`
 - Pytest stages ignored the target repo's own pytest config (`pythonpath`, markers) when the target sat inside another pytest project, such as a repo cloned into the testosterone checkout in CI, so tests failed to import the target's code. The adapter passed `--alluredir <path>` as two tokens, and pytest counted the results path when choosing its rootdir; it now passes `--alluredir=<path>`
 - Compare's test-level changes were always empty for two runs of the same cycle, and a run's artifact download returned whichever run of that cycle came last. Run records pointed `snapshot_dir` at the shared `artifacts/<cycle>/` tree, which every run overwrites; each run now keeps its own copy at `static/history/<run_id>/artifacts/`
 - Frontend typecheck errors surfaced by the generated types: `/health/ready` is typed `"ready" | "degraded"` as the API returns, and `StatusPill` handles a `null` status
