@@ -32,7 +32,7 @@ def _config_status_payload(store: InMemoryAiSettingsStore) -> dict[str, object]:
 def get_ai_config_status(
     store: InMemoryAiSettingsStore = Depends(get_ai_settings_store),
 ) -> AiConfigStatusResponse:
-    return AiConfigStatusResponse(**_config_status_payload(store))
+    return AiConfigStatusResponse.model_validate(_config_status_payload(store))
 
 
 @router.put("/ai/config", response_model=AiConfigStatusResponse)
@@ -79,7 +79,7 @@ def update_ai_config(
     else:
         status["configured"] = bool(settings.runtime_api_key)
         status["key_present"] = bool(settings.runtime_api_key)
-    return AiConfigStatusResponse(**status)
+    return AiConfigStatusResponse.model_validate(status)
 
 
 @router.get("/runs/{run_id}/ai-summary", response_model=AiSummaryResponse)

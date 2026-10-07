@@ -25,15 +25,11 @@ Timeouts normalize to return code **124** (exit **3**) and engine exceptions to 
 
 `testo_core/reporting/reporters/factory.py` catches per-reporter exceptions, so a configured integration can be skipped silently after a green run. Fix: an opt-in `reporters_required: true` that maps a reporter failure to exit **3**, plus a `reporter_failed` NDJSON event.
 
-### 3. `mypy testo_api` is not in CI
-
-`mypy testo_core` is clean and blocking. `testo_api` still has type errors (mostly `cycle_execution_manager.py` and `routes/ai.py`) and is not checked in CI yet.
-
-### 4. Sequential-only orchestrator
+### 3. Sequential-only orchestrator
 
 Stages run one at a time (`engine/orchestrator.py`); parallelism today is framework-internal (e.g. BehaveX `--workers`). Opt-in parallel stages need isolated `artifacts/<cycle>/<stage>/` trees, aggregated exit classification and documented resource limits.
 
-### 5. Log reader join timeout
+### 4. Log reader join timeout
 
 `executor.py` calls `reader.join(timeout=2.0)` after the subprocess exits, so a very large final stdout burst could be cut short. Fix: drain until EOF; add an integration test with a large burst.
 
@@ -51,7 +47,7 @@ Stages run one at a time (`engine/orchestrator.py`); parallelism today is framew
 - `--ci` forces a synchronous report archive; a required archive failure exits **3**.
 - `testo_core/persistence/` (`JsonBackend`, `DbBackend`, `composite_backend()`) replaced the persistence stub.
 - MinIO, the pre-v1.1 snapshot reads and the Docker-stack record shape in `history/` were removed in v1.1.
-- `mypy testo_core` reports 0 errors and blocks CI, as does `ruff format --check`.
+- `mypy testo_core testo_api` reports 0 errors and blocks CI, as does `ruff format --check`.
 - Silent-error audit: I/O paths (ReportPortal, Extent, metrics and Allure readers, doctor checks, persistence) catch specific exceptions (`OSError`, `ValueError`, `requests.RequestException`, `jinja2.TemplateError`, `SQLAlchemyError`) and log with `exc_info` instead of passing silently.
 - BehaveX HTML generation failures are logged, appended to `run.log` and set `StageResult.error` (exit code unchanged), so the stage panel and `stage_finished` NDJSON show them.
 - A failed Git trigger evaluation logs a warning and prefixes the snapshot fallback's `reason` with the Git error, so the trigger panel and `cycle_trigger` NDJSON event show it.
