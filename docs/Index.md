@@ -87,5 +87,5 @@ For CI-style machine output, use `testo run --ci` (NDJSON on stdout). See [[QA S
 
 ## Related reading in-repo
 
-- `ARCHITECTURE.md` — system diagram, layers and design decisions; legacy UQO platform (Docker, MinIO, Postgres, Allure Server) at the end
+- `ARCHITECTURE.md` — system diagram, layers and design decisions; storage and design decisions
 - `README.md` — quickstart and infrastructure compose stack
