@@ -1,6 +1,6 @@
 # Publishing Docker Images
 
-[[Index]] · [[V1 Release Roadmap]]
+[Index](../Index.md) · [Publishing to PyPI](Publishing%20to%20PyPI.md) · [Publishing to Artifactory](Publishing%20to%20Artifactory.md)
 
 > **Last updated:** 2026-06-25
 
@@ -23,7 +23,7 @@ The `testo-runner` Docker image is published to GitHub Container Registry (GHCR)
    - Tags with: semver (`1.0.0`), major.minor (`1.0`), major (`1`), commit SHA, and `latest`.
    - Pushes to GHCR.
    - Scans the published image with Trivy for critical vulnerabilities.
-   - Verifies the image runs `uqo run --help` successfully.
+   - Verifies the image runs `testo run --help` successfully.
 
 ## Tagging strategy
 
@@ -67,7 +67,7 @@ services:
 
 ## Related
 
-- [[Publishing to PyPI]] — Python package publishing
-- [[CI-CD Pipeline Setup]] — CI workflow overview
+- [Publishing to PyPI](Publishing%20to%20PyPI.md) — Python package publishing
+- [CI-CD Pipeline Setup](CI-CD%20Pipeline%20Setup.md) — CI workflow overview
 - Workflow file: `.github/workflows/docker-publish.yml`
 - Dockerfile: `Dockerfile.testo-runner`

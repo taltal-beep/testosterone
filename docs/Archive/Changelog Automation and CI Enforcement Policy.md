@@ -2,7 +2,7 @@
 
 ## Decision (WHY)
 
-`CHANGELOG.md` (repo root, [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format) closes [[V1 Release Roadmap#Workstream 6: Documentation & CHANGELOG]] items 6.1–6.5. Two problems beyond "does the file exist": nothing stopped it from going stale, and nothing kept future entries consistent. This spec adds CI enforcement plus an AI-drafted entry step so the file stays current without relying on someone remembering to update it by hand.
+`CHANGELOG.md` (repo root, [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format) closes [V1 Release Roadmap § Workstream 6: Documentation & CHANGELOG](V1%20Release%20Roadmap.md#workstream-6-documentation--changelog) items 6.1–6.5. Two problems beyond "does the file exist": nothing stopped it from going stale, and nothing kept future entries consistent. This spec adds CI enforcement plus an AI-drafted entry step so the file stays current without relying on someone remembering to update it by hand.
 
 ## Current implementation (HOW)
 
@@ -36,7 +36,7 @@ The `## [0.1.0]` entry was adopted from `sprint-4/publish-and-document` (commit 
 
 ## Operator commands
 
-`no-changelog` PR label to skip the changelog-required check on trivial PRs. See [[V1 Release Roadmap#Workstream 6: Documentation & CHANGELOG]], [[Release Management/README]].
+`no-changelog` PR label to skip the changelog-required check on trivial PRs. See [V1 Release Roadmap § Workstream 6: Documentation & CHANGELOG](V1%20Release%20Roadmap.md#workstream-6-documentation--changelog), [Release Management](Release%20Management%20Hub.md).
 
 ---
-**Context & Links:** [[V1 Release Roadmap]], [[Product Roadmap]], [[CI-CD Pipeline Setup]]
+**Context & Links:** [V1 Release Roadmap](V1%20Release%20Roadmap.md), [Product Roadmap](../Roadmap%20&%20Strategy/Product%20Roadmap.md), [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md)

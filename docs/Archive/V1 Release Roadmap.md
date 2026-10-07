@@ -1,6 +1,6 @@
 # V1 Release Roadmap — Task Breakdown
 
-[[Index]] · [[Product Roadmap]] · [[Technical Debt Tracker]]
+[Index](../Index.md) · [Product Roadmap](../Roadmap%20&%20Strategy/Product%20Roadmap.md) · [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md)
 
 > **Created:** 2026-06-24
 > **Goal:** Ship `testo-core` v1.0.0 — a production-ready, published, fully-gated release.
@@ -39,15 +39,15 @@
 
 | # | Task | PR | Priority | Effort | Depends On |
 |---|------|----|----------|--------|------------|
-| 1.1.1 | Review and merge: Fix AI summary refresh data loss and failed-run generation wiring | [PR #22](../../pull/22) | P0 | S | — |
-| 1.1.2 | Review and merge: Harden report archive extraction paths | [PR #28](../../pull/28) | P0 | S | — |
-| 1.1.3 | Review and merge: Harden report artifact path handling | [PR #30](../../pull/30) | P0 | S | 1.1.2 |
+| 1.1.1 | Review and merge: Fix AI summary refresh data loss and failed-run generation wiring | [PR #22](https://github.com/taltal-beep/testosterone/pull/22) | P0 | S | — |
+| 1.1.2 | Review and merge: Harden report archive extraction paths | [PR #28](https://github.com/taltal-beep/testosterone/pull/28) | P0 | S | — |
+| 1.1.3 | Review and merge: Harden report artifact path handling | [PR #30](https://github.com/taltal-beep/testosterone/pull/30) | P0 | S | 1.1.2 |
 
 ### 1.2 Bug Fixes
 
 | # | Task | PR | Priority | Effort | Depends On |
 |---|------|----|----------|--------|------------|
-| 1.2.1 | Review and merge: Fix execution accepted-status race condition | [PR #26](../../pull/26) | P1 | XS | — |
+| 1.2.1 | Review and merge: Fix execution accepted-status race condition | [PR #26](https://github.com/taltal-beep/testosterone/pull/26) | P1 | XS | — |
 | 1.2.2 | Review and merge: Fix sandbox/mock API support restoration | Draft PR | P1 | XS | — |
 | 1.2.3 | Review and merge: Dockerless runner allure analytics fallback | Draft PR | P2 | XS | — |
 
@@ -55,18 +55,18 @@
 
 | # | Task | PR | Priority | Effort | Depends On |
 |---|------|----|----------|--------|------------|
-| 1.3.1 | Review and merge: AI failure summary service coverage | [PR #21](../../pull/21) | P1 | S | 1.1.1 |
-| 1.3.2 | Review and merge: AI failure summary regression coverage (set 1) | [PR #23](../../pull/23) | P1 | S | 1.3.1 |
-| 1.3.3 | Review and merge: AI failure summary regression coverage (set 2) | [PR #24](../../pull/24) | P1 | S | 1.3.1 |
-| 1.3.4 | Review and merge: Execution accepted status coverage | [PR #26](../../pull/26) | P1 | S | 1.2.1 |
-| 1.3.5 | Review and merge: Report archive diff regression coverage (set 1) | [PR #27](../../pull/27) | P1 | S | 1.1.2 |
-| 1.3.6 | Review and merge: Report archive diff regression coverage (set 2) | [PR #29](../../pull/29) | P1 | S | 1.1.2 |
+| 1.3.1 | Review and merge: AI failure summary service coverage | [PR #21](https://github.com/taltal-beep/testosterone/pull/21) | P1 | S | 1.1.1 |
+| 1.3.2 | Review and merge: AI failure summary regression coverage (set 1) | [PR #23](https://github.com/taltal-beep/testosterone/pull/23) | P1 | S | 1.3.1 |
+| 1.3.3 | Review and merge: AI failure summary regression coverage (set 2) | [PR #24](https://github.com/taltal-beep/testosterone/pull/24) | P1 | S | 1.3.1 |
+| 1.3.4 | Review and merge: Execution accepted status coverage | [PR #26](https://github.com/taltal-beep/testosterone/pull/26) | P1 | S | 1.2.1 |
+| 1.3.5 | Review and merge: Report archive diff regression coverage (set 1) | [PR #27](https://github.com/taltal-beep/testosterone/pull/27) | P1 | S | 1.1.2 |
+| 1.3.6 | Review and merge: Report archive diff regression coverage (set 2) | [PR #29](https://github.com/taltal-beep/testosterone/pull/29) | P1 | S | 1.1.2 |
 
 ### 1.4 CI Automation
 
 | # | Task | PR | Priority | Effort | Depends On |
 |---|------|----|----------|--------|------------|
-| 1.4.1 | Review and merge: Claude AI code review workflow | [PR #31](../../pull/31) | P2 | XS | — |
+| 1.4.1 | Review and merge: Claude AI code review workflow | [PR #31](https://github.com/taltal-beep/testosterone/pull/31) | P2 | XS | — |
 
 ---
 
@@ -198,7 +198,7 @@
 
 ## Workstream 6: Documentation & CHANGELOG
 
-**Status (2026-07-01):** 6.1–6.5 complete — `CHANGELOG.md` created at repo root (adopted from `sprint-4/publish-and-document`, extended with commit `#35`), with PR-time enforcement (commitlint + changelog-diff check) and an AI-drafted `[Unreleased]` step on every push to `main`. 6.6–6.9 verified already satisfied — `README.md` has GitHub Action quickstart, GitLab template quickstart, required secrets/variables, and CI troubleshooting sections. See [[Changelog Automation and CI Enforcement Policy]].
+**Status (2026-07-01):** 6.1–6.5 complete — `CHANGELOG.md` created at repo root (adopted from `sprint-4/publish-and-document`, extended with commit `#35`), with PR-time enforcement (commitlint + changelog-diff check) and an AI-drafted `[Unreleased]` step on every push to `main`. 6.6–6.9 verified already satisfied — `README.md` has GitHub Action quickstart, GitLab template quickstart, required secrets/variables, and CI troubleshooting sections. See [Changelog Automation and CI Enforcement Policy](Changelog%20Automation%20and%20CI%20Enforcement%20Policy.md).
 
 **Why:** No CHANGELOG exists. README may lack CI quickstarts. Docs lack "last updated" dates. Release checklists serve as templates but don't record actual sign-offs.
 
@@ -390,9 +390,9 @@ The recommended execution order groups tasks into sprints:
 
 ## Related Notes
 
-- [[Product Roadmap]] — high-level phase delivery narrative
-- [[Technical Debt Tracker]] — inferred debt backlog (items referenced above)
-- [[Release Management/README]] — release gate hub
-- [[Architecture Overview]] — system design
-- [[Deep Dive - Execution Logic]] — engine internals
-- [[UQO Engineering Hub]] — engineering coordination
+- [Product Roadmap](../Roadmap%20&%20Strategy/Product%20Roadmap.md) — high-level phase delivery narrative
+- [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md) — inferred debt backlog (items referenced above)
+- [Release Management](Release%20Management%20Hub.md) — release gate hub
+- [Architecture Overview](../Architecture/Architecture%20Overview.md) — system design
+- [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md) — engine internals
+- [UQO Engineering Hub](UQO%20Engineering%20Hub.md) — engineering coordination

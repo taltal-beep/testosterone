@@ -89,4 +89,4 @@ Exit criteria:
 ---
 
 > [!note] Superseded in part (2026-07-04)
-> The Phase 3 route map (`/runner`, `/history`, `/execution`) was reorganized by the Phase 5 UI redesign: cycles-first navigation, cycle discovery endpoints, and a consolidated Run panel. Old routes redirect. See [[Phase 5 UI Redesign - Cycles-First Navigation]].
+> The Phase 3 route map (`/runner`, `/history`, `/execution`) was reorganized by the Phase 5 UI redesign: cycles-first navigation, cycle discovery endpoints, and a consolidated Run panel. Old routes redirect. See [Phase 5 UI Redesign - Cycles-First Navigation](../Specs%20&%20ADRs/Phase%205%20UI%20Redesign%20-%20Cycles-First%20Navigation.md).

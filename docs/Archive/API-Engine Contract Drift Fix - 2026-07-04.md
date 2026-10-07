@@ -13,7 +13,7 @@ CLI runs (`testo run --cycle`) were unaffected throughout.
 
 ## Root cause
 
-`testo_api/cycle_execution_manager.py` was written against the **unmerged branch `cursor/report-infra-e976a`**, whose world includes `Plan.tags`, `TestosteroneConfig.reporters` (`ReporterSpec`), the full `testo_core/reporting/reporters/` package (`orchestrate.run_configured_reporters`, factory, Allure/Extent/ReportPortal/TestBeats reporters), and a `fail_fast` parameter on `run_plan()`. None of that exists on `main` — only stale `__pycache__/*.pyc` files remained as evidence. The frontend (RunPanel fail-fast toggle, SSE `plan_aborted` type) and the docs ([[Troubleshooting and Error Codes]], [[Deep Dive - Execution Logic]]) already specified the fail-fast contract.
+`testo_api/cycle_execution_manager.py` was written against the **unmerged branch `cursor/report-infra-e976a`**, whose world includes `Plan.tags`, `TestosteroneConfig.reporters` (`ReporterSpec`), the full `testo_core/reporting/reporters/` package (`orchestrate.run_configured_reporters`, factory, Allure/Extent/ReportPortal/TestBeats reporters), and a `fail_fast` parameter on `run_plan()`. None of that exists on `main` — only stale `__pycache__/*.pyc` files remained as evidence. The frontend (RunPanel fail-fast toggle, SSE `plan_aborted` type) and the docs ([Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md), [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md)) already specified the fail-fast contract.
 
 The fourth failure was environmental: framework adapters build argv with bare tool names (`pytest`), resolved via the subprocess `PATH`. When uvicorn is launched directly from `.venv/bin/uvicorn` (no activated venv), stage subprocesses resolved a system-level pytest (Python 3.12 framework install) that lacks the project's dependencies.
 
@@ -24,6 +24,6 @@ The fourth failure was environmental: framework adapters build argv with bare to
 
 ## Follow-ups
 
-- ~~Decide whether to merge or discard `cursor/report-infra-e976a` (reporters subsystem + `reporters:` config schema).~~ **Resolved 2026-07-21** — hand-ported into `main`, see [[Reporters Subsystem Port - 2026-07-21]].
-- CLI `--fail-fast` flag remains a roadmap item ([[Command Reference]] callout) — the engine now supports it, so wiring the flag is trivial.
-- Engine tests for `fail_fast`/`plan_aborted` referenced in [[QA Strategies]] (LC rows) do not actually exist yet; add them.
+- ~~Decide whether to merge or discard `cursor/report-infra-e976a` (reporters subsystem + `reporters:` config schema).~~ **Resolved 2026-07-21** — hand-ported into `main`, see [Reporters Subsystem Port - 2026-07-21](Reporters%20Subsystem%20Port%20-%202026-07-21.md).
+- CLI `--fail-fast` flag remains a roadmap item ([Command Reference](../CLI%20Commands/Command%20Reference.md) callout) — the engine now supports it, so wiring the flag is trivial.
+- Engine tests for `fail_fast`/`plan_aborted` referenced in [QA Strategies](../Testing%20Workflows/QA%20Strategies.md) (LC rows) do not actually exist yet; add them.

@@ -1,92 +1,35 @@
-# Testo — Second Brain Index
+# Testosterone docs
 
-**Testo** (package name: `testo-core`) is the unified quality orchestration CLI for **Testosterone**. It reads `testosterone.yaml`, runs multi-stage test **cycles** (pytest, Behave, BehaveX, and more), collects artifacts under `artifacts/`, optionally archives runs to a database, and generates unified reports (Allure, Extent, ReportPortal, TestBeats).
+Design notes for Testosterone (`testo-core`, CLI `testo`).
+New here? Start with [ARCHITECTURE.md](../ARCHITECTURE.md) and [README.md](../README.md).
 
-This vault is the map of content for the project. Start here, then drill into the linked notes.
+The notes are plain markdown and also open as an Obsidian vault. Dated plans, audits and phase checklists from earlier development are in the [Archive](Archive/README.md).
 
-## Core topics
+## Architecture
 
-| Topic | Note |
-|-------|------|
-| Code layout, engine, adapters | [[Architecture Overview]] |
-| Session init, subprocess loop, concurrency | [[Deep Dive - Execution Logic]] |
-| Every `testo` subcommand, flags, exit codes | [[Command Reference]] |
-| Exit codes, NDJSON errors, debugging playbook | [[Troubleshooting and Error Codes]] |
-| How runs are triggered, executed, and logged | [[QA Strategies]] |
-| Prioritized refactor backlog | [[Technical Debt Tracker]] |
-| AI agent onboarding | [[Agent Context Guide]] |
+- [Architecture Overview](Architecture/Architecture%20Overview.md): modules, engine, adapters, artifact layout, persistence
+- [Deep Dive - Execution Logic](Architecture/Deep%20Dive%20-%20Execution%20Logic.md): session init, the subprocess loop, teardown
 
-## Project Roadmap & Strategy
+## Using the CLI
 
-| Topic | Note |
-|-------|------|
-| Phased delivery (WHY) | [[Product Roadmap]] |
-| V1 release task breakdown | [[V1 Release Roadmap]] |
-| Project audit (2026-06-24) | [[Project Audit - 2026-06-24]] |
-| Publish readiness (2026-07-24) | [[Publish Readiness Assessment - 2026-07-24]] |
-| **Active: v1.0.0 publish plan (2026-09-05)** | [[v1.0.0 Publish Execution Plan - 2026-09-05]] |
-| Report links/artifacts always empty, fix (2026-07-06) | [[Report Links and Artifacts Missing Fix - 2026-07-06]] |
-| Reporters subsystem hand-ported into main (2026-07-21) | [[Reporters Subsystem Port - 2026-07-21]] |
-| Engineering hub | [[UQO Engineering Hub]] |
-| ADRs & deep specs | [[Specs & ADRs/README]] |
+- [Command Reference](CLI%20Commands/Command%20Reference.md): every `testo` command, flag and exit code, and the `testosterone.yaml` schema
+- [Troubleshooting and Error Codes](CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md): exit codes, NDJSON errors, debugging playbook
 
-## Release Management
+## Testing and CI
 
-| Phase | Gate checklist |
-|-------|----------------|
-| Hub | [[Release Management/README]] |
-| 1 Foundation | [[Release Checklist - Phase 1 Foundation]] |
-| 2 CI / Ghost / Runner | [[Release Checklist - Phase 2 CI Integrations]] · [[Release Checklist - Phase 2 Ghost Mode]] · [[Release Checklist - Phase 2 Runner Image]] |
-| 3 UI / Delta / Dashboard | [[Release Checklist - Phase 3 Frontend Migration]] · [[Release Checklist - Phase 3 Delta Engine]] · [[Release Checklist - Phase 3 Unified Dashboard]] |
-| 4 AI | [[Release Checklist - Phase 4 AI and Failure Analysis]] |
-| Delta semantics | [[Delta Comparison Policy]] |
+- [QA Strategies](Testing%20Workflows/QA%20Strategies.md): how runs are defined, triggered, logged, and how the orchestrator tests itself
+- [CI-CD Pipeline Setup](Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md): GitHub Action, GitLab template, runner image, test tiers
+- [E2E Harness Operations Guide](Processes%20&%20Guides/E2E%20Harness%20Operations%20Guide.md): the external E2E harness
+- [GitLab Pages Demo](Processes%20&%20Guides/GitLab%20Pages%20Demo.md): the GitHub and GitLab Pages demo pipeline
 
-## Process & Guides
+## Releasing
 
-| Topic | Note |
-|-------|------|
-| CI integrations | [[CI-CD Pipeline Setup]] |
-| Pages demo on GitHub and GitLab (real CI run + published UI) | [[GitLab Pages Demo]] |
-| Streamlit → React (completed in v1.1) | [[Streamlit to React Migration Guide]] |
-| E2E harness | [[E2E Harness Operations Guide]] |
-| ReportPortal local | [[ReportPortal Local Setup Guide]] |
-| Allure 2 → 3 migration | [[Allure 3 Migration Plan]] |
-| PyPI publishing | [[Publishing to PyPI]] |
-| JFrog Artifactory publishing | [[Publishing to Artifactory]] |
-| Docker image publishing | [[Publishing Docker Images]] |
-| Prompts | [[AI Prompt Engineering Lab]] |
+- [Publishing to PyPI](Processes%20&%20Guides/Publishing%20to%20PyPI.md) · [Publishing Docker Images](Processes%20&%20Guides/Publishing%20Docker%20Images.md) · [Publishing to Artifactory](Processes%20&%20Guides/Publishing%20to%20Artifactory.md)
+- [Changelog policy](changelog_automation_policy.md)
 
-## Quick links
+## Decisions and direction
 
-- Configuration file: `testosterone.yaml` at repo root — [[Command Reference#`testo config`]], [[QA Strategies#Defining work in `testosterone.yaml`]]
-- Sample cycles: `sample-pytests`, `sample-behave`, `behavex-flow-tests` in `testosterone.yaml`
-- Deprecated alias: `uqo` (forwards to `testo`)
-- Optional surfaces: FastAPI (`testo-api`) + React frontend (`frontend/`) — same `CycleRunService` as the CLI
-
-## Typical flows
-
-```bash
-# Discover cycles, run smoke, open Allure
-testo cycles list
-testo run --cycle sample-pytests
-testo report --cycle sample-pytests
-```
-
-For CI-style machine output, use `testo run --ci` (NDJSON on stdout). See [[QA Strategies#CI and streaming output]].
-
-## External references
-
-| Technology | Official documentation |
-|------------|------------------------|
-| Allure Report 3 | https://allurereport.org/docs/v3/ |
-| Allure Report (legacy v2) | https://docs.qameta.io/allure/ |
-| ReportPortal | https://reportportal.io/docs/ |
-| ReportPortal API | https://reportportal.io/docs/api-development/ |
-| Docker Engine | https://docs.docker.com/engine/ |
-| Docker Compose | https://docs.docker.com/compose/ |
-| React | https://react.dev/ |
-
-## Related reading in-repo
-
-- `ARCHITECTURE.md` — system diagram, layers and design decisions; legacy UQO platform (Docker, MinIO, Postgres, Allure Server) at the end
-- `README.md` — quickstart and infrastructure compose stack
+- [Specs & ADRs](Specs%20&%20ADRs/README.md): design decisions that still describe the code
+- [Product Roadmap](Roadmap%20&%20Strategy/Product%20Roadmap.md): current state and next steps
+- [Technical Debt Tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md): open backlog
+- [Agent Context Guide](Prompts%20&%20Snippets/Agent%20Context%20Guide.md): which note to read before changing what (for AI coding agents)

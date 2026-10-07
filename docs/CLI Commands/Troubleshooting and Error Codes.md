@@ -1,8 +1,8 @@
 # Troubleshooting and Error Codes
 
-[[Command Reference]]
+[Command Reference](Command%20Reference.md)
 
-Practical guide for debugging `testo` failures: exit codes, CI payloads, log locations, and step-by-step fixes. Implementation detail: [[Deep Dive - Execution Logic]].
+Practical guide for debugging `testo` failures: exit codes, CI payloads, log locations, and step-by-step fixes. Implementation detail: [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md).
 
 ---
 
@@ -70,7 +70,7 @@ All machine-readable lines go to **stdout** as NDJSON (one JSON object per line)
 {"event":"cycle_trigger","cycle":"sample-pytests","status":"resting","reason":"...","matched":[],"mode":"git"}
 ```
 
-**Dry run skip** (roadmap — no `--dry-run` CLI flag exists yet, see [[Command Reference]]):
+**Dry run skip** (roadmap — no `--dry-run` CLI flag exists yet, see [Command Reference](Command%20Reference.md)):
 
 ```json
 {"event":"dry_run","cycle":"sample-pytests","status":"skipped","reason":"trigger"}
@@ -201,7 +201,7 @@ testo config validate --config path/to/testosterone.yaml
 
 **Fix**
 
-- Correct syntax and keys per [[Architecture Overview#Configuration as the single source of truth]]
+- Correct syntax and keys per [Architecture Overview § Configuration as the single source of truth](../Architecture/Architecture%20Overview.md#configuration-as-the-single-source-of-truth)
 - Supported frameworks: `pytest`, `behave`, `behavex`
 
 ---
@@ -359,9 +359,9 @@ ls node_modules/.bin/allure   # after npm install in repo root
 | `allure serve <dirs>` | `allure open <dirs> --port <n>` (generate + serve) |
 | `allure open <reportDir>` | `allure open <reportDir> --port <n>` |
 
-Hosted UQO reports: `{ALLURE_SERVER_URL}/reports/<run_id>/index.html` (nginx static bundle, not `allure-docker-service`).
+Hosted reports for runs recorded before v1.1: `{ALLURE_SERVER_URL}/reports/<run_id>/index.html` (the optional Allure Server in `docker-compose.yml`).
 
-See also: [Allure Report 3 docs](https://allurereport.org/docs/v3/), [[ReportPortal Local Setup Guide]], [Docker Engine](https://docs.docker.com/engine/).
+See also: [Allure Report 3 docs](https://allurereport.org/docs/v3/), [Docker Engine](https://docs.docker.com/engine/).
 
 ---
 
@@ -386,7 +386,7 @@ find artifacts -name '*-result.json' | head
 - Match `--artifacts` path if non-default
 - Reporters skipped when no Allure JSON exists (see `run_configured_reporters`)
 
-**Run Detail page shows "No artifacts recorded" / "No reports for this run" despite a passing cycle**: fixed 2026-07-06 — `DbBackend.persist()` never set `snapshot_dir` on the `RunRecord`, so `GET /api/v1/runs/{run_id}/reports` always returned `artifact_links: []`. See [[Report Links and Artifacts Missing Fix - 2026-07-06]]. Native Allure/Behave HTML `static_links` still require a `reporters:` block in `testosterone.yaml` — that part is a config gap, not a bug.
+**Run Detail page shows "No artifacts recorded" / "No reports for this run" despite a passing cycle**: fixed 2026-07-06 — `DbBackend.persist()` never set `snapshot_dir` on the `RunRecord`, so `GET /api/v1/runs/{run_id}/reports` always returned `artifact_links: []`. See [Report Links and Artifacts Missing Fix - 2026-07-06](../Archive/Report%20Links%20and%20Artifacts%20Missing%20Fix%20-%202026-07-06.md). Native Allure/Behave HTML `static_links` still require a `reporters:` block in `testosterone.yaml` — that part is a config gap, not a bug.
 
 ---
 
@@ -443,7 +443,7 @@ testo config db show    # if configured
 
 **Fix**
 
-- Pass required flags per [[Command Reference]]
+- Pass required flags per [Command Reference](Command%20Reference.md)
 
 ---
 
@@ -468,7 +468,7 @@ testo run --cycle <name> --stream
 
 ## Related notes
 
-- [[Command Reference]] — flags and subcommands
-- [[Deep Dive - Execution Logic]] — session lifecycle and race conditions
-- [[Technical Debt Tracker]] — known contract gaps and refactors
-- [[QA Strategies]] — triggers and CI patterns
+- [Command Reference](Command%20Reference.md) — flags and subcommands
+- [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md) — session lifecycle and race conditions
+- [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md) — known contract gaps and refactors
+- [QA Strategies](../Testing%20Workflows/QA%20Strategies.md) — triggers and CI patterns

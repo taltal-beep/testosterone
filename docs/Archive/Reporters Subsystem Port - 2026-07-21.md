@@ -2,7 +2,7 @@
 
 ## Symptom
 
-The Run Detail page's "Report Links" section was always empty for every cycle run — `GET /api/v1/runs/{run_id}/reports` returned `static_links: {}` unconditionally. Flagged as an open follow-up in both [[API-Engine Contract Drift Fix - 2026-07-04]] and [[Report Links and Artifacts Missing Fix - 2026-07-06]].
+The Run Detail page's "Report Links" section was always empty for every cycle run — `GET /api/v1/runs/{run_id}/reports` returned `static_links: {}` unconditionally. Flagged as an open follow-up in both [API-Engine Contract Drift Fix - 2026-07-04](API-Engine%20Contract%20Drift%20Fix%20-%202026-07-04.md) and [Report Links and Artifacts Missing Fix - 2026-07-06](Report%20Links%20and%20Artifacts%20Missing%20Fix%20-%202026-07-06.md).
 
 ## Root causes (two, independent)
 

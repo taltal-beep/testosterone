@@ -10,17 +10,17 @@ QA teams need side-by-side comparison of two runs (reliability + performance) wi
 
 | Layer | Detail |
 |-------|--------|
-| Metric semantics | [[Delta Comparison Policy]] |
+| Metric semantics | [Delta Comparison Policy](Delta%20Comparison%20Policy.md) |
 | Core service | `testo_core/services/delta_service.py` |
-| CLI | [[Command Reference#`testo diff` / `testo summary`]] |
+| CLI | [Command Reference § `testo diff` / `testo summary`](../CLI%20Commands/Command%20Reference.md#testo-diff--testo-summary) |
 | API | `GET /api/v1/analytics/delta` |
 | React | `frontend/src/features/compare/` |
 
-Do not duplicate the direction table here — it lives in [[Delta Comparison Policy]].
+Do not duplicate the direction table here — it lives in [Delta Comparison Policy](Delta%20Comparison%20Policy.md).
 
 ## Release gate
 
-[[Release Checklist - Phase 3 Delta Engine]]
+[Release Checklist - Phase 3 Delta Engine](../Archive/Release%20Checklist%20-%20Phase%203%20Delta%20Engine.md)
 
 ---
-**Context & Links:** [[Delta Comparison Policy]], [[Architecture Overview]], [[Product Roadmap#Phase 3: Enterprise UI & Analytics]]
+**Context & Links:** [Delta Comparison Policy](Delta%20Comparison%20Policy.md), [Architecture Overview](../Architecture/Architecture%20Overview.md), [Product Roadmap § Phase 3: Enterprise UI & Analytics](../Roadmap%20&%20Strategy/Product%20Roadmap.md#how-it-got-here)

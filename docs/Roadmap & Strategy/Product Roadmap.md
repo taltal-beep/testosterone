@@ -1,39 +1,31 @@
 # Product Roadmap
 
-<!-- source: notion https://www.notion.so/354d95cd031280ac9d53c6a220d4adc3 -->
+Where Testosterone (`testo-core`, CLI `testo`) stands today and what comes next. Open engineering debt lives in [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md); the per-phase release checklists from the original plan are in the [Archive](../Archive/README.md).
 
-Phased delivery narrative for Testo (UQO). Each phase links to operational release gates and code-derived docs.
+## Where it is now
 
-Completed milestones below use `- [x]` as a delivery record. Open engineering debt lives in [[Technical Debt Tracker]].
+**One engine behind every surface.** `testosterone.yaml` → `CycleRunService` → `engine.run_plan()` → framework adapters → reporting and persistence. The CLI, the FastAPI backend and the CI wrappers all start runs this way; the Docker-based second execution stack and its `uqo run --config` contract were removed after 1.0.0. See [Architecture Overview](../Architecture/Architecture%20Overview.md).
 
-## Phase 1: Decoupling & Distribution (Foundation)
+| Area | State |
+|------|-------|
+| Frameworks | `pytest`, `behave`, `behavex`, plus `command` for any other runner with JUnit XML import ([Command Adapter and JUnit Import](../Specs%20&%20ADRs/Command%20Adapter%20and%20JUnit%20Import%20-%202026-09-25.md)) |
+| CLI | `testo run` (Rich, `--stream`, `--ci` NDJSON), reports, diff/summary, config, doctor/clean/watch/init; exit codes `0`–`4` ([Command Reference](../CLI%20Commands/Command%20Reference.md)) |
+| Storage | SQLite by default, PostgreSQL/MySQL through the repository layer ([Repository Pattern](../Specs%20&%20ADRs/Repository%20Pattern%20-%20Database-Agnostic%20Refactor.md)). Docker and MinIO are not required |
+| UI | React + Vite + Tailwind frontend on the FastAPI `/api/v1` API; frontend types generated from the OpenAPI schema ([Phase 5 UI Redesign](../Specs%20&%20ADRs/Phase%205%20UI%20Redesign%20-%20Cycles-First%20Navigation.md)). The Streamlit prototype was removed |
+| Analytics | Dashboard, run-to-run delta with per-stage and per-test changes ([Delta Comparison Policy](../Specs%20&%20ADRs/Delta%20Comparison%20Policy.md)), test pyramid |
+| AI | Bring-your-own-key failure summaries ([Phase 4 BYOK and Failure Analysis](../Specs%20&%20ADRs/Phase%204%20BYOK%20and%20Failure%20Analysis.md)) |
+| CI | GitHub Action and GitLab template wrapping `testo run --ci` ([CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md)) |
+| Demo | A Pages pipeline runs testosterone on itself and on the deliberately broken fake-api app, then publishes the React UI as a read-only snapshot ([GitLab Pages Demo](../Processes%20&%20Guides/GitLab%20Pages%20Demo.md)) |
+| Distribution | 1.0.0 published to PyPI (`testo-core`), GHCR (`testo-runner`) and, when configured, JFrog Artifactory |
 
-Before adding features, the system must install without forcing new infrastructure.
+## Next
 
-- [x] **Database adapter pattern** — `Repository` interface with SQLite, PostgreSQL, and MySQL adapters so teams point Testo at an existing DB via config. See [[Repository Pattern - Database-Agnostic Refactor]] and [[Architecture Overview]]. Gate: [[Release Checklist - Phase 1 Foundation]].
-- [x] **Python package (PyPI)** — `testo_core` via `pyproject.toml`; `pip install testo-core`. See [[uqo-core Library Packaging Plan]]. Gate: [[Release Checklist - Phase 1 Foundation]].
-- [x] **Headless CLI** — `testo run` / `uqo run` with JSON/exit codes independent of UI. See [[Command Reference]], [[Deep Dive - Execution Logic]]. Gate: [[Release Checklist - Phase 1 Foundation]].
+- **API auth token.** `testo-api` binds `127.0.0.1` and has no authentication, which is fine for a local tool. Before it runs anywhere shared it needs a token and an allow-list of target repos.
+- **Parallel stages.** Stages run sequentially; only BehaveX parallelizes internally. Opt-in parallel stages need isolated per-stage artifact trees and aggregated exit classification.
+- **Regroup `testo_core` root modules.** `report_generator.py`, `metrics*.py`, `integrations.py`, `triggers.py`, `db*.py`, `s3_client.py` and friends sit at the package root; move them under the existing subpackages.
+- **Retire pre-v1.1 history reads.** Drop the MinIO snapshot lookups (`history/s3_snapshots.py`) and MinIO from `docker-compose.yml` once old records no longer matter.
+- **Smaller items** (signal-aware exit codes, reporter failure policy, `mypy testo_api` in CI): see [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md).
 
-## Phase 2: Drop-In CI/CD
+## How it got here
 
-- [x] **Pre-packaged CI** — GitHub Action + GitLab template (`uses: …/uqo-action@v1`). See [[CI-CD Pipeline Setup]]. Gate: [[Release Checklist - Phase 2 CI Integrations]].
-- [x] **Ghost mode** — CI auto-detection, machine-readable stdout, DB/S3 sync. See [[QA Strategies#CI and streaming output]], [[CI-CD Pipeline Setup#Ghost mode (CI execution policy)]]. Gate: [[Release Checklist - Phase 2 Ghost Mode]].
-- [x] **Runner image** — Pre-built `uqo-runner` Docker image. Gate: [[Release Checklist - Phase 2 Runner Image]].
-
-## Phase 3: Enterprise UI & Analytics
-
-- [x] **React frontend** — FastAPI backend + React UI; Streamlit rollback. See [[Streamlit to React Migration Guide]], [[Architecture Overview]]. Gate: [[Release Checklist - Phase 3 Frontend Migration]].
-- [x] **Delta comparison engine** — Compare two `run_id`s with deterministic classifications. See [[Delta Comparison Policy]], [[Command Reference#`testo diff` / `testo summary`]], [[Phase 3 Delta Comparison Engine Plan]]. Gate: [[Release Checklist - Phase 3 Delta Engine]].
-- [x] **Unified dashboard** — Single health overview with drill-down to Allure and other reports. See [[Phase 3 Unified Dashboard Plan]]. Gate: [[Release Checklist - Phase 3 Unified Dashboard]].
-
-## Phase 4: Next-Gen Capabilities
-
-- [x] **BYOK AI** — User-supplied model keys; summarization in engine. See [[Phase 4 BYOK and Failure Analysis]]. Gate: [[Release Checklist - Phase 4 AI and Failure Analysis]].
-- [x] **Context-aware failure analysis** — Logs/traces → short human summary on Run Details. See [[Phase 4 BYOK and Failure Analysis#Context-aware failure analysis]]. Gate: [[Release Checklist - Phase 4 AI and Failure Analysis]].
-
-## Historical context
-
-Pre-phase week-by-week infrastructure plan: [[Historical - General Task Forward 2.0]].
-
----
-**Context & Links:** [[Index]], [[UQO Engineering Hub]], [[Release Management/README]], [[Specs & ADRs/README]]
+The project started as "UQO", a Docker-and-Streamlit platform, and was delivered in four phases: packaging and a database-agnostic repository layer; drop-in CI wrappers; the React UI, delta engine and unified dashboard; then BYOK AI failure analysis. Each phase had a release checklist; those checklists and the dated plans and audits behind them are kept in the [Archive](../Archive/README.md).

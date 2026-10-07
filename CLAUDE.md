@@ -1,6 +1,6 @@
 # Testosterone (testo-core)
 
-Before planning, debugging, or implementing anything in this repo, read [docs/Index.md](docs/Index.md) first — it's the entry point to the Obsidian second-brain vault under `docs/` and links to Architecture, CLI Commands, Release Management, Roadmap & Strategy, and Specs & ADRs notes. For AI-agent-specific conventions (which doc to check before touching what), read [docs/Prompts & Snippets/Agent Context Guide.md](docs/Prompts%20&%20Snippets/Agent%20Context%20Guide.md).
+Before planning, debugging, or implementing anything in this repo, read [docs/Index.md](docs/Index.md) first — it's the entry point to the Obsidian second-brain vault under `docs/` and links to Architecture, CLI Commands, Roadmap & Strategy, and Specs & ADRs notes (dated plans and phase checklists live in `docs/Archive/`). For AI-agent-specific conventions (which doc to check before touching what), read [docs/Prompts & Snippets/Agent Context Guide.md](docs/Prompts%20&%20Snippets/Agent%20Context%20Guide.md).
 
 ## Quick facts
 

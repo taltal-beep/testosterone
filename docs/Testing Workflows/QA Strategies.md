@@ -2,7 +2,7 @@
 
 How Testo **triggers**, **executes**, and **logs** test suites today — from YAML cycles through artifacts, reporters, and optional database archives.
 
-Related: [[Architecture Overview]], [[Command Reference]], [[Index]].
+Related: [Architecture Overview](../Architecture/Architecture%20Overview.md), [Command Reference](../CLI%20Commands/Command%20Reference.md), [Index](../Index.md).
 
 ---
 
@@ -177,8 +177,6 @@ If `reporters:` is set or `--reporter` is passed, `run_configured_reporters()` r
 | ReportPortal | https://reportportal.io/docs/ |
 | ReportPortal agents | https://reportportal.io/docs/log-data-in-reportportal/test-framework-integration/ |
 
-Local ReportPortal stack: [[ReportPortal Local Setup Guide]].
-
 ### Database archive (optional)
 
 With `testo-core[db]` and `database.url` (or `DATABASE_URL`):
@@ -223,7 +221,7 @@ testo run --cycle sample-pytests --dry-run --ci
 
 Emits `dry_run_stage` objects with `argv`, `cwd`, `framework` without executing.
 
-**CI:** use `testo run --ci` so the CLI stays non-interactive (NDJSON on stdout, `plan_finished` last). Run records written in CI carry `ci_provider`, `ci_pipeline_id`, `ci_job_id`, `ci_commit_sha` and `ci_ref_name` (detected from the CI environment by `DbBackend`). Wrappers: [[CI-CD Pipeline Setup]].
+**CI:** use `testo run --ci` so the CLI stays non-interactive (NDJSON on stdout, `plan_finished` last). Run records written in CI carry `ci_provider`, `ci_pipeline_id`, `ci_job_id`, `ci_commit_sha` and `ci_ref_name` (detected from the CI environment by `DbBackend`). Wrappers: [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md).
 
 ---
 
@@ -283,7 +281,7 @@ Cycles in `testosterone.yaml` point `target_repo: sample_target_repo` for demos 
 
 ## Testing the orchestrator itself
 
-The repo’s own QA lives under `tests/`. The **modern `testo run` execution path** (CLI → runner → orchestrator → executor) has a dedicated suite aligned with [[Deep Dive - Execution Logic]] and [[Troubleshooting and Error Codes]].
+The repo’s own QA lives under `tests/`. The **modern `testo run` execution path** (CLI → runner → orchestrator → executor) has a dedicated suite aligned with [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md) and [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md).
 
 ### Layout
 
@@ -319,7 +317,7 @@ The repo’s own QA lives under `tests/`. The **modern `testo run` execution pat
 #### B. CLI flags
 
 > [!note] Roadmap flags
-> `--tag`, `--fail-fast`, `--dry-run` and `--reporter` are **not implemented CLI flags** (see the correction note in [[Command Reference]]). The engine already supports `fail_fast` (exposed via the API layer); the CLI flags remain roadmap items. Rows below marked *Gap* become testable once the flags land.
+> `--tag`, `--fail-fast`, `--dry-run` and `--reporter` are **not implemented CLI flags** (see the correction note in [Command Reference](../CLI%20Commands/Command%20Reference.md)). The engine already supports `fail_fast` (exposed via the API layer); the CLI flags remain roadmap items. Rows below marked *Gap* become testable once the flags land.
 
 | ID | Scenario | Test location |
 |----|----------|---------------|
@@ -412,14 +410,13 @@ Install step in CI: `pip install -e ".[dev]"`.
 
 ### Notes
 
-- Tests **lock current exit-code behavior**, including known misclassifications documented in [[Troubleshooting and Error Codes#Classification logic]] (e.g. SIGKILL rc=137 → exit **1**); fixing those is a separate refactor.
-- 2026-07-04: the suite was rebuilt after the original files were lost uncommitted, and two documented contract pieces were restored in the engine at the same time: stage timeouts now normalise to `returncode=124` (previously the raw signal code leaked through, classifying timeouts as exit 1), and `classify_exit_code` gained the `internal_failure` flag so orchestrator-caught exceptions exit **4** instead of **1**. See [[Engine Test Suite Rebuild - 2026-07-04]].
+- Tests **lock current exit-code behavior**, including known misclassifications documented in [Troubleshooting and Error Codes § Classification logic](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md#classification-logic) (e.g. SIGKILL rc=137 → exit **1**); fixing those is a separate refactor.
+- 2026-07-04: the suite was rebuilt after the original files were lost uncommitted, and two documented contract pieces were restored in the engine at the same time: stage timeouts now normalise to `returncode=124` (previously the raw signal code leaked through, classifying timeouts as exit 1), and `classify_exit_code` gained the `internal_failure` flag so orchestrator-caught exceptions exit **4** instead of **1**. See [Engine Test Suite Rebuild - 2026-07-04](../Archive/Engine%20Test%20Suite%20Rebuild%20-%202026-07-04.md).
 - `CIRenderer` stdout omits `error` on `stage_finished`; the artifact `events.ndjson` mirror includes it — tests assert both surfaces where relevant.
-- Use [[Command Reference]] for operator-facing commands; this section is for contributors validating engine changes.
+- Use [Command Reference](../CLI%20Commands/Command%20Reference.md) for operator-facing commands; this section is for contributors validating engine changes.
 
 ## Related operational docs
 
-- [[E2E Harness Operations Guide]] — tiered E2E harness for this repo
-- [[Release Management/README]] — phase release checklists
-- [[CI-CD Pipeline Setup]] — GitHub Action / GitLab template
-- [[Product Roadmap]] — phased WHY
+- [E2E Harness Operations Guide](../Processes%20&%20Guides/E2E%20Harness%20Operations%20Guide.md) — tiered E2E harness for this repo
+- [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md) — GitHub Action / GitLab template
+- [Product Roadmap](../Roadmap%20&%20Strategy/Product%20Roadmap.md) — current state and next steps
