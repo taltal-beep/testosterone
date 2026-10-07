@@ -40,7 +40,12 @@ def _completed(
 
 
 def _session(
-    *, run_id: str, created_at: float, returncode: int, status: RunStatus
+    *,
+    run_id: str,
+    created_at: float,
+    returncode: int,
+    status: RunStatus,
+    cycle: str | None = "smoke",
 ) -> RunSessionView:
     return RunSessionView(
         run_id=run_id,
@@ -56,6 +61,7 @@ def _session(
         links_under_static={
             "behavex": "/history/run-x/allure_reports/behavex/index.html",
         },
+        cycle=cycle,
     )
 
 
@@ -86,6 +92,8 @@ def test_dashboard_overview_uses_existing_run_and_delta_services(
     overview = service.get_overview(recent_limit=2)
 
     assert overview.headline_kpis.latest_run_id == "run-current"
+    assert overview.headline_kpis.cycle == "smoke"
+    assert overview.headline_kpis.baseline_run_id == "run-baseline"
     assert overview.headline_kpis.health_pct == 98.0
     assert overview.trend_health.direction == "up"
     assert overview.trend_failed_count.direction == "down"
@@ -118,3 +126,66 @@ def test_dashboard_recent_runs_validates_limit() -> None:
     service = DashboardService(run_sessions_loader=lambda limit: [], run_lookup=lambda _: None)
     with pytest.raises(ValueError):
         service.get_recent_runs(limit=0)
+
+
+def test_dashboard_baseline_and_compare_links_stay_within_the_same_cycle() -> None:
+    sessions = [
+        _session(run_id="a-2", created_at=3.0, returncode=0, status=RunStatus.COMPLETED, cycle="a"),
+        _session(run_id="b-1", created_at=2.0, returncode=1, status=RunStatus.FAILED, cycle="b"),
+        _session(run_id="a-1", created_at=1.0, returncode=0, status=RunStatus.COMPLETED, cycle="a"),
+    ]
+    runs = {
+        "a-2": _completed(run_id="a-2", health_pct=100.0, failed=0, wall_duration_ms=1000.0),
+        "b-1": _completed(run_id="b-1", health_pct=50.0, failed=5, wall_duration_ms=9000.0),
+        "a-1": _completed(run_id="a-1", health_pct=100.0, failed=0, wall_duration_ms=1000.0),
+    }
+    service = DashboardService(
+        run_sessions_loader=lambda limit: sessions[:limit],
+        run_lookup=lambda run_id: runs.get(run_id),
+        delta_service_factory=lambda: DeltaComparisonService(
+            run_lookup=lambda run_id: runs.get(run_id)
+        ),
+    )
+
+    overview = service.get_overview(recent_limit=3)
+
+    assert overview.headline_kpis.cycle == "a"
+    assert overview.headline_kpis.baseline_run_id == "a-1"
+    # Against b-1 the health would read as "up"; against a-1 nothing changed.
+    assert overview.trend_health.direction == "flat"
+    assert overview.trend_duration.direction == "flat"
+    expected_links = ["/compare?current_run_id=a-2&baseline_run_id=a-1", None, None]
+    assert [r.compare_url for r in overview.recent_runs] == expected_links
+    assert [r.compare_url for r in service.get_recent_runs(limit=2)] == expected_links[:2]
+
+
+def test_dashboard_first_run_of_a_cycle_has_no_baseline_but_is_not_degraded() -> None:
+    sessions = [
+        _session(run_id="b-1", created_at=2.0, returncode=0, status=RunStatus.COMPLETED, cycle="b"),
+        _session(run_id="a-1", created_at=1.0, returncode=0, status=RunStatus.COMPLETED, cycle="a"),
+    ]
+    run = _completed(run_id="b-1", health_pct=100.0, failed=0, wall_duration_ms=1000.0)
+    service = DashboardService(
+        run_sessions_loader=lambda limit: sessions[:limit],
+        run_lookup=lambda run_id: run if run_id == "b-1" else None,
+    )
+
+    overview = service.get_overview()
+
+    assert overview.headline_kpis.baseline_run_id is None
+    assert overview.trend_health.direction == "unknown"
+    assert overview.data_freshness.degraded is False
+    assert overview.data_freshness.notes == ("no_previous_run_of_cycle",)
+
+
+def test_dashboard_never_pairs_runs_without_a_recorded_cycle() -> None:
+    sessions = [
+        _session(run_id="x", created_at=2.0, returncode=0, status=RunStatus.COMPLETED, cycle=None),
+        _session(run_id="y", created_at=1.0, returncode=0, status=RunStatus.COMPLETED, cycle=None),
+    ]
+    service = DashboardService(
+        run_sessions_loader=lambda limit: sessions[:limit], run_lookup=lambda _: None
+    )
+
+    assert [r.compare_url for r in service.get_recent_runs(limit=2)] == [None, None]
+    assert service.get_overview().headline_kpis.baseline_run_id is None
