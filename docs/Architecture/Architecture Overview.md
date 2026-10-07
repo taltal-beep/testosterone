@@ -145,7 +145,7 @@ The collector and `testo report` both assume this layout. See `testo_core/report
 
 ## Test pyramid
 
-Each `Stage` carries a `tier: unit | integration | e2e` (`testo_core/config/schema.py`), explicit in `testosterone.yaml` or inferred from `equipment` (pytest→unit, behave→integration, behavex→e2e). `testo_core/reporting/pyramid_data.py::build_pyramid_model` sums each stage's `total_tests` (from the run's existing `stage_health`, computed by `testo_core/persistence/health.py::compute_stage_health`) into its tier bucket, producing a `PyramidModel(unit, integration, e2e)`.
+Each `Stage` carries a `tier: unit | integration | e2e` (`testo_core/config/schema.py`), explicit in `testosterone.yaml` or inferred from `equipment` (pytest→unit, behave→integration, behavex→e2e). `testo_core/reporting/pyramid_data.py::build_pyramid_model` sums each stage's `total_tests` (from the run's existing `stage_health`, computed by `testo_core/persistence/health.py::compute_stage_health`) into its tier bucket, producing a `PyramidModel(unit, integration, e2e)`. The tier is recorded on each stage row of the run record when the run executes (`StageResult.tier`, persisted by the JSON and DB backends), so renaming or re-tiering a stage later doesn't re-bucket old runs. Only records written before tiers were persisted fall back to the current `testosterone.yaml`.
 
 `testo_core/reporting/pyramid_viz.py` classifies the shape (`HEALTHY`, `TOP_HEAVY`, `MID_BULGE`, `IRREGULAR`) and renders it as ASCII. Reached via `testo report pyramid RUN_ID` ([[Command Reference#testo report]]) and, from the API/UI side, `GET /api/v1/runs/{id}/pyramid` feeding a Run Detail visualization — see the "CLI-UI Parity" note under Specs & ADRs for why this existed as dead code before 2026-07-23.
 

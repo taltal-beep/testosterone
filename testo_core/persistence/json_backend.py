@@ -41,6 +41,7 @@ class JsonBackend:
                     {
                         "name": s.stage_name,
                         "framework": s.framework,
+                        "tier": s.tier,
                         "returncode": int(s.returncode),
                         "duration_s": s.duration_s,
                         "log_path": str(s.log_path) if s.log_path else None,
