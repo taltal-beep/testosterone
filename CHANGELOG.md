@@ -36,6 +36,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `testo_core/reporting/allure_delta_transform.py`, `allure_history_serve.py` and `allure_summary_widgets.py`: unreferenced modules that could not be imported (they depended on functions no longer in `services/report_archive_diff.py`)
 
 ### Fixed
+- `GET /api/v1/health/ready` reported `degraded` (and the UI header said "Degraded") on every install without MinIO. MinIO only serves pre-v1.1 report snapshots, so it is now checked only when `MINIO_ENDPOINT` or its credentials are set
 - `command` stages with `junit_xml:` reported 0 tests in `testo run` and API runs: cycle resolution and the `--workers` override rebuilt each stage field by field and dropped `junit_xml` and `tier`. Both now copy the whole stage, and a regression test covers every `Stage` field
 - Pytest stages ignored the target repo's own pytest config (`pythonpath`, markers) when the target sat inside another pytest project, such as a repo cloned into the testosterone checkout in CI, so tests failed to import the target's code. The adapter passed `--alluredir <path>` as two tokens, and pytest counted the results path when choosing its rootdir; it now passes `--alluredir=<path>`
 - Compare's test-level changes were always empty for two runs of the same cycle, and a run's artifact download returned whichever run of that cycle came last. Run records pointed `snapshot_dir` at the shared `artifacts/<cycle>/` tree, which every run overwrites; each run now keeps its own copy at `static/history/<run_id>/artifacts/`
