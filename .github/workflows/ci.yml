@@ -3,7 +3,7 @@ name: ci
 # Unified CI/CD pipeline: format -> test -> deploy
 #
 # Stages:
-#   format               ruff lint + ruff format check + mypy (all blocking)
+#   format               ruff lint + ruff format check + mypy on testo_core and testo_api (all blocking)
 #   test                 fast required pytest suite with the coverage gate (folds in
 #                        the old pr-fast workflow); uploads coverage.xml
 #   frontend             React dashboard: typecheck, generated API types up to date,
@@ -53,10 +53,8 @@ jobs:
         run: ruff check --output-format=github .
       - name: Ruff format check
         run: ruff format --check --diff .
-      # Legacy Docker-stack modules are excluded in [tool.mypy.overrides]
-      # until they are removed.
       - name: mypy
-        run: mypy testo_core
+        run: mypy testo_core testo_api
 
   test:
     name: test (fast required)
