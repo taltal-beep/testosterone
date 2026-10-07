@@ -23,7 +23,7 @@ The `testo-runner` Docker image is published to GitHub Container Registry (GHCR)
    - Tags with: semver (`1.0.0`), major.minor (`1.0`), major (`1`), commit SHA, and `latest`.
    - Pushes to GHCR.
    - Scans the published image with Trivy for critical vulnerabilities.
-   - Verifies the image runs `uqo run --help` successfully.
+   - Verifies the image runs `testo run --help` successfully.
 
 ## Tagging strategy
 

@@ -14,9 +14,8 @@ The repo ships:
 All of them start runs through the same engine. See [ARCHITECTURE.md](ARCHITECTURE.md) for how
 the pieces fit.
 
-> **Deprecated:** the `uqo` command still works as an alias for `testo` and prints a notice.
-> The Streamlit UI, the `uqo run --config` YAML format and the Docker-based headless runner
-> were removed in v1.1; see [Migrating from v1.0](#migrating-from-v10).
+> The v1.0 `uqo` command, the Streamlit UI, the `uqo run --config` YAML format and the
+> Docker-based headless runner were removed; see [Migrating from v1.0](#migrating-from-v10).
 
 ## Quickstart
 

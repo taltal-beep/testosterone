@@ -27,7 +27,6 @@ dependencies = [
 
 [project.scripts]
 testo = "testo_core.cli.app:main"
-uqo = "testo_core.cli.deprecated:main"
 testo-api = "testo_api.main:run"
 
 [project.optional-dependencies]
