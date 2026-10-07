@@ -10,6 +10,7 @@ __pycache__/
 logs/
 artifacts/
 static/
+testo_history.db
 uqo_history.db
 tests/
 docs/

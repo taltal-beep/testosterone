@@ -1,9 +1,8 @@
 """Typed views of a stored run, decoupled from the ``RunRecord.metadata_`` JSON shape.
 
-Two record shapes exist: engine runs (written by ``DbBackend``: ``exit_code``,
-``duration_s``, ``stages``) and pre-v1.1 headless-runner runs (``returncode``,
-``wall_duration_ms``, one ``test_kind`` per framework). :func:`view_from_record`
-normalises both, so nothing above this module needs to know about either.
+Records are written by :class:`~testo_core.persistence.db_backend.DbBackend`
+(``exit_code``, ``duration_s``, ``stages``, ...). :func:`view_from_record` maps that
+JSON onto typed fields, so nothing above this module depends on the raw keys.
 """
 
 from __future__ import annotations
@@ -59,19 +58,8 @@ class RunSessionView:
     cycle: str | None = None
 
 
-def returncode_from_metadata(md: dict[str, Any]) -> int:
-    """Engine runs store ``exit_code``/``aggregate_returncode``; pre-v1.1 runs store ``returncode``."""
-    for key in ("returncode", "aggregate_returncode", "exit_code"):
-        value = md.get(key)
-        if value is not None:
-            return int(value)
-    return 0
-
-
 def wall_duration_ms_from_metadata(md: dict[str, Any]) -> float:
-    """Engine runs store ``duration_s``; pre-v1.1 runs store ``wall_duration_ms``."""
-    if md.get("wall_duration_ms") is not None:
-        return float(md["wall_duration_ms"])
+    """``duration_s`` in milliseconds, else ``finished_at - started_at``."""
     if md.get("duration_s") is not None:
         return max(0.0, float(md["duration_s"]) * 1000.0)
     started, finished = md.get("started_at"), md.get("finished_at")
@@ -117,7 +105,7 @@ def view_from_record(record: RunRecord) -> CompletedRunView | None:
         finished_at=float(md.get("finished_at") or 0.0),
         test_kind=str(md.get("test_kind") or "unknown"),
         cycle=_optional_str(md, "plan"),
-        returncode=returncode_from_metadata(md),
+        returncode=int(md.get("exit_code") or 0),
         wall_duration_ms=wall_duration_ms_from_metadata(md),
         metrics_duration_ms=_optional_int(md, "metrics_duration_ms"),
         total_tests=_optional_int(md, "total_tests"),

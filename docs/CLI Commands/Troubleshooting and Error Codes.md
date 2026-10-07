@@ -449,7 +449,7 @@ testo config db show    # if configured
 
 ## Removed: `uqo run` headless contract
 
-v1.0 shipped a second CLI contract, `uqo run --config <runs.yaml>` with `--ghost`, `--json` and `--stream-json`, backed by a Docker-based runner. It was removed in v1.1: `uqo` now forwards to `testo`, and CI integrations use `testo run --cycle <name> --ci` (NDJSON events above, `plan_finished` last). Exit codes `0`–`4` mean the same thing in both.
+v1.0 shipped a second CLI contract, `uqo run --config <runs.yaml>` with `--ghost`, `--json` and `--stream-json`, backed by a Docker-based runner. It was removed, together with the `uqo` command itself; CI integrations use `testo run --cycle <name> --ci` (NDJSON events above, `plan_finished` last). Exit codes `0`–`4` mean the same thing in both.
 
 ---
 

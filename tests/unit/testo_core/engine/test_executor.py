@@ -110,7 +110,7 @@ def test_allure_results_dir_is_wiped_between_runs(
     assert not stale.exists()
 
 
-def test_stage_env_carries_extra_env_and_uqo_variables(
+def test_stage_env_carries_extra_env_and_testo_variables(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     use_echo_adapter(monkeypatch)
@@ -119,9 +119,9 @@ def test_stage_env_carries_extra_env_and_uqo_variables(
             "--print-env",
             "STAGE_TOKEN",
             "--print-env",
-            "UQO_LAST_TEST_TYPE",
+            "TESTO_LAST_TEST_TYPE",
             "--print-env",
-            "UQO_SHARED_ALLURE_RESULTS_DIR",
+            "TESTO_SHARED_ALLURE_RESULTS_DIR",
         ),
         extra_env=(("STAGE_TOKEN", "s3cr3t"),),
     )
@@ -129,9 +129,9 @@ def test_stage_env_carries_extra_env_and_uqo_variables(
     result = run_stage(stage, plan_name="demo", artifacts_root=tmp_path)
 
     assert "STAGE_TOKEN=s3cr3t" in result.output_tail
-    assert "UQO_LAST_TEST_TYPE=pytest" in result.output_tail
+    assert "TESTO_LAST_TEST_TYPE=pytest" in result.output_tail
     results_dir = (tmp_path / "demo" / "echo-stage" / "allure-results" / "echo").resolve()
-    assert f"UQO_SHARED_ALLURE_RESULTS_DIR={results_dir}" in result.output_tail
+    assert f"TESTO_SHARED_ALLURE_RESULTS_DIR={results_dir}" in result.output_tail
 
 
 def test_parent_env_seam_replaces_os_environ(
@@ -173,6 +173,19 @@ def test_missing_binary_returns_127_with_error(
     assert result.timed_out is False
     assert result.error is not None and "executable not found" in result.error
     assert result.command == ("testo-missing-binary-9c2f4e",)
+
+
+def test_stage_result_records_the_stage_tier(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The run record keeps the tier the stage ran with, so the test pyramid
+    # doesn't depend on whatever testosterone.yaml says later.
+    use_echo_adapter(monkeypatch)
+    stage = Stage(name="flows", framework="pytest", target_repo=Path("."), tier="e2e")
+
+    result = run_stage(stage, plan_name="demo", artifacts_root=tmp_path)
+
+    assert result.tier == "e2e"
 
 
 def test_timeout_kills_stage_and_returns_124(

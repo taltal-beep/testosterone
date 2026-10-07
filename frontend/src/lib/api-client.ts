@@ -46,10 +46,26 @@ export type HealthReadyResponse = Schemas["HealthReadyResponse"];
 
 export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
+// Only needed when the API runs with TESTO_API_TOKEN (it then rejects writes without
+// it). Set at build time, or at runtime with localStorage.setItem("testo.apiToken", …).
+function apiToken(): string | null {
+  if (import.meta.env.VITE_TESTO_API_TOKEN) return import.meta.env.VITE_TESTO_API_TOKEN;
+  try {
+    return localStorage.getItem("testo.apiToken");
+  } catch {
+    return null; // storage disabled (privacy mode, sandboxed iframe)
+  }
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = apiToken();
   const resp = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...init
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers as Record<string, string> | undefined),
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    }
   });
   if (!resp.ok) {
     // The API answers errors with {error: {code, message}}; surfacing that message
