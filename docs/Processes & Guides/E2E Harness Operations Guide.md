@@ -1,3 +1,10 @@
+---
+type: guide
+status: current
+created: 2026-05-03
+updated: 2026-10-07
+---
+
 # E2E Harness Operations
 
 This document defines deterministic execution and cleanup for the tiered E2E harness.

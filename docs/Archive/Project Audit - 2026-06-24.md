@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # Project Audit — 2026-06-24
 
 [Index](../Index.md) · [Product Roadmap](../Roadmap%20&%20Strategy/Product%20Roadmap.md) · [V1 Release Roadmap](V1%20Release%20Roadmap.md) · [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md)

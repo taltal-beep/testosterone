@@ -1,3 +1,10 @@
+---
+type: architecture
+status: current
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # Deep Dive — Execution Logic
 
 [Architecture Overview](Architecture%20Overview.md)
@@ -17,7 +24,7 @@ Every run uses **host subprocesses** — no Docker. The Docker-based execution s
 | Execution unit | **Cycle** (plan) → ordered **stages** |
 | Stage runtime | One `subprocess.Popen` per stage |
 | Stage ordering | **Strictly sequential** in `run_plan()` |
-| Parallelism | Framework-internal only, via `workers` (BehaveX; pytest with pytest-xdist) — see [[#Framework level — optional]] |
+| Parallelism | Framework-internal only, via `workers` (BehaveX; pytest with pytest-xdist) — see [Framework level](#framework-level--optional) |
 | Durability | `artifacts/<cycle>/` — logs, NDJSON events, Allure JSON |
 | Exit codes | `EngineExitCode` 0–4 via `classify_exit_code()` |
 

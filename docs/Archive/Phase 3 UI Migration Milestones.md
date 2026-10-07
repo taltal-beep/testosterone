@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # Phase 3 UI Migration Milestones (Streamlit → React + FastAPI)
 
 This document is the execution checklist for migrating the Testo UI from the Streamlit prototype (`testo_ui/streamlit_app.py`) to a decoupled React SPA (`frontend/`) backed by FastAPI (`testo_api/`), while keeping `testo_core` as the single source of truth for orchestration and preserving CI/NDJSON contracts.

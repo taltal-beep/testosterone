@@ -1,3 +1,10 @@
+---
+type: reference
+status: current
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # Command Reference
 
 Entry point: **`testo`** (`pyproject.toml` → `testo_core.cli.app:main`).

@@ -1,3 +1,10 @@
+---
+type: tracker
+status: current
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # Technical Debt Tracker
 
 [Index](../Index.md)

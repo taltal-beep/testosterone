@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-05-02
+updated: 2026-10-07
+---
+
 # Phase 4 Release Checklist (BYOK AI + Failure Summaries)
 
 This checklist gates rollout of BYOK AI integration and run failure summaries.

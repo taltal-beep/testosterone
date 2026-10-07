@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-05-02
+updated: 2026-10-07
+---
+
 # Phase 3 Release Checklist (Delta Comparison Engine)
 
 This checklist gates the merge of Phase 3 delta analytics across core, API, and React.

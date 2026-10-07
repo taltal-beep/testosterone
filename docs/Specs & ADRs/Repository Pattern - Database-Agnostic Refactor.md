@@ -1,3 +1,10 @@
+---
+type: spec
+status: current
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # Repository Pattern — Database-Agnostic Refactor
 
 <!-- source: notion https://www.notion.so/354d95cd031280a0b949f5d011bab26b -->

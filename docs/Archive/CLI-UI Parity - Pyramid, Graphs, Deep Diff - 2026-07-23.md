@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-07-23
+updated: 2026-10-07
+---
+
 # CLI-UI Parity — Pyramid, Graphs, Deep Diff — 2026-07-23
 
 ## Symptom

@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-07-16
+updated: 2026-10-07
+---
+
 # Report Links and Artifacts Missing Fix — 2026-07-06
 
 ## Symptom

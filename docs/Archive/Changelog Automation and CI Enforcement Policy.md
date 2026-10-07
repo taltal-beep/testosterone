@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-07-04
+updated: 2026-10-07
+---
+
 # Changelog Automation and CI Enforcement Policy
 
 ## Decision (WHY)

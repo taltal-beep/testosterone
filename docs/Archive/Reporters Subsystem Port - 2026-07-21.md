@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-07-21
+updated: 2026-10-07
+---
+
 # Reporters Subsystem Port — 2026-07-21
 
 ## Symptom

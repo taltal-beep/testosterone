@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-10-07
+updated: 2026-10-07
+---
+
 # UQO Engineering Hub
 
 <!-- source: notion https://www.notion.so/35ed95cd0312817091d0f660ea5ece5f -->

@@ -1,3 +1,10 @@
+---
+type: roadmap
+status: current
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # Product Roadmap
 
 Where Testosterone (`testo-core`, CLI `testo`) stands today and what comes next. Open engineering debt lives in [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md); the per-phase release checklists from the original plan are in the [Archive](../Archive/README.md).

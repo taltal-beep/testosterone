@@ -1,3 +1,10 @@
+---
+type: spec
+status: current
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # Phase 4 BYOK and Failure Analysis
 
 <!-- source: notion https://www.notion.so/354d95cd0312800aafc1e117a94f6fca + https://www.notion.so/354d95cd03128001b96df447ecb59f2a -->

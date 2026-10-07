@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-10-07
+updated: 2026-10-07
+---
+
 # Historical — General Task Forward 2.0
 
 <!-- source: notion https://www.notion.so/34fd95cd031280f59066d0c09d4a7635 — archived context only -->

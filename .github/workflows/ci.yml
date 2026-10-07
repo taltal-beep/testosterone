@@ -10,6 +10,8 @@ name: ci
 #                        vitest unit tests, production build
 #   changelog_required    PR-only: fails if non-doc changes don't touch CHANGELOG.md
 #                          (escape hatch: 'no-changelog' PR label)
+#   docs_vault           lints the docs/ vault against docs/CLAUDE.md (frontmatter,
+#                        links, orphans; on PRs also the `updated` date)
 #   deploy               builds the distributable wheel on a published release
 #
 # Code review is handled by a local pre-push hook (.claude/settings.json),
@@ -153,6 +155,29 @@ jobs:
           fi
           echo "::error::This PR changes code but does not update CHANGELOG.md. Add an entry under [Unreleased], or apply the 'no-changelog' label if this change doesn't warrant one."
           exit 1
+
+  docs_vault:
+    name: docs vault lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      # Rules live in docs/CLAUDE.md: frontmatter, no broken links, no
+      # wikilinks, no orphan notes. Stdlib only, so nothing to install.
+      - name: Lint the vault
+        if: github.event_name != 'pull_request'
+        run: python scripts/docs_vault.py lint
+      # On pull requests also require `updated` to move on every edited note.
+      - name: Lint the vault (with updated-date check)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin "${{ github.base_ref }}"
+          python scripts/docs_vault.py lint --base "origin/${{ github.base_ref }}"
 
   deploy:
     name: deploy (build wheel)

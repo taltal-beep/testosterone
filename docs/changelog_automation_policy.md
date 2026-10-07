@@ -1,3 +1,10 @@
+---
+type: guide
+status: current
+created: 2026-07-22
+updated: 2026-10-07
+---
+
 # Changelog Generation and CI Enforcement Policy
 
 `CHANGELOG.md` (repo root) follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/):

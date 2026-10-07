@@ -1,3 +1,10 @@
+---
+type: guide
+status: current
+created: 2026-05-02
+updated: 2026-10-07
+---
+
 # CI Integrations
 
 Pre-packaged CI wrappers keep orchestration in `testo_core`: they install `testo-core`, run `testo run --ci`, and keep its machine output.

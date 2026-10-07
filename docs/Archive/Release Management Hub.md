@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-10-07
+updated: 2026-10-07
+---
+
 # Release Management
 
 > **Active execution plan:** [v1.0.0 Publish Execution Plan - 2026-09-05](v1.0.0%20Publish%20Execution%20Plan%20-%202026-09-05.md) — the working checklist for shipping v1.0.0 to PyPI, GHCR, and JFrog Artifactory.

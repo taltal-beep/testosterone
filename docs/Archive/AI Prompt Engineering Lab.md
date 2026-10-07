@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # AI Prompt Engineering Lab
 
 > **Rule:** Do not store historical AI outputs or chat logs here. Only store reusable prompt templates.

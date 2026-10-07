@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-05-02
+updated: 2026-10-07
+---
+
 # Streamlit to React Migration Guide (Phase 3)
 
 > **Status: completed in v1.1.** The Streamlit UI (`testo_ui/`, `testo-ui`) has been removed; the React frontend is the only UI. The "Transitional topology" and Streamlit fallback steps below are kept as a historical record.

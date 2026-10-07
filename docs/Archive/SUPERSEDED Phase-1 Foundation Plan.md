@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # SUPERSEDED — Phase-1 Foundation Closure Plan
 
 <!-- source: notion https://www.notion.so/354d95cd0312804e9a96e97496620e10 -->

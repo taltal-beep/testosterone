@@ -1,4 +1,8 @@
 ---
+type: guide
+status: current
+created: 2026-10-07
+updated: 2026-10-07
 title: GitLab Pages Demo
 tags: [ci, gitlab, pages, frontend, demo]
 ---
@@ -144,7 +148,7 @@ stream is likewise absent: a static host cannot stream a run that is not running
   export generates the summary for each failed run beforehand, through the same
   `POST /runs/{id}/ai-summary:generate` the button calls, and the Run detail page
   shows that frozen summary (the button itself is disabled). This needs `ANTHROPIC_API_KEY` in the export
-  step's environment (see [[#Optional: AI summaries]]); without it the card says
+  step's environment (see [Optional: AI summaries](#optional-ai-summaries)); without it the card says
   summaries are generated live when you run Testosterone locally.
 
 Report links work: `static/history/<run_id>/` is copied into the published site,
@@ -211,7 +215,7 @@ account.
 
 Nothing in the pipeline needs secrets; the only credentials anywhere are the
 mirror token in step 2, if you choose that route, and the optional AI key
-(see [[#Optional: AI summaries]]).
+(see [Optional: AI summaries](#optional-ai-summaries)).
 
 ## Maintenance notes
 

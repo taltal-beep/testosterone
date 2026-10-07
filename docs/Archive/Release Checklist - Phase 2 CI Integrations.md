@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-05-02
+updated: 2026-10-07
+---
+
 # Phase-2 Release Checklist (CI Integrations)
 
 This is the go/no-go gate before assigning/re-pointing `v1` for the GitHub action and publishing the GitLab template.
