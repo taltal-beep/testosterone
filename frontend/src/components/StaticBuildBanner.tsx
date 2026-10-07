@@ -4,7 +4,8 @@ import { IS_STATIC_BUILD, loadManifest, type StaticManifest } from "../lib/stati
 
 /**
  * Tells visitors of the published demo what they are looking at: a snapshot of
- * one pipeline run, with a link back to the pipeline that produced it. Renders
+ * one pipeline run, what its two cycles are (and that fake-api's failures are
+ * deliberate), with a link back to the pipeline that produced it. Renders
  * nothing in the normal build that talks to the API.
  */
 export function StaticBuildBanner() {
@@ -31,8 +32,18 @@ export function StaticBuildBanner() {
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1">
         <span className="font-semibold uppercase tracking-wider text-warn-400">Read-only demo</span>
         <span>
-          Real results from a <code className="font-mono">testo run</code> executed in CI. Starting runs and saving
-          settings are disabled.
+          Real results from <code className="font-mono">testo run</code> in CI: Testosterone testing itself (
+          <code className="font-mono">self-test</code>) and{" "}
+          <a
+            href="https://github.com/taltal-beep/fake-api"
+            target="_blank"
+            rel="noreferrer"
+            className="text-brand-300 hover:text-brand-400 hover:underline"
+          >
+            fake-api
+          </a>
+          , an app whose flaky, broken and slow routes fail on purpose, so red there is expected. Starting runs and
+          saving settings are disabled.
         </span>
         {generated ? <span className="text-ink-400">Exported {generated}</span> : null}
         {commit ? (

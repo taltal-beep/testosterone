@@ -86,6 +86,8 @@ run_demo_cycles:
     # One run per pipeline: the cached history supplies the previous run, so
     # Compare shows which tests changed since the last pipeline.
     - testo run --cycle fake-api --ci | tee fake-api.ndjson || true
+    # A masked ANTHROPIC_API_KEY CI/CD variable (optional) makes the export
+    # freeze an AI failure summary for each failed run.
     - python scripts/export_static_site.py --out public --site-url "$CI_PAGES_URL"
     # Keep the cached Allure HTML bounded: the 20 newest runs are plenty.
     - ls -1dt static/history/*/ | tail -n +21 | xargs -r rm -rf

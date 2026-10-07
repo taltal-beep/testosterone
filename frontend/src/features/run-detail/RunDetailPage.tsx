@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router-dom";
 import { API_BASE, apiClient } from "../../lib/api-client";
 import { Badge, Button, Card, KeyValue, PageHeader, Spinner, StatusPill, TestPyramid } from "../../components/ui";
 import { formatRunLabel } from "../../lib/format";
+import { AI_SUMMARY_SNAPSHOT_MESSAGE, IS_STATIC_BUILD } from "../../lib/static-backend";
 
 export function RunDetailPage() {
   const params = useParams();
@@ -173,8 +174,15 @@ export function RunDetailPage() {
             <p className="text-sm text-ink-100">{aiSummaryQuery.data.summary_text}</p>
             <p className="text-xs text-ink-400">
               Confidence: {aiSummaryQuery.data.confidence ?? "unknown"} | Model: {aiSummaryQuery.data.model ?? "unknown"}
+              {IS_STATIC_BUILD ? " | Generated when this snapshot was built" : ""}
             </p>
           </article>
+        ) : IS_STATIC_BUILD ? (
+          <p className="text-sm text-ink-300">
+            {aiSummaryQuery.data.limitations.includes("summary_not_generated")
+              ? AI_SUMMARY_SNAPSHOT_MESSAGE
+              : `The AI summary could not be generated when this snapshot was built (${aiSummaryQuery.data.error_code ?? "not_available"}).`}
+          </p>
         ) : (
           <p className="text-sm text-ink-400">
             No summary generated ({aiSummaryQuery.data.error_code ?? "not_available"}).
@@ -182,6 +190,9 @@ export function RunDetailPage() {
         )}
         <Button
           className="mt-3"
+          // A snapshot has nothing to generate with; the export already did it, or explains why not above.
+          disabled={IS_STATIC_BUILD}
+          title={IS_STATIC_BUILD ? "Read-only demo: summaries are generated when the snapshot is built." : undefined}
           onClick={async () => {
             setAiError(null);
             try {

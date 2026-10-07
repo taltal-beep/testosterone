@@ -14,6 +14,7 @@ name: Pages demo
 # manual runs deploy.
 #
 # One-time setup: Settings -> Pages -> Source -> "GitHub Actions".
+# Optional: an ANTHROPIC_API_KEY repository secret to freeze AI failure summaries.
 #
 # See docs/Processes & Guides/GitLab Pages Demo.md
 
@@ -25,6 +26,7 @@ on:
       - ".github/workflows/pages-demo.yml"
       - "scripts/export_static_site.py"
       - "frontend/src/lib/static-backend.ts"
+      - "frontend/src/components/StaticBuildBanner.tsx"
       - "testosterone.yaml"
   schedule:
     - cron: "17 3 * * *"
@@ -101,6 +103,10 @@ jobs:
         run: testo run --cycle fake-api --ci | tee fake-api.ndjson || true
 
       - name: Export the API as static JSON
+        env:
+          # Optional. With it, failed runs ship a pre-generated AI failure
+          # summary; without it, the demo says summaries are generated live.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           python scripts/export_static_site.py --out public --site-url "$PAGES_URL"
           # Keep the cached history bounded: the 20 newest runs are plenty.
