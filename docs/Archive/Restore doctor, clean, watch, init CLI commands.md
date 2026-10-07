@@ -2,7 +2,7 @@
 
 ## Problem
 
-[[Command Reference]] documented four `testo` subcommands — `doctor`, `clean`, `watch`, `init` — with full flag tables and sample output, but none of them existed on `main`. `testo_core/cli/app.py`'s `_register_commands()` only wired up `run`, `config-db`, `diff`, `summary`, `cycles`/`plans`, `config`, `report`, `version`. Only stale `.pyc` cache files remained as evidence the four commands once ran locally.
+[Command Reference](../CLI%20Commands/Command%20Reference.md) documented four `testo` subcommands — `doctor`, `clean`, `watch`, `init` — with full flag tables and sample output, but none of them existed on `main`. `testo_core/cli/app.py`'s `_register_commands()` only wired up `run`, `config-db`, `diff`, `summary`, `cycles`/`plans`, `config`, `report`, `version`. Only stale `.pyc` cache files remained as evidence the four commands once ran locally.
 
 Root cause: the source files (`testo_core/cli/commands/doctor.py`, `watch.py`, `clean.py`, `init_cmd.py`) were added on branch `cursor/report-infra-e976a` but that branch was never merged and drifted ~20 commits behind `main`, with no open PR.
 
@@ -18,7 +18,7 @@ Port the four command modules from `cursor/report-infra-e976a` into `main`, adap
 - `doctor.py` had a latent bug in the source branch: it read `cfg.cycles` / `cfg.source_path` guarded by `if not hard_fail:` even though `cfg` is only bound when config load succeeds — a CLI-executable hard-fail (not a config-load fail) would still enter that branch safely, but a config-load failure combined with any later flag flip would have risked a `NameError`. Fixed by gating on `if cfg is not None:` instead.
 - `init.py`'s generated YAML dropped a `tags: [smoke]` line — `Plan`/`_parse_cycle` in `testo_core/config/schema.py` and `loader.py` on `main` have no `tags` concept; the key was silently ignored, so it was dead/misleading scaffolding.
 - Added `watchdog>=4.0.0` to `pyproject.toml` core `dependencies` — required by `watch.py`, was previously undeclared.
-- Exit code reconciliation: [[Command Reference]] had two contradictory claims for `testo doctor`'s hard-failure exit code — "exits 3" in the `testo doctor` section vs. "2 on hard FAIL" in [[Troubleshooting and Error Codes#Commands that use exit codes]]. The restored code uses `EngineExitCode.INVALID_INPUT` (2), matching both the original branch implementation and the Troubleshooting doc (the authoritative exit-code table). Fixed the contradictory line in [[Command Reference]].
+- Exit code reconciliation: [Command Reference](../CLI%20Commands/Command%20Reference.md) had two contradictory claims for `testo doctor`'s hard-failure exit code — "exits 3" in the `testo doctor` section vs. "2 on hard FAIL" in [Troubleshooting and Error Codes § Commands that use exit codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md#commands-that-use-exit-codes). The restored code uses `EngineExitCode.INVALID_INPUT` (2), matching both the original branch implementation and the Troubleshooting doc (the authoritative exit-code table). Fixed the contradictory line in [Command Reference](../CLI%20Commands/Command%20Reference.md).
 
 ## Current implementation (HOW — codebase)
 
@@ -36,4 +36,4 @@ Tests: `tests/unit/testo_core/test_cli_doctor.py`, `test_cli_clean.py`, `test_cl
 Shell completion, top-level `--version`, help-panel grouping/emoji (`rich_help_panel=`), and drift-guard tests — those are separate, parallel PRs. `_register_commands()` additions here intentionally match the plain (no `rich_help_panel`) style already on `main`, not the richer style also present in the source branch's `app.py`.
 
 ---
-**Context & Links:** [[Command Reference]], [[Troubleshooting and Error Codes]], [[Architecture Overview#Exit code contract]]
+**Context & Links:** [Command Reference](../CLI%20Commands/Command%20Reference.md), [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md), [Architecture Overview § Exit code contract](../Architecture/Architecture%20Overview.md#exit-code-contract)

@@ -53,5 +53,5 @@ This document defines deterministic semantics for Phase 3 delta analytics.
 - `status_change`: any other status transition.
 - (`unchanged` cases are computed but dropped from the response — only actual changes are returned.)
 
-Unlike the run/stage-level deltas, this is **computed on demand from each run's live artifact snapshot every request, with no caching** — see [[CLI-UI Parity - Pyramid, Graphs, Deep Diff - 2026-07-23]] for why (archives aren't large enough yet to justify the cache-invalidation work) and for why this reads from each run's snapshot directory rather than the separate `ReportArchive` table (`testo report list`/`diff`'s id space, which has no link to run-history run ids).
+Unlike the run/stage-level deltas, this is **computed on demand from each run's live artifact snapshot every request, with no caching** — see [CLI-UI Parity - Pyramid, Graphs, Deep Diff - 2026-07-23](../Archive/CLI-UI%20Parity%20-%20Pyramid,%20Graphs,%20Deep%20Diff%20-%202026-07-23.md) for why (archives aren't large enough yet to justify the cache-invalidation work) and for why this reads from each run's snapshot directory rather than the separate `ReportArchive` table (`testo report list`/`diff`'s id space, which has no link to run-history run ids).
 

@@ -1,7 +1,7 @@
 ---
 date: 2026-09-25
 status: accepted
-related: "[[Architecture Overview]], [[Deep Dive - Execution Logic]], [[QA Strategies]]"
+related: "Architecture Overview, Deep Dive - Execution Logic, QA Strategies"
 ---
 # Command Adapter and JUnit Import - 2026-09-25
 
@@ -32,7 +32,7 @@ The first external adopter, CarBiz (an Expo app with a Python/AWS backend), want
 ## Consequences
 
 - `SUPPORTED_FRAMEWORKS` gains `command`, and `Stage` gains `junit_xml` (default `()`, so existing configs are unchanged).
-- Docs updated in the same change: [[Architecture Overview]] (adapter list), [[Deep Dive - Execution Logic]] (post-stage hook), [[QA Strategies]] (config example), `CHANGELOG.md`.
+- Docs updated in the same change: [Architecture Overview](../Architecture/Architecture%20Overview.md) (adapter list), [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md) (post-stage hook), [QA Strategies](../Testing%20Workflows/QA%20Strategies.md) (config example), `CHANGELOG.md`.
 - Tests: `tests/unit/testo_core/test_command_adapter.py`, 14 cases covering config validation, the adapter, the status and label mapping, malformed, stale and escaping files, and real subprocess stages through `run_stage`.
 
 ## Follow-ups

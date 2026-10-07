@@ -1,10 +1,10 @@
 # Deep Dive — Execution Logic
 
-[[Architecture Overview]]
+[Architecture Overview](Architecture%20Overview.md)
 
-This note maps how **Testo** (`testo run`) initializes a test session, executes it stage-by-stage on the host, preserves state, and tears down. It is the implementation companion to [[Architecture Overview]] and [[QA Strategies]].
+This note maps how **Testo** (`testo run`) initializes a test session, executes it stage-by-stage on the host, preserves state, and tears down. It is the implementation companion to [Architecture Overview](Architecture%20Overview.md) and [QA Strategies](../Testing%20Workflows/QA%20Strategies.md).
 
-Every run uses **host subprocesses** — no Docker. The UQO headless stack that existed until v1.1 is summarized at the end.
+Every run uses **host subprocesses** — no Docker. The Docker-based execution stack (the project's original "UQO" design) that existed until v1.1 is summarized at the end.
 
 ---
 
@@ -307,7 +307,7 @@ Cycles run **one after another** in sorted name order. No thread pool across cyc
 
 ## Architectural bottlenecks and race conditions
 
-These are **current code behaviors** worth knowing for CI design and future refactors. See also [[Technical Debt Tracker]] and [[Troubleshooting and Error Codes]].
+These are **current code behaviors** worth knowing for CI design and future refactors. See also [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md) and [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md).
 
 | Issue | Location | Impact |
 |-------|----------|--------|
@@ -357,8 +357,8 @@ The compose stack (Postgres only) is described in repo `ARCHITECTURE.md` and is 
 
 ## Related notes
 
-- [[Architecture Overview]] — module map and artifact layout
-- [[QA Strategies]] — triggers, CI output, typical flows
-- [[Command Reference]] — flags and exit codes
-- [[Troubleshooting and Error Codes]] — failure playbook
-- [[Technical Debt Tracker]] — prioritized refactor backlog
+- [Architecture Overview](Architecture%20Overview.md) — module map and artifact layout
+- [QA Strategies](../Testing%20Workflows/QA%20Strategies.md) — triggers, CI output, typical flows
+- [Command Reference](../CLI%20Commands/Command%20Reference.md) — flags and exit codes
+- [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md) — failure playbook
+- [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md) — prioritized refactor backlog

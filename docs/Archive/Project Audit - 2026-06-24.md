@@ -1,8 +1,8 @@
 # Project Audit — 2026-06-24
 
-[[Index]] · [[Product Roadmap]] · [[V1 Release Roadmap]] · [[Technical Debt Tracker]]
+[Index](../Index.md) · [Product Roadmap](../Roadmap%20&%20Strategy/Product%20Roadmap.md) · [V1 Release Roadmap](V1%20Release%20Roadmap.md) · [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md)
 
-> Full audit of the Testo (`testo-core`) project. Covers code, docs, git history, CI, release gates, and open PRs. Intended as a point-in-time snapshot to inform the [[V1 Release Roadmap]].
+> Full audit of the Testo (`testo-core`) project. Covers code, docs, git history, CI, release gates, and open PRs. Intended as a point-in-time snapshot to inform the [V1 Release Roadmap](V1%20Release%20Roadmap.md).
 
 ---
 
@@ -148,7 +148,7 @@ The Product Roadmap marks all phases `[x]` done (code delivery), but the operati
 
 ## Technical Debt Summary
 
-From [[Technical Debt Tracker]] — 16 items total:
+From [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md) — 16 items total:
 
 | Priority | Open | Fixed |
 |----------|------|-------|
@@ -189,7 +189,7 @@ From [[Technical Debt Tracker]] — 16 items total:
 
 ## Recommended Next Steps
 
-See [[V1 Release Roadmap]] for the full task breakdown with 110 tasks across 11 workstreams, prioritized and ordered into 6 sprints (~10–15 working days to v1.0).
+See [V1 Release Roadmap](V1%20Release%20Roadmap.md) for the full task breakdown with 110 tasks across 11 workstreams, prioritized and ordered into 6 sprints (~10–15 working days to v1.0).
 
 ---
 

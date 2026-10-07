@@ -6,7 +6,7 @@
 
 This vault holds **reusable prompt templates** for the Testo project (`testo-core`). Each block below is a copy-paste starting point—a "Mega-Prompt" you can drop into Cursor or another AI assistant when starting a recurring task.
 
-Before adding templates, read the [[Agent Context Guide]] for vault navigation rules. Prompts here should respect CLI contracts in [[Command Reference]] and execution patterns in [[QA Strategies]].
+Before adding templates, read the [Agent Context Guide](../Prompts%20&%20Snippets/Agent%20Context%20Guide.md) for vault navigation rules. Prompts here should respect CLI contracts in [Command Reference](../CLI%20Commands/Command%20Reference.md) and execution patterns in [QA Strategies](../Testing%20Workflows/QA%20Strategies.md).
 
 ## How to use
 
@@ -115,11 +115,11 @@ Before adding templates, read the [[Agent Context Guide]] for vault navigation r
 
 ## Related
 
-- [[Agent Context Guide]] — master map for AI agents
-- [[Command Reference]] — CLI contracts prompts should respect
-- [[QA Strategies]] — how runs are triggered and logged
-- [[CI-CD Pipeline Setup]] — CI wrapper patterns
-- [[Technical Debt Tracker]] — code-level backlog (not prompt drafts)
+- [Agent Context Guide](../Prompts%20&%20Snippets/Agent%20Context%20Guide.md) — master map for AI agents
+- [Command Reference](../CLI%20Commands/Command%20Reference.md) — CLI contracts prompts should respect
+- [QA Strategies](../Testing%20Workflows/QA%20Strategies.md) — how runs are triggered and logged
+- [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md) — CI wrapper patterns
+- [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md) — code-level backlog (not prompt drafts)
 
 ---
-**Context & Links:** [[UQO Engineering Hub]], [[Index]]
+**Context & Links:** [UQO Engineering Hub](UQO%20Engineering%20Hub.md), [Index](../Index.md)

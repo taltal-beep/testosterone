@@ -70,4 +70,4 @@ On failed heavy/external runs, upload:
 
 ---
 **Context & Links:**
-- [[QA Strategies#Testing the orchestrator itself]], [[Technical Debt Tracker]], [[CI-CD Pipeline Setup]]
+- [QA Strategies § Testing the orchestrator itself](../Testing%20Workflows/QA%20Strategies.md#testing-the-orchestrator-itself), [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md), [CI-CD Pipeline Setup](CI-CD%20Pipeline%20Setup.md)

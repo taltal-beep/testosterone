@@ -17,7 +17,7 @@ Move dashboard UX from Streamlit to React while keeping `testo_core` as the only
 
 ## Why (product)
 
-Streamlit was ideal for prototyping; production QA teams need a snappy, navigable React UI with explicit API contracts (JSON + SSE), independent scaling of frontend/backend, and a clear rollback path. See [[Product Roadmap#Phase 3: Enterprise UI & Analytics]] and [[Phase 3 Unified Dashboard Plan]].
+Streamlit was ideal for prototyping; production QA teams need a snappy, navigable React UI with explicit API contracts (JSON + SSE), independent scaling of frontend/backend, and a clear rollback path. See [Product Roadmap § Phase 3: Enterprise UI & Analytics](../Roadmap%20&%20Strategy/Product%20Roadmap.md#how-it-got-here) and [Phase 3 Unified Dashboard Plan](../Specs%20&%20ADRs/Phase%203%20Unified%20Dashboard%20Plan.md).
 
 ## Transitional topology
 
@@ -80,4 +80,4 @@ React must support the same baseline user journeys as Streamlit before enhanceme
 
 ---
 **Context & Links:**
-- [[Architecture Overview]], [[QA Strategies]], [[Release Checklist - Phase 3 Frontend Migration]], [[Release Checklist - Phase 3 Unified Dashboard]], [[Product Roadmap#Phase 3: Enterprise UI & Analytics]]
+- [Architecture Overview](../Architecture/Architecture%20Overview.md), [QA Strategies](../Testing%20Workflows/QA%20Strategies.md), [Release Checklist - Phase 3 Frontend Migration](Release%20Checklist%20-%20Phase%203%20Frontend%20Migration.md), [Release Checklist - Phase 3 Unified Dashboard](Release%20Checklist%20-%20Phase%203%20Unified%20Dashboard.md), [Product Roadmap § Phase 3: Enterprise UI & Analytics](../Roadmap%20&%20Strategy/Product%20Roadmap.md#how-it-got-here)

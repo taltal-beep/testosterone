@@ -11,9 +11,9 @@ those runs. The same pipeline exists twice:
 
 - **GitHub Pages** (`.github/workflows/pages-demo.yml`) at
   `https://taltal-beep.github.io/testosterone/`. This is the main demo link; see
-  [[#GitHub Pages]].
+  [GitHub Pages](#github-pages).
 - **GitLab Pages** (`.gitlab-ci.yml`), for showing the same thing on GitLab; see
-  [[#What you have to do on GitLab]].
+  [What you have to do on GitLab](#what-you-have-to-do-on-gitlab).
 
 It runs two things:
 
@@ -28,10 +28,10 @@ Green-only data proves little about a test tool, which is why the second target
 exists: it guarantees failures, flakiness and slowness to look at, and every one
 of them traces back to a line of app code.
 
-> Live site: `https://<namespace>.gitlab.io/<project>/` (see [[#What you have to do on GitLab]]).
+> Live site: `https://<namespace>.gitlab.io/<project>/` (see [What you have to do on GitLab](#what-you-have-to-do-on-gitlab)).
 
-Related: [[CI-CD Pipeline Setup]] (the reusable template for running Testo in
-*your* pipeline), [[Architecture Overview]], [[Streamlit to React Migration Guide]].
+Related: [CI-CD Pipeline Setup](CI-CD%20Pipeline%20Setup.md) (the reusable template for running Testo in
+*your* pipeline), [Architecture Overview](../Architecture/Architecture%20Overview.md).
 
 ## Why it is built this way
 

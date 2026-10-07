@@ -43,9 +43,9 @@ flowchart TB
 
 | Topic | Note |
 |-------|------|
-| CLI flags & `testo report` | [[Command Reference#`testo report`]] |
-| Exit codes & Allure missing | [[Troubleshooting and Error Codes]] |
-| Post-run reporters | [[QA Strategies#Post-run reporters]] |
+| CLI flags & `testo report` | [Command Reference § `testo report`](../CLI%20Commands/Command%20Reference.md#testo-report) |
+| Exit codes & Allure missing | [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md) |
+| Post-run reporters | [QA Strategies § Post-run reporters](../Testing%20Workflows/QA%20Strategies.md#reporters-after-run) |
 | UQO compose stack (today) | `ARCHITECTURE.md`, `docker-compose.yml` |
 | Official migration | https://allurereport.org/docs/v3/migrate/ |
 | Configuration reference | https://allurereport.org/docs/v3/configure/ |
@@ -68,7 +68,7 @@ Confirm in `pyproject.toml` (already present as of this plan):
 
 ### Step 1.2 — Confirm artifact layout (unchanged)
 
-Testo already standardizes output paths (see [[Deep Dive - Execution Logic]]):
+Testo already standardizes output paths (see [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md)):
 
 - Per-stage: `artifacts/<cycle>/<stage>/allure-results/<framework>/`
 - Docker/headless flat layout: `artifacts/allure-results/<framework>/`
@@ -187,8 +187,8 @@ Avoid duplicating subprocess logic in two modules long term.
 |---------|--------|
 | `testo doctor` | Check `node`, `npm`, `npx allure --version`; downgrade Java `allure` on PATH to WARN |
 | `testo report --help` | "Requires Node.js and `npm install` at repo root" instead of "Install Allure CLI (Java)" |
-| [[Troubleshooting and Error Codes]] | New subsection: Node/npm missing → exit `3` (`INFRA_FAILURE`) |
-| [[Command Reference]] | Report flags unchanged; dependency section updated |
+| [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md) | New subsection: Node/npm missing → exit `3` (`INFRA_FAILURE`) |
+| [Command Reference](../CLI%20Commands/Command%20Reference.md) | Report flags unchanged; dependency section updated |
 
 **Error message template:**
 
@@ -210,7 +210,7 @@ Or set TESTO_ALLURE_CLI=allure after installing Allure 3 globally (npm install -
 ### Step 2.8 — CI / developer docs
 
 - `README.md` quickstart: install Node, `npm ci`, then `testo report`
-- [[CI-CD Pipeline Setup]]: add Node setup action before report step
+- [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md): add Node setup action before report step
 - `.gitignore`: ignore `reports/allure-history.jsonl` if local-only (or commit for demo — team decision)
 
 ---
@@ -333,7 +333,7 @@ For platform UI testing with remote reports: run a one-shot upload script or `te
 
 | Risk | Mitigation |
 |------|------------|
-| CI images lack Node | Add Node to runner image checklist ([[Release Checklist - Phase 2 Runner Image]]) |
+| CI images lack Node | Add Node to runner image checklist ([Release Checklist - Phase 2 Runner Image](Release%20Checklist%20-%20Phase%202%20Runner%20Image.md)) |
 | Global Allure 2 on PATH shadows v3 | `doctor` version check; prefer `npx` |
 | Delta/compare widgets rely on Allure 2 file layout | Validate `allure_delta_transform.py` + `allure_summary_widgets.py` against Awesome report |
 | `--single-file` reports embedded in Streamlit | Explicit `singleFile` plugin option for legacy path only |
@@ -345,8 +345,8 @@ For platform UI testing with remote reports: run a one-shot upload script or `te
 
 Per `.cursorrules`, any CLI/error-code change must update:
 
-- [[Command Reference]]
-- [[Troubleshooting and Error Codes]]
+- [Command Reference](../CLI%20Commands/Command%20Reference.md)
+- [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md)
 - `README.md` (quickstart + `ALLURE_SERVER_URL`)
 - `ARCHITECTURE.md` (compose + URL contract)
 - This plan → mark sections **Done** with PR links

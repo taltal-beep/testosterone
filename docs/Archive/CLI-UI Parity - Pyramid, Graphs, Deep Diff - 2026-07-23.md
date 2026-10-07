@@ -4,7 +4,7 @@
 
 The `testo` CLI had three features with no React/API equivalent:
 
-1. **Test pyramid** — `testo_core/reporting/pyramid_viz.py` was a complete ASCII pyramid renderer (tier counts → shape classification → ASCII art) that nothing imported, no CLI command called, and no data source fed. The [[Project Audit - 2026-06-24]] listed it as "Mature" under the reporting pipeline — it wasn't even wired into the CLI, let alone the UI. It was hand-ported whole in [[Reporters Subsystem Port - 2026-07-21]] and never referenced again.
+1. **Test pyramid** — `testo_core/reporting/pyramid_viz.py` was a complete ASCII pyramid renderer (tier counts → shape classification → ASCII art) that nothing imported, no CLI command called, and no data source fed. The [Project Audit - 2026-06-24](Project%20Audit%20-%202026-06-24.md) listed it as "Mature" under the reporting pipeline — it wasn't even wired into the CLI, let alone the UI. It was hand-ported whole in [Reporters Subsystem Port - 2026-07-21](Reporters%20Subsystem%20Port%20-%202026-07-21.md) and never referenced again.
 2. **"Simple graph"** — the stacked ASCII bar in `testo diff`/`testo summary` (`testo_core/cli/ui/summary_dashboard.py`) visualizing passed/failed/broken/skipped composition. The data (`/api/v1/analytics/delta`, `/api/v1/runs/{id}`) already existed; the React Compare page rendered it as plain text rows with zero visualization, and `frontend/package.json` had no charting library.
 3. **Deep diff** — `testo diff`/`testo report compare` (`testo_core/services/report_archive_diff.py::diff_archives`) do a full per-test comparison: matches cases by `historyId`/`fullName`/`uuid`, classifies each as added/removed/regression/fix/status_change, grouped by suite. `/api/v1/analytics/delta` (`delta_service.py`) only ever exposed 9 run-level aggregate metrics — no per-stage or per-test breakdown reached the frontend, even though per-stage data (`CompletedRunView.stage_health`) was already computed and unused for comparison.
 
@@ -32,7 +32,7 @@ Separately, two API endpoints existed but were never called from the UI: `GET /a
 - New CLI command `testo report pyramid RUN_ID` (`testo_core/cli/commands/report.py`) — looks up the run via `run_history.get_run()`, loads its cycle's stages via `discover_and_load()`, and prints `pyramid_viz.render_pyramid_lines()` + the classified shape.
 - Note: `RUN_ID` here is the run-history run id (same id used by `/api/v1/runs/{id}` and the dashboard/history pages) — a different id space from `testo report list/open`'s `ReportArchive` UUID.
 - Tests: `tests/unit/testo_core/test_pyramid_viz.py` (recreates coverage for `classify_shape`/`render_pyramid_lines` — the original `test_pyramid_viz.py` from the 2026-07-21 port was lost/never committed, only a stale `.pyc` remained), `test_pyramid_data.py`, `test_stage_tier_config.py`.
-- Corrected the stale "pyramid viz — Mature" line in [[Project Audit - 2026-06-24]] and added the pyramid data flow to [[Architecture Overview#Test pyramid]].
+- Corrected the stale "pyramid viz — Mature" line in [Project Audit - 2026-06-24](Project%20Audit%20-%202026-06-24.md) and added the pyramid data flow to [Architecture Overview § Test pyramid](../Architecture/Architecture%20Overview.md#test-pyramid).
 
 ## Phase 3 — Test pyramid: API + frontend (2026-07-23)
 

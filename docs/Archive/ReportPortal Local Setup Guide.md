@@ -25,7 +25,7 @@ Persistent ReportPortal v5.15.x on Docker for end-to-end `ReportPortalReporter` 
 | Project (in `testosterone.yaml`) | `superadmin_personal` |
 | Endpoint | `http://localhost:8080` |
 
-The token is a deterministic ReportPortal 5.x API key (`testo-local-validation` + fixed salt). It is stored as a SHA3-256 hex digest of the full bearer string in `api_keys` (see [`infra/reportportal/seed-api-key.sql`](../../infra/reportportal/seed-api-key.sql)).
+The token is a deterministic ReportPortal 5.x API key (`testo-local-validation` + fixed salt). It is stored as a SHA3-256 hex digest of the full bearer string in `api_keys` (see `infra/reportportal/seed-api-key.sql`).
 
 ## Quick start
 
@@ -67,7 +67,7 @@ export REPORTPORTAL_TOKEN=testo-local-validation_ERERERERQRGBEREREREREV2jef5txhX
 testo run --cycle sample-pytests
 ```
 
-[`testosterone.yaml`](../testosterone.yaml) already sets `endpoint`, `project`, and defaults the token to the same value if the env var is unset.
+`testosterone.yaml` already sets `endpoint`, `project`, and defaults the token to the same value if the env var is unset.
 
 Success indicators:
 
@@ -111,4 +111,4 @@ Analyzer/OpenSearch is omitted; they are not needed for REST launch reporting.
 
 ---
 **Context & Links:**
-- [[Command Reference#Reporter types (`reporters:` / `--reporter`)]], [[Architecture Overview]], [[QA Strategies#How results are logged and surfaced]], [[Troubleshooting and Error Codes]]
+- [Command Reference § Reporter types (`reporters:` / `--reporter`)](../CLI%20Commands/Command%20Reference.md#reporter-types-reporters----reporter), [Architecture Overview](../Architecture/Architecture%20Overview.md), [QA Strategies § How results are logged and surfaced](../Testing%20Workflows/QA%20Strategies.md#how-results-are-logged-and-surfaced), [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md)
