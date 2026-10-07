@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-05-02
+updated: 2026-10-07
+---
+
 # Phase-2 Release Checklist (Ghost Mode Background Sync)
 
 This checklist is the release gate for Ghost Mode CI auto-detection, non-interactive output, and background sync telemetry.

@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # Allure 3 Migration Plan
 
 **Project:** Testo (`testo-core`) — Unified Quality Orchestration CLI  

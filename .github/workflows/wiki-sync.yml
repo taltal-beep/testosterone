@@ -1,0 +1,60 @@
+name: Wiki sync
+
+# Regenerates the GitHub wiki from the docs/ vault, so the wiki can never
+# drift from main. The wiki is output only: every page is rewritten on each
+# run and pages that no longer exist in docs/ are removed (wiki git history
+# keeps them).
+#
+# See docs/CLAUDE.md § Sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "scripts/docs_vault.py"
+      - ".github/workflows/wiki-sync.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wiki-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Publish docs/ to the wiki
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Lint the vault
+        run: python scripts/docs_vault.py lint
+      - name: Clone the wiki
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git clone --depth=1 \
+            "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki
+      - name: Export the vault
+        run: |
+          find wiki -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          python scripts/docs_vault.py export-wiki wiki \
+            --repo "${{ github.repository }}" --ref "${{ github.ref_name }}"
+      - name: Push
+        working-directory: wiki
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Wiki already up to date."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Sync from docs/ at ${GITHUB_SHA::8}"
+          git push

@@ -1,3 +1,10 @@
+---
+type: spec
+status: current
+created: 2026-05-02
+updated: 2026-10-07
+---
+
 # Delta Comparison Policy
 
 This document defines deterministic semantics for Phase 3 delta analytics.

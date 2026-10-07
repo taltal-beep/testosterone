@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-05-02
+updated: 2026-10-07
+---
+
 # Phase 3 Release Checklist (Unified Dashboard)
 
 This checklist gates rollout of the unified dashboard as the primary React entrypoint.

@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-07-04
+updated: 2026-10-07
+---
+
 # Engine Test Suite Rebuild — 2026-07-04
 
 [QA Strategies](../Testing%20Workflows/QA%20Strategies.md) · [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md) · [Command Reference](../CLI%20Commands/Command%20Reference.md)

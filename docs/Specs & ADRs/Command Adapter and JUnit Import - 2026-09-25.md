@@ -1,8 +1,11 @@
 ---
-date: 2026-09-25
-status: accepted
+type: spec
+status: current
+created: 2026-09-25
+updated: 2026-10-07
 related: "Architecture Overview, Deep Dive - Execution Logic, QA Strategies"
 ---
+
 # Command Adapter and JUnit Import - 2026-09-25
 
 ## Context

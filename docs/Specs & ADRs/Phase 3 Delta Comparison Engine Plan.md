@@ -1,3 +1,10 @@
+---
+type: spec
+status: current
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # Phase 3 Delta Comparison Engine Plan
 
 <!-- source: notion https://www.notion.so/354d95cd031280249689fa3390e43594 -->

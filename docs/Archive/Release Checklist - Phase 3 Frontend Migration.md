@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-05-02
+updated: 2026-10-07
+---
+
 # Phase-3 Release Checklist (Frontend Migration)
 
 This checklist is the go/no-go gate before marking Streamlit deprecated (not removed).

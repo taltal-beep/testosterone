@@ -1,3 +1,10 @@
+---
+type: guide
+status: current
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # Agent Context Guide
 
 Map for AI coding agents working on Testosterone (`testo-core`, CLI `testo`): which note to read before touching what, so you don't have to scan the whole codebase.
@@ -18,7 +25,9 @@ Map for AI coding agents working on Testosterone (`testo-core`, CLI `testo`): wh
 
 ## Rules
 
+The full conventions (frontmatter, ingest / query / lint, the log) are in the [vault schema](../CLAUDE.md); `python scripts/docs_vault.py lint` checks them.
+
 1. **Read before writing.** Check the relevant note above before refactoring core architecture or changing a CLI argument.
-2. **Keep docs in step.** If you change a CLI command, execution state logic or infrastructure setup, update the matching note under `docs/` in the same pull request.
+2. **Keep docs in step.** If you change a CLI command, execution state logic or infrastructure setup, update the matching note under `docs/` in the same pull request. Bump the note's `updated` date.
 3. **Point, don't paste.** If a note already explains something, link to it instead of repeating it.
 4. **Links.** Use standard relative markdown links with spaces encoded as `%20` (e.g. `[Command Reference](../CLI%20Commands/Command%20Reference.md)`), so they work on GitHub and in Obsidian. When you move or rename a note, update the links to it and [Index](../Index.md) in the same change.

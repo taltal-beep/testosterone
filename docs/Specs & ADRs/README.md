@@ -1,3 +1,10 @@
+---
+type: spec
+status: current
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # Specs & ADRs
 
 Design decisions that still describe the code. The code is the source of truth; see [Architecture Overview](../Architecture/Architecture%20Overview.md) and [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md) for how it fits together.

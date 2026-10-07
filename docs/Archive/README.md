@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-10-07
+updated: 2026-10-07
+---
+
 # Archive
 
 These are the project's working notes from mid-2026, when it was still called UQO. They cover the phase-by-phase release checklists, dated audits and readiness assessments, migration plans (Streamlit → React, Allure 2 → 3, the v1.0.0 publish plan), and write-ups of fixes and ports. They are kept as a record of how the design got to where it is. They describe the code as it was then and are not maintained, so names, paths and commands in them (`uqo run --config`, ghost mode, the `uqo-runner` image, Streamlit, MinIO, `runners.py`) may no longer exist. For the current design start at [Index](../Index.md) and [ARCHITECTURE.md](../../ARCHITECTURE.md).

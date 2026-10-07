@@ -1,3 +1,10 @@
+---
+type: index
+status: current
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # Testosterone docs
 
 Design notes for Testosterone (`testo-core`, CLI `testo`).
@@ -33,3 +40,8 @@ The notes are plain markdown and also open as an Obsidian vault. Dated plans, au
 - [Product Roadmap](Roadmap%20&%20Strategy/Product%20Roadmap.md): current state and next steps
 - [Technical Debt Tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md): open backlog
 - [Agent Context Guide](Prompts%20&%20Snippets/Agent%20Context%20Guide.md): which note to read before changing what (for AI coding agents)
+
+## The vault itself
+
+- [Vault schema](CLAUDE.md): frontmatter, linking and the ingest / query / lint rules for these notes
+- [Vault log](log.md): record of changes to the vault's structure

@@ -1,6 +1,10 @@
 ---
-last-updated: 2026-09-05
+type: guide
+status: current
+created: 2026-09-05
+updated: 2026-10-07
 ---
+
 # Publishing to JFrog Artifactory
 
 [Index](../Index.md) · [Publishing to PyPI](Publishing%20to%20PyPI.md) · [Publishing Docker Images](Publishing%20Docker%20Images.md) · [v1.0.0 Publish Execution Plan - 2026-09-05](../Archive/v1.0.0%20Publish%20Execution%20Plan%20-%202026-09-05.md)

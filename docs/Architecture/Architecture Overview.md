@@ -1,3 +1,10 @@
+---
+type: architecture
+status: current
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # Architecture Overview
 
 Testo is a **config-driven test orchestration CLI** built around a small, sequential **engine** and **framework adapters**. Heavy dependencies (database, API) are optional extras; every run executes frameworks as **host subprocesses**, whether it starts from the CLI, the API or a CI wrapper.
@@ -68,7 +75,7 @@ Cycles are defined under `cycles:` in YAML (legacy key `plans:` is still accepte
 
 `testo_core/persistence/` provides the `PersistenceBackend` protocol used by the orchestrator (JSON + DB backends, composite fanout). See **Persistence** below.
 
-Execution is **sequential by design**; parallelization today is framework-internal through a stage's `workers` (BehaveX always, pytest when pytest-xdist is installed, native behave never; see [[Deep Dive - Execution Logic#Framework level — optional]]).
+Execution is **sequential by design**; parallelization today is framework-internal through a stage's `workers` (BehaveX always, pytest when pytest-xdist is installed, native behave never; see [Deep Dive - Execution Logic § Framework level](Deep%20Dive%20-%20Execution%20Logic.md#framework-level--optional)).
 
 ### `testo_core/frameworks/`
 

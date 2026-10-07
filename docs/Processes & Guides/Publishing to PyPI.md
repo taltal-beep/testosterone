@@ -1,3 +1,10 @@
+---
+type: guide
+status: current
+created: 2026-07-01
+updated: 2026-10-07
+---
+
 # Publishing to PyPI
 
 [Index](../Index.md) · [Publishing Docker Images](Publishing%20Docker%20Images.md) · [Publishing to Artifactory](Publishing%20to%20Artifactory.md)

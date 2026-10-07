@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # ReportPortal local setup (testo validation)
 
 Persistent ReportPortal v5.15.x on Docker for end-to-end `ReportPortalReporter` testing. A **pre-seeded API key** is inserted into PostgreSQL after migrations — no UI token generation.

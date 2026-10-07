@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-05-02
+updated: 2026-10-07
+---
+
 # Phase-1 Release Checklist (Foundation)
 
 This checklist is the required gate before starting any Phase-2 work.

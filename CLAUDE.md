@@ -14,6 +14,7 @@ Before planning, debugging, or implementing anything in this repo, read [docs/In
 
 - **Behave features must be explicitly targeted** (`behave features/smoke.feature`), never rely on cwd auto-discovery. Applies to CLI wrappers, CI, Dockerfiles, adapters.
 - If a change alters CLI args, exit codes, or `testosterone.yaml` parsing, update the matching `docs/` note in the same change.
+- The vault's own rules (frontmatter, links, ingest per pull request, log) are in [docs/CLAUDE.md](docs/CLAUDE.md). Run `python scripts/docs_vault.py lint` after editing notes.
 - Code review runs as a local pre-push hook (`.claude/settings.json`), not in CI.
 
 ## Commands

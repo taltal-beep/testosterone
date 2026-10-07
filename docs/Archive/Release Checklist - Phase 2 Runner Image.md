@@ -1,3 +1,10 @@
+---
+type: archive
+status: archived
+created: 2026-05-02
+updated: 2026-10-07
+---
+
 # Phase-2 Release Checklist (UQO Runner Image)
 
 This checklist gates publication of the `uqo-runner` prebuilt image used by CI adapters.

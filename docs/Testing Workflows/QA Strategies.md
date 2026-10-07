@@ -1,3 +1,10 @@
+---
+type: guide
+status: current
+created: 2026-06-25
+updated: 2026-10-07
+---
+
 # QA Strategies
 
 How Testo **triggers**, **executes**, and **logs** test suites today — from YAML cycles through artifacts, reporters, and optional database archives.
