@@ -1,4 +1,4 @@
-"""Unified Quality Orchestration — public API for the ``testo-core`` distribution.
+"""Testosterone — public API for the ``testo-core`` distribution.
 
 The new narrow surface is :class:`testo_core.config.Plan` /
 :class:`testo_core.config.Stage` plus :func:`testo_core.engine.run_plan`.

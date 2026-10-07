@@ -641,6 +641,10 @@ export interface components {
         };
         /** DashboardHeadlineKpis */
         DashboardHeadlineKpis: {
+            /** Baseline Run Id */
+            baseline_run_id: string | null;
+            /** Cycle */
+            cycle: string | null;
             /** Duration Ms */
             duration_ms: number | null;
             /** Fail Count */
@@ -674,6 +678,8 @@ export interface components {
             compare_url: string | null;
             /** Created At */
             created_at: number;
+            /** Cycle */
+            cycle: string | null;
             /** Duration Ms */
             duration_ms: number | null;
             /** Health Pct */

@@ -225,6 +225,7 @@ def _internal_failure_result(*, stage, exc: Exception) -> StageResult:  # type: 
     return StageResult(
         stage_name=stage.name,
         framework=stage.framework,
+        tier=stage.tier,
         returncode=4,
         started_at=now,
         finished_at=now,

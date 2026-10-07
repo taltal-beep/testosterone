@@ -54,6 +54,7 @@ def _overview_payload() -> DashboardOverview:
         recent_runs=(
             DashboardRecentRun(
                 run_id="run-1",
+                cycle="smoke",
                 created_at=1.0,
                 status="COMPLETED",
                 returncode=0,
@@ -102,6 +103,7 @@ def test_dashboard_recent_runs_contract(monkeypatch) -> None:  # noqa: ANN001
         lambda self, limit=10: (  # noqa: ARG005
             DashboardRecentRun(
                 run_id="run-9",
+                cycle="smoke",
                 created_at=9.0,
                 status="FAILED",
                 returncode=1,
@@ -118,6 +120,7 @@ def test_dashboard_recent_runs_contract(monkeypatch) -> None:  # noqa: ANN001
     payload = resp.json()
     assert set(payload.keys()) == {"items", "generated_at"}
     assert payload["items"][0]["run_id"] == "run-9"
+    assert payload["items"][0]["cycle"] == "smoke"
 
 
 def test_dashboard_endpoint_validation_errors_follow_error_envelope(monkeypatch) -> None:  # noqa: ANN001

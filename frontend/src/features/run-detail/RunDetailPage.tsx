@@ -4,7 +4,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { API_BASE, apiClient } from "../../lib/api-client";
 import { Badge, Button, Card, KeyValue, PageHeader, Spinner, StatusPill, TestPyramid } from "../../components/ui";
-import { formatRunName } from "../../lib/format";
+import { formatRunLabel } from "../../lib/format";
 import { AI_SUMMARY_SNAPSHOT_MESSAGE, IS_STATIC_BUILD } from "../../lib/static-backend";
 
 export function RunDetailPage() {
@@ -55,7 +55,7 @@ export function RunDetailPage() {
       <PageHeader
         title={
           <span className="flex items-center gap-3">
-            <span>{formatRunName(run.cycle, run.created_at)}</span>
+            <span>{formatRunLabel(run)}</span>
             <StatusPill status={run.status} returncode={run.returncode} />
           </span>
         }

@@ -11,7 +11,7 @@ The first external adopter, CarBiz (an Expo app with a Python/AWS backend), want
 
 ## Decision
 
-1. **New equipment `command`** (`testo_core/frameworks/command_adapter.py`). `args` is the complete argv, run verbatim in `target_repo`. Nothing is injected (these runners have no Allure flag). `UQO_SHARED_ALLURE_RESULTS_DIR` is still exported for runners that can write Allure JSON themselves. `args` is required at load time. The default tier is `unit`; set `tier:` explicitly for e2e suites.
+1. **New equipment `command`** (`testo_core/frameworks/command_adapter.py`). `args` is the complete argv, run verbatim in `target_repo`. Nothing is injected (these runners have no Allure flag). `TESTO_SHARED_ALLURE_RESULTS_DIR` is still exported for runners that can write Allure JSON themselves. `args` is required at load time. The default tier is `unit`; set `tier:` explicitly for e2e suites.
 2. **New stage key `junit_xml`** (string or list of globs, relative to `target_repo`, valid on every equipment). After the process exits, the executor converts each matching file into one Allure `*-result.json` per `<testcase>` (`testo_core/reporting/junit_import.py`):
    - Status: `<failure>` → failed, `<error>` → broken, `<skipped>` → skipped, otherwise passed.
    - `statusDetails` carries the message and a trace capped at 20k characters.

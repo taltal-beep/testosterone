@@ -63,7 +63,7 @@ Signal deaths other than timeout (e.g. SIGKILL rc **137**) still classify as exi
 
 **Remaining**
 
-`testo_core/history/` still reads pre-v1.1 records (per-framework `test_kind`, MinIO snapshot prefixes). The MinIO reads are isolated in `history/s3_snapshots.py`; once those records age out that module can be deleted.
+None. The pre-v1.1 MinIO snapshot reads and the second record shape in `history/views.py` were removed.
 
 ---
 
@@ -107,7 +107,6 @@ Default to synchronous archive in CI (`--ci` implies no `--async-report-db`), or
 **Evidence** (non-exhaustive)
 
 - `testo_core/runners.py` — many bare handlers around Docker/streaming
-- `testo_core/history/s3_snapshots.py` — MinIO lookups degrade to empty results
 - `testo_core/reporting/reporters/reportportal_client.py`, `extent_reporter.py`
 - `testo_core/services/headless_engine.py`, `multi_run.py`, `event_drain.py`
 

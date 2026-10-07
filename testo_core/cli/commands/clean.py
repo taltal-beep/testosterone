@@ -25,7 +25,7 @@ def clean(
     docker: bool = typer.Option(
         False,
         "--docker",
-        help="Prune stopped Docker containers labeled com.testosterone.project=uqo.",
+        help="Prune stopped Docker containers labeled com.testosterone.project=testo.",
     ),
 ) -> None:
     """Delete local artifacts and temp output; optional Docker prune."""

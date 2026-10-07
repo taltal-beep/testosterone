@@ -28,7 +28,7 @@ export function StaticBuildBanner() {
   const commit = manifest?.commit ? manifest.commit.slice(0, 8) : null;
 
   return (
-    <div className="border-b border-warn-400/30 bg-warn-400/10 px-6 py-2 text-xs text-ink-200" role="status">
+    <div className="border-b border-warn-400/30 bg-warn-400/10 px-4 py-2 text-xs text-ink-200 sm:px-6" role="status">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1">
         <span className="font-semibold uppercase tracking-wider text-warn-400">Read-only demo</span>
         <span>
