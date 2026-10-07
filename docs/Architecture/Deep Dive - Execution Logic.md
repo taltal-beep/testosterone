@@ -331,7 +331,7 @@ Until v1.1 a second stack ran beside the engine: `uqo run --config` and the API'
 | Failed cases / traceback / log tail for AI summaries | `persistence/failure_context.py` via `DbBackend` |
 | InfluxDB / Prometheus push | `integrations.push_run_metrics_if_configured()` after every cycle |
 
-The compose stack (Postgres, MinIO, Allure Server) is described in repo `ARCHITECTURE.md` and is not required for `testo run`.
+The compose stack (Postgres only) is described in repo `ARCHITECTURE.md` and is not required for `testo run`.
 
 ### Official documentation
 

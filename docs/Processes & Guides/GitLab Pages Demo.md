@@ -85,7 +85,7 @@ yet.
 
 Run history goes to file-backed SQLite inside the job workspace
 (`DATABASE_URL=sqlite:///$CI_PROJECT_DIR/.ci-history/testo.db`), so the demo
-needs no database service, no MinIO and no credentials. The DB and the Allure
+needs no database service and no credentials. The DB and the Allure
 HTML under `static/history/` are kept in a GitLab cache between pipelines (the
 20 newest report trees are kept), so the trend grows with every pipeline. The
 cache is best-effort: if GitLab drops it, the next pipeline starts a fresh
