@@ -108,6 +108,7 @@ def get_dashboard_recent_runs(limit: int = 10) -> DashboardRecentRunsResponse:
 def _to_recent_run_item(item: DashboardRecentRun) -> DashboardRecentRunItem:
     return DashboardRecentRunItem(
         run_id=item.run_id,
+        cycle=item.cycle,
         created_at=item.created_at,
         status=item.status,
         returncode=item.returncode,

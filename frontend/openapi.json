@@ -874,6 +874,17 @@
             "title": "Created At",
             "type": "number"
           },
+          "cycle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle"
+          },
           "duration_ms": {
             "anyOf": [
               {
@@ -922,6 +933,7 @@
         },
         "required": [
           "run_id",
+          "cycle",
           "created_at",
           "status",
           "returncode",

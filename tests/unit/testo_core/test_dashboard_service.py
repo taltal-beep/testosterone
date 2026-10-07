@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 
 from testo_core.history.views import CompletedRunView, RunSessionView
@@ -118,3 +120,12 @@ def test_dashboard_recent_runs_validates_limit() -> None:
     service = DashboardService(run_sessions_loader=lambda limit: [], run_lookup=lambda _: None)
     with pytest.raises(ValueError):
         service.get_recent_runs(limit=0)
+
+
+def test_dashboard_recent_runs_carry_cycle_name() -> None:
+    session = _session(run_id="run-1", created_at=1.0, returncode=0, status=RunStatus.COMPLETED)
+    sessions = [dataclasses.replace(session, cycle="fake-api")]
+    service = DashboardService(
+        run_sessions_loader=lambda limit: sessions, run_lookup=lambda _: None
+    )
+    assert service.get_recent_runs(limit=1)[0].cycle == "fake-api"

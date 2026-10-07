@@ -36,6 +36,7 @@ function overviewPayload(overrides: Record<string, unknown> = {}) {
     recent_runs: [
       {
         run_id: "run-1",
+        cycle: "fake-api",
         created_at: 1,
         status: "COMPLETED",
         returncode: 0,
@@ -93,6 +94,7 @@ describe("DashboardPage", () => {
       "href",
       "/compare?current_run_id=run-1&baseline_run_id=run-0"
     );
+    expect(screen.getByRole("link", { name: /^fake-api · / })).toHaveAttribute("href", "/runs/run-1");
   });
 
   it("renders the first-run guide when no runs exist", async () => {
