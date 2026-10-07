@@ -317,6 +317,7 @@ class DashboardReportLinksResponse(ApiModel):
 
 class DashboardRecentRunItem(ApiModel):
     run_id: str
+    cycle: str | None = None
     created_at: float
     status: str | None = None
     returncode: int

@@ -51,6 +51,7 @@ class DashboardReportLinks:
 @dataclass(frozen=True)
 class DashboardRecentRun:
     run_id: str
+    cycle: str | None
     created_at: float
     status: str | None
     returncode: int
@@ -329,6 +330,7 @@ class DashboardService:
             )
         return DashboardRecentRun(
             run_id=session.run_id,
+            cycle=session.cycle,
             created_at=session.created_at,
             status=session.status.value if session.status is not None else None,
             returncode=session.returncode,

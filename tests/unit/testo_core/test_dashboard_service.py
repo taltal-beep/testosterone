@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 
 from testo_core.history.views import CompletedRunView, RunSessionView
@@ -189,3 +191,12 @@ def test_dashboard_never_pairs_runs_without_a_recorded_cycle() -> None:
 
     assert [r.compare_url for r in service.get_recent_runs(limit=2)] == [None, None]
     assert service.get_overview().headline_kpis.baseline_run_id is None
+
+
+def test_dashboard_recent_runs_carry_cycle_name() -> None:
+    session = _session(run_id="run-1", created_at=1.0, returncode=0, status=RunStatus.COMPLETED)
+    sessions = [dataclasses.replace(session, cycle="fake-api")]
+    service = DashboardService(
+        run_sessions_loader=lambda limit: sessions, run_lookup=lambda _: None
+    )
+    assert service.get_recent_runs(limit=1)[0].cycle == "fake-api"

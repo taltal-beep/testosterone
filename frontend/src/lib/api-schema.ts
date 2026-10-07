@@ -678,6 +678,8 @@ export interface components {
             compare_url: string | null;
             /** Created At */
             created_at: number;
+            /** Cycle */
+            cycle: string | null;
             /** Duration Ms */
             duration_ms: number | null;
             /** Health Pct */
