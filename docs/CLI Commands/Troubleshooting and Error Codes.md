@@ -359,7 +359,7 @@ ls node_modules/.bin/allure   # after npm install in repo root
 | `allure serve <dirs>` | `allure open <dirs> --port <n>` (generate + serve) |
 | `allure open <reportDir>` | `allure open <reportDir> --port <n>` |
 
-Hosted UQO reports: `{ALLURE_SERVER_URL}/reports/<run_id>/index.html` (nginx static bundle, not `allure-docker-service`).
+Hosted UQO reports: `{ALLURE_SERVER_URL}/reports/<run_id>/index.html` (any static file server, not `allure-docker-service`).
 
 See also: [Allure Report 3 docs](https://allurereport.org/docs/v3/), [[ReportPortal Local Setup Guide]], [Docker Engine](https://docs.docker.com/engine/).
 
