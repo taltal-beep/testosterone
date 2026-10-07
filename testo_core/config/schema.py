@@ -14,6 +14,10 @@ from pathlib import Path
 # Supported frameworks. Add new ones in :mod:`testo_core.frameworks` and append here.
 SUPPORTED_FRAMEWORKS: frozenset[str] = frozenset({"pytest", "behave", "behavex", "command"})
 
+# Frameworks that act on a stage's ``workers``: BehaveX always (``--parallel-processes``),
+# pytest only when pytest-xdist is installed (``-n``). The others run single-process.
+PARALLEL_FRAMEWORKS: frozenset[str] = frozenset({"pytest", "behavex"})
+
 # Test-pyramid tiers a stage's tests are counted under. See `pyramid_data.py`.
 SUPPORTED_TIERS: frozenset[str] = frozenset({"unit", "integration", "e2e"})
 

@@ -17,7 +17,7 @@ Every run uses **host subprocesses** — no Docker. The UQO headless stack that 
 | Execution unit | **Cycle** (plan) → ordered **stages** |
 | Stage runtime | One `subprocess.Popen` per stage |
 | Stage ordering | **Strictly sequential** in `run_plan()` |
-| Parallelism | Framework-internal only (e.g. BehaveX `--workers`) |
+| Parallelism | Framework-internal only, via `workers` (BehaveX; pytest with pytest-xdist) — see [[#Framework level — optional]] |
 | Durability | `artifacts/<cycle>/` — logs, NDJSON events, Allure JSON |
 | Exit codes | `EngineExitCode` 0–4 via `classify_exit_code()` |
 
@@ -115,7 +115,7 @@ An empty resolved stage list is a hard error (exit **2**).
 | `--stream` | `StreamRenderer` | `true` | Same panels + live stdout chunks |
 | `--ci` | `CIRenderer` | `false` | NDJSON lines on stdout only |
 
-Workers override: `_apply_workers_override()` clones the plan with `workers=` set on every stage (BehaveX parallelism).
+Workers override: `_apply_workers_override()` clones the plan with `workers=` set on every stage (only frameworks that use `workers` act on it).
 
 ---
 
@@ -251,8 +251,16 @@ Two consumers write the same logical events:
 
 ### Framework level — optional
 
-- YAML `workers:` on a stage, or CLI `--workers`, flows into BehaveX argv.
-- Pytest may use its own `-n` if passed via `args:`.
+`workers:` (stage, or `defaults:`, default `4`; CLI `--workers` overrides every stage) means something different per framework:
+
+| Framework | What `workers: N` does |
+|-----------|------------------------|
+| `behavex` | `--parallel-processes N --parallel-scheme feature`, unless `args:` already set them. |
+| `pytest` | `-n N` when N > 1 **and** pytest-xdist is importable by the `pytest` on PATH (the adapter reads its shebang and probes that interpreter). Without xdist it logs one warning and runs serially. A `-n`/`--numprocesses` or `-p no:xdist` in `args:` wins. |
+| `behave` | Nothing — native behave is single-process. Setting `workers:` on the stage loads fine but logs a warning. |
+| `command` | Nothing — the command owns its own flags (same warning). |
+
+The API's `GET /api/v1/cycles/{cycle}` returns `workers: null` for `behave` and `command` stages, so the UI only shows *Workers* where it can apply (pytest's is labelled "with pytest-xdist").
 
 ### Threading in the engine
 
