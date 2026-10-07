@@ -126,7 +126,7 @@ def push_influxdb(
     token: str,
     org: str,
     bucket: str,
-    measurement: str = "uqo_test_run",
+    measurement: str = "testo_test_run",
 ) -> tuple[bool, str]:
     """
     Push a single metrics point to InfluxDB.
@@ -168,7 +168,7 @@ def _read_run_id(results_dir: Path) -> str | None:
     if env.exists():
         try:
             for line in env.read_text(encoding="utf-8").splitlines():
-                if line.startswith("UQO_RUN_ID="):
+                if line.startswith("TESTO_RUN_ID="):
                     return line.split("=", 1)[1].strip() or None
         except Exception:
             pass

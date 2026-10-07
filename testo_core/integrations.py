@@ -38,7 +38,7 @@ def influx_settings_from_env() -> dict[str, str | None]:
 def prometheus_settings_from_env() -> dict[str, str | None]:
     return {
         "pushgateway_url": _env("PROMETHEUS_PUSHGATEWAY_URL"),
-        "job_name": _env("PROMETHEUS_JOB_NAME", "uqo"),
+        "job_name": _env("PROMETHEUS_JOB_NAME", "testo"),
     }
 
 
@@ -49,7 +49,7 @@ def push_to_influxdb(
     token: str | None = None,
     org: str | None = None,
     bucket: str | None = None,
-    measurement: str = "uqo_test_run",
+    measurement: str = "testo_test_run",
 ) -> tuple[bool, str]:
     """
     Push metrics to InfluxDB. When arguments are omitted, reads ``INFLUXDB_*`` from the environment
@@ -79,18 +79,18 @@ def _prometheus_exposition(metrics: RunMetrics) -> str:
     """OpenMetrics-style text for Pushgateway."""
     rid = _escape_prom_label_value(metrics.run_id or "unknown")
     lines = [
-        "# HELP uqo_total_tests Total test cases in Allure aggregate",
-        "# TYPE uqo_total_tests gauge",
-        f'uqo_total_tests{{run_id="{rid}"}} {int(metrics.total_tests)}',
-        "# HELP uqo_passed Passed tests",
-        "# TYPE uqo_passed gauge",
-        f'uqo_passed{{run_id="{rid}"}} {int(metrics.passed)}',
-        "# HELP uqo_failed Failed tests",
-        "# TYPE uqo_failed gauge",
-        f'uqo_failed{{run_id="{rid}"}} {int(metrics.failed)}',
-        "# HELP uqo_duration_ms Aggregate span (ms)",
-        "# TYPE uqo_duration_ms gauge",
-        f'uqo_duration_ms{{run_id="{rid}"}} {int(metrics.duration_ms)}',
+        "# HELP testo_total_tests Total test cases in Allure aggregate",
+        "# TYPE testo_total_tests gauge",
+        f'testo_total_tests{{run_id="{rid}"}} {int(metrics.total_tests)}',
+        "# HELP testo_passed Passed tests",
+        "# TYPE testo_passed gauge",
+        f'testo_passed{{run_id="{rid}"}} {int(metrics.passed)}',
+        "# HELP testo_failed Failed tests",
+        "# TYPE testo_failed gauge",
+        f'testo_failed{{run_id="{rid}"}} {int(metrics.failed)}',
+        "# HELP testo_duration_ms Aggregate span (ms)",
+        "# TYPE testo_duration_ms gauge",
+        f'testo_duration_ms{{run_id="{rid}"}} {int(metrics.duration_ms)}',
     ]
     return "\n".join(lines) + "\n"
 
@@ -108,7 +108,7 @@ def push_to_prometheus(
     try:
         s = prometheus_settings_from_env()
         base = (pushgateway_url or s["pushgateway_url"] or "").rstrip("/")
-        job = job_name or s["job_name"] or "uqo"
+        job = job_name or s["job_name"] or "testo"
         if not base:
             return False, "Prometheus: set PROMETHEUS_PUSHGATEWAY_URL (e.g. http://localhost:9091)."
         url = f"{base}/metrics/job/{quote(job, safe='')}"

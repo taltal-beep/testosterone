@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import os
 import sys
 import threading
 import time
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections import deque
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -25,6 +28,32 @@ from testo_core.triggers import TriggerResult
 
 CycleExecutionStatus = Literal["queued", "running", "completed", "failed"]
 
+logger = logging.getLogger(__name__)
+
+# The registry only exists so clients can follow a run while it is live; the durable
+# record of every run is the run history DB. Running executions are always kept;
+# finished ones are kept up to this many (oldest evicted first, minimum 1 so a run's
+# final status can always be read), so memory stays bounded however many runs happen.
+MAX_FINISHED_EXECUTIONS_ENV = "TESTO_MAX_FINISHED_EXECUTIONS"
+DEFAULT_MAX_FINISHED_EXECUTIONS = 200
+
+
+def _max_finished_from_env() -> int:
+    raw = os.environ.get(MAX_FINISHED_EXECUTIONS_ENV)
+    if raw is None or not raw.strip():
+        return DEFAULT_MAX_FINISHED_EXECUTIONS
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        logger.warning(
+            "%s=%r is not an integer; using %d",
+            MAX_FINISHED_EXECUTIONS_ENV,
+            raw,
+            DEFAULT_MAX_FINISHED_EXECUTIONS,
+        )
+        return DEFAULT_MAX_FINISHED_EXECUTIONS
+
+
 # Resolves (config, plan) on the worker thread, so config errors surface as a failed execution.
 PlanLoader = Callable[[], tuple[TestosteroneConfig, Plan]]
 
@@ -39,6 +68,8 @@ class CycleExecutionState:
     plan_result_path: Path | None = None
     events_path: Path | None = None
     events_start_offset_bytes: int = 0
+    # Where this execution's events end in the (per-cycle, shared) events file; set on finish.
+    events_end_offset_bytes: int | None = None
     done: bool = False
     error: str | None = None
     lock: threading.Lock = field(default_factory=threading.Lock)
@@ -105,12 +136,21 @@ class CycleExecutionManager:
       into `artifacts/<cycle>/events.ndjson`, reporters and the report archive
 
     Streaming is done by tailing `events.ndjson` from a recorded byte offset.
+
+    The registry is bounded: every running execution is kept, plus the last
+    `max_finished` finished ones (default from `TESTO_MAX_FINISHED_EXECUTIONS`).
+    Older finished executions are evicted and their status/events endpoints answer
+    404; their results stay in the run history (`/api/v1/runs`).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, max_finished: int | None = None) -> None:
         self._states: dict[str, CycleExecutionState] = {}
         self._states_lock = threading.Lock()
         self._active_by_cycle: dict[str, str] = {}
+        configured = _max_finished_from_env() if max_finished is None else max_finished
+        self.max_finished = max(1, configured)
+        # Finished execution ids, oldest first: the eviction order.
+        self._finished: deque[str] = deque()
 
     def create_execution(
         self,
@@ -247,15 +287,6 @@ class CycleExecutionManager:
         with self._states_lock:
             return self._states.get(execution_id)
 
-    def resolve_events_path(self, execution_id: str) -> tuple[Path, int, bool]:
-        state = self.get(execution_id)
-        if state is None:
-            raise KeyError(execution_id)
-        with state.lock:
-            if state.events_path is None:
-                raise RuntimeError("events file not initialized yet")
-            return state.events_path, int(state.events_start_offset_bytes), bool(state.done)
-
     def _run_execution(
         self,
         state: CycleExecutionState,
@@ -271,6 +302,8 @@ class CycleExecutionManager:
         stream: bool,
         ci: bool,
     ) -> None:
+        status: CycleExecutionStatus = "failed"
+        error: str | None = "execution interrupted"
         try:
             with state.lock:
                 state.status = "running"
@@ -342,7 +375,7 @@ class CycleExecutionManager:
                     },
                 )
 
-            state.mark_done(status="completed", error=None)
+            status, error = "completed", None
         except Exception as exc:  # pragma: no cover (defensive: surfaces in API)
             # Keep error exposure minimal (redaction happens upstream in API error formatting where needed).
             err = str(exc)
@@ -354,54 +387,149 @@ class CycleExecutionManager:
                     )
             except Exception:
                 pass
-            state.mark_done(status="failed", error=err)
+            error = err
         finally:
+            # Record where this run's events end before freeing the cycle: the next run
+            # appends to the same file, and streams of this run must stop here.
+            if state.events_path is not None:
+                try:
+                    end = state.events_path.stat().st_size
+                except OSError:
+                    end = state.events_start_offset_bytes
+                with state.lock:
+                    state.events_end_offset_bytes = end
+            # Free the cycle and update the registry before reporting `done`, so a client
+            # that sees the run finish can start the cycle again right away.
             with self._states_lock:
                 if self._active_by_cycle.get(state.cycle) == state.execution_id:
                     self._active_by_cycle.pop(state.cycle, None)
+                self._finished.append(state.execution_id)
+                while len(self._finished) > self.max_finished:
+                    self._states.pop(self._finished.popleft(), None)
+            state.mark_done(status=status, error=error)
 
 
-def iter_sse_from_ndjson_file(
+def _sse_message(payload: dict[str, object]) -> str:
+    event_name = str(payload.get("event") or "unknown")
+    data = json.dumps(payload, separators=(",", ":"), ensure_ascii=True)
+    return f"event: {event_name}\ndata: {data}\n\n"
+
+
+def _read_ndjson(path: Path, offset: int, end: int | None) -> tuple[list[dict[str, object]], int]:
+    """Parse the NDJSON objects after byte ``offset``; return them and the new offset.
+
+    While the run is live (``end is None``) a trailing line without its newline is
+    still being written, so it is left for the next read. Once the run is done, read
+    exactly up to ``end`` (the file is shared by later runs of the same cycle).
+    """
+    try:
+        with path.open("rb") as fh:
+            fh.seek(offset)
+            chunk = fh.read() if end is None else fh.read(max(0, end - offset))
+    except OSError:  # not created yet
+        return [], offset if end is None else end
+    consumed = chunk.rfind(b"\n") + 1 if end is None else len(chunk)
+    payloads: list[dict[str, object]] = []
+    for raw in chunk[:consumed].splitlines():
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            payloads.append(payload)
+    return payloads, offset + consumed if end is None else end
+
+
+async def iter_sse_from_ndjson_file(
     *,
     events_path: Path,
     start_offset_bytes: int,
-    is_done: Callable[[], bool],
-    poll_interval_s: float = 0.2,
-) -> Iterator[str]:
+    end_offset: Callable[[], int | None],
+    min_poll_s: float = 0.1,
+    max_poll_s: float = 2.0,
+    keepalive_s: float = 15.0,
+) -> AsyncIterator[str]:
     """
     Tail an NDJSON file and emit each JSON object as an SSE message.
 
     The `data:` payload is the full NDJSON object (including top-level `event`),
     aligned to `docs/CLI Commands/Troubleshooting and Error Codes.md`.
+
+    `end_offset()` is None while the execution runs and, once it is done, the byte
+    offset where its events end; the stream drains up to there and closes.
+
+    Per viewer this is one coroutine and a file offset. It sleeps on the event loop
+    (a sync generator would hold a threadpool thread per viewer) and the poll interval
+    backs off from `min_poll_s` to `max_poll_s` while nothing new is written. When
+    the client disconnects, Starlette cancels the response task, which ends the
+    stream at its next `await`.
     """
     offset = max(0, int(start_offset_bytes))
+    interval = min_poll_s
+    last_sent = time.monotonic()
     while True:
-        try:
-            if events_path.exists():
-                with events_path.open("r", encoding="utf-8", errors="replace") as fh:
-                    fh.seek(offset)
-                    while True:
-                        line = fh.readline()
-                        if not line:
-                            offset = fh.tell()
-                            break
-                        raw = line.strip()
-                        if not raw:
-                            continue
-                        try:
-                            payload = json.loads(raw)
-                        except json.JSONDecodeError:
-                            continue
-                        event_name = str(payload.get("event") or "unknown")
-                        data = json.dumps(payload, separators=(",", ":"), ensure_ascii=True)
-                        yield f"event: {event_name}\ndata: {data}\n\n"
-        except OSError:
-            pass
+        # Sample the end before reading: it is recorded after the worker's last event,
+        # so this read is guaranteed to include that event.
+        end = end_offset()
+        # Off the event loop: a late viewer may have a large backlog to read.
+        payloads, offset = await asyncio.to_thread(_read_ndjson, events_path, offset, end)
+        for payload in payloads:
+            yield _sse_message(payload)
+        if end is not None:
+            return
 
-        if is_done():
-            # Best-effort: allow a short final read window for late flushes.
-            time.sleep(float(poll_interval_s))
-            if is_done():
-                return
-        yield ": keep-alive\n\n"
-        time.sleep(float(poll_interval_s))
+        now = time.monotonic()
+        if payloads:
+            interval = min_poll_s
+            last_sent = now
+        else:
+            interval = min(interval * 2, max_poll_s)
+            if now - last_sent >= keepalive_s:
+                # Comment line: keeps proxies from timing out an idle stream.
+                yield ": keep-alive\n\n"
+                last_sent = now
+        await asyncio.sleep(interval)
+
+
+async def iter_execution_sse(
+    manager: CycleExecutionManager,
+    execution_id: str,
+    *,
+    min_poll_s: float = 0.1,
+    max_poll_s: float = 2.0,
+) -> AsyncIterator[str]:
+    """SSE stream for one execution: wait until its events file is known, then tail it."""
+    # The worker thread learns the events path only after loading the config.
+    interval = min_poll_s
+    while True:
+        state = manager.get(execution_id)
+        if state is None:  # evicted: it finished long ago and its result is in run history
+            return
+        with state.lock:
+            events_path, start_offset = state.events_path, state.events_start_offset_bytes
+            done, error = state.done, state.error
+        if events_path is not None:
+            break
+        if done:
+            # Failed before it had an events file (e.g. a config error): say why.
+            message = error or "execution finished without events"
+            yield _sse_message({"event": "error", "code": "internal_error", "message": message})
+            return
+        await asyncio.sleep(interval)
+        interval = min(interval * 2, max_poll_s)
+
+    def end_offset() -> int | None:
+        current = manager.get(execution_id)
+        if current is None:  # evicted mid-stream: nothing more of this run to send
+            return 0
+        with current.lock:
+            return (current.events_end_offset_bytes or 0) if current.done else None
+
+    async for message in iter_sse_from_ndjson_file(
+        events_path=events_path,
+        start_offset_bytes=start_offset,
+        end_offset=end_offset,
+        min_poll_s=min_poll_s,
+        max_poll_s=max_poll_s,
+    ):
+        yield message

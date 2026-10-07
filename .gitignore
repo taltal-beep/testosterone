@@ -28,15 +28,8 @@ build/
 # Local release-gate run logs
 artifacts/release-gate-*/
 
-# Mirrored report HTML for Streamlit static serving
-static/allure_report.html
-static/allure_report/
-static/allure_reports/
-static/locust_report.html
-static/behave/
-
-# Per-run Allure/reporter HTML served by the Run Detail page's Report Links
-static/history/
+# Generated report HTML (static/history/ is served by the API for each run's Report Links)
+static/
 
 # Persisted run history (SQLite + per-run HTML snapshots)
 artifacts/uqo_run_history.sqlite
@@ -66,7 +59,6 @@ node_modules/
 artifacts/sample-behave/
 artifacts/sample-pytests/
 artifacts/sample-all-frameworks/
-artifacts/sample-all-frameworks-stochastic/
 artifacts/self-test/
 artifacts/fake-api/
 .testo/

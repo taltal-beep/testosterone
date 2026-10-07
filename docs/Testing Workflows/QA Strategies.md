@@ -136,7 +136,7 @@ Debounced filesystem events call `testo run` repeatedly; useful for fast feedbac
 4. **`run_stage()`**:
    - Framework adapter builds `argv` (e.g. `pytest` with Allure plugin paths).
    - `subprocess.Popen` in `target_repo` cwd.
-   - Merges `extra_env`; sets `UQO_SHARED_ALLURE_RESULTS_DIR`, `UQO_ARTIFACTS_ROOT`.
+   - Merges `extra_env`; sets `TESTO_SHARED_ALLURE_RESULTS_DIR`, `TESTO_ARTIFACTS_ROOT`.
    - Streams stdout/stderr into `run.log` via `LogBuffer`.
    - Enforces `timeout_s` (SIGTERM → SIGKILL).
 5. **`--fail-fast`** — aborts remaining stages (and `run --cycle all` aborts remaining cycles).

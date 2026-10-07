@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from testo_core.db import get_repository
-from testo_core.history.report_links import report_links
+from testo_core.history.report_links import local_report_links
 from testo_core.history.views import CompletedRunView, RunSessionView, view_from_record
 
 
@@ -46,7 +46,7 @@ def list_run_sessions(*, limit: int = 30) -> list[RunSessionView]:
             skipped=r.skipped,
             broken=r.broken,
             status=r.status,
-            links_under_static=report_links(r),
+            links_under_static=local_report_links(r.run_id),
         )
         for r in list_recent_runs(limit=limit)
     ]

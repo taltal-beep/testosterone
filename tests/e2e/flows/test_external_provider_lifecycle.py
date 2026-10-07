@@ -32,7 +32,7 @@ def test_external_github_lifecycle(cleanup_ledger, e2e_run_id: str) -> None:
     provisioner = GithubProvisioner.from_env()
     if not provisioner.dry_run and (not provisioner.token or not provisioner.owner):
         pytest.skip(
-            "UQO_E2E_GITHUB_TOKEN/UQO_E2E_GITHUB_OWNER are required when dry-run is disabled"
+            "TESTO_E2E_GITHUB_TOKEN/TESTO_E2E_GITHUB_OWNER are required when dry-run is disabled"
         )
 
     scenario = FlowScenario(
@@ -54,7 +54,7 @@ def test_external_gitlab_lifecycle(cleanup_ledger, e2e_run_id: str) -> None:
     provisioner = GitlabProvisioner.from_env()
     if not provisioner.dry_run and (not provisioner.token or not provisioner.group_id):
         pytest.skip(
-            "UQO_E2E_GITLAB_TOKEN/UQO_E2E_GITLAB_GROUP_ID are required when dry-run is disabled"
+            "TESTO_E2E_GITLAB_TOKEN/TESTO_E2E_GITLAB_GROUP_ID are required when dry-run is disabled"
         )
 
     scenario = FlowScenario(
@@ -72,7 +72,7 @@ def test_external_gitlab_lifecycle(cleanup_ledger, e2e_run_id: str) -> None:
 
 
 def test_external_resource_prefix_is_deterministic(e2e_run_id: str) -> None:
-    expected = f"uqo-e2e-{e2e_run_id}"
-    assert expected.startswith("uqo-e2e-")
+    expected = f"testo-e2e-{e2e_run_id}"
+    assert expected.startswith("testo-e2e-")
     assert " " not in expected
     assert os.sep not in expected

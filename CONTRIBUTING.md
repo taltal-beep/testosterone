@@ -11,7 +11,7 @@ pip install -e ".[dev]"
 pre-commit install   # one-time; runs ruff + changelog-format checks before each commit
 ```
 
-See [README Quickstart](README.md#quickstart-copypaste) for the full local infrastructure setup (Postgres, MinIO, Allure, frontend).
+See [README Quickstart](README.md#quickstart-copypaste) for the full local infrastructure setup (optional Postgres, frontend).
 
 ## Before opening a PR
 
