@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../lib/api-client";
 import { Badge, Button, Card, EmptyState, PageHeader, Spinner } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
+import { IS_STATIC_BUILD } from "../../lib/static-backend";
 
 export function CyclesPage() {
   const navigate = useNavigate();
@@ -42,9 +43,11 @@ export function CyclesPage() {
       <PageHeader
         title="Cycles"
         subtitle={
-          query.data?.config_path
-            ? `Defined in ${query.data.config_path}`
-            : "Every cycle defined in your configuration."
+          IS_STATIC_BUILD
+            ? "The cycles that ran for this demo snapshot."
+            : query.data?.config_path
+              ? `Defined in ${query.data.config_path}`
+              : "Every cycle defined in your configuration."
         }
       />
       {cycles.length === 0 ? (
@@ -67,6 +70,12 @@ export function CyclesPage() {
                 <p className="mt-1.5 line-clamp-2 text-sm text-ink-300">
                   {cycle.description ?? "No description."}
                 </p>
+                {IS_STATIC_BUILD ? (
+                  <p className="mt-2 text-xs text-ink-400">
+                    Run locally with{" "}
+                    <code className="font-mono text-ink-200">testo run --cycle {cycle.name}</code>
+                  </p>
+                ) : null}
               </div>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -79,12 +88,21 @@ export function CyclesPage() {
                     </Badge>
                   ))}
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => navigate(`/cycles/${encodeURIComponent(cycle.name)}?run=1`)}
-                >
-                  Run
-                </Button>
+                {IS_STATIC_BUILD ? (
+                  // A disabled button gets no hover events, so the wrapper carries the tooltip.
+                  <span title={`Read-only demo. Run locally with: testo run --cycle ${cycle.name}`}>
+                    <Button size="sm" disabled>
+                      Run
+                    </Button>
+                  </span>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(`/cycles/${encodeURIComponent(cycle.name)}?run=1`)}
+                  >
+                    Run
+                  </Button>
+                )}
               </div>
             </Card>
           ))}

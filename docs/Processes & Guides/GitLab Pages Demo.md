@@ -131,14 +131,39 @@ as it does on Pages, except for the 404 fallback, which is Pages-specific.
 
 ## What visitors see
 
-A banner marks the build read-only and links to the pipeline that produced it.
-Writes have nothing behind them, so the shim answers them with
-`405 read_only_build`, and the UI shows that message — the Run button and the AI
-summary button explain themselves instead of failing silently. The NDJSON event
+A banner marks the build read-only, says what the two cycles are (testosterone
+testing itself, and fake-api, whose red is deliberate) and links to the pipeline
+that produced it. Writes have nothing behind them, so the shim answers them with
+`405 read_only_build` ("This is a read-only demo snapshot…"). The NDJSON event
 stream is likewise absent: a static host cannot stream a run that is not running.
+
+- **Cycles page**: only cycles with a run in the snapshot are exported, so every
+  card leads to real history. Run buttons (on the cards and the cycle page) are
+  disabled and show the local command instead (`testo run --cycle <name>`).
+- **AI Failure Summary**: a visitor's click cannot reach an AI provider, so the
+  export generates the summary for each failed run beforehand, through the same
+  `POST /runs/{id}/ai-summary:generate` the button calls, and the Run detail page
+  shows that frozen summary (the button itself is disabled). This needs `ANTHROPIC_API_KEY` in the export
+  step's environment (see [[#Optional: AI summaries]]); without it the card says
+  summaries are generated live when you run Testosterone locally.
 
 Report links work: `static/history/<run_id>/` is copied into the published site,
 so the Allure reports for each framework open from the Run detail page.
+
+## Optional: AI summaries
+
+`scripts/export_static_site.py` freezes one AI failure summary per failed run
+when `ANTHROPIC_API_KEY` is set. The model defaults to `claude-haiku-4-5`
+(override with `TESTO_DEMO_AI_MODEL`). A generated summary is stored with the
+run in the cached history DB, so later pipelines reuse it; a failed attempt is
+retried on the next pipeline. Each request gets one 30-second attempt, and an
+error only skips that summary, never the deploy. The key is only read from the
+environment; it is never written to the site.
+
+- GitHub: add a repository secret named `ANTHROPIC_API_KEY`; the export step
+  passes `${{ secrets.ANTHROPIC_API_KEY }}` through. Unset, it is empty and the
+  export skips the summaries.
+- GitLab: add a masked CI/CD variable named `ANTHROPIC_API_KEY`.
 
 ## GitHub Pages
 
@@ -184,8 +209,9 @@ account.
    (`https://<namespace>.gitlab.io/<project>/`). The first deployment can take a
    few minutes to become reachable.
 
-Nothing in the pipeline needs secrets; the only credential anywhere is the
-mirror token in step 2, and only if you choose that route.
+Nothing in the pipeline needs secrets; the only credentials anywhere are the
+mirror token in step 2, if you choose that route, and the optional AI key
+(see [[#Optional: AI summaries]]).
 
 ## Maintenance notes
 

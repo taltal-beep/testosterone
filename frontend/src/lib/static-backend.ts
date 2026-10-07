@@ -1,5 +1,5 @@
 /**
- * Read-only backend for the static (GitLab Pages) build of the UI.
+ * Read-only backend for the static (GitHub / GitLab Pages) build of the UI.
  *
  * A static host serves files, not the FastAPI app, so when the build sets
  * `VITE_STATIC_DATA_BASE` this module installs a `fetch` shim that answers the
@@ -32,7 +32,14 @@ export interface StaticManifest {
 }
 
 export const READ_ONLY_MESSAGE =
-  "This is a read-only build published to GitLab Pages: it shows the results of a cycle the pipeline already ran, so starting runs and saving settings are disabled.";
+  "This is a read-only demo snapshot: it shows the results of cycles CI already ran, so starting runs and saving settings are disabled.";
+
+/**
+ * Shown for a failed run that has no AI summary in the snapshot. The export
+ * generates them only when it has an API key (scripts/export_static_site.py).
+ */
+export const AI_SUMMARY_SNAPSHOT_MESSAGE =
+  "AI summaries are generated live when you run Testosterone locally; this snapshot was built without an API key.";
 
 /** Map one API request onto the file the export wrote for it, or null if there is none. */
 export function resolveStaticPath(pathname: string, search: URLSearchParams): string | null {

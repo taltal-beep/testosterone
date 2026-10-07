@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiClient, type CycleExecutionRequest } from "../../lib/api-client";
 import { Button, Card, Spinner } from "../../components/ui";
+import { IS_STATIC_BUILD } from "../../lib/static-backend";
 import { ExecutionProgress } from "../execution/ExecutionProgress";
 import { useCycleExecution } from "../execution/useCycleExecution";
 
@@ -170,7 +171,7 @@ export function RunPanel({ initialCycle, lockCycle = false }: RunPanelProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button type="submit" disabled={busy || !cycle}>
+            <Button type="submit" disabled={busy || !cycle || IS_STATIC_BUILD}>
               {busy ? (
                 <>
                   <Spinner className="h-3.5 w-3.5 border-white/40 border-t-white" /> Running…
@@ -179,6 +180,12 @@ export function RunPanel({ initialCycle, lockCycle = false }: RunPanelProps) {
                 "Run cycle"
               )}
             </Button>
+            {IS_STATIC_BUILD && cycle ? (
+              <span className="text-xs text-ink-400">
+                Read-only demo. Run locally with{" "}
+                <code className="font-mono text-ink-200">testo run --cycle {cycle}</code>
+              </span>
+            ) : null}
             {execution.executionId ? (
               <span className="font-mono text-xs text-ink-400">execution {execution.executionId}</span>
             ) : null}

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resolveStaticPath } from "./static-backend";
 
@@ -43,5 +43,53 @@ describe("resolveStaticPath", () => {
     expect(resolve("/api/v1/cycle-executions/xyz/events")).toBeNull();
     expect(resolve("/api/v1/cycles/sample-pytests/executions")).toBeNull();
     expect(resolve("/api/v1/analytics/delta?current_run_id=aaa")).toBeNull();
+  });
+});
+
+describe("installStaticBackend", () => {
+  async function installWith(files: Record<string, unknown>) {
+    vi.resetModules();
+    vi.stubEnv("VITE_STATIC_DATA_BASE", "/demo/data");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const path = String(input);
+        return Promise.resolve(
+          path in files
+            ? new Response(JSON.stringify(files[path]), { status: 200 })
+            : new Response("missing", { status: 404 })
+        );
+      })
+    );
+    const backend = await import("./static-backend");
+    backend.installStaticBackend();
+    return backend;
+  }
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("serves GETs from the exported files", async () => {
+    const summary = { status: "available", summary_text: "The /broken route returns 500." };
+    await installWith({ "/demo/data/runs/run-1/ai-summary.json": summary });
+
+    const resp = await window.fetch("/api/v1/runs/run-1/ai-summary");
+
+    expect(resp.status).toBe(200);
+    expect(await resp.json()).toEqual(summary);
+  });
+
+  it("refuses writes with a host-neutral read-only message", async () => {
+    const backend = await installWith({});
+
+    const resp = await window.fetch("/api/v1/cycles/self-test/executions", { method: "POST" });
+
+    expect(resp.status).toBe(405);
+    const body = await resp.json();
+    expect(body.error.code).toBe("read_only_build");
+    expect(body.error.message).toBe(backend.READ_ONLY_MESSAGE);
+    expect(backend.READ_ONLY_MESSAGE).not.toMatch(/GitLab|GitHub/);
   });
 });
