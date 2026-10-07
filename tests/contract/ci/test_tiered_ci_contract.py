@@ -11,7 +11,9 @@ def test_github_fast_workflow_has_required_gate_command() -> None:
     payload = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
     job = payload["jobs"]["test"]
     commands = "\n".join(step.get("run", "") for step in job["steps"] if isinstance(step, dict))
-    assert 'python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1 --no-cov' in commands
+    assert 'python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1' in commands
+    # The coverage gate in pytest.ini must stay active on this job.
+    assert "--no-cov" not in commands
 
 
 def test_github_heavy_workflow_is_manual_or_label_triggered() -> None:
@@ -41,3 +43,6 @@ def test_github_external_workflows_use_external_marker_command() -> None:
     )
     assert marker_cmd in nightly_commands
     assert marker_cmd in release_commands
+    # A marker subset can't meet pytest.ini's project-wide coverage gate.
+    assert "--no-cov" in nightly_commands
+    assert "--no-cov" in release_commands

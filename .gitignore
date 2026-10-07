@@ -38,6 +38,7 @@ artifacts/history/
 
 # Local/generated artifacts
 .coverage
+coverage.xml
 artifacts/allure-report/
 artifacts/allure-results/
 artifacts/allure-results-archive/
