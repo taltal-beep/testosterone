@@ -16,6 +16,14 @@ from testo_core.persistence.db_backend import DbBackend
 from testo_core.persistence.json_backend import JsonBackend
 
 
+@pytest.fixture(autouse=True)
+def _isolated_static_history(monkeypatch: pytest.MonkeyPatch, tmp_path_factory) -> None:  # noqa: ANN001
+    """Per-run snapshots are copied under ``STATIC_HISTORY_ROOT``; keep them out of the repo."""
+    monkeypatch.setattr(
+        "testo_core.paths.STATIC_HISTORY_ROOT", tmp_path_factory.mktemp("static_history")
+    )
+
+
 def _make_plan_result(
     plan_name: str = "smoke",
     exit_code: EngineExitCode = EngineExitCode.SUCCESS,
@@ -228,6 +236,48 @@ class TestDbBackend:
 
         metadata = mock_repo.create_run.call_args[1]["metadata"]
         assert metadata["snapshot_dir"] is None
+
+    @patch("testo_core.db.get_repository")
+    def test_each_run_keeps_its_own_copy_of_the_artifacts(
+        self, mock_get_repo: MagicMock, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Two runs of one cycle share ``artifacts/<cycle>/``; each record must not."""
+        monkeypatch.setattr("testo_core.paths.ORCHESTRATOR_ROOT", tmp_path)
+        history = tmp_path / "static" / "history"
+        monkeypatch.setattr("testo_core.paths.STATIC_HISTORY_ROOT", history)
+        mock_repo = MagicMock()
+        mock_get_repo.return_value = mock_repo
+        artifacts_root = tmp_path / "artifacts"
+        results_dir = artifacts_root / "smoke" / "api" / "allure-results" / "pytest"
+        backend = DbBackend(artifacts_root)
+
+        for run_id, status in (("run-1", "passed"), ("run-2", "failed")):
+            mock_repo.create_run.return_value = MagicMock(id=run_id)
+            _write_allure_result(results_dir, "test_flaky", status)
+            backend.persist(_make_plan_result())
+
+        recorded = {
+            call.args[0]: call.args[1]["snapshot_dir"]
+            for call in mock_repo.merge_run_metadata.call_args_list
+        }
+        assert recorded == {
+            "run-1": "static/history/run-1/artifacts",
+            "run-2": "static/history/run-2/artifacts",
+        }
+        for run_id, status in (("run-1", "passed"), ("run-2", "failed")):
+            copied = history / run_id / "artifacts" / "api" / "allure-results" / "pytest"
+            payload = json.loads((copied / "test_flaky-result.json").read_text(encoding="utf-8"))
+            assert payload["status"] == status
+
+    @patch("testo_core.db.get_repository")
+    def test_snapshot_failure_keeps_the_run(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:
+        mock_repo = MagicMock()
+        mock_repo.create_run.return_value = MagicMock(id="run-1")
+        mock_repo.merge_run_metadata.side_effect = RuntimeError("db went away")
+        mock_get_repo.return_value = mock_repo
+        (tmp_path / "smoke").mkdir()
+
+        assert DbBackend(tmp_path).persist(_make_plan_result()) == "run-1"
 
 
 class TestCompositeBackend:
