@@ -9,7 +9,13 @@
 
 **Live demo: <https://taltal-beep.github.io/testosterone/>**
 
-<!-- screenshots: added after the demo fixes land -->
+[![Dashboard: health, pass count and duration trends for the latest run, with the recent self-test and fake-api runs](docs/assets/screenshots/dashboard.png)](https://taltal-beep.github.io/testosterone/)
+
+| Run detail (failed fake-api run) | Compare (two fake-api runs) |
+|---|---|
+| [![Run detail of a failed fake-api run: summary, test pyramid and per-stage health](docs/assets/screenshots/run-detail-failed-fake-api.png)](docs/assets/screenshots/run-detail-failed-fake-api.png) | [![Compare view: outcome mix, reliability and performance deltas, and per-stage health between two fake-api runs](docs/assets/screenshots/compare-fake-api-runs.png)](docs/assets/screenshots/compare-fake-api-runs.png) |
+| **Cycles** | **Dashboard on a phone** |
+| [![Cycles page listing the self-test and fake-api cycles with their stages and frameworks](docs/assets/screenshots/cycles.png)](docs/assets/screenshots/cycles.png) | <a href="docs/assets/screenshots/dashboard-phone.png"><img src="docs/assets/screenshots/dashboard-phone.png" width="200" alt="Dashboard at phone width: stacked health, failed, pass count and duration cards"></a> |
 
 What you're looking at: Testosterone testing itself (its own 559-test suite) and `fake-api`, a
 small app whose routes fail on purpose. CI runs both cycles and publishes the real results as a
