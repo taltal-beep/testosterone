@@ -65,7 +65,8 @@ class DbBackend:
         try:
             repo.merge_run_metadata(run_id, {"snapshot_dir": snapshot_dir})
         except Exception:
-            logger.debug("could not record snapshot for run %s", run_id, exc_info=True)
+            # Broad on purpose: the run row already exists; losing this pointer must not lose its id.
+            logger.warning("could not record snapshot for run %s", run_id, exc_info=True)
 
     def persist(self, result: PlanResult) -> str | None:
         try:
@@ -128,5 +129,6 @@ class DbBackend:
             self._record_run_snapshot(repo, run_id, result.plan_name)
             return run_id
         except Exception:
-            logger.debug("db persistence failed for plan %s", result.plan_name, exc_info=True)
+            # Broad on purpose: DB history is best-effort; the JSON backend still has the run.
+            logger.warning("db persistence failed for plan %s", result.plan_name, exc_info=True)
             return None

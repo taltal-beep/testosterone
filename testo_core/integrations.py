@@ -7,6 +7,7 @@ per-target clients and connection checks.
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import replace
 from pathlib import Path
@@ -17,6 +18,8 @@ import requests
 
 from .metrics import RunMetrics, parse_allure_results_dir
 from .metrics import push_influxdb as _push_influx_core
+
+logger = logging.getLogger(__name__)
 
 
 def _env(name: str, default: str | None = None) -> str | None:
@@ -68,6 +71,8 @@ def push_to_influxdb(
             )
         return _push_influx_core(metrics, url=u, token=t, org=o, bucket=b, measurement=measurement)
     except Exception as exc:
+        # Broad on purpose: the contract is (ok, message), never an exception.
+        logger.warning("InfluxDB push error", exc_info=True)
         return False, f"InfluxDB push error: {exc}"
 
 
@@ -123,6 +128,8 @@ def push_to_prometheus(
             return False, f"Pushgateway HTTP {r.status_code}: {(r.text or '')[:500]}"
         return True, "Pushed metrics to Prometheus Pushgateway."
     except Exception as exc:
+        # Broad on purpose: the contract is (ok, message), never an exception.
+        logger.warning("Prometheus push error", exc_info=True)
         return False, f"Prometheus push error: {exc}"
 
 
@@ -148,6 +155,8 @@ def test_influxdb_connection(
                 try:
                     ping()
                 except Exception:
+                    # Broad on purpose: older servers reject /ping in client-specific ways; try /health.
+                    logger.debug("InfluxDB ping failed, falling back to /health", exc_info=True)
                     h = client.health()
                     st = getattr(h, "status", "")
                     if st and str(st).lower() != "pass":
@@ -161,25 +170,25 @@ def test_influxdb_connection(
             client.close()
         return True, "InfluxDB: connection OK."
     except Exception as exc:
+        # Broad on purpose: a connection check reports any failure as (False, message).
+        logger.debug("InfluxDB connection test failed", exc_info=True)
         return False, f"InfluxDB test failed: {exc}"
 
 
 def test_prometheus_pushgateway(*, pushgateway_url: str | None = None) -> tuple[bool, str]:
-    try:
-        s = prometheus_settings_from_env()
-        base = (pushgateway_url or s["pushgateway_url"] or "").rstrip("/")
-        if not base:
-            return False, "Prometheus: set PROMETHEUS_PUSHGATEWAY_URL."
-        for path in ("/-/healthy", "/metrics", "/"):
-            try:
-                r = requests.get(f"{base}{path}", timeout=10)
-                if r.status_code < 500:
-                    return True, "Pushgateway: reachable."
-            except Exception:
-                continue
-        return False, "Pushgateway: could not reach endpoint."
-    except Exception as exc:
-        return False, f"Prometheus test failed: {exc}"
+    s = prometheus_settings_from_env()
+    base = (pushgateway_url or s["pushgateway_url"] or "").rstrip("/")
+    if not base:
+        return False, "Prometheus: set PROMETHEUS_PUSHGATEWAY_URL."
+    for path in ("/-/healthy", "/metrics", "/"):
+        try:
+            r = requests.get(f"{base}{path}", timeout=10)
+            if r.status_code < 500:
+                return True, "Pushgateway: reachable."
+        except requests.RequestException:
+            logger.debug("Pushgateway probe %s%s failed", base, path, exc_info=True)
+            continue
+    return False, "Pushgateway: could not reach endpoint."
 
 
 def push_run_metrics_if_configured(
@@ -207,6 +216,8 @@ def push_run_metrics_if_configured(
         if status["prometheus_configured"]:
             out.append(("prometheus", *push_to_prometheus(metrics)))
     except Exception as exc:
+        # Broad on purpose: a post-run hook that is documented never to raise.
+        logger.warning("metrics push for %s failed", results_root, exc_info=True)
         out.append(("metrics", False, str(exc)))
     return out
 

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from jinja2 import TemplateError
 
 from testo_core.reporting.allure_results import parse_collected_results
 from testo_core.reporting.collector import CollectedResults
@@ -13,6 +16,8 @@ from testo_core.reporting.reporters.extent_builder import render_dashboard
 
 if TYPE_CHECKING:
     from rich.console import Console
+
+logger = logging.getLogger(__name__)
 
 
 class ExtentReporter(BaseReporter):
@@ -46,7 +51,8 @@ class ExtentReporter(BaseReporter):
 
         try:
             index_path = render_dashboard(aggregate, context=context, output_dir=output_dir)
-        except Exception as exc:
+        except (OSError, TemplateError) as exc:
+            logger.warning("Extent dashboard render failed in %s", output_dir, exc_info=True)
             return ReporterResult(ok=False, message=f"Extent dashboard render failed: {exc}")
 
         msg = f"Extent report at {index_path}"

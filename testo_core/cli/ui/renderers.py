@@ -13,6 +13,7 @@ Three implementations are provided:
 
 from __future__ import annotations
 
+import logging
 from contextlib import AbstractContextManager, nullcontext
 from typing import Protocol
 
@@ -30,6 +31,8 @@ from testo_core.engine.events import (
     StageOutputChunk,
     StageStarted,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Renderer(Protocol):
@@ -89,10 +92,7 @@ class StreamRenderer(BufferedRenderer):
 
     def handle(self, event: EngineEvent) -> None:
         if isinstance(event, StageOutputChunk):
-            try:
-                text = event.chunk.decode("utf-8", errors="replace")
-            except Exception:  # pragma: no cover - defensive
-                text = repr(event.chunk)
+            text = event.chunk.decode("utf-8", errors="replace")
             self._console.out(text, end="", highlight=False)
             return
         super().handle(event)
@@ -163,7 +163,8 @@ def _panel_from_result(result) -> StagePanelData:  # type: ignore[no-untyped-def
         artifacts_dir = getattr(result, "artifacts_dir", None)
         if artifacts_dir is not None:
             results_dir = str((artifacts_dir / "allure-results" / str(result.framework)).resolve())
-    except Exception:
+    except OSError:
+        logger.debug("could not resolve results dir for %s", result.stage_name, exc_info=True)
         results_dir = None
     return StagePanelData(
         name=result.stage_name,

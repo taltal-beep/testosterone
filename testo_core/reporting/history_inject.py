@@ -72,4 +72,5 @@ def try_inject_prior_history(
                 f"[dim]Injected Allure history from up to {depth} prior archived run(s) (trends).[/]"
             )
     except Exception:
-        logger.debug("Allure history injection skipped", exc_info=True)
+        # Broad on purpose: trend history is optional; DB, zip and copy errors must not fail a run.
+        logger.warning("Allure history injection skipped", exc_info=True)

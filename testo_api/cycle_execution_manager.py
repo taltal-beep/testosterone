@@ -377,7 +377,9 @@ class CycleExecutionManager:
 
             status, error = "completed", None
         except Exception as exc:  # pragma: no cover (defensive: surfaces in API)
+            # Broad on purpose: a background run's crash must reach the client as an error event.
             # Keep error exposure minimal (redaction happens upstream in API error formatting where needed).
+            logger.exception("execution %s of cycle %s crashed", state.execution_id, state.cycle)
             err = str(exc)
             try:
                 if state.events_path is not None:
@@ -385,8 +387,10 @@ class CycleExecutionManager:
                         state.events_path,
                         {"event": "error", "code": "internal_error", "message": err},
                     )
-            except Exception:
-                pass
+            except OSError:
+                logger.warning(
+                    "could not write error event for %s", state.execution_id, exc_info=True
+                )
             error = err
         finally:
             # Record where this run's events end before freeing the cycle: the next run

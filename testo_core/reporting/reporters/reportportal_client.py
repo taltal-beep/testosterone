@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import contextlib
+import logging
 import time
 import uuid
 from typing import Any
@@ -14,6 +14,8 @@ from testo_core.reporting.allure_results import (
     TestCaseRecord,
     map_status_to_reportportal,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ReportPortalError(RuntimeError):
@@ -218,8 +220,11 @@ class ReportPortalClient:
             launch_status = "passed" if aggregate.overall_passed else "failed"
             self.finish_launch(launch_uuid, end_time_ms=launch_end_ms, status=launch_status)
         except Exception:
-            with contextlib.suppress(Exception):
+            # Broad on purpose: close the launch on any failure, then re-raise unchanged.
+            try:
                 self.finish_launch(launch_uuid, end_time_ms=launch_end_ms, status="failed")
+            except (ReportPortalError, requests.RequestException):
+                logger.warning("could not close ReportPortal launch %s", launch_uuid, exc_info=True)
             raise
         return launch_uuid
 
@@ -254,12 +259,15 @@ class ReportPortalClient:
             issue_comment=test.failure_message if test.status in ("failed", "broken") else None,
         )
         if test.failure_message and test.status in ("failed", "broken"):
-            with contextlib.suppress(Exception):
+            try:
                 self.save_log(
                     launch_uuid=launch_uuid,
                     item_uuid=item_uuid,
                     message=test.failure_message,
                 )
+            except (ReportPortalError, requests.RequestException):
+                # The item is already reported; a missing log line is not worth failing the upload.
+                logger.warning("could not attach failure log to %s", test.name, exc_info=True)
 
     def dashboard_url(self, launch_uuid: str) -> str:
         return f"{self.endpoint}/ui/#{self.project}/launches/all/{launch_uuid}"

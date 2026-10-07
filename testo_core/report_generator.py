@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import http.server
+import logging
 import os
 import shutil
 import socket
@@ -23,6 +24,8 @@ from .paths import (
     STATIC_DIR,
     allure_report_dir,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _flatten_allure_result_json(*, root: Path) -> int:
@@ -151,6 +154,8 @@ def generate_allure_html(
 
     report_dir.mkdir(parents=True, exist_ok=True)
 
+    from testo_core.reporting.allure_cli import AllureCLINotFoundError
+
     try:
         p = _invoke_allure_generate(
             result_dirs=use_inputs,
@@ -160,12 +165,8 @@ def generate_allure_html(
         )
     except FileNotFoundError:
         return False, "Allure Report 3 CLI not found. Run `npm install` in the repo root.", None
-    except Exception as exc:
-        from testo_core.reporting.allure_cli import AllureCLINotFoundError
-
-        if isinstance(exc, AllureCLINotFoundError):
-            return False, str(exc), None
-        raise
+    except AllureCLINotFoundError as exc:
+        return False, str(exc), None
 
     if p.returncode != 0:
         err = (p.stderr or p.stdout or "").strip()
@@ -253,7 +254,7 @@ def read_single_file_html(*, report_dir: Path) -> tuple[bool, str, bytes | None]
         return False, f"Missing {index}. Generate the report first.", None
     try:
         return True, "OK", index.read_bytes()
-    except Exception as exc:
+    except OSError as exc:
         return False, f"Failed reading {index}: {exc}", None
 
 
@@ -408,8 +409,8 @@ def publish_allure_index_to_static(*, report_dir: Path) -> Path | None:
         if STATIC_ALLURE_REPORTS_DIR.resolve() in report_dir.resolve().parents:
             _chmod_tree(report_dir)
             return src
-    except Exception:
-        pass
+    except OSError:
+        logger.debug("could not resolve %s against the static tree", report_dir, exc_info=True)
     if report_dir.resolve() == STATIC_ALLURE_REPORT_DIR.resolve():
         _chmod_tree(report_dir)
         return STATIC_ALLURE_INDEX if STATIC_ALLURE_INDEX.is_file() else src

@@ -7,7 +7,10 @@ import os
 import time
 from pathlib import Path
 
+import pytest
+
 from testo_core.reporting.native_reports import (
+    ensure_behavex_report_html,
     list_native_rows,
     load_stage_equipment,
     native_row_for_stage,
@@ -61,6 +64,33 @@ def test_behavex_native_row_with_report_html(tmp_path: Path) -> None:
     row = native_row_for_stage(stage, "behavex")
     assert row.open_path == (br / "report.html").resolve()
     assert row.open_kind == "html"
+
+
+def test_behavex_html_generation_failure_is_logged_or_raised(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    from behavex.outputs import report_html
+
+    def broken_generate(_payload: object) -> None:
+        raise RuntimeError("template missing")
+
+    monkeypatch.setattr(report_html, "generate_report", broken_generate)
+    stage = tmp_path / "flow-tests"
+    (stage / "behave_reports").mkdir(parents=True)
+    (stage / "behave_reports" / "report.json").write_text("{}", encoding="utf-8")
+
+    with caplog.at_level("WARNING", logger="testo_core.reporting.native_reports"):
+        assert ensure_behavex_report_html(stage) is None
+    assert "BehaveX HTML report generation failed" in caplog.text
+
+    with pytest.raises(RuntimeError, match="template missing"):
+        ensure_behavex_report_html(stage, raise_errors=True)
+
+    # A failing first root doesn't stop the second one from being used.
+    fallback = stage / "allure-results" / "behave_reports"
+    fallback.mkdir(parents=True)
+    (fallback / "report.html").write_text("<html/>", encoding="utf-8")
+    assert ensure_behavex_report_html(stage, raise_errors=True) == fallback / "report.html"
 
 
 def test_behavex_assets_only(tmp_path: Path) -> None:

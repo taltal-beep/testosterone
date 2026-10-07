@@ -155,5 +155,6 @@ def try_persist_cycle_report(
         )
         return row.id
     except Exception:
+        # Broad on purpose: the caller turns None into exit 3 under --ci (or ignores it otherwise).
         log.exception("report archive persistence failed for cycle %s", plan_name)
         return None

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
+import logging
 import subprocess
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -12,6 +14,8 @@ from testo_core.config.schema import Plan, TestosteroneConfig
 from testo_core.reporting.paths import safe_child_path
 
 _GIT_TIMEOUT_S = 60.0
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -42,6 +46,7 @@ def evaluate_cycle_trigger(*, plan: Plan, cfg: TestosteroneConfig) -> TriggerRes
     anchor = source.parent.expanduser().resolve()
     patterns = trigger.paths
 
+    git_error: str | None = None
     repo_root = _git_repo_root(anchor)
     if repo_root is not None:
         try:
@@ -53,15 +58,28 @@ def evaluate_cycle_trigger(*, plan: Plan, cfg: TestosteroneConfig) -> TriggerRes
                 since_ref=trigger.since_ref,
                 artifacts_root=artifacts_root,
             )
-        except (OSError, subprocess.TimeoutExpired, RuntimeError):
-            pass
+        except (OSError, subprocess.TimeoutExpired, RuntimeError) as exc:
+            git_error = str(exc) or type(exc).__name__
+            # No traceback: this is an environment problem (shallow clone, unknown ref), not a bug.
+            logger.warning(
+                "git trigger evaluation failed for cycle %s (%s); falling back to snapshot mode",
+                plan.name,
+                git_error,
+            )
 
-    return _evaluate_snapshot_trigger(
+    result = _evaluate_snapshot_trigger(
         anchor=anchor,
         plan_name=plan.name,
         patterns=patterns,
         artifacts_root=artifacts_root,
     )
+    if git_error is not None:
+        # Surface the fallback in the reason the CLI panel and `cycle_trigger` event already show.
+        result = dataclasses.replace(
+            result,
+            reason=f"Git evaluation failed ({git_error}); snapshot fallback: {result.reason}",
+        )
+    return result
 
 
 def persist_trigger_snapshot(
@@ -149,11 +167,12 @@ def _evaluate_git_trigger(
 
     if since_ref:
         diff_arg = f"{since_ref}...HEAD"
-        code, out, _ = _git_run(["git", "diff", "--name-only", diff_arg], repo_r)
+        code, out, err = _git_run(["git", "diff", "--name-only", diff_arg], repo_r)
     else:
-        code, out, _ = _git_run(["git", "diff", "--name-only", "HEAD"], repo_r)
+        code, out, err = _git_run(["git", "diff", "--name-only", "HEAD"], repo_r)
     if code != 0:
-        raise RuntimeError("git diff failed")
+        detail = err.strip().splitlines()[0] if err.strip() else f"exit {code}"
+        raise RuntimeError(f"git diff failed: {detail}")
 
     paths: set[str] = {ln.strip() for ln in out.splitlines() if ln.strip()}
     code_u, out_u, _ = _git_run(["git", "ls-files", "--others", "--exclude-standard"], repo_r)
