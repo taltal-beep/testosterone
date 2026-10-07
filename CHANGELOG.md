@@ -17,6 +17,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - After every cycle run, test KPIs are pushed to InfluxDB and/or a Prometheus Pushgateway when `INFLUXDB_*` / `PROMETHEUS_PUSHGATEWAY_URL` are set
 
 ### Changed
+- API access control: CORS now allows only the Vite dev/preview servers by default (`TESTO_CORS_ORIGINS`; legacy `UQO_API_CORS_ORIGINS` still read; credentials only for an explicit origin list, never with `*`) and mutating requests from other browser origins get `403`, optional `TESTO_API_TOKEN` requires a bearer token on mutating requests (the frontend sends `VITE_TESTO_API_TOKEN`), and `testo-api` warns when bound beyond loopback without a token. `ARCHITECTURE.md` gains "Security model" and "Trade-offs and known limits" sections
 - Running a cycle (trigger gate, engine, reporters, native report snapshot, report archive, trigger snapshot) now lives in one application service, `testo_core/services/cycle_run.py` (`CycleRunService`). `testo run` and `POST /api/v1/cycles/{cycle}/executions` both call it, so the API no longer imports private helpers from `testo_core/cli/runner.py`
 - API cycle executions now save the trigger snapshot after a successful triggered run, as `testo run` already did; before, a cycle with `trigger:` started from the dashboard never advanced its snapshot
 - Frontend API types are now generated from FastAPI's OpenAPI schema (`frontend/openapi.json` → `frontend/src/lib/api-schema.ts`) instead of being hand-written; CI's `frontend` job runs `tsc` and fails on a stale schema or generated file

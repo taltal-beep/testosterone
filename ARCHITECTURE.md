@@ -102,6 +102,7 @@ Exit codes (`testo_core/engine/exit_codes.py`), propagated unchanged to CI:
 Named-cycle and ad-hoc executions are the same resource: both return a
 `/cycle-executions/{id}` status URL and event stream, and both run through `CycleRunService`.
 Only one execution per cycle name (`adhoc` included) runs at a time; a second request gets `409`.
+Access control is deliberately small; see [Security model](#security-model).
 
 ### Frontend (`frontend/`, Vite + React + Tailwind)
 
@@ -160,6 +161,45 @@ static/history/<run_id>/      # per-run reporter output, served at /history
   change a run's exit code, except a required report archive under `--ci` (exit `3`).
 - **Config is the source of truth.** Cycles, defaults, reporters and the database URL live in
   `testosterone.yaml`; the UI lists and runs what the file defines rather than keeping its own copy.
+
+## Security model
+
+Testosterone is a **local developer tool**, and the API is a command runner by design:
+`POST /adhoc-executions` takes `framework: command`, any `target_repo`, `args` and `extra_env`.
+The defaults assume one trusted user on one machine:
+
+- `testo-api` binds `127.0.0.1` (`TESTO_API_HOST`). Binding anything else without a token
+  logs a warning at startup.
+- `TESTO_API_TOKEN`, when set, requires `Authorization: Bearer <token>` on every mutating
+  request (constant-time compare, `401` otherwise). Reads stay open. The frontend sends
+  `localStorage["testo.apiToken"]` or the build-time `VITE_TESTO_API_TOKEN`, which ends up in
+  the JS bundle, so only bake it into a UI served to the people who hold the token anyway.
+- CORS allows only the Vite dev/preview servers unless `TESTO_CORS_ORIGINS` lists origins;
+  credentials are allowed only for an explicit list, never with `*`. CORS alone does not
+  stop a cross-site "simple" POST, so mutating requests whose `Origin` is not on that list
+  get `403` even without a token. That is what keeps a random web page (or a DNS-rebinding
+  one) in the developer's browser from starting runs on the localhost API.
+
+A shared token is not multi-user security. Exposing the API to a team would need real
+authentication with per-user audit, an allow-list of repos and commands instead of free-form
+`args`/`extra_env`, and runs in sandboxed, disposable runners (containers with no host
+credentials) rather than as the API's own user.
+
+## Trade-offs and known limits
+
+- **Stages run sequentially.** A cycle is an ordered list; parallelism lives inside a stage
+  and is per framework: `workers` becomes BehaveX `--parallel-processes`, while pytest
+  stages pass xdist's `-n` in `args` and native Behave and `command` stages ignore it.
+- **One execution per cycle at a time.** A second request for a running cycle gets `409`
+  rather than queueing; artifacts are per cycle, so two runs would interleave `events.ndjson`.
+- **In-memory execution registry.** `CycleExecutionManager` keeps execution state in the API
+  process, so it is single-process (no multiple uvicorn workers) and a restart forgets live
+  executions; finished runs survive in the database, and orphaned `RUNNING` rows are marked
+  failed on startup.
+- **SSE is a file tail.** The event stream polls `events.ndjson` from a byte offset. Simple
+  and replayable, but it adds polling latency and assumes the API shares a disk with the run.
+- **SQLite by default.** Zero setup and fine for one user; teams point `database.url` at
+  Postgres for concurrent writers.
 
 ## Extending
 
