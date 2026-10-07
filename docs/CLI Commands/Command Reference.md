@@ -1,8 +1,8 @@
 # Command Reference
 
-Entry point: **`testo`** (`pyproject.toml` → `testo_core.cli.app:main`). Deprecated alias: **`uqo`** (forwards to `testo` with a notice on stderr).
+Entry point: **`testo`** (`pyproject.toml` → `testo_core.cli.app:main`).
 
-Parent index: [[Index]]. Architecture: [[Architecture Overview]]. Run lifecycle: [[QA Strategies]].
+Parent index: [Index](../Index.md). Architecture: [Architecture Overview](../Architecture/Architecture%20Overview.md). Run lifecycle: [QA Strategies](../Testing%20Workflows/QA%20Strategies.md).
 
 ```bash
 testo --help
@@ -59,7 +59,7 @@ Run exited with code 1.
 
 ### Exit codes
 
-See [[Architecture Overview#Exit code contract]]. `testo run` returns the engine exit code directly.
+See [Architecture Overview § Exit code contract](../Architecture/Architecture%20Overview.md#exit-code-contract). `testo run` returns the engine exit code directly.
 
 ---
 
@@ -107,7 +107,7 @@ testo report pyramid <run-id>
 | `testo report open --id <uuid>` | Extract archive and regenerate/serve Allure |
 | `testo report compare` | Rich diff + Allure comparison (optional baseline/current UUIDs) |
 | `testo report native [ROUTINE]` | List or open BehaveX/pytest native HTML under stage dirs |
-| `testo report pyramid RUN_ID [-c CONFIG]` | ASCII unit/integration/e2e test pyramid for a completed run (`run_id`, not the archive UUID); stage→tier comes from each stage's `tier:` in `testosterone.yaml` (default inferred from `equipment`: pytest→unit, behave→integration, behavex→e2e). See [[Architecture Overview#Test pyramid]]. |
+| `testo report pyramid RUN_ID [-c CONFIG]` | ASCII unit/integration/e2e test pyramid for a completed run (`run_id`, not the archive UUID); stage→tier is the stage's `tier:` (default inferred from `equipment`: pytest→unit, behave→integration, behavex→e2e) as recorded in the run when it executed; `-c` is only read for older runs that predate recorded tiers. See [Architecture Overview § Test pyramid](../Architecture/Architecture%20Overview.md#test-pyramid). |
 
 ---
 
@@ -167,7 +167,7 @@ Rich terminal diff of metrics and (for full diff) extracted Allure deltas. Requi
 
 Prefer **`testo report compare`** for Rich diff plus Allure visual comparison pipeline.
 
-Note: this operates on `ReportArchive` UUIDs (`testo report list`), a separate id space from run-history `run_id`s — see [[Architecture Overview#Persistence]]. The React Compare page (`GET /api/v1/analytics/delta` + `/analytics/delta/cases`) reaches equivalent per-stage and per-test detail by `run_id` instead, per [[Delta Comparison Policy]].
+Note: this operates on `ReportArchive` UUIDs (`testo report list`), a separate id space from run-history `run_id`s — see [Architecture Overview § Persistence](../Architecture/Architecture%20Overview.md#persistence). The React Compare page (`GET /api/v1/analytics/delta` + `/analytics/delta/cases`) reaches equivalent per-stage and per-test detail by `run_id` instead, per [Delta Comparison Policy](../Specs%20&%20ADRs/Delta%20Comparison%20Policy.md).
 
 ---
 
@@ -185,7 +185,7 @@ testo doctor -c testosterone.yaml
 
 **Output:** Rich table with Check / Status / Detail rows (`PASS`, `FAIL`, `WARN`, `SKIP`).
 
-Exits **2** on hard failures (config or missing required executables) — see [[Troubleshooting and Error Codes#Commands that use exit codes]].
+Exits **2** on hard failures (config or missing required executables) — see [Troubleshooting and Error Codes § Commands that use exit codes](Troubleshooting%20and%20Error%20Codes.md#commands-that-use-exit-codes).
 
 ---
 
@@ -242,10 +242,9 @@ testo -v
 
 | Command | Package | Role |
 |---------|---------|------|
-| `uqo …` | `testo_core.cli.deprecated` | Deprecated alias for `testo` |
 | `testo-api` | `testo_api` | FastAPI server (React UI backend) |
 
-The v1.0 `uqo run --config` headless format (`--ghost`, `--json`, `--stream-json`) and the `testo-ui` Streamlit app were removed in v1.1; use `testo run --cycle … --ci` and the React frontend.
+The v1.0 `uqo` command (including its `uqo run --config` headless format with `--ghost`, `--json`, `--stream-json`) and the `testo-ui` Streamlit app were removed in v1.1; use `testo run --cycle … --ci` and the React frontend.
 
 ---
 
@@ -276,7 +275,5 @@ After `testo run`, terminal hints may point to `./reports/allure`, `./reports/ex
 
 ## Related operational docs
 
-- [[Release Management/README]] — install/contract gates per phase
-- [[CI-CD Pipeline Setup]] — `testo run --ci` in CI wrappers
-- [[ReportPortal Local Setup Guide]] — local ReportPortal stack for reporter validation
-- [[Delta Comparison Policy]] — semantics for `testo diff` / `testo summary`
+- [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md) — `testo run --ci` in CI wrappers
+- [Delta Comparison Policy](../Specs%20&%20ADRs/Delta%20Comparison%20Policy.md) — semantics for `testo diff` / `testo summary`

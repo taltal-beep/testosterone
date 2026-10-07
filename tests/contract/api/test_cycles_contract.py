@@ -69,6 +69,8 @@ def test_get_cycle_detail_resolves_stages(client: TestClient, config_path: Path)
     assert body["stages"][0]["args"] == ["-q", "tests"]
     assert body["stages"][0]["timeout_s"] == 600
     assert body["stages"][0]["workers"] == 4
+    # Native behave runs single-process, so it reports no workers at all.
+    assert body["stages"][1]["workers"] is None
     assert body["trigger"] is None
 
 

@@ -30,6 +30,12 @@ def compute_stage_health(
     not an average of per-stage percentages. Returns ``(per_stage, None)``
     when no stage produced any parseable Allure results, so callers can fall
     back to a returncode-based estimate instead of reporting a misleading 0%.
+
+    A stage that failed without producing any results (e.g. it crashed at
+    startup) has no pass rate of its own, and leaving it out would report a
+    broken cycle as 100% healthy. The overall pass rate is therefore scaled
+    by the share of stages that did not crash this way: one healthy stage and
+    one crashed stage give 50%.
     """
     collected = CollectedResults(
         artifacts_root=artifacts_root,
@@ -60,4 +66,10 @@ def compute_stage_health(
         for s in aggregate.stages
     ]
     overall_health_pct = _pct(aggregate.passed, aggregate.total)
-    return per_stage, overall_health_pct
+    if overall_health_pct is None:
+        return per_stage, None
+    tests_by_stage = {s.stage: s.total for s in aggregate.stages}
+    crashed = sum(
+        1 for s in result.stages if s.returncode != 0 and not tests_by_stage.get(s.stage_name)
+    )
+    return per_stage, overall_health_pct * (len(result.stages) - crashed) / len(result.stages)

@@ -53,7 +53,7 @@ def test_push_to_prometheus_http_error(sample_metrics: RunMetrics) -> None:
     with patch("testo_core.integrations.requests.post") as post:
         post.return_value = MagicMock(status_code=400, text="bad")
         ok, msg = push_to_prometheus(
-            sample_metrics, pushgateway_url="http://x:9091", job_name="uqo"
+            sample_metrics, pushgateway_url="http://x:9091", job_name="testo"
         )
     assert ok is False
     assert "HTTP 400" in msg

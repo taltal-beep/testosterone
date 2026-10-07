@@ -3,9 +3,6 @@
 Reads ``database.url`` from the repository ``testosterone.yaml`` (same discovery rules as
 ``testo run``) when ``DATABASE_URL`` is not already set. Ensures tables exist so code paths that
 touch ``testo_core.db`` / run history behave like production without requiring manual env setup.
-
-Chaos / flakiness (mock API tests only, including unit ``test_sandbox_api*.py``): set
-``SANDBOX_API_FLAKY_P=0.07`` (see root ``tests/conftest.py``).
 """
 
 from __future__ import annotations

@@ -41,6 +41,7 @@ def _make_plan_result(
         command=("pytest", "-q"),
         output_tail="1 passed",
         timed_out=False,
+        tier="integration",
     )
     return PlanResult(
         plan_name=plan_name,
@@ -76,6 +77,7 @@ class TestJsonBackend:
         assert data["exit_code"] == 0
         assert len(data["stages"]) == 1
         assert data["stages"][0]["name"] == "api"
+        assert data["stages"][0]["tier"] == "integration"
 
     def test_writes_failure_exit_code(self, tmp_path: Path) -> None:
         backend = JsonBackend(tmp_path)
@@ -126,6 +128,48 @@ class TestJsonBackend:
         assert data["stages"][0]["total_tests"] == 0
         assert data["health_pct"] == 0.0
 
+    def test_health_pct_counts_a_stage_that_crashed_without_results(self, tmp_path: Path) -> None:
+        """A stage that crashed before running any test must not leave the cycle at the
+        other stages' pass rate: 3/4 passed in one of two stages gives 37.5%, not 75%."""
+        ok_dir = tmp_path / "stage" / "api"
+        for name, status in [
+            ("t1", "passed"),
+            ("t2", "passed"),
+            ("t3", "passed"),
+            ("t4", "failed"),
+        ]:
+            _write_allure_result(ok_dir / "allure-results" / "pytest", name, status)
+        ok = _make_plan_result(artifacts_dir=ok_dir).stages[0]
+        crashed = StageResult(
+            stage_name="flows",
+            framework="behavex",
+            returncode=1,
+            started_at=1002.5,
+            finished_at=1003.0,
+            duration_s=0.5,
+            log_path=None,
+            artifacts_dir=tmp_path / "stage" / "flows",
+            command=("behavex",),
+            output_tail="OSError",
+            timed_out=False,
+        )
+        result = PlanResult(
+            plan_name="smoke",
+            started_at=1000.0,
+            finished_at=1003.0,
+            duration_s=3.0,
+            stages=(ok, crashed),
+            aggregate_returncode=1,
+            exit_code=EngineExitCode.DOMAIN_FAILURE,
+        )
+
+        JsonBackend(tmp_path).persist(result)
+
+        data = json.loads((tmp_path / "smoke" / "plan_result.json").read_text())
+        assert data["stages"][0]["health_pct"] == 75.0
+        assert data["stages"][1]["health_pct"] is None
+        assert data["health_pct"] == pytest.approx(37.5)
+
 
 class TestDbBackend:
     def test_satisfies_protocol(self, tmp_path: Path) -> None:
@@ -146,6 +190,7 @@ class TestDbBackend:
         assert call_kwargs["status"].value == "COMPLETED"
         assert call_kwargs["metadata"]["plan"] == "smoke"
         assert call_kwargs["metadata"]["source"] == "engine"
+        assert call_kwargs["metadata"]["stages"][0]["tier"] == "integration"
 
     @patch("testo_core.db.get_repository")
     def test_health_pct_is_real_pass_rate_not_binary_returncode(

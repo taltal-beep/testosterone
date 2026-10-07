@@ -13,9 +13,9 @@ def _isolated_database(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Point the history DB at a throwaway SQLite file.
 
     Without this, ``run_plan(persist=True)`` falls back to
-    ``sqlite:///./uqo_history.db`` in the repo checkout.
+    ``sqlite:///./testo_history.db`` in the repo checkout.
     """
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'uqo_history.db'}")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'testo_history.db'}")
 
 
 @pytest.fixture()

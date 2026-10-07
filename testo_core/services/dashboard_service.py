@@ -51,6 +51,7 @@ class DashboardReportLinks:
 @dataclass(frozen=True)
 class DashboardRecentRun:
     run_id: str
+    cycle: str | None
     created_at: float
     status: str | None
     returncode: int
@@ -76,6 +77,9 @@ class DashboardHeadlineKpis:
     pass_count: int | None
     fail_count: int | None
     duration_ms: float | None
+    # Trends compare the latest run with the previous run of this cycle.
+    cycle: str | None = None
+    baseline_run_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -89,6 +93,23 @@ class DashboardOverview:
     report_links: DashboardReportLinks
     recent_runs: tuple[DashboardRecentRun, ...]
     data_freshness: DashboardDataFreshness
+
+
+# How far back to look for an earlier run of the same cycle when other cycles ran in between.
+_BASELINE_SEARCH_WINDOW = 20
+
+
+def _previous_same_cycle(sessions: list[RunSessionView], index: int) -> RunSessionView | None:
+    """Next older session of the same cycle as ``sessions[index]`` (newest-first list).
+
+    Comparing runs of different cycles reports every test of the other cycle as
+    added or removed, so baselines only ever come from the same cycle. Runs
+    without a recorded cycle have no known peer.
+    """
+    cycle = sessions[index].cycle
+    if cycle is None:
+        return None
+    return next((s for s in sessions[index + 1 :] if s.cycle == cycle), None)
 
 
 class DashboardService:
@@ -108,16 +129,16 @@ class DashboardService:
     def get_recent_runs(self, *, limit: int = 10) -> tuple[DashboardRecentRun, ...]:
         if limit <= 0:
             raise ValueError("limit must be greater than zero.")
-        sessions = self._run_sessions_loader(limit)
+        sessions = self._run_sessions_loader(max(_BASELINE_SEARCH_WINDOW, limit))
         return tuple(
             self._build_recent_run(index=i, session=sessions[i], sessions=sessions)
-            for i in range(len(sessions))
+            for i in range(min(len(sessions), limit))
         )
 
     def get_overview(self, *, recent_limit: int = 5) -> DashboardOverview:
         if recent_limit <= 0:
             raise ValueError("recent_limit must be greater than zero.")
-        source_limit = max(2, recent_limit)
+        source_limit = max(_BASELINE_SEARCH_WINDOW, recent_limit)
         sessions = self._run_sessions_loader(source_limit)
         generated_at = time.time()
 
@@ -133,9 +154,10 @@ class DashboardService:
             degraded = True
             notes.append("no_runs_available")
 
+        baseline_session = _previous_same_cycle(sessions, 0) if sessions else None
         baseline_run = None
-        if len(sessions) > 1:
-            baseline_run = self._run_lookup(sessions[1].run_id)
+        if baseline_session is not None:
+            baseline_run = self._run_lookup(baseline_session.run_id)
             if baseline_run is None:
                 degraded = True
                 notes.append("baseline_run_details_missing")
@@ -150,15 +172,17 @@ class DashboardService:
             except DeltaComparisonError:
                 degraded = True
                 notes.append("delta_comparison_unavailable")
-        elif latest_run is not None:
-            degraded = True
-            notes.append("insufficient_runs_for_delta")
+        elif latest_run is not None and baseline_session is None:
+            # The first run of a cycle has nothing to trend against; that is not a data problem.
+            notes.append("no_previous_run_of_cycle")
 
         report_links = self._build_report_links(latest_session=latest_session)
 
         return DashboardOverview(
             headline_kpis=self._build_headline(
-                latest_run=latest_run, latest_session=latest_session
+                latest_run=latest_run,
+                latest_session=latest_session,
+                baseline_session=baseline_session,
             ),
             trend_health=self._build_trend(
                 current=latest_run.health_pct if latest_run else None,
@@ -196,6 +220,7 @@ class DashboardService:
         *,
         latest_run: CompletedRunView | None,
         latest_session: RunSessionView | None,
+        baseline_session: RunSessionView | None,
     ) -> DashboardHeadlineKpis:
         return DashboardHeadlineKpis(
             latest_run_id=latest_run.run_id
@@ -214,6 +239,8 @@ class DashboardService:
             if latest_run
             else (latest_session.failed if latest_session else None),
             duration_ms=latest_run.wall_duration_ms if latest_run else None,
+            cycle=latest_session.cycle if latest_session else None,
+            baseline_run_id=baseline_session.run_id if baseline_session else None,
         )
 
     def _build_rollup(
@@ -296,10 +323,14 @@ class DashboardService:
         *, index: int, session: RunSessionView, sessions: list[RunSessionView]
     ) -> DashboardRecentRun:
         compare_url = None
-        if index + 1 < len(sessions):
-            compare_url = f"/compare?current_run_id={session.run_id}&baseline_run_id={sessions[index + 1].run_id}"
+        baseline = _previous_same_cycle(sessions, index)
+        if baseline is not None:
+            compare_url = (
+                f"/compare?current_run_id={session.run_id}&baseline_run_id={baseline.run_id}"
+            )
         return DashboardRecentRun(
             run_id=session.run_id,
+            cycle=session.cycle,
             created_at=session.created_at,
             status=session.status.value if session.status is not None else None,
             returncode=session.returncode,

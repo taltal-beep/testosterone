@@ -1,10 +1,10 @@
 # Deep Dive — Execution Logic
 
-[[Architecture Overview]]
+[Architecture Overview](Architecture%20Overview.md)
 
-This note maps how **Testo** (`testo run`) initializes a test session, executes it stage-by-stage on the host, preserves state, and tears down. It is the implementation companion to [[Architecture Overview]] and [[QA Strategies]].
+This note maps how **Testo** (`testo run`) initializes a test session, executes it stage-by-stage on the host, preserves state, and tears down. It is the implementation companion to [Architecture Overview](Architecture%20Overview.md) and [QA Strategies](../Testing%20Workflows/QA%20Strategies.md).
 
-Every run uses **host subprocesses** — no Docker. The UQO headless stack that existed until v1.1 is summarized at the end.
+Every run uses **host subprocesses** — no Docker. The Docker-based execution stack (the project's original "UQO" design) that existed until v1.1 is summarized at the end.
 
 ---
 
@@ -17,7 +17,7 @@ Every run uses **host subprocesses** — no Docker. The UQO headless stack that 
 | Execution unit | **Cycle** (plan) → ordered **stages** |
 | Stage runtime | One `subprocess.Popen` per stage |
 | Stage ordering | **Strictly sequential** in `run_plan()` |
-| Parallelism | Framework-internal only (e.g. BehaveX `--workers`) |
+| Parallelism | Framework-internal only, via `workers` (BehaveX; pytest with pytest-xdist) — see [[#Framework level — optional]] |
 | Durability | `artifacts/<cycle>/` — logs, NDJSON events, Allure JSON |
 | Exit codes | `EngineExitCode` 0–4 via `classify_exit_code()` |
 
@@ -115,7 +115,7 @@ An empty resolved stage list is a hard error (exit **2**).
 | `--stream` | `StreamRenderer` | `true` | Same panels + live stdout chunks |
 | `--ci` | `CIRenderer` | `false` | NDJSON lines on stdout only |
 
-Workers override: `_apply_workers_override()` clones the plan with `workers=` set on every stage (BehaveX parallelism).
+Workers override: `_apply_workers_override()` clones the plan with `workers=` set on every stage (only frameworks that use `workers` act on it).
 
 ---
 
@@ -163,6 +163,10 @@ per-test `passed`/`failed`/`broken`/`skipped`/`total` counts:
   across every stage divided by the sum of `total` across every stage (not an
   average of the per-stage percentages). This is what the Run Detail page's
   Summary card and the Dashboard/Runs list health figures show.
+- **Crashed stages** — a stage that exited non-zero without producing any
+  results (e.g. it crashed at startup) has no pass rate, so the overall figure
+  is scaled by the share of stages that did not crash: one stage at 100% plus
+  one crashed stage gives 50%, not the 100% the other stage alone would show.
 - **Fallback** — if no stage produced any parseable Allure results (empty
   `total` everywhere), the overall figure falls back to the older binary
   estimate (`passed_stages / len(stages) * 100`, i.e. did each stage
@@ -190,9 +194,9 @@ Steps:
 1. `get_adapter(stage.framework)` → `PytestAdapter` | `BehaveAdapter` | `BehaveXAdapter` | `CommandAdapter` (argv = `stage.args` verbatim)
 2. `adapter.build_argv(target_repo, results_dir, stage_args, workers)`
 3. `merged_env(parent_env, stage.extra_env)` plus injected vars:
-   - `UQO_SHARED_ALLURE_RESULTS_DIR` → Allure output dir
-   - `UQO_ARTIFACTS_ROOT` → artifacts root
-   - `UQO_LAST_TEST_TYPE` → framework name
+   - `TESTO_SHARED_ALLURE_RESULTS_DIR` → Allure output dir
+   - `TESTO_ARTIFACTS_ROOT` → artifacts root
+   - `TESTO_LAST_TEST_TYPE` → framework name
 
 ### Process model
 
@@ -251,8 +255,16 @@ Two consumers write the same logical events:
 
 ### Framework level — optional
 
-- YAML `workers:` on a stage, or CLI `--workers`, flows into BehaveX argv.
-- Pytest may use its own `-n` if passed via `args:`.
+`workers:` (stage, or `defaults:`, default `4`; CLI `--workers` overrides every stage) means something different per framework:
+
+| Framework | What `workers: N` does |
+|-----------|------------------------|
+| `behavex` | `--parallel-processes N --parallel-scheme feature`, unless `args:` already set them. |
+| `pytest` | `-n N` when N > 1 **and** pytest-xdist is importable by the `pytest` on PATH (the adapter reads its shebang and probes that interpreter). Without xdist it logs one warning and runs serially. A `-n`/`--numprocesses` or `-p no:xdist` in `args:` wins. |
+| `behave` | Nothing — native behave is single-process. Setting `workers:` on the stage loads fine but logs a warning. |
+| `command` | Nothing — the command owns its own flags (same warning). |
+
+The API's `GET /api/v1/cycles/{cycle}` returns `workers: null` for `behave` and `command` stages, so the UI only shows *Workers* where it can apply (pytest's is labelled "with pytest-xdist").
 
 ### Threading in the engine
 
@@ -295,7 +307,7 @@ Cycles run **one after another** in sorted name order. No thread pool across cyc
 
 ## Architectural bottlenecks and race conditions
 
-These are **current code behaviors** worth knowing for CI design and future refactors. See also [[Technical Debt Tracker]] and [[Troubleshooting and Error Codes]].
+These are **current code behaviors** worth knowing for CI design and future refactors. See also [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md) and [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md).
 
 | Issue | Location | Impact |
 |-------|----------|--------|
@@ -331,7 +343,7 @@ Until v1.1 a second stack ran beside the engine: `uqo run --config` and the API'
 | Failed cases / traceback / log tail for AI summaries | `persistence/failure_context.py` via `DbBackend` |
 | InfluxDB / Prometheus push | `integrations.push_run_metrics_if_configured()` after every cycle |
 
-The compose stack (Postgres, MinIO, Allure Server) is described in repo `ARCHITECTURE.md` and is not required for `testo run`.
+The compose stack (Postgres only) is described in repo `ARCHITECTURE.md` and is not required for `testo run`.
 
 ### Official documentation
 
@@ -345,8 +357,8 @@ The compose stack (Postgres, MinIO, Allure Server) is described in repo `ARCHITE
 
 ## Related notes
 
-- [[Architecture Overview]] — module map and artifact layout
-- [[QA Strategies]] — triggers, CI output, typical flows
-- [[Command Reference]] — flags and exit codes
-- [[Troubleshooting and Error Codes]] — failure playbook
-- [[Technical Debt Tracker]] — prioritized refactor backlog
+- [Architecture Overview](Architecture%20Overview.md) — module map and artifact layout
+- [QA Strategies](../Testing%20Workflows/QA%20Strategies.md) — triggers, CI output, typical flows
+- [Command Reference](../CLI%20Commands/Command%20Reference.md) — flags and exit codes
+- [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md) — failure playbook
+- [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md) — prioritized refactor backlog

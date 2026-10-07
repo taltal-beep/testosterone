@@ -24,11 +24,10 @@ def diff_run_snapshots(
 
 
 def _materialize_snapshot(*, record: CompletedRunView, dest: Path) -> Path:
-    """Write a run's snapshot files (local disk or S3) to a plain local dir.
+    """Write a run's snapshot files to a plain local dir.
 
-    Reuses ``snapshot_files_for_download`` -- already handles the local-vs-S3
-    branching for the "download run artifacts" feature -- instead of
-    re-implementing storage access here.
+    Reuses ``snapshot_files_for_download`` (the "download run artifacts" feature)
+    instead of re-implementing snapshot access here.
     """
     dest.mkdir(parents=True, exist_ok=True)
     for rel_label, data in snapshot_files_for_download(record=record):

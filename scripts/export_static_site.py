@@ -14,6 +14,17 @@ Allure/native HTML reports already live under ``static/history/<run_id>/`` after
 a run; they are copied next to the data so the report links on the Run detail
 and Dashboard pages resolve on Pages too.
 
+A static site cannot call an AI provider when a visitor clicks "Generate AI
+Summary", so when ``ANTHROPIC_API_KEY`` is set the export generates the summary
+for each failed run first, through the same endpoint the button calls, and
+freezes the result. Without a key the failed runs keep their "no summary"
+payload and the UI explains that summaries are generated live. A generated
+summary is stored with the run, so later exports reuse it instead of paying
+for it again.
+
+Only cycles that have a run in the export are published: a cycle card with no
+history would lead nowhere on a site that cannot start runs.
+
 Usage::
 
     python scripts/export_static_site.py --out public --runs 5 \\
@@ -24,7 +35,7 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/manifest.json                     provenance + the exported run ids
     data/health.json                       GET /api/v1/health/ready
     data/ai-config.json                    GET /api/v1/ai/config/status
-    data/cycles.json                       GET /api/v1/cycles
+    data/cycles.json                       GET /api/v1/cycles (cycles that ran)
     data/cycles/<name>.json                GET /api/v1/cycles/{name}
     data/runs.json                         GET /api/v1/runs
     data/runs/<run_id>/detail.json         GET /api/v1/runs/{id}
@@ -49,6 +60,11 @@ import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
+
+# Model for the frozen AI summaries; override with TESTO_DEMO_AI_MODEL. The
+# Anthropic provider sends a sampling temperature and reads the first content
+# block, so it needs a model without always-on thinking.
+DEFAULT_DEMO_AI_MODEL = "claude-haiku-4-5"
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -84,6 +100,12 @@ def _scrub(payload: Any) -> Any:
     return payload
 
 
+def _ran_cycles_only(listing: dict[str, Any], runs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Keep the cycles that have at least one exported run, in config order."""
+    ran = {run.get("cycle") for run in runs}
+    return {**listing, "items": [c for c in listing.get("items", []) if c.get("name") in ran]}
+
+
 class Exporter:
     """Writes one JSON file per read-only endpoint the UI calls."""
 
@@ -100,14 +122,16 @@ class Exporter:
         self.client = TestClient(create_app())
         self.written: list[str] = []
         self.skipped: list[str] = []
+        self.ai_summaries = 0
 
     # --- plumbing -----------------------------------------------------------
 
     def _get(self, path: str) -> Any | None:
         """GET ``path``, returning the decoded body, or None when it is unusable.
 
-        ``/health/ready`` answers 503 while still carrying its payload, which is
-        exactly what the UI renders, so non-2xx bodies are kept when they parse.
+        ``/health/ready`` answers 503 when a check is degraded while still carrying
+        its payload, which is exactly what the UI renders, so non-2xx bodies are
+        kept when they parse.
         """
         resp = self.client.get(path)
         try:
@@ -145,6 +169,9 @@ class Exporter:
         items = items[: self.run_limit]
         self._write("runs.json", {"items": items})
 
+        failed = [item["run_id"] for item in items if item.get("returncode") not in (0, None)]
+        self.generate_ai_summaries(failed)
+
         for item in items:
             run_id = item["run_id"]
             base = f"runs/{run_id}"
@@ -154,9 +181,52 @@ class Exporter:
             self._dump(f"/api/v1/runs/{run_id}/ai-summary", f"{base}/ai-summary.json")
         return items
 
-    def export_cycles(self) -> None:
-        listing = self._dump("/api/v1/cycles", "cycles.json")
-        for cycle in (listing or {}).get("items", []):
+    def generate_ai_summaries(self, run_ids: list[str]) -> None:
+        """Generate (or reuse) the AI failure summary of each run, if a key is set.
+
+        Goes through the API like the UI's "Generate AI Summary" button does:
+        enable the Anthropic provider with the key from the environment, then
+        ask for each run's summary. The key itself is never written anywhere;
+        only the summary text ends up in ``ai-summary.json``.
+        """
+        if not run_ids or not os.getenv("ANTHROPIC_API_KEY"):
+            return
+        resp = self.client.put(
+            "/api/v1/ai/config",
+            json={
+                "enabled": True,
+                "provider": "anthropic",
+                "model": os.getenv("TESTO_DEMO_AI_MODEL") or DEFAULT_DEMO_AI_MODEL,
+                "api_key_source": "env",
+                # One attempt per run, bounded, so a slow provider cannot stall the deploy.
+                "timeout_s": 30,
+                "retry_count": 0,
+            },
+        )
+        if resp.status_code != 200:
+            self.skipped.append(f"AI summaries (config rejected: status {resp.status_code})")
+            return
+        for run_id in run_ids:
+            # Optional feature: whatever goes wrong here must not stop the site from publishing.
+            try:
+                summary = self.client.post(
+                    f"/api/v1/runs/{run_id}/ai-summary:generate", json={"force_refresh": False}
+                ).json()
+            except Exception as exc:  # noqa: BLE001
+                self.skipped.append(f"AI summary for {run_id} ({type(exc).__name__})")
+                continue
+            if summary.get("status") == "available":
+                self.ai_summaries += 1
+            else:
+                self.skipped.append(f"AI summary for {run_id} ({summary.get('error_code')})")
+
+    def export_cycles(self, runs: list[dict[str, Any]]) -> None:
+        listing = self._get("/api/v1/cycles")
+        if listing is None:
+            return
+        listing = _ran_cycles_only(listing, runs)
+        self._write("cycles.json", listing)
+        for cycle in listing["items"]:
             name = cycle["name"]
             self._dump(f"/api/v1/cycles/{quote(name, safe='')}", f"cycles/{name}.json")
 
@@ -169,20 +239,18 @@ class Exporter:
     def export_deltas(self, runs: list[dict[str, Any]]) -> list[list[str]]:
         """Export the run pairs the UI can ask for.
 
-        Same-cycle neighbours come first: those are the comparisons that mean
-        something (this run of ``fake-api`` against the previous one). Then the
-        overall neighbours, because the Dashboard and Runs pages link "compare
-        latest two" across whatever ran last.
+        The Dashboard and Runs pages only ever compare a run with the previous
+        run of the same cycle (this run of ``fake-api`` against the previous
+        one), so those are the pairs exported, newest first across cycles.
         """
-        candidates: list[tuple[str, str]] = []
-        by_cycle: dict[str | None, list[str]] = {}
-        for run in runs:
-            by_cycle.setdefault(run.get("cycle"), []).append(run["run_id"])
-        for ids in by_cycle.values():
-            candidates.extend(zip(ids, ids[1:], strict=False))
-        ids = [r["run_id"] for r in runs]
-        candidates.extend(zip(ids, ids[1:], strict=False))
-        pairs = list(dict.fromkeys(candidates))
+        pairs: list[tuple[str, str]] = []
+        previous_by_cycle: dict[str | None, str] = {}
+        for run in reversed(runs):  # oldest first
+            cycle = run.get("cycle")
+            if cycle in previous_by_cycle:
+                pairs.append((run["run_id"], previous_by_cycle[cycle]))
+            previous_by_cycle[cycle] = run["run_id"]
+        pairs.reverse()
 
         exported: list[list[str]] = []
         for current, baseline in pairs[: self.delta_pairs]:
@@ -244,14 +312,16 @@ class Exporter:
 
     def run(self) -> int:
         self.data_dir.mkdir(parents=True, exist_ok=True)
+        # Before export_runs(): generating AI summaries switches the in-process
+        # provider on, and the published settings should describe the snapshot.
+        self.export_misc()
         runs = self.export_runs()
         if not runs:
             print("error: no runs in the history database — run a cycle first.", file=sys.stderr)
             return 1
-        self.export_cycles()
+        self.export_cycles(runs)
         self.export_dashboard()
         deltas = self.export_deltas(runs)
-        self.export_misc()
         copied = self.copy_reports(runs)
 
         self._write(
@@ -272,7 +342,10 @@ class Exporter:
         )
 
         print(f"[export] {len(self.written)} JSON files under {self.data_dir}")
-        print(f"[export] {len(runs)} run(s), {len(deltas)} comparison(s), {copied} report tree(s)")
+        print(
+            f"[export] {len(runs)} run(s), {len(deltas)} comparison(s), {copied} report tree(s), "
+            f"{self.ai_summaries} AI summary(ies)"
+        )
         for note in self.skipped:
             print(f"[export] skipped: {note}")
         return 0

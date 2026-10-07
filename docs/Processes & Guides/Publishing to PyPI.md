@@ -1,6 +1,6 @@
 # Publishing to PyPI
 
-[[Index]] · [[V1 Release Roadmap]]
+[Index](../Index.md) · [Publishing Docker Images](Publishing%20Docker%20Images.md) · [Publishing to Artifactory](Publishing%20to%20Artifactory.md)
 
 > **Last updated:** 2026-06-25
 
@@ -51,6 +51,5 @@ testo run --help
 
 ## Related
 
-- [[CI-CD Pipeline Setup]] — CI workflow overview
-- [[V1 Release Roadmap]] — release task tracking
+- [CI-CD Pipeline Setup](CI-CD%20Pipeline%20Setup.md) — CI workflow overview
 - Workflow file: `.github/workflows/publish.yml`

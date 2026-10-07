@@ -151,7 +151,7 @@ job, commit and branch. Inputs and outputs: [integrations/github-action/README.m
 
 - **Metrics push:** after each run, test KPIs go to InfluxDB when `INFLUXDB_URL`,
   `INFLUXDB_TOKEN`, `INFLUXDB_ORG` and `INFLUXDB_BUCKET` are set, and to a Prometheus
-  Pushgateway when `PROMETHEUS_PUSHGATEWAY_URL` is set (`PROMETHEUS_JOB_NAME` defaults to `uqo`).
+  Pushgateway when `PROMETHEUS_PUSHGATEWAY_URL` is set (`PROMETHEUS_JOB_NAME` defaults to `testo`).
   Pushes are best-effort and never change the run result.
 - **Reporters:** `allure`, `extent`, `reportportal`, `testbeats` under `reporters:`.
 - **AI failure summaries:** opt in on the AI settings page with an OpenAI or Anthropic key.
@@ -180,8 +180,8 @@ notes and ADRs (an Obsidian vault, so some links only resolve inside Obsidian).
 
 ## History
 
-The project started as UQO ("Unified Quality Orchestrator") and was renamed to Testosterone;
-the `uqo` command still works as a deprecated alias for `testo`. v1.1 replaced the Streamlit UI
+The project started as UQO ("Unified Quality Orchestrator") and was renamed to Testosterone
+(the `uqo` command and `UQO_*` variables became `testo` and `TESTO_*`). v1.1 replaced the Streamlit UI
 with the React frontend and dropped the Docker-based headless runner (stages now run as host
 subprocesses). Full details in [CHANGELOG.md](CHANGELOG.md).
 
@@ -191,12 +191,13 @@ subprocesses). Full details in [CHANGELOG.md](CHANGELOG.md).
 | v1.0 | v1.1 |
 |------|------|
 | Streamlit UI (`testo-ui`, `streamlit run app.py`) | React frontend (`frontend/`) |
+| `uqo` command, `UQO_*` env vars | `testo`, `TESTO_*` |
 | `uqo run --config runs.yaml` (`runs:` list of `test_type`/`cli_args`) | a cycle in `testosterone.yaml`, run with `testo run --cycle <name>` |
 | `--ghost`, `--json`, `--stream-json` | `--ci` (NDJSON events, `plan_finished` last) |
 | `POST /api/v1/executions` + `/executions/{id}/events` | `POST /api/v1/adhoc-executions` (one framework) or `POST /api/v1/cycles/{cycle}/executions`; status and SSE under `/cycle-executions/{id}` |
 | "Legacy Execution" page | Quick Run (`/quick-run`) |
 | Tests run in one-off Docker containers (`UQO_RUNNER_IMAGE`, `UQO_RUNNER_PREBUILT`) | stages run as host subprocesses; use `Dockerfile.testo-runner` as the CI job image if you want isolation |
-| Allure results uploaded to MinIO per run | per-run reports under `static/history/<run_id>/` (served at `/history`) and the report archive DB; pre-v1.1 runs keep their MinIO links |
+| Allure results uploaded to MinIO per run | per-run reports under `static/history/<run_id>/` (served at `/history`) and the report archive DB |
 | `locust` test type | `equipment: command` with `args: [locust, --headless, …]` |
 | Pluggy `plugins/*.py` runner hooks | a framework adapter in `testo_core/frameworks/` |
 

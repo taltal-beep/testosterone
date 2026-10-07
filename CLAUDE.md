@@ -1,10 +1,10 @@
 # Testosterone (testo-core)
 
-Before planning, debugging, or implementing anything in this repo, read [docs/Index.md](docs/Index.md) first — it's the entry point to the Obsidian second-brain vault under `docs/` and links to Architecture, CLI Commands, Release Management, Roadmap & Strategy, and Specs & ADRs notes. For AI-agent-specific conventions (which doc to check before touching what), read [docs/Prompts & Snippets/Agent Context Guide.md](docs/Prompts%20&%20Snippets/Agent%20Context%20Guide.md).
+Before planning, debugging, or implementing anything in this repo, read [docs/Index.md](docs/Index.md) first — it's the entry point to the Obsidian second-brain vault under `docs/` and links to Architecture, CLI Commands, Roadmap & Strategy, and Specs & ADRs notes (dated plans and phase checklists live in `docs/Archive/`). For AI-agent-specific conventions (which doc to check before touching what), read [docs/Prompts & Snippets/Agent Context Guide.md](docs/Prompts%20&%20Snippets/Agent%20Context%20Guide.md).
 
 ## Quick facts
 
-- Package: `testo-core`. CLI entrypoint: `testo` (Typer). Legacy alias `uqo` is deprecated.
+- Package: `testo-core`. CLI entrypoint: `testo` (Typer).
 - Config: `testosterone.yaml` at repo root defines cycles/stages/reporters.
 - Engine flow: `config/loader.py` → `config/resolver.py` → `engine/orchestrator.run_plan()` → `engine/executor.run_stage()`.
 - Framework adapters: `testo_core/frameworks/` (Pytest, Behave, BehaveX).

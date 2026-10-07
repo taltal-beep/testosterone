@@ -2,9 +2,89 @@
 
 from __future__ import annotations
 
+import logging
+import os
 from pathlib import Path
 
+import pytest
+
+from testo_core.frameworks import pytest_adapter
 from testo_core.frameworks.pytest_adapter import PytestAdapter
+
+
+@pytest.fixture(autouse=True)
+def _no_xdist(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep argv deterministic: tests that want xdist opt in explicitly."""
+    monkeypatch.setattr(pytest_adapter, "xdist_available", lambda: False)
+
+
+def _argv(tmp_path: Path, *, args: tuple[str, ...] = ("-q",), workers: int) -> list[str]:
+    return PytestAdapter().build_argv(
+        target_repo=tmp_path, results_dir=tmp_path / "out", stage_args=args, workers=workers
+    )
+
+
+def test_workers_become_xdist_n_when_xdist_is_installed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(pytest_adapter, "xdist_available", lambda: True)
+    argv = _argv(tmp_path, workers=4)
+    assert argv[-3:-1] == ["-n", "4"]
+    assert argv[-1].startswith("--alluredir=")
+
+
+def test_workers_without_xdist_run_serially_with_a_warning(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.WARNING, logger=pytest_adapter.__name__):
+        argv = _argv(tmp_path, workers=4)
+    assert "-n" not in argv
+    assert "pytest-xdist is not installed" in caplog.text
+
+
+def test_single_worker_never_checks_for_xdist(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _fail() -> bool:
+        raise AssertionError("xdist probe should not run for workers=1")
+
+    monkeypatch.setattr(pytest_adapter, "xdist_available", _fail)
+    assert "-n" not in _argv(tmp_path, workers=1)
+
+
+@pytest.mark.parametrize(
+    "args", [("-n", "2"), ("-nauto",), ("--numprocesses=3",), ("-p", "no:xdist")]
+)
+def test_stage_args_choosing_xdist_win_over_workers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, args: tuple[str, ...]
+) -> None:
+    monkeypatch.setattr(pytest_adapter, "xdist_available", lambda: True)
+    argv = _argv(tmp_path, args=args, workers=4)
+    assert argv[1:-1] == list(args)
+
+
+def test_xdist_probe_uses_the_interpreter_behind_pytest_on_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The stage runs whatever ``pytest`` is on PATH, which may live in another
+    env than testosterone; the probe must ask that env's Python."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_python = bin_dir / "python"
+    fake_python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake_python.chmod(0o755)
+    fake_pytest = bin_dir / "pytest"
+    fake_pytest.write_text(f"#!{fake_python}\n", encoding="utf-8")
+    fake_pytest.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bin_dir) + os.pathsep + os.environ.get("PATH", ""))
+
+    assert pytest_adapter._pytest_interpreter() == str(fake_python)
+    monkeypatch.undo()  # drop the autouse stub (and PATH) before the real probe
+    monkeypatch.setenv("PATH", str(bin_dir))
+    assert pytest_adapter.xdist_available() is True  # fake python exits 0
+
+    fake_python.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    assert pytest_adapter.xdist_available() is False
 
 
 def test_pytest_adapter_injects_config_when_target_has_pytest_ini(tmp_path: Path) -> None:

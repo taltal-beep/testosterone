@@ -3,7 +3,7 @@ last-updated: 2026-09-05
 ---
 # Publishing to JFrog Artifactory
 
-[[Index]] · [[Publishing to PyPI]] · [[Publishing Docker Images]] · [[v1.0.0 Publish Execution Plan - 2026-09-05]]
+[Index](../Index.md) · [Publishing to PyPI](Publishing%20to%20PyPI.md) · [Publishing Docker Images](Publishing%20Docker%20Images.md) · [v1.0.0 Publish Execution Plan - 2026-09-05](../Archive/v1.0.0%20Publish%20Execution%20Plan%20-%202026-09-05.md)
 
 Artifactory is a **mirror** of the public release, not a replacement for it. The canonical channels stay PyPI (`testo-core`) and GHCR (`testo-runner`); Artifactory exists so consumers behind a corporate proxy can pull from an internal registry.
 

@@ -110,8 +110,8 @@ jobs:
             ${{ vars.ARTIFACTORY_DOCKER_HOST }}/${{ vars.ARTIFACTORY_DOCKER_REPO }}/testo-runner:${{ steps.version.outputs.version }}
             ${{ vars.ARTIFACTORY_DOCKER_HOST }}/${{ vars.ARTIFACTORY_DOCKER_REPO }}/testo-runner:latest
           build-args: |
-            UQO_VERSION=${{ steps.version.outputs.version }}
-            UQO_COMMIT_SHA=${{ github.sha }}
+            TESTO_VERSION=${{ steps.version.outputs.version }}
+            TESTO_COMMIT_SHA=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

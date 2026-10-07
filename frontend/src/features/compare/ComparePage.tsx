@@ -2,8 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { CaseChangeKind, DeltaClassification, DeltaMetricNode, apiClient } from "../../lib/api-client";
-import { StackedBar, type StackedBarSegment } from "../../components/ui";
+import {
+  CaseChangeKind,
+  DeltaClassification,
+  DeltaComparisonResponse,
+  DeltaMetricNode,
+  RunListItem,
+  apiClient
+} from "../../lib/api-client";
+import { formatRunLabel, runCycle, shortRunId } from "../../lib/format";
+import { Badge, Card, PageHeader, RunLabel, StackedBar, type StackedBarSegment } from "../../components/ui";
 
 const CASE_KIND_TONE: Record<CaseChangeKind, string> = {
   regression: "text-danger-300",
@@ -22,28 +30,41 @@ const CLASSIFICATION_TONE: Record<DeltaClassification, string> = {
   unknown: "text-ink-400"
 };
 
-const RELIABILITY_ORDER: Array<{ key: keyof ReturnType<typeof getReliabilityMetrics>; label: string }> = [
-  { key: "total_tests", label: "Total Tests" },
+const CLASSIFICATION_BADGE: Record<DeltaClassification, { tone: "danger" | "success" | "neutral"; label: string }> = {
+  regression: { tone: "danger", label: "Regression" },
+  improvement: { tone: "success", label: "Improvement" },
+  neutral: { tone: "neutral", label: "No change" },
+  unknown: { tone: "neutral", label: "Unknown" }
+};
+
+type ReliabilityMetrics = DeltaComparisonResponse["metrics"]["reliability"];
+type PerformanceMetrics = DeltaComparisonResponse["metrics"]["performance"];
+
+const RELIABILITY_ORDER: Array<{ key: keyof ReliabilityMetrics; label: string }> = [
+  { key: "total_tests", label: "Total tests" },
   { key: "passed", label: "Passed" },
   { key: "failed", label: "Failed" },
   { key: "broken", label: "Broken" },
   { key: "skipped", label: "Skipped" },
-  { key: "health_pct", label: "Health %" }
+  { key: "health_pct", label: "Health" }
 ];
 
-const PERFORMANCE_ORDER: Array<{ key: keyof ReturnType<typeof getPerformanceMetrics>; label: string }> = [
-  { key: "wall_duration_ms", label: "Wall Duration (ms)" },
-  { key: "metrics_duration_ms", label: "Metrics Duration (ms)" },
-  { key: "avg_case_ms", label: "Avg Case (ms)" }
+const PERFORMANCE_ORDER: Array<{ key: keyof PerformanceMetrics; label: string }> = [
+  { key: "wall_duration_ms", label: "Wall duration" },
+  { key: "metrics_duration_ms", label: "Test time (sum)" },
+  { key: "avg_case_ms", label: "Avg per test" }
 ];
 
-const selectClass = "rounded border border-ink-700 bg-ink-950 px-3 py-2 text-sm text-ink-100";
-const labelClass = "grid gap-1 text-xs font-medium text-ink-300";
+const ALL_CYCLES = "";
+
+const selectClass = "w-full min-w-0 max-w-full rounded border border-ink-700 bg-ink-950 px-3 py-2 text-sm text-ink-100";
+const labelClass = "grid min-w-0 gap-1 text-xs font-medium text-ink-300";
 
 export function ComparePage() {
   const [searchParams] = useSearchParams();
   const [currentRunId, setCurrentRunId] = useState(searchParams.get("current_run_id") ?? "");
   const [baselineRunId, setBaselineRunId] = useState(searchParams.get("baseline_run_id") ?? "");
+  const [cycleFilter, setCycleFilter] = useState(ALL_CYCLES);
   const runsQuery = useQuery({
     queryKey: ["runs"],
     queryFn: () => apiClient.listRuns()
@@ -55,6 +76,12 @@ export function ComparePage() {
   });
 
   const options = useMemo(() => runsQuery.data?.items ?? [], [runsQuery.data?.items]);
+  const runsById = useMemo(() => new Map(options.map((run) => [run.run_id, run])), [options]);
+  const cycles = useMemo(() => [...new Set(options.map(runCycle))], [options]);
+  const visibleRuns = useMemo(
+    () => (cycleFilter === ALL_CYCLES ? options : options.filter((run) => runCycle(run) === cycleFilter)),
+    [options, cycleFilter]
+  );
 
   if (runsQuery.isLoading) {
     return <p className="text-sm text-ink-300">Loading runs for comparison...</p>;
@@ -66,173 +93,276 @@ export function ComparePage() {
     return <p className="text-sm text-ink-300">At least two completed runs are required for comparison.</p>;
   }
 
+  // Narrowing to one cycle compares its latest run (current) with the run before it (baseline).
+  const selectCycle = (cycle: string) => {
+    setCycleFilter(cycle);
+    if (cycle === ALL_CYCLES) {
+      return;
+    }
+    const [latest, previous] = options
+      .filter((run) => runCycle(run) === cycle)
+      .sort((a, b) => b.created_at - a.created_at);
+    setCurrentRunId(latest?.run_id ?? "");
+    setBaselineRunId(previous?.run_id ?? "");
+  };
+
   const comparisonReady = Boolean(currentRunId && baselineRunId && currentRunId !== baselineRunId);
   const payload = compareQuery.data;
+  const currentRun = runsById.get(currentRunId);
+  const baselineRun = runsById.get(baselineRunId);
+  const crossCycle = Boolean(currentRun && baselineRun && runCycle(currentRun) !== runCycle(baselineRun));
 
   return (
     <section className="space-y-4">
-      <header className="space-y-1">
-        <h2 className="text-xl font-semibold">Run Comparison</h2>
-        <p className="text-sm text-ink-300">Select baseline and current runs to identify regressions and improvements.</p>
-      </header>
+      <PageHeader title="Run Comparison" subtitle="Pick a baseline and a current run to see what regressed and what improved." />
 
-      <div className="flex flex-wrap gap-4 rounded-xl border border-ink-700 bg-ink-900 p-4">
+      <div className="grid gap-4 rounded-xl border border-ink-700 bg-ink-900 p-4 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_minmax(0,1fr)]">
         <label className={labelClass}>
-          Current run
+          Cycle
           <select
-            aria-label="Current run"
-            value={currentRunId}
-            onChange={(event) => setCurrentRunId(event.target.value)}
+            aria-label="Cycle"
+            value={cycleFilter}
+            onChange={(event) => selectCycle(event.target.value)}
             className={selectClass}
           >
-            <option value="">Select run</option>
-            {options.map((run) => (
-              <option key={run.run_id} value={run.run_id}>
-                {run.run_id}
+            <option value={ALL_CYCLES}>All cycles</option>
+            {cycles.map((cycle) => (
+              <option key={cycle} value={cycle}>
+                {cycle}
               </option>
             ))}
           </select>
         </label>
-        <label className={labelClass}>
-          Baseline run
-          <select
-            aria-label="Baseline run"
-            value={baselineRunId}
-            onChange={(event) => setBaselineRunId(event.target.value)}
-            className={selectClass}
-          >
-            <option value="">Select run</option>
-            {options.map((run) => (
-              <option key={run.run_id} value={run.run_id}>
-                {run.run_id}
-              </option>
-            ))}
-          </select>
-        </label>
+        <RunPicker label="Baseline run" value={baselineRunId} onChange={setBaselineRunId} runs={visibleRuns} />
+        <RunPicker label="Current run" value={currentRunId} onChange={setCurrentRunId} runs={visibleRuns} />
       </div>
+
+      {crossCycle && (
+        <p role="status" className="rounded-md border border-warn-500/40 bg-warn-500/10 px-3 py-2 text-sm text-warn-300">
+          These runs come from different cycles ({baselineRun && runCycle(baselineRun)} and{" "}
+          {currentRun && runCycle(currentRun)}), so the
+          differences below reflect different test suites rather than regressions.
+        </p>
+      )}
 
       {!comparisonReady && <p className="text-sm text-ink-400">Select two different runs to start comparison.</p>}
       {comparisonReady && compareQuery.isLoading && <p className="text-sm text-ink-300">Loading delta comparison...</p>}
       {comparisonReady && compareQuery.isError && <p className="text-sm text-danger-400">Failed to load delta comparison.</p>}
       {comparisonReady && payload && (
         <>
-          <p className="text-sm text-ink-300">
-            Comparing <strong className="text-ink-100">{payload.comparison.current_run_id}</strong> against baseline{" "}
-            <strong className="text-ink-100">{payload.comparison.baseline_run_id}</strong>.
-          </p>
-
-          <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
-            <h3 className="mb-3 text-sm font-semibold text-ink-100">Outcome Mix</h3>
-            <div className="space-y-3">
-              <div>
-                <p className="mb-1 text-xs font-medium text-ink-400">
-                  Baseline ({payload.comparison.baseline_run_id})
-                </p>
-                <StackedBar segments={outcomeSegments(getReliabilityMetrics(payload), "baseline_value")} />
+          <Card>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide text-ink-400">Baseline</p>
+                <RunRef runId={payload.comparison.baseline_run_id} run={baselineRun} />
               </div>
-              <div>
-                <p className="mb-1 text-xs font-medium text-ink-400">
-                  Current ({payload.comparison.current_run_id})
-                </p>
-                <StackedBar segments={outcomeSegments(getReliabilityMetrics(payload), "current_value")} />
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide text-ink-400">Current</p>
+                <RunRef runId={payload.comparison.current_run_id} run={currentRun} />
               </div>
             </div>
-          </section>
+            <div className="mt-3 flex flex-wrap gap-1.5" data-testid="status-summary">
+              <Badge tone={payload.status_summary.regressions.length > 0 ? "danger" : "neutral"}>
+                {payload.status_summary.regressions.length} regressions
+              </Badge>
+              <Badge tone={payload.status_summary.improvements.length > 0 ? "success" : "neutral"}>
+                {payload.status_summary.improvements.length} improvements
+              </Badge>
+              <Badge>{payload.status_summary.unchanged.length} unchanged</Badge>
+              <Badge>{payload.status_summary.unknown.length} unknown</Badge>
+            </div>
+          </Card>
 
-          <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
-            <h3 className="mb-2 text-sm font-semibold text-ink-100">Reliability</h3>
-            <ul className="space-y-1 text-sm text-ink-300">
-              {RELIABILITY_ORDER.map(({ key, label }) => (
-                <li key={key}>
-                  <strong className="text-ink-100">{label}</strong>: <MetricRow metric={getReliabilityMetrics(payload)[key]} />
-                </li>
-              ))}
-            </ul>
-          </section>
+          <Card title="Outcome Mix">
+            <div className="space-y-3">
+              <div>
+                <p className="mb-1 text-xs font-medium text-ink-400">Baseline · {runText(payload.comparison.baseline_run_id, baselineRun)}</p>
+                <StackedBar segments={outcomeSegments(payload.metrics.reliability, "baseline_value")} />
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium text-ink-400">Current · {runText(payload.comparison.current_run_id, currentRun)}</p>
+                <StackedBar segments={outcomeSegments(payload.metrics.reliability, "current_value")} />
+              </div>
+            </div>
+          </Card>
 
-          <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
-            <h3 className="mb-2 text-sm font-semibold text-ink-100">Performance</h3>
-            <ul className="space-y-1 text-sm text-ink-300">
-              {PERFORMANCE_ORDER.map(({ key, label }) => (
-                <li key={key}>
-                  <strong className="text-ink-100">{label}</strong>: <MetricRow metric={getPerformanceMetrics(payload)[key]} />
-                </li>
-              ))}
-            </ul>
-          </section>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <MetricTable title="Reliability" rows={RELIABILITY_ORDER} metrics={payload.metrics.reliability} />
+            <MetricTable title="Performance" rows={PERFORMANCE_ORDER} metrics={payload.metrics.performance} />
+          </div>
 
           {(payload.stage_deltas ?? []).length > 0 && (
-            <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
-              <h3 className="mb-2 text-sm font-semibold text-ink-100">Per-Stage Health</h3>
-              <table className="w-full text-left text-sm text-ink-300">
-                <thead>
-                  <tr className="text-xs text-ink-400">
-                    <th className="pb-1 pr-2 font-medium">Stage</th>
-                    <th className="pb-1 pr-2 font-medium">Baseline</th>
-                    <th className="pb-1 pr-2 font-medium">Current</th>
-                    <th className="pb-1 font-medium">Delta</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payload.stage_deltas.map((stage) => (
-                    <tr key={stage.stage_name} className="border-t border-ink-800">
-                      <td className="py-1.5 pr-2 text-ink-100">
-                        {stage.stage_name}
-                        {stage.framework ? <span className="ml-2 text-xs text-ink-400">{stage.framework}</span> : null}
-                      </td>
-                      <td className="py-1.5 pr-2 font-mono text-xs">
-                        {stage.baseline_health_pct != null ? `${stage.baseline_health_pct.toFixed(1)}%` : "n/a"}
-                      </td>
-                      <td className="py-1.5 pr-2 font-mono text-xs">
-                        {stage.current_health_pct != null ? `${stage.current_health_pct.toFixed(1)}%` : "n/a"}
-                      </td>
-                      <td className={`py-1.5 font-mono text-xs ${CLASSIFICATION_TONE[stage.classification]}`}>
-                        {stage.health_pct_delta != null ? `${stage.health_pct_delta > 0 ? "+" : ""}${stage.health_pct_delta.toFixed(1)}pp` : "n/a"}
-                      </td>
+            <Card title="Per-Stage Health">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-ink-300">
+                  <thead>
+                    <tr className="text-xs text-ink-400">
+                      <th className="pb-1 pr-2 font-medium">Stage</th>
+                      <th className="pb-1 pr-2 text-right font-medium">Baseline</th>
+                      <th className="pb-1 pr-2 text-right font-medium">Current</th>
+                      <th className="pb-1 text-right font-medium">Change</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
+                  </thead>
+                  <tbody>
+                    {payload.stage_deltas.map((stage) => (
+                      <tr key={stage.stage_name} className="border-t border-ink-800">
+                        <td className="py-1.5 pr-2 text-ink-100">
+                          {stage.stage_name}
+                          {stage.framework ? <span className="ml-2 text-xs text-ink-400">{stage.framework}</span> : null}
+                        </td>
+                        <td className="py-1.5 pr-2 whitespace-nowrap text-right font-mono text-xs">
+                          {stage.baseline_health_pct != null ? `${stage.baseline_health_pct.toFixed(1)}%` : "n/a"}
+                        </td>
+                        <td className="py-1.5 pr-2 whitespace-nowrap text-right font-mono text-xs">
+                          {stage.current_health_pct != null ? `${stage.current_health_pct.toFixed(1)}%` : "n/a"}
+                        </td>
+                        <td className={`py-1.5 whitespace-nowrap text-right font-mono text-xs ${CLASSIFICATION_TONE[stage.classification]}`}>
+                          {stage.health_pct_delta != null ? formatSignedDelta(stage.health_pct_delta, "pct") : "n/a"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           )}
 
           <TestLevelChanges currentRunId={payload.comparison.current_run_id} baselineRunId={payload.comparison.baseline_run_id} />
 
-          <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
-            <h3 className="mb-2 text-sm font-semibold text-ink-100">Status Summary</h3>
-            <p className="text-sm text-ink-300">
-              regressions={payload.status_summary.regressions.length} improvements={payload.status_summary.improvements.length}{" "}
-              unchanged={payload.status_summary.unchanged.length} unknown={payload.status_summary.unknown.length}
-            </p>
-          </section>
-
-          <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
-            <h3 className="mb-2 text-sm font-semibold text-ink-100">Highlights</h3>
+          <Card title="Highlights">
             {payload.highlights.length === 0 ? (
               <p className="text-sm text-ink-400">No major changes detected.</p>
             ) : (
-              <ul className="space-y-1 text-sm text-ink-300">
+              <ul className="list-disc space-y-1 pl-5 text-sm text-ink-300">
                 {payload.highlights.map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>
             )}
-          </section>
+          </Card>
         </>
       )}
     </section>
   );
 }
 
-function MetricRow({ metric }: { metric: DeltaMetricNode }) {
-  const absolute = metric.absolute_delta == null ? "n/a" : metric.absolute_delta.toFixed(2);
-  const relative = metric.relative_delta_pct == null ? "n/a" : `${metric.relative_delta_pct.toFixed(2)}%`;
-  const reason = metric.reason ? ` (${metric.reason})` : "";
+/** Run select grouped by cycle; each option reads "cycle · time · short id". */
+function RunPicker({
+  label,
+  value,
+  onChange,
+  runs
+}: {
+  label: string;
+  value: string;
+  onChange: (runId: string) => void;
+  runs: RunListItem[];
+}) {
+  const groups = useMemo(() => {
+    const byCycle = new Map<string, RunListItem[]>();
+    for (const run of runs) {
+      const cycle = runCycle(run);
+      const group = byCycle.get(cycle);
+      if (group) {
+        group.push(run);
+      } else {
+        byCycle.set(cycle, [run]);
+      }
+    }
+    return [...byCycle.entries()];
+  }, [runs]);
+
   return (
-    <span className="font-mono text-xs text-ink-300">
-      current={formatMetricValue(metric.current_value, metric.unit)} baseline={formatMetricValue(metric.baseline_value, metric.unit)} delta=
-      {absolute} relative={relative} state={metric.classification}
-      {reason}
+    <label className={labelClass}>
+      {label}
+      <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className={selectClass}>
+        <option value="">Select run</option>
+        {groups.map(([cycle, cycleRuns]) => (
+          <optgroup key={cycle} label={cycle}>
+            {cycleRuns.map((run) => (
+              <option key={run.run_id} value={run.run_id}>
+                {formatRunLabel(run)} · {shortRunId(run.run_id)}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function RunRef({ runId, run }: { runId: string; run: RunListItem | undefined }) {
+  return run ? <RunLabel run={run} linked /> : <span className="font-mono text-sm text-ink-100">{runId}</span>;
+}
+
+function runText(runId: string, run: RunListItem | undefined): string {
+  return run ? formatRunLabel(run) : shortRunId(runId);
+}
+
+function MetricTable<K extends string>({
+  title,
+  rows,
+  metrics
+}: {
+  title: string;
+  rows: Array<{ key: K; label: string }>;
+  metrics: Record<K, DeltaMetricNode>;
+}) {
+  return (
+    <Card title={title} className="min-w-0">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm text-ink-300">
+          <thead>
+            <tr className="text-xs text-ink-400">
+              <th className="pb-1 pr-2 font-medium">Metric</th>
+              <th className="pb-1 pr-2 text-right font-medium">Baseline</th>
+              <th className="pb-1 pr-2 text-right font-medium">Current</th>
+              <th className="pb-1 pr-2 text-right font-medium">Change</th>
+              <th className="hidden pb-1 font-medium sm:table-cell">State</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ key, label }) => {
+              const metric = metrics[key];
+              const badge = CLASSIFICATION_BADGE[metric.classification];
+              return (
+                <tr key={key} className="border-t border-ink-800" data-testid={`metric-${key}`}>
+                  <td className="py-1.5 pr-2 text-ink-100">{label}</td>
+                  <td className="py-1.5 pr-2 whitespace-nowrap text-right font-mono text-xs">{formatMetricValue(metric.baseline_value, metric.unit)}</td>
+                  <td className="py-1.5 pr-2 whitespace-nowrap text-right font-mono text-xs">{formatMetricValue(metric.current_value, metric.unit)}</td>
+                  <td className={`py-1.5 pr-2 whitespace-nowrap text-right font-mono text-xs ${CLASSIFICATION_TONE[metric.classification]}`}>
+                    <MetricChange metric={metric} />
+                  </td>
+                  <td className="hidden py-1.5 sm:table-cell">
+                    <Badge tone={badge.tone} title={metric.reason ?? undefined}>
+                      {badge.label}
+                    </Badge>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
+function MetricChange({ metric }: { metric: DeltaMetricNode }) {
+  if (metric.absolute_delta == null) {
+    return <span title={metric.reason ?? undefined}>n/a</span>;
+  }
+  if (metric.absolute_delta === 0) {
+    return <span>—</span>;
+  }
+  // Relative change of a percentage is confusing next to percentage points, so skip it for health.
+  const relative =
+    metric.relative_delta_pct != null && metric.unit !== "pct" ? ` (${formatSigned(metric.relative_delta_pct, 1)}%)` : "";
+  return (
+    <span className="whitespace-nowrap">
+      <span aria-hidden="true">{metric.absolute_delta > 0 ? "▲ " : "▼ "}</span>
+      {formatSignedDelta(metric.absolute_delta, metric.unit)}
+      <span className="text-ink-400">{relative}</span>
     </span>
   );
 }
@@ -245,29 +375,45 @@ function formatMetricValue(value: number | null, unit: DeltaMetricNode["unit"]):
     return `${Math.round(value)}`;
   }
   if (unit === "pct") {
-    return `${value.toFixed(2)}%`;
+    return `${value.toFixed(1)}%`;
   }
-  return `${value.toFixed(2)}ms`;
+  return formatDuration(value);
 }
 
-function getReliabilityMetrics(payload: Awaited<ReturnType<typeof apiClient.getDeltaComparison>>) {
-  return payload.metrics.reliability;
+function formatSignedDelta(value: number, unit: DeltaMetricNode["unit"]): string {
+  if (unit === "tests") {
+    return formatSigned(value, 0);
+  }
+  if (unit === "pct") {
+    return `${formatSigned(value, 1)} pp`;
+  }
+  const magnitude = formatDuration(Math.abs(value));
+  return `${/[1-9]/.test(magnitude) ? (value > 0 ? "+" : "−") : ""}${magnitude}`;
 }
 
-function outcomeSegments(
-  reliability: ReturnType<typeof getReliabilityMetrics>,
-  field: "current_value" | "baseline_value"
-): StackedBarSegment[] {
+/** Signed number; values that round to zero get no sign, so "no change" never reads as "−0.0". */
+function formatSigned(value: number, digits: number): string {
+  const magnitude = Math.abs(value).toFixed(digits);
+  if (Number(magnitude) === 0) {
+    return magnitude;
+  }
+  return `${value > 0 ? "+" : "−"}${magnitude}`;
+}
+
+function formatDuration(ms: number): string {
+  if (ms >= 999.5) {
+    return `${(ms / 1000).toFixed(2)} s`;
+  }
+  return ms < 99.95 ? `${ms.toFixed(1)} ms` : `${Math.round(ms)} ms`;
+}
+
+function outcomeSegments(reliability: ReliabilityMetrics, field: "current_value" | "baseline_value"): StackedBarSegment[] {
   return [
     { label: "Passed", value: reliability.passed[field] ?? 0, colorClass: "bg-success-400" },
     { label: "Failed", value: reliability.failed[field] ?? 0, colorClass: "bg-danger-400" },
     { label: "Broken", value: reliability.broken[field] ?? 0, colorClass: "bg-danger-300" },
     { label: "Skipped", value: reliability.skipped[field] ?? 0, colorClass: "bg-warn-400" }
   ];
-}
-
-function getPerformanceMetrics(payload: Awaited<ReturnType<typeof apiClient.getDeltaComparison>>) {
-  return payload.metrics.performance;
 }
 
 function TestLevelChanges({ currentRunId, baselineRunId }: { currentRunId: string; baselineRunId: string }) {
