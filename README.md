@@ -1,21 +1,42 @@
-# Testosterone (`testo-core`)
+# Testosterone
 
-Testosterone runs multi-stage test **cycles** (pytest, Behave, BehaveX, or any command that
-writes JUnit XML) from one config file, records every run, and turns the results into
-reports, a dashboard, run-to-run deltas and AI failure summaries.
+**One YAML file to run your whole test cycle (pytest, Behave, BehaveX or any JUnit-writing command), then see what changed since the last run.**
 
-The repo ships:
+[![CI](https://github.com/taltal-beep/testosterone/actions/workflows/ci.yml/badge.svg)](https://github.com/taltal-beep/testosterone/actions/workflows/ci.yml)
+[![Pages demo](https://github.com/taltal-beep/testosterone/actions/workflows/pages-demo.yml/badge.svg)](https://github.com/taltal-beep/testosterone/actions/workflows/pages-demo.yml)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-- the `testo` CLI, CI-friendly (`--ci` streams NDJSON events, exit codes `0`–`4`)
-- a FastAPI backend (`testo_api`, `/api/v1`) with server-sent events for live runs
-- a React frontend (`frontend/`)
-- a GitHub Action and a GitLab CI template that wrap `testo run --ci`
+**Live demo: <https://taltal-beep.github.io/testosterone/>**
 
-All of them start runs through the same engine. See [ARCHITECTURE.md](ARCHITECTURE.md) for how
-the pieces fit.
+<!-- screenshots: added after the demo fixes land -->
 
-> The v1.0 `uqo` command, the Streamlit UI, the `uqo run --config` YAML format and the
-> Docker-based headless runner were removed; see [Migrating from v1.0](#migrating-from-v10).
+What you're looking at: Testosterone testing itself (its own 559-test suite) and `fake-api`, a
+small app whose routes fail on purpose. CI runs both cycles and publishes the real results as a
+read-only static site.
+
+## Why
+
+Most projects run several test frameworks, each with its own command, report format and CI
+glue. Testosterone puts them in one `testosterone.yaml` as a **cycle** of stages, runs it, records
+every run, and answers the question you actually have after a red build: *what changed?* You get
+run-to-run deltas, a test pyramid, and an optional AI summary of the failures. The same engine
+runs the cycle whether you start it from the CLI, from CI, or from the web UI.
+
+**How it compares.** Allure and ReportPortal display the results of a run someone else
+started. Testosterone starts the run: it orchestrates the stages, keeps the history and diffs
+runs against each other, then hands results to Allure, ReportPortal, Extent or TestBeats as
+reporters. It sits upstream of those tools rather than replacing them.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/testosterone-architecture-dark.png">
+  <img alt="Architecture: React dashboard, CI and terminal drive the REST API and testo CLI, which call testo_core (config, engine, framework adapters, reporting, insight services, persistence)" src="docs/assets/testosterone-architecture-light.png">
+</picture>
+
+What ships: the `testo` CLI (`--ci` streams NDJSON events, exit codes `0`–`4`), a FastAPI
+backend (`testo_api`, `/api/v1`, live runs over server-sent events), a React frontend
+(`frontend/`), and GitHub Action / GitLab CI wrappers around `testo run --ci`. See
+[ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit.
 
 ## Quickstart
 
@@ -109,15 +130,15 @@ GitHub Actions:
 ```yaml
 - uses: taltal-beep/testosterone/integrations/github-action@v1
   with:
-    cycle: smoke
+    cycle: smoke          # optional: config-path, ci-mode, persist, python-version
 ```
 
-GitLab CI:
+GitLab CI (a GitLab mirror of this repo is coming; until then, include the template straight
+from GitHub, or copy [ci/gitlab/testo.gitlab-ci.yml](ci/gitlab/testo.gitlab-ci.yml)):
 
 ```yaml
 include:
-  - project: "taltal-beep/testosterone"
-    file: "/ci/gitlab/testo.gitlab-ci.yml"
+  - remote: "https://raw.githubusercontent.com/taltal-beep/testosterone/v1/ci/gitlab/testo.gitlab-ci.yml"
 variables:
   TESTO_CYCLE: "smoke"
 ```
@@ -153,19 +174,31 @@ npm --prefix frontend test
 `ruff check`, `ruff format --check` and `mypy testo_core` are all blocking in CI
 (`.github/workflows/ci.yml`'s `format` job), as are the frontend typecheck and tests.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full checklist and [docs/Index.md](docs/Index.md)
-for the design notes vault.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full checklist. Start with
+[ARCHITECTURE.md](ARCHITECTURE.md) for the design; [docs/](docs/Index.md) holds internal design
+notes and ADRs (an Obsidian vault, so some links only resolve inside Obsidian).
 
-## Migrating from v1.0
+## History
+
+The project started as UQO ("Unified Quality Orchestrator") and was renamed to Testosterone
+(the `uqo` command and `UQO_*` variables became `testo` and `TESTO_*`). v1.1 replaced the Streamlit UI
+with the React frontend and dropped the Docker-based headless runner (stages now run as host
+subprocesses). Full details in [CHANGELOG.md](CHANGELOG.md).
+
+<details>
+<summary>Migrating from v1.0</summary>
 
 | v1.0 | v1.1 |
 |------|------|
 | Streamlit UI (`testo-ui`, `streamlit run app.py`) | React frontend (`frontend/`) |
+| `uqo` command, `UQO_*` env vars | `testo`, `TESTO_*` |
 | `uqo run --config runs.yaml` (`runs:` list of `test_type`/`cli_args`) | a cycle in `testosterone.yaml`, run with `testo run --cycle <name>` |
 | `--ghost`, `--json`, `--stream-json` | `--ci` (NDJSON events, `plan_finished` last) |
 | `POST /api/v1/executions` + `/executions/{id}/events` | `POST /api/v1/adhoc-executions` (one framework) or `POST /api/v1/cycles/{cycle}/executions`; status and SSE under `/cycle-executions/{id}` |
 | "Legacy Execution" page | Quick Run (`/quick-run`) |
 | Tests run in one-off Docker containers (`UQO_RUNNER_IMAGE`, `UQO_RUNNER_PREBUILT`) | stages run as host subprocesses; use `Dockerfile.testo-runner` as the CI job image if you want isolation |
-| Allure results uploaded to MinIO per run | per-run reports under `static/history/<run_id>/` (served at `/history`) and the report archive DB; MinIO is no longer used |
+| Allure results uploaded to MinIO per run | per-run reports under `static/history/<run_id>/` (served at `/history`) and the report archive DB |
 | `locust` test type | `equipment: command` with `args: [locust, --headless, …]` |
 | Pluggy `plugins/*.py` runner hooks | a framework adapter in `testo_core/frameworks/` |
+
+</details>
