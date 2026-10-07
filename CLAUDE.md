@@ -10,6 +10,17 @@ Before planning, debugging, or implementing anything in this repo, read [docs/In
 - Framework adapters: `testo_core/frameworks/` (Pytest, Behave, BehaveX).
 - API: `testo_api/` (FastAPI, `/api/v1/`). Frontend: `frontend/` (Vite + React + Tailwind). CLI and API both run cycles through `services/cycle_run.CycleRunService`.
 
+## Second brain rules
+
+`docs/` is an Obsidian vault and the project's second brain. Its conventions (frontmatter, links, ingest/query/lint/log) are in [docs/CLAUDE.md](docs/CLAUDE.md); `python scripts/docs_vault.py lint` checks them in CI.
+
+1. **Vault first (STRICT).** Before planning, designing, debugging, implementing or answering a question about this project, read [docs/Index.md](docs/Index.md), then the notes for the area you're touching (the [Agent Context Guide](docs/Prompts%20&%20Snippets/Agent%20Context%20Guide.md) says which). Don't rely on this file's summary alone.
+2. **Docs stay in sync.** A change to CLI args or exit codes, `testosterone.yaml` parsing, the engine flow, API routes, storage, CI workflows or the release process updates the note that owns that fact in the same pull request, and bumps its `updated` date.
+3. **Point, don't paste.** If a note already explains something, link to it instead of re-explaining it.
+4. **Architectural consistency.** Follow the structure in [ARCHITECTURE.md](ARCHITECTURE.md) and [docs/Architecture/](docs/Architecture/Architecture%20Overview.md): one engine entered through `CycleRunService`, run history behind `testo_core/history/`, frontend types generated from OpenAPI. Don't add a second path.
+5. **Document significant work (STRICT).** A plan, batch of pull requests, migration or multi-step refactor gets a note in `docs/Specs & ADRs/` (context, decision, consequences) linked from its README, and a line in [docs/log.md](docs/log.md) if the vault's shape changed. If it was big enough to plan, it's big enough to document.
+6. **Archive, don't rewrite history.** A note that stops describing the code moves to `docs/Archive/`; archived notes are frozen.
+
 ## Rules
 
 - **Behave features must be explicitly targeted** (`behave features/smoke.feature`), never rely on cwd auto-discovery. Applies to CLI wrappers, CI, Dockerfiles, adapters.
