@@ -68,7 +68,7 @@ Cycles are defined under `cycles:` in YAML (legacy key `plans:` is still accepte
 
 `testo_core/persistence/` provides the `PersistenceBackend` protocol used by the orchestrator (JSON + DB backends, composite fanout). See **Persistence** below.
 
-Execution is **sequential by design**; parallelization today is framework-internal (e.g. BehaveX `--workers`).
+Execution is **sequential by design**; parallelization today is framework-internal through a stage's `workers` (BehaveX always, pytest when pytest-xdist is installed, native behave never; see [[Deep Dive - Execution Logic#Framework level — optional]]).
 
 ### `testo_core/frameworks/`
 

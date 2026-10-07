@@ -20,6 +20,7 @@ from testo_api.models import (
 )
 from testo_core.config.errors import ConfigError, ConfigValidationError
 from testo_core.config.loader import discover_and_load
+from testo_core.config.schema import PARALLEL_FRAMEWORKS
 
 router = APIRouter(prefix="/api/v1", tags=["cycles"])
 
@@ -86,7 +87,9 @@ def get_cycle(cycle: str, config_path: str | None = None) -> CycleDetailResponse
                 target_repo=str(stage.target_repo),
                 args=list(stage.args),
                 timeout_s=stage.timeout_s,
-                workers=stage.workers,
+                # Only frameworks that act on it; showing "Workers 4" on a
+                # single-process behave stage would claim parallelism it lacks.
+                workers=stage.workers if stage.framework in PARALLEL_FRAMEWORKS else None,
             )
             for stage in plan.stages
         ],
