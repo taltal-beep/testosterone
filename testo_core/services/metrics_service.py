@@ -6,13 +6,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from testo_core.metrics import (
+from testo_core.reporting.metrics import (
     RunMetrics,
     list_run_history,
     parse_allure_results_dir,
     write_metrics_json,
 )
-from testo_core.metrics_extractor import ExtractedMetrics, extract_best
+from testo_core.reporting.metrics_extractor import ExtractedMetrics, extract_best
 
 
 class MetricsService:

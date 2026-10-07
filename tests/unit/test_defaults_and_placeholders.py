@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from testo_core.report_generator import ReportServer, default_report_paths, url_for
+from testo_core.reporting.report_generator import ReportServer, default_report_paths, url_for
 
 
 def test_default_report_paths_points_to_static(tmp_path: Path) -> None:

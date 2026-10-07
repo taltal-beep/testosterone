@@ -7,7 +7,7 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
-from testo_core.db import get_repository
+from testo_core.repository.db import get_repository
 from testo_core.repository.models import RunRecord, RunStatus
 
 logger = logging.getLogger(__name__)

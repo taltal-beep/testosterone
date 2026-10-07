@@ -18,13 +18,13 @@ from testo_core.config.errors import ConfigDiscoveryError
 from testo_core.config.loader import discover_and_load
 from testo_core.config.resolver import resolve_plan
 from testo_core.config.schema import Defaults, Plan, TestosteroneConfig
+from testo_core.config.triggers import TriggerResult
 from testo_core.services.cycle_run import (
     ADHOC_PLAN_NAME,
     CycleRunOptions,
     CycleRunService,
     single_stage_plan,
 )
-from testo_core.triggers import TriggerResult
 
 CycleExecutionStatus = Literal["queued", "running", "completed", "failed"]
 

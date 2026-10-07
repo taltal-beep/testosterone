@@ -176,7 +176,7 @@ class TestDbBackend:
         backend = DbBackend(tmp_path)
         assert isinstance(backend, PersistenceBackend)
 
-    @patch("testo_core.db.get_repository")
+    @patch("testo_core.repository.db.get_repository")
     def test_persists_successful_run(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:
         mock_repo = MagicMock()
         mock_get_repo.return_value = mock_repo
@@ -192,7 +192,7 @@ class TestDbBackend:
         assert call_kwargs["metadata"]["source"] == "engine"
         assert call_kwargs["metadata"]["stages"][0]["tier"] == "integration"
 
-    @patch("testo_core.db.get_repository")
+    @patch("testo_core.repository.db.get_repository")
     def test_health_pct_is_real_pass_rate_not_binary_returncode(
         self, mock_get_repo: MagicMock, tmp_path: Path
     ) -> None:
@@ -216,7 +216,7 @@ class TestDbBackend:
         assert stage["health_pct"] == pytest.approx(66.666, abs=0.01)
         assert metadata["health_pct"] == pytest.approx(66.666, abs=0.01)
 
-    @patch("testo_core.db.get_repository")
+    @patch("testo_core.repository.db.get_repository")
     def test_persists_failed_run(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:
         mock_repo = MagicMock()
         mock_get_repo.return_value = mock_repo
@@ -228,14 +228,14 @@ class TestDbBackend:
         call_kwargs = mock_repo.create_run.call_args[1]
         assert call_kwargs["status"].value == "FAILED"
 
-    @patch("testo_core.db.get_repository", side_effect=Exception("no db"))
+    @patch("testo_core.repository.db.get_repository", side_effect=Exception("no db"))
     def test_silently_handles_db_error(self, _mock: MagicMock, tmp_path: Path) -> None:
         backend = DbBackend(tmp_path)
         result = _make_plan_result()
         run_id = backend.persist(result)
         assert run_id is None
 
-    @patch("testo_core.db.get_repository")
+    @patch("testo_core.repository.db.get_repository")
     def test_returns_persisted_run_id_on_success(
         self, mock_get_repo: MagicMock, tmp_path: Path
     ) -> None:
@@ -251,7 +251,7 @@ class TestDbBackend:
 
         assert run_id == "abc-123"
 
-    @patch("testo_core.db.get_repository")
+    @patch("testo_core.repository.db.get_repository")
     def test_sets_local_snapshot_dir_under_orchestrator_root(
         self, mock_get_repo: MagicMock
     ) -> None:
@@ -268,7 +268,7 @@ class TestDbBackend:
         metadata = mock_repo.create_run.call_args[1]["metadata"]
         assert metadata["snapshot_dir"] == "artifacts/smoke"
 
-    @patch("testo_core.db.get_repository")
+    @patch("testo_core.repository.db.get_repository")
     def test_snapshot_dir_none_when_outside_orchestrator_root(
         self, mock_get_repo: MagicMock, tmp_path: Path
     ) -> None:
@@ -282,7 +282,7 @@ class TestDbBackend:
         metadata = mock_repo.create_run.call_args[1]["metadata"]
         assert metadata["snapshot_dir"] is None
 
-    @patch("testo_core.db.get_repository")
+    @patch("testo_core.repository.db.get_repository")
     def test_each_run_keeps_its_own_copy_of_the_artifacts(
         self, mock_get_repo: MagicMock, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -314,7 +314,7 @@ class TestDbBackend:
             payload = json.loads((copied / "test_flaky-result.json").read_text(encoding="utf-8"))
             assert payload["status"] == status
 
-    @patch("testo_core.db.get_repository")
+    @patch("testo_core.repository.db.get_repository")
     def test_snapshot_failure_keeps_the_run(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:
         mock_repo = MagicMock()
         mock_repo.create_run.return_value = MagicMock(id="run-1")
@@ -327,7 +327,7 @@ class TestDbBackend:
 
 class TestCompositeBackend:
     def test_fans_out_to_all_backends(self, tmp_path: Path) -> None:
-        with patch("testo_core.db.get_repository") as mock_get_repo:
+        with patch("testo_core.repository.db.get_repository") as mock_get_repo:
             mock_repo = MagicMock()
             mock_get_repo.return_value = mock_repo
 
@@ -346,14 +346,14 @@ class TestCompositeBackend:
         assert (tmp_path / "smoke" / "plan_result.json").exists()
 
     def test_continues_on_backend_failure(self, tmp_path: Path) -> None:
-        with patch("testo_core.db.get_repository", side_effect=RuntimeError):
+        with patch("testo_core.repository.db.get_repository", side_effect=RuntimeError):
             backend = composite_backend(artifacts_root=tmp_path, db=True)
             result = _make_plan_result()
             backend.persist(result)
             assert (tmp_path / "smoke" / "plan_result.json").exists()
 
     def test_returns_db_backend_run_id(self, tmp_path: Path) -> None:
-        with patch("testo_core.db.get_repository") as mock_get_repo:
+        with patch("testo_core.repository.db.get_repository") as mock_get_repo:
             mock_repo = MagicMock()
             fake_record = MagicMock()
             fake_record.id = "run-xyz"

@@ -14,16 +14,16 @@ from testo_core.paths import (
     STATIC_ALLURE_REPORTS_DIR,
 )
 from testo_core.paths import default_artifacts_root as paths_default_artifacts_root
-from testo_core.report_generator import (
+from testo_core.reporting.report_generator import (
     ReportPaths,
     default_report_paths,
     make_report_zip,
     read_single_file_html,
 )
-from testo_core.report_generator import (
+from testo_core.reporting.report_generator import (
     generate_allure_html as _generate_allure_html,
 )
-from testo_core.report_generator import (
+from testo_core.reporting.report_generator import (
     generate_allure_reports as _generate_allure_reports,
 )
 

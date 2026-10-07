@@ -19,7 +19,9 @@ def test_generate_individual_allure_delegates(tmp_path: Path) -> None:
     def run_ok(cmd: list[str], **_kw: object):
         return fake
 
-    with patch("testo_core.report_generator.publish_allure_index_to_static", lambda **_: None):
+    with patch(
+        "testo_core.reporting.report_generator.publish_allure_index_to_static", lambda **_: None
+    ):
         out = svc.generate_individual_allure(frameworks=["pytest"], subprocess_run=run_ok)
     assert "pytest" in out
 

@@ -248,7 +248,7 @@ def report_list_archived(
     from rich.table import Table
 
     from testo_core.cli.ui.console import default_console
-    from testo_core.db import get_report_archive_repository
+    from testo_core.repository.db import get_report_archive_repository
 
     console = default_console()
     try:
@@ -325,8 +325,8 @@ def report_open_archived(
     import uuid
 
     from testo_core.cli.ui.console import default_console
-    from testo_core.db import get_report_archive_repository
     from testo_core.reporting.entry import dispatch_report
+    from testo_core.repository.db import get_report_archive_repository
     from testo_core.services.report_archive import extract_archive_to_plan_dir
 
     console = default_console()

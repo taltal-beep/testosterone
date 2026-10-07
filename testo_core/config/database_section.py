@@ -1,6 +1,6 @@
 """Read/write optional ``database:`` settings in testosterone config files.
 
-Keeps :mod:`testo_core.db_config` free of full plan-schema imports.
+Keeps :mod:`testo_core.repository.db_config` free of full plan-schema imports.
 """
 
 from __future__ import annotations
