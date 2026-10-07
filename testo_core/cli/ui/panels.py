@@ -10,7 +10,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from testo_core.metrics import parse_allure_results_dir
+from testo_core.reporting.metrics import parse_allure_results_dir
 
 
 @dataclass(frozen=True)

@@ -1,4 +1,4 @@
-"""Tests for :mod:`testo_core.triggers`."""
+"""Tests for :mod:`testo_core.config.triggers`."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from testo_core.config.loader import load_config
-from testo_core.triggers import (
+from testo_core.config.triggers import (
     evaluate_cycle_trigger,
     path_matches_trigger_glob,
     persist_trigger_snapshot,

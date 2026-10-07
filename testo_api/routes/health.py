@@ -3,8 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Response
 
 from testo_api.models import HealthLiveResponse, HealthReadyResponse, ReadinessCheck
-from testo_core.db import get_repository
-from testo_core.db_config import get_engine
+from testo_core.repository.db import get_repository
+from testo_core.repository.db_config import get_engine
 
 router = APIRouter(prefix="/api/v1/health", tags=["health"])
 

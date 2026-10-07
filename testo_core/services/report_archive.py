@@ -32,8 +32,8 @@ def aggregate_cycle_metrics(plan_dir: Path) -> dict[str, int | None]:
     if not plan_dir.is_dir():
         return _empty_metrics()
 
-    from testo_core.metrics import parse_allure_results_dir
     from testo_core.reporting.collector import collect_results
+    from testo_core.reporting.metrics import parse_allure_results_dir
 
     cr = collect_results(plan_dir.parent, plan_name=plan_dir.name)
     total_tests = passed = failed = broken = skipped = unknown = 0
@@ -135,7 +135,7 @@ def try_persist_cycle_report(
     exit_code_override: int | None = None,
 ) -> uuid.UUID | None:
     """Best-effort insert of a zipped cycle directory into ``ReportArchive``."""
-    from testo_core.db import get_report_archive_repository
+    from testo_core.repository.db import get_report_archive_repository
 
     log = logging.getLogger(__name__)
     try:

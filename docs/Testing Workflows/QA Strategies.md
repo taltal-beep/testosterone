@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-06-25
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 # QA Strategies
@@ -98,7 +98,7 @@ testo run --cycle all --tag smoke
 
 ### 2. Selective triggers
 
-Cycles may define a `trigger:` with glob `paths` (and optional Git `since_ref`). Evaluation lives in `testo_core/triggers.py`:
+Cycles may define a `trigger:` with glob `paths` (and optional Git `since_ref`). Evaluation lives in `testo_core/config/triggers.py`:
 
 | Mode | Behavior |
 |------|----------|

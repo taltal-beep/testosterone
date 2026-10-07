@@ -1,11 +1,11 @@
-"""Branch coverage for ``testo_core.metrics`` (history)."""
+"""Branch coverage for ``testo_core.reporting.metrics`` (history)."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from testo_core.metrics import list_run_history
+from testo_core.reporting.metrics import list_run_history
 
 
 def test_list_run_history_with_archive(tmp_path: Path) -> None:

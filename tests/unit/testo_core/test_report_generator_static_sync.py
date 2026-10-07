@@ -1,4 +1,4 @@
-"""Coverage for static mirroring helpers in ``testo_core.report_generator``."""
+"""Coverage for static mirroring helpers in ``testo_core.reporting.report_generator``."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from testo_core import report_generator as rg
+from testo_core.reporting import report_generator as rg
 
 
 def test_publish_allure_index_to_static_chmod_branch(

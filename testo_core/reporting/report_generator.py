@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .paths import (
+from testo_core.paths import (
     ORCHESTRATOR_ROOT,
     STATIC_ALLURE_HTML,
     STATIC_ALLURE_INDEX,

@@ -2,7 +2,7 @@
 type: tracker
 status: current
 created: 2026-06-25
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 # Technical Debt Tracker
@@ -37,7 +37,7 @@ Risk: silent degradation (empty reports) without a structured error. Fix: catch 
 
 ### 5. Git trigger fallback is silent
 
-`testo_core/triggers.py` falls back to snapshot mode on `OSError` / `TimeoutExpired` / `RuntimeError` without telling anyone, which can cause an unexpected full run. Fix: emit `{"event":"trigger_fallback",...}` under `--ci`; `testo doctor` could check git availability.
+`testo_core/config/triggers.py` falls back to snapshot mode on `OSError` / `TimeoutExpired` / `RuntimeError` without telling anyone, which can cause an unexpected full run. Fix: emit `{"event":"trigger_fallback",...}` under `--ci`; `testo doctor` could check git availability.
 
 ### 6. `mypy testo_api` is not in CI
 

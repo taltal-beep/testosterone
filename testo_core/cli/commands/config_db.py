@@ -50,8 +50,8 @@ def config_db(
         merge_database_url_yaml,
     )
     from testo_core.config.errors import ConfigDiscoveryError, ConfigValidationError
-    from testo_core.db import reset_repository_cache
-    from testo_core.db_config import reset_engine_cache, validate_database_url
+    from testo_core.repository.db import reset_repository_cache
+    from testo_core.repository.db_config import reset_engine_cache, validate_database_url
     from testo_core.repository.factory import select_repository_adapter
 
     console = default_console()

@@ -33,7 +33,11 @@ from testo_core.config.schema import (
     Stage,
     TestosteroneConfig,
 )
-from testo_core.triggers import TriggerResult, evaluate_cycle_trigger, persist_trigger_snapshot
+from testo_core.config.triggers import (
+    TriggerResult,
+    evaluate_cycle_trigger,
+    persist_trigger_snapshot,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -299,7 +303,7 @@ def run_configured_reporters_for_cycle(
 
 def push_metrics(*, plan: Plan, artifacts_root: Path, run_id: str | None) -> None:
     """Push the cycle's test KPIs to InfluxDB / Prometheus when configured (best-effort, logged)."""
-    from testo_core.integrations import push_run_metrics_if_configured
+    from testo_core.reporting.integrations import push_run_metrics_if_configured
     from testo_core.reporting.paths import plan_artifacts_dir
 
     results_root = plan_artifacts_dir(artifacts_root, plan.name)

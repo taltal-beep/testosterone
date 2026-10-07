@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from testo_core.db import get_report_archive_repository, reset_repository_cache
-from testo_core.db_config import reset_engine_cache
+from testo_core.repository.db import get_report_archive_repository, reset_repository_cache
+from testo_core.repository.db_config import reset_engine_cache
 from testo_core.repository.report_archive_repository import SQLReportArchiveRepository
 from testo_core.services.report_archive import (
     aggregate_cycle_metrics,

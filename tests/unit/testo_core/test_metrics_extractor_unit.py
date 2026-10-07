@@ -1,11 +1,11 @@
-"""Lightweight tests for ``testo_core.metrics_extractor`` helpers."""
+"""Lightweight tests for ``testo_core.reporting.metrics_extractor`` helpers."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from testo_core.metrics_extractor import extract_best
+from testo_core.reporting.metrics_extractor import extract_best
 
 
 def test_extract_best_from_results_dir(tmp_path: Path) -> None:

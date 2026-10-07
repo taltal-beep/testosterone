@@ -1,6 +1,6 @@
 """Queries over stored runs, used by the API routes and the analytics services.
 
-Every read goes through :func:`testo_core.db.get_repository`, so the read side
+Every read goes through :func:`testo_core.repository.db.get_repository`, so the read side
 works the same on SQLite, Postgres and MySQL and never touches SQL directly.
 """
 
@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from testo_core.db import get_repository
 from testo_core.history.report_links import local_report_links
 from testo_core.history.views import CompletedRunView, RunSessionView, view_from_record
+from testo_core.repository.db import get_repository
 
 
 def list_recent_runs(*, limit: int = 30) -> list[CompletedRunView]:

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from testo_core.db import get_repository, reset_repository_cache
-from testo_core.db_config import reset_engine_cache, validate_database_url
 from testo_core.repository.base import BaseRunRepository
+from testo_core.repository.db import get_repository, reset_repository_cache
+from testo_core.repository.db_config import reset_engine_cache, validate_database_url
 from testo_core.repository.models import RunStatus
 
 

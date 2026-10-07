@@ -1,11 +1,11 @@
-"""Tests for ``testo_core.metrics`` parsing."""
+"""Tests for ``testo_core.reporting.metrics`` parsing."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from testo_core.metrics import RunMetrics, parse_allure_results_dir, write_metrics_json
+from testo_core.reporting.metrics import RunMetrics, parse_allure_results_dir, write_metrics_json
 
 
 def test_parse_allure_results_dir_recurse(tmp_path: Path) -> None:

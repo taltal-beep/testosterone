@@ -3,7 +3,7 @@
 The engine writes one :class:`~testo_core.repository.models.RunRecord` per cycle
 execution (:mod:`testo_core.persistence.db_backend`). Everything that reads those
 records back goes through this package, and this package only talks to storage
-through :func:`testo_core.db.get_repository`:
+through :func:`testo_core.repository.db.get_repository`:
 
 - :mod:`.views` — flat, typed views of a record (``CompletedRunView``, ``RunSessionView``).
 - :mod:`.read_model` — queries the API and services use (list, get, compare, sessions).

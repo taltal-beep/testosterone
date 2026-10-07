@@ -16,8 +16,8 @@ import pytest
 from typer.testing import CliRunner
 
 from testo_core.cli.app import app
+from testo_core.config.triggers import TriggerResult
 from testo_core.services import cycle_run as cycle_run_mod
-from testo_core.triggers import TriggerResult
 from tests.fixtures.engine import (
     HangAdapter,
     assert_ndjson_events,

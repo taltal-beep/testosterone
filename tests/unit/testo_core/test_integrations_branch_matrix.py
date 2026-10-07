@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import testo_core.integrations as integrations
-from testo_core.metrics import RunMetrics
+import testo_core.reporting.integrations as integrations
+from testo_core.reporting.metrics import RunMetrics
 from tests.unit.cases.strings import common_string_cases
 
 pytestmark = [pytest.mark.unit]
@@ -65,10 +65,10 @@ def test_push_to_prometheus_http_error_branch() -> None:
         run_id="rid",
     )
     with patch(
-        "testo_core.integrations.prometheus_settings_from_env",
+        "testo_core.reporting.integrations.prometheus_settings_from_env",
         return_value={"pushgateway_url": "http://x", "job_name": "testo"},
     ):
-        with patch("testo_core.integrations.requests.post") as post:
+        with patch("testo_core.reporting.integrations.requests.post") as post:
             post.return_value = MagicMock(status_code=500, text="boom")
             ok, msg = integrations.push_to_prometheus(m)
     assert ok is False
@@ -88,7 +88,7 @@ def test_push_to_prometheus_missing_url_branch() -> None:
         run_id="rid",
     )
     with patch(
-        "testo_core.integrations.prometheus_settings_from_env",
+        "testo_core.reporting.integrations.prometheus_settings_from_env",
         return_value={"pushgateway_url": None, "job_name": "testo"},
     ):
         ok, msg = integrations.push_to_prometheus(m)

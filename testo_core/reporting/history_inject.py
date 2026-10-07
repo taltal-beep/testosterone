@@ -41,7 +41,7 @@ def try_inject_prior_history(
         return
     depth = max(1, int(trend_depth))
     try:
-        from testo_core.db import get_report_archive_repository
+        from testo_core.repository.db import get_report_archive_repository
 
         repo = get_report_archive_repository()
         rows = repo.list_recent_for_cycle(cycle_name=plan_name, limit=depth + 1)
