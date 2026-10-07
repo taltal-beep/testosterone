@@ -20,10 +20,9 @@ Where Testosterone (`testo-core`, CLI `testo`) stands today and what comes next.
 
 ## Next
 
-- **API auth token.** `testo-api` binds `127.0.0.1` and has no authentication, which is fine for a local tool. Before it runs anywhere shared it needs a token and an allow-list of target repos.
+- **Repo allow-list for the API.** `testo-api` binds `127.0.0.1` and can require `TESTO_API_TOKEN` on mutating requests; before it runs anywhere shared it also needs an allow-list of target repos.
 - **Parallel stages.** Stages run sequentially; only BehaveX parallelizes internally. Opt-in parallel stages need isolated per-stage artifact trees and aggregated exit classification.
-- **Regroup `testo_core` root modules.** `report_generator.py`, `metrics*.py`, `integrations.py`, `triggers.py`, `db*.py`, `s3_client.py` and friends sit at the package root; move them under the existing subpackages.
-- **Retire pre-v1.1 history reads.** Drop the MinIO snapshot lookups (`history/s3_snapshots.py`) and MinIO from `docker-compose.yml` once old records no longer matter.
+- **Regroup `testo_core` root modules.** `report_generator.py`, `metrics*.py`, `integrations.py`, `triggers.py`, and `db*.py` sit at the package root; move them under the existing subpackages.
 - **Smaller items** (signal-aware exit codes, reporter failure policy, `mypy testo_api` in CI): see [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md).
 
 ## How it got here

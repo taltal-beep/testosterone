@@ -10,7 +10,7 @@ Ship the orchestrator as an installable library (`testo-core` on PyPI, import `t
 |------|----------|
 | Package metadata | `pyproject.toml`: `name = "testo-core"` |
 | Public API | `testo_core/__init__.py` |
-| CLI entry | `testo` console script (`testo_core.cli.app:main`); `uqo` is a deprecated alias that forwards to it |
+| CLI entry | `testo` console script (`testo_core.cli.app:main`) |
 | API entry | `testo-api` console script (`testo_api`) |
 | Dev install | `pip install -e '.[dev]'` |
 
