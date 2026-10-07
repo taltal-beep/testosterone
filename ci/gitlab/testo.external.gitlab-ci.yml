@@ -10,7 +10,7 @@ default:
 external_nightly:
   stage: external
   script:
-    - python -m pytest -q -m "tier_external and cleanup_required" --maxfail=1 --durations=50
+    - python -m pytest -q -m "tier_external and cleanup_required" --maxfail=1 --durations=50 --no-cov
   artifacts:
     when: always
     expire_in: 7 days

@@ -27,7 +27,7 @@ fast_required:
 heavy_optional:
   stage: test
   script:
-    - python -m pytest -q -m "tier_heavy and not tier_external" --maxfail=1 --durations=25
+    - python -m pytest -q -m "tier_heavy and not tier_external" --maxfail=1 --durations=25 --no-cov
   artifacts:
     when: always
     expire_in: 7 days

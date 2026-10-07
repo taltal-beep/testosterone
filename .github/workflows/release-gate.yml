@@ -27,8 +27,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
+      # --no-cov: a marker subset can't meet pytest.ini's project-wide gate.
       - name: Run release external gate
-        run: python -m pytest -q -m "tier_external and cleanup_required" --maxfail=1 --durations=50
+        run: python -m pytest -q -m "tier_external and cleanup_required" --maxfail=1 --durations=50 --no-cov
       - name: Upload diagnostics artifacts
         if: always()
         uses: actions/upload-artifact@v4
