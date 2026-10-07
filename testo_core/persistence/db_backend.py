@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from testo_core import paths
 from testo_core.engine.result import PlanResult
@@ -34,6 +36,36 @@ class DbBackend:
             return plan_dir.relative_to(paths.ORCHESTRATOR_ROOT).as_posix()
         except ValueError:
             return None
+
+    def _snapshot_run_artifacts(self, run_id: str, plan_name: str) -> str | None:
+        """Copy this plan's artifacts to ``static/history/<run_id>/artifacts/``.
+
+        Every run of a cycle writes into the same ``<artifacts>/<cycle>/`` tree,
+        so a record pointing there would describe whichever run came last. A
+        per-run copy keeps each run's per-test results (Compare's test-level
+        diff, the artifact download) after the next run overwrites the tree.
+        Returns the copy's path relative to ``ORCHESTRATOR_ROOT``, or None.
+        """
+        plan_dir = plan_artifacts_dir(self._artifacts_root, plan_name)
+        if not plan_dir.is_dir():
+            return None
+        dest = paths.STATIC_HISTORY_ROOT / run_id / "artifacts"
+        try:
+            shutil.copytree(plan_dir, dest, dirs_exist_ok=True)
+            return dest.relative_to(paths.ORCHESTRATOR_ROOT).as_posix()
+        except (OSError, ValueError):
+            logger.debug("could not snapshot artifacts for run %s", run_id, exc_info=True)
+            return None
+
+    def _record_run_snapshot(self, repo: Any, run_id: str, plan_name: str) -> None:
+        """Point the run record at its own copy; it keeps the shared path otherwise."""
+        snapshot_dir = self._snapshot_run_artifacts(run_id, plan_name)
+        if not snapshot_dir:
+            return
+        try:
+            repo.merge_run_metadata(run_id, {"snapshot_dir": snapshot_dir})
+        except Exception:
+            logger.debug("could not record snapshot for run %s", run_id, exc_info=True)
 
     def persist(self, result: PlanResult) -> str | None:
         try:
@@ -91,7 +123,9 @@ class DbBackend:
                     **(provenance.to_metadata() if provenance else {}),
                 },
             )
-            return str(record.id)
+            run_id = str(record.id)
+            self._record_run_snapshot(repo, run_id, result.plan_name)
+            return run_id
         except Exception:
             logger.debug("db persistence failed for plan %s", result.plan_name, exc_info=True)
             return None
