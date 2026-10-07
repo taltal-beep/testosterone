@@ -46,6 +46,7 @@ This vault is the map of content for the project. Start here, then drill into th
 | Topic | Note |
 |-------|------|
 | CI integrations | [[CI-CD Pipeline Setup]] |
+| Pages demo on GitHub and GitLab (real CI run + published UI) | [[GitLab Pages Demo]] |
 | Streamlit → React (completed in v1.1) | [[Streamlit to React Migration Guide]] |
 | E2E harness | [[E2E Harness Operations Guide]] |
 | ReportPortal local | [[ReportPortal Local Setup Guide]] |

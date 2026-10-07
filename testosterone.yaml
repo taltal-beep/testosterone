@@ -87,3 +87,52 @@ cycles:
           - features
         extra_env:
           TESTO_SAMPLE_RANDOM_FAIL_P: "0.35"
+
+  # --- GitLab Pages demo (.gitlab-ci.yml) ------------------------------------
+  # Testosterone running its own Python suite, split by tier so the dashboard's
+  # pyramid is real. The nested pytest gets its own throwaway DB so the suite's
+  # tests never write into the history of the run that is executing them.
+  self-test:
+    description: Testosterone's own fast suite, run by testosterone.
+    stages:
+      - name: core-unit
+        equipment: pytest
+        target_repo: .
+        args: ["-q", "-p", "no:cacheprovider", "--no-cov", "-m", "unit and tier_fast and not quarantined", "tests"]
+        tier: unit
+        extra_env:
+          DATABASE_URL: "sqlite:////tmp/testo-self-test.db"
+      - name: core-integration
+        equipment: pytest
+        target_repo: .
+        args: ["-q", "-p", "no:cacheprovider", "--no-cov", "-m", "(integration or contract) and tier_fast and not quarantined", "tests"]
+        tier: integration
+        extra_env:
+          DATABASE_URL: "sqlite:////tmp/testo-self-test.db"
+
+  # The demo target: https://github.com/taltal-beep/fake-api, cloned into
+  # .demo/fake-api by the pipeline. Its failures are built into the app
+  # (a flaky route, a broken one, a slow one), not injected into the tests.
+  fake-api:
+    description: Fake Doing Bullshit app (taltal-beep/fake-api) — unit, API, Behave and browser tests.
+    stages:
+      - name: unit
+        equipment: pytest
+        target_repo: .demo/fake-api
+        args: ["-q", "-p", "no:cacheprovider", "tests/unit"]
+        tier: unit
+      - name: api
+        equipment: pytest
+        target_repo: .demo/fake-api
+        args: ["-q", "-p", "no:cacheprovider", "tests/api"]
+        tier: integration
+      - name: buttons
+        equipment: behave
+        target_repo: .demo/fake-api
+        args: ["features/buttons.feature"]
+        tier: integration
+      - name: ui
+        equipment: pytest
+        target_repo: .demo/fake-api
+        args: ["-q", "-p", "no:cacheprovider", "tests/e2e"]
+        tier: e2e

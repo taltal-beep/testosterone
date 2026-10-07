@@ -10,7 +10,7 @@ import { HistoryPage } from "../features/history/HistoryPage";
 import { RunDetailPage } from "../features/run-detail/RunDetailPage";
 import { AIIntegrationSettingsPage } from "../features/settings/AIIntegrationSettingsPage";
 
-export const router = createBrowserRouter([
+const routes = [
   {
     path: "/",
     element: <AppShell />,
@@ -66,4 +66,10 @@ export const router = createBrowserRouter([
       }
     ]
   }
-]);
+];
+
+export const router = createBrowserRouter(routes, {
+  // The static demo is served from a project subpath on GitLab Pages, so the
+  // router has to resolve routes against Vite's base instead of "/".
+  basename: import.meta.env.BASE_URL
+});
