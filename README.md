@@ -35,8 +35,8 @@ runs against each other, then hands results to Allure, ReportPortal, Extent or T
 reporters. It sits upstream of those tools rather than replacing them.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/testosterone-architecture-dark.png">
-  <img alt="Architecture: React dashboard, CI and terminal drive the REST API and testo CLI, which call testo_core (config, engine, framework adapters, reporting, insight services, persistence)" src="docs/assets/testosterone-architecture-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/testosterone-architecture-detailed-dark.png">
+  <img alt="Architecture: the REST API and testo CLI both call CycleRunService, which runs config, the engine and reporting; the engine drives framework adapters and saves results through persistence and the repository; insight services read run history through the same repository" src="docs/assets/testosterone-architecture-detailed-light.png">
 </picture>
 
 What ships: the `testo` CLI (`--ci` streams NDJSON events, exit codes `0`–`4`), a FastAPI
