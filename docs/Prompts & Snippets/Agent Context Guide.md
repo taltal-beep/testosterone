@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-06-25
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 # Agent Context Guide
@@ -11,12 +11,13 @@ Map for AI coding agents working on Testosterone (`testo-core`, CLI `testo`): wh
 
 ## Where to look
 
-* **Architecture & flow:** before changing execution logic, runtime state or core modules, read [Architecture Overview](../Architecture/Architecture%20Overview.md) and [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md). Don't guess the lifecycle phases.
+* **Architecture & flow:** [System Diagram](../Architecture/System%20Diagram.md) is the one-picture view. Before changing execution logic, runtime state or core modules, read [Architecture Overview](../Architecture/Architecture%20Overview.md) and [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md). Don't guess the lifecycle phases.
 * **CLI changes:** before adding or changing a command, flag or exit code, read [Command Reference](../CLI%20Commands/Command%20Reference.md) and [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md). `tests/contract/testo_core/test_cli_docs_drift.py` fails if the reference documents a command that doesn't exist.
 * **CI and releases:** [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md), [QA Strategies § CI and streaming output](../Testing%20Workflows/QA%20Strategies.md#ci-and-streaming-output), and the publishing guides ([PyPI](../Processes%20&%20Guides/Publishing%20to%20PyPI.md), [Docker images](../Processes%20&%20Guides/Publishing%20Docker%20Images.md), [Artifactory](../Processes%20&%20Guides/Publishing%20to%20Artifactory.md)).
 * **Pages demo:** [GitLab Pages Demo](../Processes%20&%20Guides/GitLab%20Pages%20Demo.md) (covers GitHub Pages too).
 * **Reporting:** [QA Strategies § How results are logged and surfaced](../Testing%20Workflows/QA%20Strategies.md#how-results-are-logged-and-surfaced) and the reporter section of [Command Reference](../CLI%20Commands/Command%20Reference.md).
 * **E2E harness:** [E2E Harness Operations Guide](../Processes%20&%20Guides/E2E%20Harness%20Operations%20Guide.md).
+* **Docs vault and wiki:** [vault schema](../CLAUDE.md) and [Docs Vault and Wiki Sync](../Specs%20&%20ADRs/Docs%20Vault%20and%20Wiki%20Sync%20-%202026-10-07.md). Images go under `docs/assets/` and must be embedded from a note to reach Obsidian and the wiki.
 * **UI:** the React frontend in `frontend/` is the only UI; its API types are generated from FastAPI's OpenAPI schema.
 * **Delta semantics:** [Delta Comparison Policy](../Specs%20&%20ADRs/Delta%20Comparison%20Policy.md).
 * **Design decisions:** [Specs & ADRs](../Specs%20&%20ADRs/README.md).

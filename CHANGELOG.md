@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+- Docs vault: the architecture diagram now has its own note (`docs/Architecture/System Diagram.md`) so it shows in Obsidian and the GitHub wiki, not only the README; Architecture Overview's text sketch is a Mermaid flowchart. New decision note for the vault and wiki sync, the second wave of the 2026-10-07 interview fixes, and this repo's workflows in CI-CD Pipeline Setup. `scripts/docs_vault.py lint --base` accepts a second edit to a note already dated today
+
 ## [1.1.0] - 2026-10-07
 
 One engine behind every surface. The Docker-based second execution stack, the Streamlit UI, MinIO and the `uqo` command are gone; the CLI, the API and CI all run cycles through `CycleRunService`. The release also adds an API security model, a type-checked API, same-cycle run comparison and a read-only demo on GitHub Pages. Upgrading from 1.0: see "Migrating from v1.0" in the README.

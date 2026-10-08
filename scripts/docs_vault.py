@@ -17,6 +17,7 @@ import subprocess
 import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from urllib.parse import quote, unquote
 
@@ -180,6 +181,7 @@ def lint_updated_dates(base: str) -> list[str]:
         text=True,
     ).stdout.splitlines()
     errors = []
+    today = date.today().isoformat()
     for name in diff:
         path = REPO_ROOT / name
         if path.suffix != ".md" or "/." in name or not path.exists():
@@ -194,7 +196,8 @@ def lint_updated_dates(base: str) -> list[str]:
         if old_note.body == note.body:
             continue
         old_updated = (old_note.frontmatter or {}).get("updated")
-        if old_updated and old_updated == (note.frontmatter or {}).get("updated"):
+        # A note already dated today needs no bump for a second edit the same day.
+        if old_updated and old_updated == (note.frontmatter or {}).get("updated") != today:
             errors.append(f"{note.rel}: body changed but `updated` is still {old_updated}")
     return errors
 

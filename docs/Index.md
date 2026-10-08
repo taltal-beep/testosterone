@@ -2,7 +2,7 @@
 type: index
 status: current
 created: 2026-06-25
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 # Testosterone docs
@@ -14,7 +14,8 @@ The notes are plain markdown and also open as an Obsidian vault. Dated plans, au
 
 ## Architecture
 
-- [Architecture Overview](Architecture/Architecture%20Overview.md): modules, engine, adapters, artifact layout, persistence
+- [System Diagram](Architecture/System%20Diagram.md): the architecture picture, what each part does, and where every other diagram lives
+- [Architecture Overview](Architecture/Architecture%20Overview.md): component flowchart, modules, engine, adapters, artifact layout, persistence
 - [Deep Dive - Execution Logic](Architecture/Deep%20Dive%20-%20Execution%20Logic.md): session init, the subprocess loop, teardown
 
 ## Using the CLI

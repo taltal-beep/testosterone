@@ -2,14 +2,12 @@
 type: guide
 status: current
 created: 2026-07-01
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 # Publishing to PyPI
 
 [Index](../Index.md) · [Publishing Docker Images](Publishing%20Docker%20Images.md) · [Publishing to Artifactory](Publishing%20to%20Artifactory.md)
-
-> **Last updated:** 2026-06-25
 
 ## Overview
 
@@ -22,7 +20,7 @@ updated: 2026-10-07
 3. **Trusted publisher**: Configure OIDC trusted publishing on both PyPI and Test PyPI:
    - PyPI → "Your projects" → `testo-core` → "Publishing" → "Add a new publisher"
    - Owner: `taltal-beep`
-   - Repository: `unified-quality-orchestration-reporting-dashboard`
+   - Repository: `testosterone` (the repository was renamed from `unified-quality-orchestration-reporting-dashboard`; a publisher registered under the old name must be updated)
    - Workflow: `publish.yml`
    - Environment: `pypi` (for PyPI) / `test-pypi` (for Test PyPI)
 4. **GitHub environments**: Create `pypi` and `test-pypi` environments in the repository settings. Optionally add required reviewers to the `pypi` environment for release approval.
@@ -34,6 +32,10 @@ updated: 2026-10-07
    - **Test PyPI job**: builds, checks metadata with `twine check`, publishes to Test PyPI, verifies `pip install` from Test PyPI.
    - **PyPI job** (depends on Test PyPI success): builds, checks, publishes to PyPI, verifies `pip install`.
 3. Both jobs use `pypa/gh-action-pypi-publish` with OIDC authentication (no API token needed).
+
+## Current state
+
+As of 2026-10-08 nothing has been published: the repository has no git tags or GitHub Releases, and `testo-core` is not on PyPI. Version 1.1.0 is cut in `pyproject.toml` and `CHANGELOG.md` ([#91](https://github.com/taltal-beep/testosterone/pull/91)). Creating the `v1.1.0` Release is the step that publishes it, together with the moving `v1` tag the GitHub Action docs refer to ([CI-CD Pipeline Setup § Versioning policy](CI-CD%20Pipeline%20Setup.md#versioning-policy)).
 
 ## Version management
 

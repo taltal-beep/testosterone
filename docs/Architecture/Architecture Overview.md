@@ -13,35 +13,38 @@ See also: [Index](../Index.md), [Command Reference](../CLI%20Commands/Command%20
 
 ## High-level shape
 
-```text
-testosterone.yaml
-       │
-       ▼
-testo_core/config/     discover_and_load → resolve_plan / resolve_stages
-       │
-       ▼
-testo_core/cli/runner   execute_plan_command (picks renderer, prints trigger/archive messages)
-       │                (the API's cycle_execution_manager is the other caller,
-       │                 for named cycles and ad-hoc single_stage_plan() runs)
-       ▼
-testo_core/services/cycle_run   CycleRunService.run (trigger gate, reporters, archive)
-       │
-       ▼
-testo_core/engine/
-  orchestrator.run_plan  sequential stages
-  executor.run_stage     subprocess per stage
-       │
-       ├──▶ testo_core/persistence/   JsonBackend + DbBackend (best-effort)
-       │
-       ▼
-testo_core/frameworks/  pytest | behave | behavex adapters → argv + Allure dirs
-       │
-       ▼
-artifacts/<cycle>/<stage>/   run.log, allure-results/, events.ndjson, plan_result.json
-       │
-       ▼
-testo_core/reporting/   collect → Allure generate / Extent / ReportPortal / TestBeats
+The picture with a part-by-part explanation is [System Diagram](System%20Diagram.md). This is the same system at module level:
+
+```mermaid
+flowchart TD
+    YAML[testosterone.yaml] --> CFG[config/<br/>discover_and_load · resolve_plan]
+
+    TERM[Developer terminal] --> CLI["testo CLI (Typer)<br/>cli/runner.execute_plan_command"]
+    CI[GitHub Action / GitLab template] -->|"testo run --ci"| CLI
+    UI[React frontend] -->|HTTP + SSE| API["testo_api /api/v1"]
+    API --> MGR[CycleExecutionManager<br/>background thread per execution]
+
+    CLI --> SVC
+    MGR --> SVC
+    CFG --> SVC[services/cycle_run<br/>CycleRunService.run]
+
+    SVC --> ENG[engine.orchestrator.run_plan<br/>sequential stages]
+    ENG --> EXE[engine.executor.run_stage<br/>subprocess + timeout]
+    EXE --> FW[frameworks/<br/>pytest · behave · behavex · command]
+    FW --> TGT[(target repo)]
+    ENG --> EV[(artifacts/&lt;cycle&gt;/events.ndjson<br/>run.log · allure-results)]
+    ENG --> PER[persistence/<br/>JsonBackend + DbBackend]
+    PER --> REPO[repository/<br/>SQLite · Postgres · MySQL]
+    SVC --> REP[reporting/<br/>Allure · Extent · ReportPortal · TestBeats]
+    SVC --> ARC[(report archive)]
+    MGR -. tails .-> EV
+
+    API --> INS[services/<br/>dashboard · delta · AI summaries]
+    INS --> HIST[history/<br/>run history read side]
+    HIST --> REPO
 ```
+
+Every run enters through `CycleRunService`; every read of run history goes through `testo_core/history/`; only `testo_core/repository/` opens a database session.
 
 ## Core modules
 

@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-07
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 # Interview Readiness Fixes - 2026-10-07
@@ -35,9 +35,21 @@ A review of the repo and the live Pages demo, done as a reader would see them in
 | Docs | Vault readable on GitHub; work log archived | [#74](https://github.com/taltal-beep/testosterone/pull/74) |
 | Docs | README top section with demo link and architecture diagram | [#70](https://github.com/taltal-beep/testosterone/pull/70) |
 
+### Second wave
+
+| Area | Change | Pull request |
+|------|--------|--------------|
+| CI | mypy gates `testo_api` as well as `testo_core` | [#87](https://github.com/taltal-beep/testosterone/pull/87) |
+| Code | Root modules moved into subpackages: `db*` → `repository/`, metrics, integrations and report generator → `reporting/`, `triggers` → `config/`; only `paths.py` stays at the root | [#88](https://github.com/taltal-beep/testosterone/pull/88) |
+| Docs | Current UI screenshots in the README (`docs/assets/screenshots/`) | [#89](https://github.com/taltal-beep/testosterone/pull/89) |
+| Code | Silent `except` blocks in I/O and reporting paths now log or re-raise | [#90](https://github.com/taltal-beep/testosterone/pull/90) |
+| Release | Version 1.1.0: `pyproject.toml` bump and `CHANGELOG.md` cut | [#91](https://github.com/taltal-beep/testosterone/pull/91) |
+
+The vault and wiki work done the same day is its own decision: [Docs Vault and Wiki Sync - 2026-10-07](Docs%20Vault%20and%20Wiki%20Sync%20-%202026-10-07.md).
+
 Defaults chosen: the next version is v1.1.0, with a moving `v1` tag for the GitHub Action; no backward-compatibility shims, since there are no external users.
 
 ## Consequences
 
 - Breaking for anyone on 1.0: the `uqo` command, `UQO_*` env vars, MinIO storage and pre-v1.1 history are gone. See [CHANGELOG.md](../../CHANGELOG.md).
-- A second wave follows: mypy for `testo_api`, a silent-`except` audit, root-module regrouping, the v1.1.0 release and fresh screenshots.
+- v1.1.0 is cut but not tagged or published, and stale branches remain; both need someone with push rights to tags and branch deletion ([Publishing to PyPI § Current state](../Processes%20&%20Guides/Publishing%20to%20PyPI.md#current-state)).
