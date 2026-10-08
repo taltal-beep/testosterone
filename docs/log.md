@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 # Vault log
@@ -24,3 +24,7 @@ Added the [vault schema](CLAUDE.md), frontmatter on every note, `scripts/docs_va
 ## 2026-10-07: decision notes and wiki-only page
 
 Added [Architecture Consolidation - 2026-10-06](Specs%20&%20ADRs/Architecture%20Consolidation%20-%202026-10-06.md) and [Interview Readiness Fixes - 2026-10-07](Specs%20&%20ADRs/Interview%20Readiness%20Fixes%20-%202026-10-07.md). Moved the wiki-only page [GitHub Actions CI and AI Code Review](Archive/GitHub%20Actions%20CI%20and%20AI%20Code%20Review.md) into `Archive/` so the first wiki sync doesn't lose it.
+
+## 2026-10-08: diagrams and gap fill
+
+Added [System Diagram](Architecture/System%20Diagram.md): the architecture image was only embedded in the root README, so it never showed in Obsidian or the wiki. Architecture Overview's text sketch became a Mermaid flowchart. Added [Docs Vault and Wiki Sync - 2026-10-07](Specs%20&%20ADRs/Docs%20Vault%20and%20Wiki%20Sync%20-%202026-10-07.md), the second wave of the interview fixes, and this repo's workflows in CI-CD Pipeline Setup. Fixed two stale claims: 1.0.0 was never published to PyPI, and the PyPI trusted publisher named the old repository.

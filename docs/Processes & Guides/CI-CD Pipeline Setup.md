@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 # CI Integrations
@@ -76,6 +76,23 @@ Reference CI definitions:
 - GitHub: `.github/workflows/ci.yml` (unified format → test → deploy pipeline; the fast-required gate lives in its `test` job), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`. Code review runs via a local pre-push hook (`.claude/settings.json`), not in CI.
 
 All tier jobs upload diagnostics artifacts (`logs`, summary JSON, API responses, screenshots when present) on failure, and external suites run with `external-e2e` concurrency isolation.
+
+## This repository's workflows
+
+What runs on Testosterone itself, as opposed to the wrappers above that run it in other projects. Every workflow is under `.github/workflows/`.
+
+| Workflow | Runs on | What it does |
+|----------|---------|--------------|
+| `ci.yml` | pull request, push to `main`, release | Blocking gates: ruff lint and format, mypy on `testo_core` and `testo_api`; the fast pytest suite with the coverage gate; frontend typecheck, generated API types up to date, vitest and build; `CHANGELOG.md` touched; docs vault lint. Builds the wheel on a release |
+| `commitlint.yml` | pull request | Conventional commit messages |
+| `changelog-on-main.yml` | push to `main` | Drafts a `CHANGELOG.md` [Unreleased] entry from the pushed commits with Claude and commits it to `main`; skips when its bot secrets are missing |
+| `pages-demo.yml` | push to `main`, nightly | Runs the self-test and fake-api cycles and publishes the read-only UI to GitHub Pages ([GitLab Pages Demo](GitLab%20Pages%20Demo.md)) |
+| `wiki-sync.yml` | push to `main` touching `docs/` | Regenerates the GitHub wiki from `docs/` ([Docs Vault and Wiki Sync](../Specs%20&%20ADRs/Docs%20Vault%20and%20Wiki%20Sync%20-%202026-10-07.md)) |
+| `mirror-to-gitlab.yml` | push to `main` | Mirrors the repo to GitLab when `GITLAB_MIRROR_URL` / `GITLAB_MIRROR_TOKEN` are set |
+| `pr-heavy.yml` | labeled pull request, manual | Heavy test tier |
+| `nightly-external.yml` | nightly, manual | External test tier |
+| `release-gate.yml` | manual | Release checks before publishing |
+| `publish.yml`, `docker-publish.yml`, `artifactory-publish.yml` | GitHub Release published | PyPI, GHCR runner image, JFrog Artifactory ([Publishing to PyPI](Publishing%20to%20PyPI.md)) |
 
 ## Versioning policy
 
