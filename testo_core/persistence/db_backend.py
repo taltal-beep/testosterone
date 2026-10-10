@@ -12,7 +12,7 @@ from typing import Any
 from testo_core import paths
 from testo_core.engine.result import PlanResult
 from testo_core.persistence.failure_context import failure_metadata
-from testo_core.persistence.health import compute_stage_health
+from testo_core.persistence.health import compute_stage_health, run_test_totals
 from testo_core.reporting.paths import plan_artifacts_dir
 from testo_core.repository.models import RunStatus
 
@@ -112,13 +112,7 @@ class DbBackend:
                         for s in result.stages
                     ],
                     "health_pct": health_pct,
-                    "total_tests": sum(h["total_tests"] for h in stage_health)
-                    if stage_health
-                    else None,
-                    "passed": sum(h["passed"] for h in stage_health) if stage_health else None,
-                    "failed": sum(h["failed"] for h in stage_health) if stage_health else None,
-                    "broken": sum(h["broken"] for h in stage_health) if stage_health else None,
-                    "skipped": sum(h["skipped"] for h in stage_health) if stage_health else None,
+                    **run_test_totals(stage_health),
                     "snapshot_dir": self._local_snapshot_dir(result.plan_name),
                     "source": "engine",
                     **failure_metadata(result),

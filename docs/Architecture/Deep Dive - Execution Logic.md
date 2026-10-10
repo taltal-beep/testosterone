@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-10-07
+updated: 2026-10-10
 ---
 
 # Deep Dive — Execution Logic
@@ -181,6 +181,23 @@ per-test `passed`/`failed`/`broken`/`skipped`/`total` counts:
   approximate health instead of a bare 0%. Runs persisted before this change
   only have that binary estimate — `stage_health` is empty for them, and the
   frontend shows "Per-stage breakdown not available for this run."
+
+### Test time
+
+The same parse gives each test's duration (Allure `stop - start`), so both
+backends also store test time, summed by `run_test_totals()` in
+`testo_core/persistence/health.py`:
+
+- **`test_time_ms`** on each stage: the sum of that stage's test durations.
+- **`metrics_duration_ms`** on the run: the sum over every test. It is not wall
+  time (`duration_s`), which also counts collection, fixtures and process start.
+- **`avg_case_ms`** on the run: `metrics_duration_ms / total_tests`, `null`
+  when the run has no tests.
+
+Compare shows these as "Test time (sum)" and "Avg per test". Runs persisted
+before 2026-10-10 have neither key and show `n/a` there.
+`tests/contract/testo_core/test_run_metadata_contract.py` fails when
+`testo_core/history/views.py` reads a metadata key that persistence never writes.
 
 ---
 

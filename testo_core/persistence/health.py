@@ -24,7 +24,7 @@ def compute_stage_health(
     """Return (per-stage health dicts, overall weighted health_pct).
 
     Each stage dict has ``total_tests``/``passed``/``failed``/``broken``/
-    ``skipped``/``health_pct`` keyed by ``name`` so callers can merge it into
+    ``skipped``/``health_pct``/``test_time_ms`` keyed by ``name`` so callers can merge it into
     their existing per-stage metadata. The overall figure is a single
     weighted pass rate (sum of passed / sum of total across every stage),
     not an average of per-stage percentages. Returns ``(per_stage, None)``
@@ -62,6 +62,7 @@ def compute_stage_health(
             "broken": s.broken,
             "skipped": s.skipped,
             "health_pct": _pct(s.passed, s.total),
+            "test_time_ms": s.duration_ms,
         }
         for s in aggregate.stages
     ]
@@ -73,3 +74,36 @@ def compute_stage_health(
         1 for s in result.stages if s.returncode != 0 and not tests_by_stage.get(s.stage_name)
     )
     return per_stage, overall_health_pct * (len(result.stages) - crashed) / len(result.stages)
+
+
+def run_test_totals(stage_health: list[dict]) -> dict[str, int | float | None]:
+    """Run-level test counts and test time summed from :func:`compute_stage_health` rows.
+
+    ``metrics_duration_ms`` is the sum of per-test durations (not wall time);
+    ``avg_case_ms`` divides it by ``total_tests``. Every value is ``None`` when
+    no stage produced Allure results, and ``avg_case_ms`` is ``None`` when the
+    run has no tests, so the read side shows "n/a" rather than a fake 0.
+    """
+    if not stage_health:
+        return dict.fromkeys(
+            (
+                "total_tests",
+                "passed",
+                "failed",
+                "broken",
+                "skipped",
+                "metrics_duration_ms",
+                "avg_case_ms",
+            )
+        )
+    total = sum(h["total_tests"] for h in stage_health)
+    test_time_ms = sum(h["test_time_ms"] for h in stage_health)
+    return {
+        "total_tests": total,
+        "passed": sum(h["passed"] for h in stage_health),
+        "failed": sum(h["failed"] for h in stage_health),
+        "broken": sum(h["broken"] for h in stage_health),
+        "skipped": sum(h["skipped"] for h in stage_health),
+        "metrics_duration_ms": test_time_ms,
+        "avg_case_ms": test_time_ms / total if total else None,
+    }

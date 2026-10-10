@@ -54,10 +54,25 @@ def _make_plan_result(
     )
 
 
-def _write_allure_result(results_dir: Path, name: str, status: str) -> None:
+def _write_allure_result(results_dir: Path, name: str, status: str, duration_ms: int = 1) -> None:
     results_dir.mkdir(parents=True, exist_ok=True)
-    payload = {"name": name, "fullName": name, "status": status, "start": 0, "stop": 1}
+    start = 1_700_000_000_000
+    payload = {
+        "name": name,
+        "fullName": name,
+        "status": status,
+        "start": start,
+        "stop": start + duration_ms,
+    }
     (results_dir / f"{name}-result.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
+def _write_timed_results(stage_dir: Path) -> None:
+    """Three tests taking 100 + 200 + 300 ms: 600 ms of test time, 200 ms per test."""
+    results_dir = stage_dir / "allure-results" / "pytest"
+    _write_allure_result(results_dir, "test_one", "passed", duration_ms=100)
+    _write_allure_result(results_dir, "test_two", "passed", duration_ms=200)
+    _write_allure_result(results_dir, "test_three", "failed", duration_ms=300)
 
 
 class TestJsonBackend:
@@ -170,6 +185,24 @@ class TestJsonBackend:
         assert data["stages"][1]["health_pct"] is None
         assert data["health_pct"] == pytest.approx(37.5)
 
+    def test_writes_test_time_sum_and_average(self, tmp_path: Path) -> None:
+        stage_dir = tmp_path / "stage" / "api"
+        _write_timed_results(stage_dir)
+
+        JsonBackend(tmp_path).persist(_make_plan_result(artifacts_dir=stage_dir))
+
+        data = json.loads((tmp_path / "smoke" / "plan_result.json").read_text())
+        assert data["metrics_duration_ms"] == 600
+        assert data["avg_case_ms"] == pytest.approx(200.0)
+        assert data["stages"][0]["test_time_ms"] == 600
+
+    def test_average_is_null_when_no_tests_ran(self, tmp_path: Path) -> None:
+        JsonBackend(tmp_path).persist(_make_plan_result())
+
+        data = json.loads((tmp_path / "smoke" / "plan_result.json").read_text())
+        assert data["metrics_duration_ms"] == 0
+        assert data["avg_case_ms"] is None
+
 
 class TestDbBackend:
     def test_satisfies_protocol(self, tmp_path: Path) -> None:
@@ -215,6 +248,21 @@ class TestDbBackend:
         assert stage["passed"] == 2
         assert stage["health_pct"] == pytest.approx(66.666, abs=0.01)
         assert metadata["health_pct"] == pytest.approx(66.666, abs=0.01)
+
+    @patch("testo_core.repository.db.get_repository")
+    def test_writes_test_time_sum_and_average(
+        self, mock_get_repo: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_repo = MagicMock()
+        mock_get_repo.return_value = mock_repo
+        stage_dir = tmp_path / "stage" / "api"
+        _write_timed_results(stage_dir)
+
+        DbBackend(tmp_path).persist(_make_plan_result(artifacts_dir=stage_dir))
+
+        metadata = mock_repo.create_run.call_args[1]["metadata"]
+        assert metadata["metrics_duration_ms"] == 600
+        assert metadata["avg_case_ms"] == pytest.approx(200.0)
 
     @patch("testo_core.repository.db.get_repository")
     def test_persists_failed_run(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:

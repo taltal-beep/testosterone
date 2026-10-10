@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+- Compare showed "n/a" / "Unknown" for "Test time (sum)" and "Avg per test" on every run because nothing stored them. Both persistence backends now write `metrics_duration_ms` (sum of per-test Allure durations) and `avg_case_ms` (that sum over the test count, `null` with no tests), plus `test_time_ms` per stage. Runs saved earlier still show "n/a". A new contract test fails when `history/views.py` reads a run metadata key that persistence never writes
+
 ### Changed
 - Pages demo: the read-only notice is now a dismissible alert with a × button, remembered across reloads, and a "Read-only demo" badge in the header reopens it
 - Detailed architecture diagram (`docs/assets/testosterone-architecture-detailed-{dark,light}.png`, drawn by `scripts/render_architecture_diagram.js`) showing `CycleRunService`, the `history/` read side and the repository; it replaces the six-box picture in the README and leads `docs/Architecture/System Diagram.md`
