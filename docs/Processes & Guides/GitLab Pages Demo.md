@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-07
-updated: 2026-10-07
+updated: 2026-10-10
 title: GitLab Pages Demo
 tags: [ci, gitlab, pages, frontend, demo]
 ---
@@ -135,9 +135,12 @@ as it does on Pages, except for the 404 fallback, which is Pages-specific.
 
 ## What visitors see
 
-A banner marks the build read-only, says what the two cycles are (testosterone
-testing itself, and fake-api, whose red is deliberate) and links to the pipeline
-that produced it. Writes have nothing behind them, so the shim answers them with
+A dismissible notice above the header marks the build read-only, says what the
+two cycles are (testosterone testing itself, and fake-api, whose red is
+deliberate) and links to the pipeline that produced it. Its × button closes it
+and the choice is remembered in `localStorage` (`testo.demoNotice.dismissed`);
+a "Read-only demo" badge in the header stays visible and toggles the notice
+(`frontend/src/components/StaticBuildBanner.tsx`). Writes have nothing behind them, so the shim answers them with
 `405 read_only_build` ("This is a read-only demo snapshot…"). The NDJSON event
 stream is likewise absent: a static host cannot stream a run that is not running.
 

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiClient } from "../lib/api-client";
 import { MuscleLogo } from "../components/mascot";
+import { DemoBadge } from "../components/StaticBuildBanner";
 
 const PRIMARY_LINKS: { to: string; label: string; end?: boolean }[] = [
   { to: "/", label: "Dashboard", end: true },
@@ -36,6 +37,7 @@ export function AppShell() {
             </nav>
           </div>
           <div className="flex items-center gap-3">
+            <DemoBadge />
             <HealthDot />
             <div className="hidden sm:block">
               <AdvancedMenu />
