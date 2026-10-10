@@ -1,8 +1,8 @@
 """Report-DB archive hand-off tests for ``testo run`` (QA Strategies CLI/EC rows).
 
 ``try_persist_cycle_report`` is stubbed at its source module —
-``testo_core.cli.runner`` imports it lazily inside
-``_maybe_archive_cycle_report`` — so these tests assert the CLI contract
+``CycleRunService`` (``testo_core.services.cycle_run``) imports it lazily
+when archiving — so these tests assert the CLI contract
 (when it is called, with what) without touching a real database.
 
 Archive *failures* are currently best-effort: the service swallows exceptions
@@ -37,7 +37,9 @@ class _ArchiveSpy:
         self.calls: list[dict[str, Any]] = []
         self.called = threading.Event()
 
-    def __call__(self, *, artifacts_root: Path, plan_name: str, exit_code_override: int | None = None) -> None:
+    def __call__(
+        self, *, artifacts_root: Path, plan_name: str, exit_code_override: int | None = None
+    ) -> None:
         self.calls.append(
             {
                 "artifacts_root": Path(artifacts_root),

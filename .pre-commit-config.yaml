@@ -1,5 +1,4 @@
-# Local git hooks — not to be confused with drop_in_hooks/ (pytest/behave
-# test-framework plugin hooks, a completely different thing). Install once:
+# Local git hooks. Install once:
 #   pip install -e ".[dev]"
 #   pre-commit install
 #
@@ -32,6 +31,7 @@ repos:
     hooks:
       - id: ruff-check
         args: ["--fix"]
+      - id: ruff-format
 
   - repo: local
     hooks:

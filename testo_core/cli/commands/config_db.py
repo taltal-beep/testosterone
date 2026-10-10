@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import typer
 
 from testo_core.engine.exit_codes import EngineExitCode
+
+logger = logging.getLogger(__name__)
 
 
 def config_db(
@@ -50,8 +53,8 @@ def config_db(
         merge_database_url_yaml,
     )
     from testo_core.config.errors import ConfigDiscoveryError, ConfigValidationError
-    from testo_core.db import reset_repository_cache
-    from testo_core.db_config import reset_engine_cache, validate_database_url
+    from testo_core.repository.db import reset_repository_cache
+    from testo_core.repository.db_config import reset_engine_cache, validate_database_url
     from testo_core.repository.factory import select_repository_adapter
 
     console = default_console()
@@ -77,7 +80,11 @@ def config_db(
         u = username or typer.prompt("Username")
         pw = password or typer.prompt("Password", hide_input=True)
         dbn = database or typer.prompt("Database name")
-        sch = schema if schema is not None else typer.prompt("PostgreSQL schema (optional)", default="")
+        sch = (
+            schema
+            if schema is not None
+            else typer.prompt("PostgreSQL schema (optional)", default="")
+        )
         sch = sch.strip() or None
         resolved_url = build_postgresql_url(
             host=str(h).strip(),
@@ -110,6 +117,8 @@ def config_db(
         with probe.connect() as conn:
             conn.execute(text("SELECT 1"))
     except Exception as exc:
+        # Broad on purpose: any driver/URL/connection error maps to exit 3 with its message.
+        logger.debug("database connection check failed", exc_info=True)
         console.print(f"[fail]Database connection check failed:[/] {exc}")
         raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE)) from exc
 

@@ -27,23 +27,34 @@ def _overview_payload() -> DashboardOverview:
             duration_ms=1250.0,
         ),
         trend_health=DashboardTrendIndicator(direction="up", delta_abs=2.5, delta_pct=2.63),
-        trend_failed_count=DashboardTrendIndicator(direction="down", delta_abs=-1.0, delta_pct=-50.0),
-        trend_duration=DashboardTrendIndicator(direction="down", delta_abs=-150.0, delta_pct=-10.71),
+        trend_failed_count=DashboardTrendIndicator(
+            direction="down", delta_abs=-1.0, delta_pct=-50.0
+        ),
+        trend_duration=DashboardTrendIndicator(
+            direction="down", delta_abs=-150.0, delta_pct=-10.71
+        ),
         reliability_rollup=DashboardRollup(
-            status_summary=DashboardRollupSummary(regressions=1, improvements=3, unchanged=2, unknown=0),
+            status_summary=DashboardRollupSummary(
+                regressions=1, improvements=3, unchanged=2, unknown=0
+            ),
             top_highlights=("Failed tests improved by 1 tests.",),
         ),
         performance_rollup=DashboardRollup(
-            status_summary=DashboardRollupSummary(regressions=0, improvements=2, unchanged=1, unknown=0),
+            status_summary=DashboardRollupSummary(
+                regressions=0, improvements=2, unchanged=1, unknown=0
+            ),
             top_highlights=("Wall duration improved by 150.00 ms.",),
         ),
         report_links=DashboardReportLinks(
             allure=DashboardReportLink(url="http://allure/reports/run-1", state="available"),
-            behave=DashboardReportLink(url="/history/run-1/allure_reports/behavex/index.html", state="available"),
+            behave=DashboardReportLink(
+                url="/history/run-1/allure_reports/behavex/index.html", state="available"
+            ),
         ),
         recent_runs=(
             DashboardRecentRun(
                 run_id="run-1",
+                cycle="smoke",
                 created_at=1.0,
                 status="COMPLETED",
                 returncode=0,
@@ -92,6 +103,7 @@ def test_dashboard_recent_runs_contract(monkeypatch) -> None:  # noqa: ANN001
         lambda self, limit=10: (  # noqa: ARG005
             DashboardRecentRun(
                 run_id="run-9",
+                cycle="smoke",
                 created_at=9.0,
                 status="FAILED",
                 returncode=1,
@@ -108,6 +120,7 @@ def test_dashboard_recent_runs_contract(monkeypatch) -> None:  # noqa: ANN001
     payload = resp.json()
     assert set(payload.keys()) == {"items", "generated_at"}
     assert payload["items"][0]["run_id"] == "run-9"
+    assert payload["items"][0]["cycle"] == "smoke"
 
 
 def test_dashboard_endpoint_validation_errors_follow_error_envelope(monkeypatch) -> None:  # noqa: ANN001

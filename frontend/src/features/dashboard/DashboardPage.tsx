@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
-import { DashboardTrendIndicator, apiClient } from "../../lib/api-client";
-import { Badge, Card, HealthBar, PageHeader, Spinner, StatusPill } from "../../components/ui";
+import { DashboardOverviewResponse, DashboardTrendIndicator, apiClient } from "../../lib/api-client";
+import { Badge, Card, HealthBar, PageHeader, RunLabel, Spinner, StatusPill } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
+import { countLabel } from "../../lib/format";
 
 const RECENT_RUNS_REFRESH_MS = 15_000;
 
@@ -54,6 +55,8 @@ export function DashboardPage() {
           Some metrics are degraded: {data.data_freshness.notes?.join(", ") || "unknown source issue"}.
         </p>
       ) : null}
+
+      <TrendBaseline kpis={data.headline_kpis} />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Health" value={formatPct(data.headline_kpis.health_pct)} trend={data.trend_indicators.health} />
@@ -111,7 +114,6 @@ export function DashboardPage() {
               <li className="text-ink-400">Compare view unavailable</li>
             )}
             <li className="text-ink-300">{reportLink("Allure report", data.report_links?.allure ?? { url: null, state: "unknown" })}</li>
-            <li className="text-ink-300">{reportLink("Locust report", data.report_links?.locust ?? { url: null, state: "unknown" })}</li>
             <li className="text-ink-300">{reportLink("Behave report", data.report_links?.behave ?? { url: null, state: "unknown" })}</li>
           </ul>
         </Card>
@@ -125,11 +127,9 @@ export function DashboardPage() {
             {recentRuns.map((run) => (
               <li key={run.run_id} className="space-y-1.5 py-2.5 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <StatusPill status={run.status ?? "unknown"} returncode={run.returncode} />
-                    <Link to={run.run_detail_url} className="font-mono text-brand-300 hover:text-brand-400 hover:underline">
-                      {run.run_id}
-                    </Link>
+                    <RunLabel run={run} linked href={run.run_detail_url} />
                   </div>
                   <div className="flex items-center gap-3 text-xs text-ink-400">
                     <span>health {formatPct(run.health_pct)}</span>
@@ -201,6 +201,33 @@ function GuideStep({ step, title, body }: { step: number; title: string; body: R
   );
 }
 
+// Trends are only meaningful within one cycle, so say which cycle and which run they compare against.
+function TrendBaseline({ kpis }: { kpis: DashboardOverviewResponse["headline_kpis"] }) {
+  if (!kpis.latest_run_id) {
+    return null;
+  }
+  const cycle = kpis.cycle ?? "unnamed cycle";
+  return (
+    <p data-testid="trend-baseline" className="text-sm text-ink-300">
+      Latest run: <strong className="text-ink-100">{cycle}</strong>.{" "}
+      {kpis.baseline_run_id ? (
+        <>
+          Trends compare it with the{" "}
+          <Link
+            to={`/compare?current_run_id=${kpis.latest_run_id}&baseline_run_id=${kpis.baseline_run_id}`}
+            className="text-brand-300 hover:text-brand-400 hover:underline"
+          >
+            previous {cycle} run
+          </Link>
+          .
+        </>
+      ) : (
+        "No earlier run of this cycle in recent history, so there is no trend."
+      )}
+    </p>
+  );
+}
+
 function RollupBadges({
   summary
 }: {
@@ -208,8 +235,8 @@ function RollupBadges({
 }) {
   return (
     <span className="flex flex-wrap gap-1.5">
-      <Badge tone={summary.regressions > 0 ? "danger" : "neutral"}>{summary.regressions} regressions</Badge>
-      <Badge tone={summary.improvements > 0 ? "success" : "neutral"}>{summary.improvements} improvements</Badge>
+      <Badge tone={summary.regressions > 0 ? "danger" : "neutral"}>{countLabel(summary.regressions, "regression")}</Badge>
+      <Badge tone={summary.improvements > 0 ? "success" : "neutral"}>{countLabel(summary.improvements, "improvement")}</Badge>
       <Badge>{summary.unchanged} unchanged</Badge>
       <Badge>{summary.unknown} unknown</Badge>
     </span>

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from testo_core.report_generator import compute_system_health_pct, make_report_zip
+from testo_core.reporting.report_generator import compute_system_health_pct, make_report_zip
 
 
 def test_compute_system_health_pct_none_when_empty(tmp_path: Path) -> None:

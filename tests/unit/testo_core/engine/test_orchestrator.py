@@ -40,14 +40,18 @@ def _stage(name: str) -> Stage:
 
 
 def _plan(*stage_names: str) -> Plan:
-    return Plan(name="fail-fast-plan", description=None, stages=tuple(_stage(n) for n in stage_names))
+    return Plan(
+        name="fail-fast-plan", description=None, stages=tuple(_stage(n) for n in stage_names)
+    )
 
 
 def _stub_run_stage(monkeypatch: pytest.MonkeyPatch, returncodes: dict[str, int]) -> list[str]:
     """Replace the executor with a scripted stub; returns the call order."""
     executed: list[str] = []
 
-    def fake_run_stage(stage: Stage, *, plan_name: str, artifacts_root: Path, **_: object) -> StageResult:
+    def fake_run_stage(
+        stage: Stage, *, plan_name: str, artifacts_root: Path, **_: object
+    ) -> StageResult:
         executed.append(stage.name)
         now = time.time()
         return StageResult(

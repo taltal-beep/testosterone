@@ -17,6 +17,7 @@ single anonymous plan called ``default``.
 
 from __future__ import annotations
 
+import logging
 import tomllib
 from collections.abc import Mapping
 from pathlib import Path, PureWindowsPath
@@ -27,6 +28,7 @@ import yaml
 from testo_core.config.errors import ConfigDiscoveryError, ConfigValidationError
 from testo_core.config.schema import (
     DEFAULT_TIER_BY_FRAMEWORK,
+    PARALLEL_FRAMEWORKS,
     SUPPORTED_FRAMEWORKS,
     SUPPORTED_REPORTER_TYPES,
     SUPPORTED_TIERS,
@@ -37,6 +39,8 @@ from testo_core.config.schema import (
     Stage,
     TestosteroneConfig,
 )
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_PLAN_NAME = "default"
 
@@ -49,7 +53,9 @@ def _candidate_paths(cwd: Path) -> list[Path]:
     ]
 
 
-def discover_and_load(*, config_path: Path | None = None, cwd: Path | None = None) -> TestosteroneConfig:
+def discover_and_load(
+    *, config_path: Path | None = None, cwd: Path | None = None
+) -> TestosteroneConfig:
     """Discover the config file then call :func:`load_config`.
 
     If ``config_path`` is provided it is used directly; otherwise the
@@ -124,10 +130,14 @@ def _build_config(raw: dict[str, Any], *, source: Path) -> TestosteroneConfig:
         # Single legacy run, no `runs:` wrapper.
         return _build_legacy_runs_config({"runs": [raw]}, config_dir=config_dir, source=source)
 
-    raise ConfigValidationError(f"config at {source} has neither a 'cycles:' nor a 'runs:' section.")
+    raise ConfigValidationError(
+        f"config at {source} has neither a 'cycles:' nor a 'runs:' section."
+    )
 
 
-def _build_cycle_config(raw: dict[str, Any], *, config_dir: Path, source: Path) -> TestosteroneConfig:
+def _build_cycle_config(
+    raw: dict[str, Any], *, config_dir: Path, source: Path
+) -> TestosteroneConfig:
     version = int(raw.get("version", 1))
     defaults = _parse_defaults(raw.get("defaults", {}), config_dir=config_dir)
     # Canonical: cycles. Legacy: plans.
@@ -194,7 +204,12 @@ def _build_legacy_runs_config(
             config_dir=config_dir,
         )
         stages.append(stage)
-    plan = Plan(name=_DEFAULT_PLAN_NAME, description="Legacy 'runs:' shim.", stages=tuple(stages), trigger=None)
+    plan = Plan(
+        name=_DEFAULT_PLAN_NAME,
+        description="Legacy 'runs:' shim.",
+        stages=tuple(stages),
+        trigger=None,
+    )
     reporters = _parse_reporters(raw.get("reporters"), config_dir=config_dir)
     return TestosteroneConfig(
         version=int(raw.get("version", 1)),
@@ -222,7 +237,9 @@ def _parse_defaults(raw: Any, *, config_dir: Path) -> Defaults:
     )
 
 
-def _parse_cycle(*, cycle_name: str, cycle_raw: dict[str, Any], defaults: Defaults, config_dir: Path) -> Plan:
+def _parse_cycle(
+    *, cycle_name: str, cycle_raw: dict[str, Any], defaults: Defaults, config_dir: Path
+) -> Plan:
     if not isinstance(cycle_raw, dict):
         raise ConfigValidationError(f"cycle {cycle_name!r} must be a mapping.")
     description = cycle_raw.get("description")
@@ -244,17 +261,23 @@ def _parse_trigger(raw: Any, *, cycle_name: str) -> CycleTrigger | None:
         raise ConfigValidationError(f"cycle {cycle_name!r}: 'trigger' must be a mapping.")
     paths_raw = raw.get("paths")
     if not isinstance(paths_raw, list) or not paths_raw:
-        raise ConfigValidationError(f"cycle {cycle_name!r}: 'trigger.paths' must be a non-empty list.")
+        raise ConfigValidationError(
+            f"cycle {cycle_name!r}: 'trigger.paths' must be a non-empty list."
+        )
     paths_out: list[str] = []
     for i, p in enumerate(paths_raw):
         if not isinstance(p, str) or not p.strip():
-            raise ConfigValidationError(f"cycle {cycle_name!r}: trigger.paths[{i}] must be a non-empty string.")
+            raise ConfigValidationError(
+                f"cycle {cycle_name!r}: trigger.paths[{i}] must be a non-empty string."
+            )
         paths_out.append(p.strip())
     since_raw = raw.get("since_ref")
     since_ref: str | None = None
     if since_raw is not None:
         if not isinstance(since_raw, str) or not since_raw.strip():
-            raise ConfigValidationError(f"cycle {cycle_name!r}: 'trigger.since_ref' must be a non-empty string.")
+            raise ConfigValidationError(
+                f"cycle {cycle_name!r}: 'trigger.since_ref' must be a non-empty string."
+            )
         since_ref = since_raw.strip()
     return CycleTrigger(paths=tuple(paths_out), since_ref=since_ref)
 
@@ -339,6 +362,12 @@ def _parse_stage(*, stage_raw: Mapping[str, Any], defaults: Defaults, config_dir
         raise ConfigValidationError(f"stage {name!r}: 'args' must be a string or list.")
 
     workers = int(stage_raw.get("workers", defaults.workers))
+    if "workers" in stage_raw and framework not in PARALLEL_FRAMEWORKS:
+        logger.warning(
+            "stage %r: 'workers' has no effect on framework %r (it runs single-process).",
+            name,
+            framework,
+        )
     timeout_raw = stage_raw.get("timeout_s", defaults.timeout_s)
     timeout_s = float(timeout_raw) if timeout_raw is not None else None
     if_expr = stage_raw.get("if")
@@ -362,7 +391,11 @@ def _parse_stage(*, stage_raw: Mapping[str, Any], defaults: Defaults, config_dir
         junit_xml: tuple[str, ...] = ()
     elif isinstance(junit_raw, str) and junit_raw.strip():
         junit_xml = (junit_raw.strip(),)
-    elif isinstance(junit_raw, list) and junit_raw and all(isinstance(p, str) and p.strip() for p in junit_raw):
+    elif (
+        isinstance(junit_raw, list)
+        and junit_raw
+        and all(isinstance(p, str) and p.strip() for p in junit_raw)
+    ):
         junit_xml = tuple(p.strip() for p in junit_raw)
     else:
         raise ConfigValidationError(
@@ -408,7 +441,9 @@ def _validate_artifact_name(value: str, *, kind: str) -> None:
     win = PureWindowsPath(text)
     if posix_text.startswith("/") or win.is_absolute() or win.drive:
         raise ConfigValidationError(f"{kind} must be relative: {value!r}")
-    if any(part == ".." for part in posix_text.split("/")) or any(part == ".." for part in win.parts):
+    if any(part == ".." for part in posix_text.split("/")) or any(
+        part == ".." for part in win.parts
+    ):
         raise ConfigValidationError(f"{kind} must not contain '..': {value!r}")
 
 

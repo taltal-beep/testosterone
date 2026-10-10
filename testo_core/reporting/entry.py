@@ -41,7 +41,10 @@ def dispatch_report(
 
     fmt_normalised = fmt.lower().strip()
     if fmt_normalised in {"json", "junit"}:
-        target = summary_out or (out_dir.parent / f"summary.{fmt_normalised}.{'json' if fmt_normalised == 'json' else 'xml'}")
+        target = summary_out or (
+            out_dir.parent
+            / f"summary.{fmt_normalised}.{'json' if fmt_normalised == 'json' else 'xml'}"
+        )
         try:
             if fmt_normalised == "json":
                 written = write_json_summary(results=results, out=target)
@@ -51,7 +54,9 @@ def dispatch_report(
             console.print(f"[fail]failed to write {target}: {exc}[/]")
             return int(EngineExitCode.INFRA_FAILURE)
         rel = relpath_for_display(Path(written))
-        console.print(f"[ok]wrote {fmt_normalised} summary to[/] [link=file://{Path(written).resolve().as_uri()}]{rel}[/]")
+        console.print(
+            f"[ok]wrote {fmt_normalised} summary to[/] [link=file://{Path(written).resolve().as_uri()}]{rel}[/]"
+        )
         return int(EngineExitCode.SUCCESS)
 
     if fmt_normalised != "html":

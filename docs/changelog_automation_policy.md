@@ -1,9 +1,15 @@
+---
+type: guide
+status: current
+created: 2026-07-22
+updated: 2026-10-07
+---
+
 # Changelog Generation and CI Enforcement Policy
 
 `CHANGELOG.md` (repo root) follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/):
 an `## [Unreleased]` section plus dated `## [x.y.z] - YYYY-MM-DD` sections, paired with
-the project's existing semver (`pyproject.toml` / `frontend/package.json`, currently
-`0.1.0`).
+the project's semver (`pyproject.toml` / `frontend/package.json`).
 
 ## Enforcement
 
@@ -49,8 +55,7 @@ step**. This was a deliberate choice, not an oversight — the tradeoff:
 
 ## Backfill
 
-The initial `## [0.1.0] - 2026-07-01` entry was backfilled from the four completed
-development phases, sourced from `docs/Release Management/release_checklist_phase*.md`
-cross-referenced with `git log`. No version tags exist in this repo yet (`git tag -l` is
-empty), so `0.1.0` covers everything shipped to date rather than being split across
-invented historical releases.
+The initial `## [0.1.0]` entry was backfilled from the four completed
+development phases, sourced from the phase release checklists (now in
+[`docs/Archive/`](Archive/README.md)) cross-referenced with `git log`, so `0.1.0` covers
+everything shipped up to then rather than being split across invented historical releases.

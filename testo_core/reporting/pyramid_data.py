@@ -3,16 +3,22 @@
 from __future__ import annotations
 
 from testo_core.config.schema import Stage
+from testo_core.history.views import CompletedRunView
 from testo_core.reporting.pyramid_viz import PyramidModel
-from testo_core.run_history import CompletedRunView
 
 
-def build_pyramid_model(run: CompletedRunView, stages: tuple[Stage, ...]) -> PyramidModel:
-    """Sum each stage's ``total_tests`` into its configured tier bucket.
+def run_needs_config_tiers(run: CompletedRunView) -> bool:
+    """True when some stage row predates per-run tiers and has no ``tier`` recorded."""
 
-    Stages not found in ``stages`` (e.g. a renamed/removed stage since the run
-    executed) default to the "unit" tier rather than being dropped, matching
-    `Stage.tier`'s own default.
+    return any(not row.get("tier") for row in run.stage_health)
+
+
+def build_pyramid_model(run: CompletedRunView, stages: tuple[Stage, ...] = ()) -> PyramidModel:
+    """Sum each stage's ``total_tests`` into the tier it ran with.
+
+    The tier recorded in the run itself wins. ``stages`` (the current config) is
+    only a fallback for older run records that don't carry a tier. Stages found
+    in neither default to "unit", matching `Stage.tier`'s own default.
     """
 
     tier_by_stage_name = {stage.name: stage.tier for stage in stages}
@@ -22,6 +28,6 @@ def build_pyramid_model(run: CompletedRunView, stages: tuple[Stage, ...]) -> Pyr
         total = stage_row.get("total_tests")
         if name is None or not isinstance(total, int):
             continue
-        tier = tier_by_stage_name.get(str(name), "unit")
+        tier = stage_row.get("tier") or tier_by_stage_name.get(str(name), "unit")
         counts[tier] = counts.get(tier, 0) + total
     return PyramidModel(unit=counts["unit"], integration=counts["integration"], e2e=counts["e2e"])

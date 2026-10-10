@@ -6,13 +6,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from testo_core.metrics import (
+from testo_core.reporting.metrics import (
     RunMetrics,
     list_run_history,
     parse_allure_results_dir,
     write_metrics_json,
 )
-from testo_core.metrics_extractor import ExtractedMetrics, extract_best
+from testo_core.reporting.metrics_extractor import ExtractedMetrics, extract_best
 
 
 class MetricsService:
@@ -27,7 +27,9 @@ class MetricsService:
         return write_metrics_json(metrics, out_path=out_path)
 
     @staticmethod
-    def list_run_history(*, archive_root: Path, current_results_dir: Path | None = None) -> list[RunMetrics]:
+    def list_run_history(
+        *, archive_root: Path, current_results_dir: Path | None = None
+    ) -> list[RunMetrics]:
         return list_run_history(archive_root=archive_root, current_results_dir=current_results_dir)
 
     @staticmethod

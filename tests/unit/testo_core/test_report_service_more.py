@@ -19,7 +19,9 @@ def test_generate_individual_allure_delegates(tmp_path: Path) -> None:
     def run_ok(cmd: list[str], **_kw: object):
         return fake
 
-    with patch("testo_core.report_generator.publish_allure_index_to_static", lambda **_: None):
+    with patch(
+        "testo_core.reporting.report_generator.publish_allure_index_to_static", lambda **_: None
+    ):
         out = svc.generate_individual_allure(frameworks=["pytest"], subprocess_run=run_ok)
     assert "pytest" in out
 
@@ -34,7 +36,9 @@ def test_static_reports_ready_detects_any_framework_index(tmp_path: Path, monkey
     (fake_reports / "pytest" / "index.html").write_text("ok", encoding="utf-8")
 
     monkeypatch.setattr(rs, "STATIC_ALLURE_REPORTS_DIR", fake_reports)
-    monkeypatch.setattr(rs, "STATIC_ALLURE_INDEX", tmp_path / "static" / "allure_report" / "index.html")
+    monkeypatch.setattr(
+        rs, "STATIC_ALLURE_INDEX", tmp_path / "static" / "allure_report" / "index.html"
+    )
     monkeypatch.setattr(rs, "STATIC_ALLURE_HTML", tmp_path / "static" / "allure_report.html")
 
     assert ReportService.static_reports_ready() is True

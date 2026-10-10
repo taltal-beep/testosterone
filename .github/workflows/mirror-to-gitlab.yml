@@ -1,0 +1,53 @@
+name: Mirror to GitLab
+
+# Keeps a GitLab project in sync with this repository so the GitLab pipeline
+# (.gitlab-ci.yml) can run real cycles and publish the demo UI to GitLab Pages.
+#
+# GitLab's own pull mirroring is a Premium feature, so this pushes instead,
+# which works on GitLab Free.
+#
+# Inert until configured: both the variable and the secret must be set, so the
+# workflow no-ops rather than failing on repositories that have no mirror.
+#
+# Required repository variable:
+#   GITLAB_MIRROR_URL   e.g. https://gitlab.com/<user>/testosterone.git
+# Required repository secret:
+#   GITLAB_MIRROR_TOKEN GitLab project access token (or PAT) with write_repository
+#
+# See docs/Processes & Guides/GitLab Pages Demo.md
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-to-gitlab
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: Push main to GitLab
+    if: vars.GITLAB_MIRROR_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to GitLab
+        env:
+          MIRROR_URL: ${{ vars.GITLAB_MIRROR_URL }}
+          MIRROR_TOKEN: ${{ secrets.GITLAB_MIRROR_TOKEN }}
+        run: |
+          if [ -z "$MIRROR_TOKEN" ]; then
+            echo "GITLAB_MIRROR_TOKEN is not set; skipping." >&2
+            exit 0
+          fi
+          # Credentials go in the remote URL's userinfo, which git never prints.
+          remote="${MIRROR_URL#https://}"
+          git push --force "https://oauth2:${MIRROR_TOKEN}@${remote}" HEAD:refs/heads/main

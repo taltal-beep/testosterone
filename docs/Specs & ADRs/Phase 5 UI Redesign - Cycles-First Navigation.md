@@ -1,3 +1,10 @@
+---
+type: spec
+status: current
+created: 2026-07-04
+updated: 2026-07-04
+---
+
 # Phase 5 UI Redesign — Cycles-First Navigation
 
 **Status:** Shipped 2026-07-04

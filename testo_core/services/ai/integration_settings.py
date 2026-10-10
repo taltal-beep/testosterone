@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from threading import Lock
+from typing import Any
 
 from .config import AiProviderConfig, ApiKeySource
 from .provider_base import AiProviderName
@@ -59,7 +60,7 @@ class InMemoryAiSettingsStore:
         with self._lock:
             return self._settings
 
-    def update(self, **kwargs: object) -> AiIntegrationSettings:
+    def update(self, **kwargs: Any) -> AiIntegrationSettings:
         with self._lock:
             self._settings = replace(self._settings, **kwargs)
             return self._settings

@@ -62,9 +62,7 @@ def _isolate_state() -> Iterator[None]:
         (12345, "big", {"k1": "v1", "k2": "v2", "k3": "v3"}),
     ],
 )
-def test_item_construction_roundtrips_fields(
-    item_id: int, name: str, meta: dict[str, Any]
-) -> None:
+def test_item_construction_roundtrips_fields(item_id: int, name: str, meta: dict[str, Any]) -> None:
     item = Item(id=item_id, name=name, meta=meta)
     assert item.id == item_id
     assert item.name == name

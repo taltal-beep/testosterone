@@ -64,8 +64,10 @@ def generate_html(
         raise AllureCLINotFoundError(str(exc)) from exc
 
     ok = completed.returncode == 0 and report_has_index(out_dir)
-    msg = (completed.stdout or "").strip() or (completed.stderr or "").strip() or (
-        "report generated" if ok else f"allure exited {completed.returncode}"
+    msg = (
+        (completed.stdout or "").strip()
+        or (completed.stderr or "").strip()
+        or ("report generated" if ok else f"allure exited {completed.returncode}")
     )
     return AllureGenerateResult(ok=ok, out_dir=out_dir, message=msg)
 

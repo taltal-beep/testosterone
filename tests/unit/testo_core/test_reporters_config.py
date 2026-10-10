@@ -11,7 +11,9 @@ from testo_core.config.loader import load_config
 from testo_core.config.schema import ReporterSpec
 
 
-def _write_minimal_cycle_yaml(path: Path, *, top_extra: str = "", cycle_name: str = "my-cycle") -> None:
+def _write_minimal_cycle_yaml(
+    path: Path, *, top_extra: str = "", cycle_name: str = "my-cycle"
+) -> None:
     body = f"""
 version: 1
 defaults:
@@ -43,7 +45,9 @@ reporters:
     cfg = load_config(yml)
     assert cfg.reporters == (
         ReporterSpec(type="allure", options=()),
-        ReporterSpec(type="testbeats", options=(("slack_webhook", "https://hooks.slack.example/xyz"),)),
+        ReporterSpec(
+            type="testbeats", options=(("slack_webhook", "https://hooks.slack.example/xyz"),)
+        ),
     )
 
 

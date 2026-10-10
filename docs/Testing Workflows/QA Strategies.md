@@ -1,8 +1,15 @@
+---
+type: guide
+status: current
+created: 2026-06-25
+updated: 2026-10-08
+---
+
 # QA Strategies
 
 How Testo **triggers**, **executes**, and **logs** test suites today — from YAML cycles through artifacts, reporters, and optional database archives.
 
-Related: [[Architecture Overview]], [[Command Reference]], [[Index]].
+Related: [Architecture Overview](../Architecture/Architecture%20Overview.md), [Command Reference](../CLI%20Commands/Command%20Reference.md), [Index](../Index.md).
 
 ---
 
@@ -91,7 +98,7 @@ testo run --cycle all --tag smoke
 
 ### 2. Selective triggers
 
-Cycles may define a `trigger:` with glob `paths` (and optional Git `since_ref`). Evaluation lives in `testo_core/triggers.py`:
+Cycles may define a `trigger:` with glob `paths` (and optional Git `since_ref`). Evaluation lives in `testo_core/config/triggers.py`:
 
 | Mode | Behavior |
 |------|----------|
@@ -120,9 +127,8 @@ Debounced filesystem events call `testo run` repeatedly; useful for fast feedbac
 |-----------|--------|
 | `testo run --ci` | NDJSON on stdout for parsers |
 | `testo run --no-persist` / `--no-report-db` | Lighter CI without DB |
-| `uqo run --config …` | Legacy ghost/JSON contract (see `ARCHITECTURE.md`) |
-| GitHub Action | `integrations/github-action/run_uqo_action.py` |
-| `testo-api` | HTTP trigger + SSE log stream |
+| GitHub Action / GitLab template | `integrations/github-action/`, `ci/gitlab/testo.gitlab-ci.yml` — both wrap `testo run --ci` |
+| `testo-api` | `POST /cycles/{cycle}/executions` or `POST /adhoc-executions` + SSE event stream |
 
 ---
 
@@ -137,13 +143,13 @@ Debounced filesystem events call `testo run` repeatedly; useful for fast feedbac
 4. **`run_stage()`**:
    - Framework adapter builds `argv` (e.g. `pytest` with Allure plugin paths).
    - `subprocess.Popen` in `target_repo` cwd.
-   - Merges `extra_env`; sets `UQO_SHARED_ALLURE_RESULTS_DIR`, `UQO_ARTIFACTS_ROOT`.
+   - Merges `extra_env`; sets `TESTO_SHARED_ALLURE_RESULTS_DIR`, `TESTO_ARTIFACTS_ROOT`.
    - Streams stdout/stderr into `run.log` via `LogBuffer`.
    - Enforces `timeout_s` (SIGTERM → SIGKILL).
 5. **`--fail-fast`** — aborts remaining stages (and `run --cycle all` aborts remaining cycles).
 6. **Exit classification** — `classify_exit_code()` maps stage return codes to `EngineExitCode`.
 
-**Not the default for `testo run`:** Docker-isolated execution (`testo_core/runners.py`) remains for the UQO platform path (compose stack, MinIO, Allure Server).
+There is no other execution path: the API (cycle and ad-hoc executions) and the CI wrappers all reach `run_plan()` through `CycleRunService`. The Docker-based `runners.py` stack was removed in v1.1.
 
 ---
 
@@ -177,8 +183,6 @@ If `reporters:` is set or `--reporter` is passed, `run_configured_reporters()` r
 | Allure Report (project site) | https://allurereport.org/docs/ |
 | ReportPortal | https://reportportal.io/docs/ |
 | ReportPortal agents | https://reportportal.io/docs/log-data-in-reportportal/test-framework-integration/ |
-
-Local ReportPortal stack: [[ReportPortal Local Setup Guide]].
 
 ### Database archive (optional)
 
@@ -224,7 +228,7 @@ testo run --cycle sample-pytests --dry-run --ci
 
 Emits `dry_run_stage` objects with `argv`, `cwd`, `framework` without executing.
 
-**Ghost mode (CI):** When running in a CI environment, prefer `testo run --ci` or rely on auto-detection so the CLI stays non-interactive: NDJSON or summary JSON on stdout, optional persistence to DB/S3, and enriched metadata (`trigger_source=ci`, `execution_mode=ghost`, provider ids). Override with `--ghost` / `--no-ghost`. Wrappers: [[CI-CD Pipeline Setup]]. Release gate: [[Release Checklist - Phase 2 Ghost Mode]].
+**CI:** use `testo run --ci` so the CLI stays non-interactive (NDJSON on stdout, `plan_finished` last). Run records written in CI carry `ci_provider`, `ci_pipeline_id`, `ci_job_id`, `ci_commit_sha` and `ci_ref_name` (detected from the CI environment by `DbBackend`). Wrappers: [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md).
 
 ---
 
@@ -284,7 +288,7 @@ Cycles in `testosterone.yaml` point `target_repo: sample_target_repo` for demos 
 
 ## Testing the orchestrator itself
 
-The repo’s own QA lives under `tests/`. The **modern `testo run` execution path** (CLI → runner → orchestrator → executor) has a dedicated suite aligned with [[Deep Dive - Execution Logic]] and [[Troubleshooting and Error Codes]].
+The repo’s own QA lives under `tests/`. The **modern `testo run` execution path** (CLI → runner → orchestrator → executor) has a dedicated suite aligned with [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md) and [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md).
 
 ### Layout
 
@@ -294,8 +298,9 @@ The repo’s own QA lives under `tests/`. The **modern `testo run` execution pat
 | `tests/unit/testo_core/engine/` | `classify_exit_code` (`test_exit_codes.py`), `LogBuffer` (`test_log_buffer.py`), `run_stage` (`test_executor.py`), `run_plan` fail-fast (`test_orchestrator.py`) + lifecycle/state (`test_orchestrator_lifecycle.py`) |
 | `tests/unit/testo_core/cli/` | Exit codes (`test_run_exit_codes.py`), archive (`test_run_archive.py`), flags (`test_run_flags.py`), CI NDJSON (`test_run_ci_ndjson.py`), config discovery (`test_config_discovery.py`), smokes (`test_cli_commands_smoke.py`) |
 | `tests/integration/testo_core/engine/` | Real subprocess smoke via `echo.py` (no Docker) — `test_subprocess_smoke.py` |
-| `tests/contract/testo_core/` | Formal `EngineExitCode` 0–4 contract (`test_exit_code_contract.py`), canonical-import identity (`test_exit_code_consolidation.py`) + legacy CLI contracts |
-| `tests/unit/testo_core/` (legacy) | Headless/UQO path, reporters, triggers, archives |
+| `tests/contract/testo_core/` | Formal `EngineExitCode` 0–4 contract (`test_exit_code_contract.py`) |
+| `tests/unit/testo_core/` | Cycle-run service, persistence (incl. failure context), reporters, triggers, archives |
+| `tests/unit/test_cycle_execution_manager.py`, `tests/contract/api/` | API executions (cycle + ad-hoc) through the engine |
 | `tests/integration/` | Sandbox API, fuller paths |
 | `tests/contract/` | Packaging, CI wrapper contracts |
 
@@ -319,7 +324,7 @@ The repo’s own QA lives under `tests/`. The **modern `testo run` execution pat
 #### B. CLI flags
 
 > [!note] Roadmap flags
-> `--tag`, `--fail-fast`, `--dry-run` and `--reporter` are **not implemented CLI flags** (see the correction note in [[Command Reference]]). The engine already supports `fail_fast` (exposed via the API layer); the CLI flags remain roadmap items. Rows below marked *Gap* become testable once the flags land.
+> `--tag`, `--fail-fast`, `--dry-run` and `--reporter` are **not implemented CLI flags** (see the correction note in [Command Reference](../CLI%20Commands/Command%20Reference.md)). The engine already supports `fail_fast` (exposed via the API layer); the CLI flags remain roadmap items. Rows below marked *Gap* become testable once the flags land.
 
 | ID | Scenario | Test location |
 |----|----------|---------------|
@@ -394,7 +399,7 @@ pytest tests/unit/testo_core/engine tests/unit/testo_core/cli/test_run_*.py \
 pytest tests/unit/testo_core -q
 ```
 
-**With coverage** (default `pytest.ini` adds `--cov=testo_core --cov-fail-under=50`):
+**With coverage** (default `pytest.ini` adds `--cov=testo_core --cov=testo_api --cov-branch --cov-fail-under=65`; the gate is sized for the fast suite or a full run, so narrower selections like this one report coverage but fail the gate):
 
 ```bash
 pytest tests/unit/testo_core/engine tests/unit/testo_core/cli -q
@@ -404,23 +409,21 @@ pytest tests/unit/testo_core/engine tests/unit/testo_core/cli -q
 
 | Workflow | Command | When |
 |----------|---------|------|
-| [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) (`test` job) | `pytest -m "tier_fast and not quarantined" --no-cov` | Every PR; engine unit + contract tests auto-marked `tier_fast` (folds in the old pr-fast workflow) |
-| [`.github/workflows/pr-heavy.yml`](../../.github/workflows/pr-heavy.yml) | `pytest -m "tier_heavy and not tier_external"` | Optional PR deep suite; `test_subprocess_smoke.py` is marked `tier_heavy` explicitly (it also runs in the fast tier — it is deterministic and ~1s) |
-| [`.github/workflows/nightly-external.yml`](../../.github/workflows/nightly-external.yml) | `pytest -m "tier_external and cleanup_required"` | Nightly / release |
+| [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) (`test` job) | `pytest -m "tier_fast and not quarantined" --cov-report=xml` | Every PR and push to main; engine unit + contract tests auto-marked `tier_fast` (folds in the old pr-fast workflow). Enforces the 65% line + branch coverage gate from `pytest.ini` and uploads `coverage.xml` as an artifact |
+| [`.github/workflows/pr-heavy.yml`](../../.github/workflows/pr-heavy.yml) | `pytest -m "tier_heavy and not tier_external" --no-cov` | Optional PR deep suite; `test_subprocess_smoke.py` is marked `tier_heavy` explicitly (it also runs in the fast tier — it is deterministic and ~1s) |
+| [`.github/workflows/nightly-external.yml`](../../.github/workflows/nightly-external.yml) | `pytest -m "tier_external and cleanup_required" --no-cov` | Nightly (and `release-gate.yml`, manual). Needs `TESTO_E2E_GITHUB_*` or `TESTO_E2E_GITLAB_*` repository secrets; the nightly job skips with a notice when neither pair is set |
 
 Install step in CI: `pip install -e ".[dev]"`.
 
 ### Notes
 
-- Tests **lock current exit-code behavior**, including known misclassifications documented in [[Troubleshooting and Error Codes#Classification logic]] (e.g. SIGKILL rc=137 → exit **1**); fixing those is a separate refactor.
-- 2026-07-04: the suite was rebuilt after the original files were lost uncommitted, and two documented contract pieces were restored in the engine at the same time: stage timeouts now normalise to `returncode=124` (previously the raw signal code leaked through, classifying timeouts as exit 1), and `classify_exit_code` gained the `internal_failure` flag so orchestrator-caught exceptions exit **4** instead of **1**. See [[Engine Test Suite Rebuild - 2026-07-04]].
+- Tests **lock current exit-code behavior**, including known misclassifications documented in [Troubleshooting and Error Codes § Classification logic](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md#classification-logic) (e.g. SIGKILL rc=137 → exit **1**); fixing those is a separate refactor.
+- 2026-07-04: the suite was rebuilt after the original files were lost uncommitted, and two documented contract pieces were restored in the engine at the same time: stage timeouts now normalise to `returncode=124` (previously the raw signal code leaked through, classifying timeouts as exit 1), and `classify_exit_code` gained the `internal_failure` flag so orchestrator-caught exceptions exit **4** instead of **1**. See [Engine Test Suite Rebuild - 2026-07-04](../Archive/Engine%20Test%20Suite%20Rebuild%20-%202026-07-04.md).
 - `CIRenderer` stdout omits `error` on `stage_finished`; the artifact `events.ndjson` mirror includes it — tests assert both surfaces where relevant.
-- Legacy `uqo run` / `HeadlessEngineService` coverage remains in `test_cli_run.py` and `test_headless_engine.py`.
-- Use [[Command Reference]] for operator-facing commands; this section is for contributors validating engine changes.
+- Use [Command Reference](../CLI%20Commands/Command%20Reference.md) for operator-facing commands; this section is for contributors validating engine changes.
 
 ## Related operational docs
 
-- [[E2E Harness Operations Guide]] — tiered E2E harness for this repo
-- [[Release Management/README]] — phase release checklists
-- [[CI-CD Pipeline Setup]] — GitHub Action / GitLab template
-- [[Product Roadmap]] — phased WHY
+- [E2E Harness Operations Guide](../Processes%20&%20Guides/E2E%20Harness%20Operations%20Guide.md) — tiered E2E harness for this repo
+- [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md) — GitHub Action / GitLab template
+- [Product Roadmap](../Roadmap%20&%20Strategy/Product%20Roadmap.md) — current state and next steps

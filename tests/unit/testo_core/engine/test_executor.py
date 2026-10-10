@@ -7,6 +7,7 @@ real, just very fast.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 from pathlib import Path
 
@@ -43,7 +44,9 @@ def _stage(
     )
 
 
-def test_passing_stage_result_and_artifact_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_passing_stage_result_and_artifact_layout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     adapter = use_echo_adapter(monkeypatch)
     stage = _stage(args=("--text", "hello-executor"), workers=7)
 
@@ -64,13 +67,16 @@ def test_passing_stage_result_and_artifact_layout(tmp_path: Path, monkeypatch: p
     # Adapter contract: resolved results dir + workers forwarded.
     call = adapter.calls[0]
     assert call["workers"] == 7
-    assert call["results_dir"] == (
-        tmp_path / "demo" / "echo-stage" / "allure-results" / "echo"
-    ).resolve()
+    assert (
+        call["results_dir"]
+        == (tmp_path / "demo" / "echo-stage" / "allure-results" / "echo").resolve()
+    )
     assert call["results_dir"].is_dir()
 
 
-def test_failing_stage_propagates_returncode(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_failing_stage_propagates_returncode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     use_echo_adapter(monkeypatch)
     stage = _stage(args=("--exit-code", "3", "--text", "boom"))
 
@@ -91,7 +97,9 @@ def test_stderr_is_merged_into_stdout_log(tmp_path: Path, monkeypatch: pytest.Mo
     assert "err-line" in result.output_tail  # deterministic ordering contract
 
 
-def test_allure_results_dir_is_wiped_between_runs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_allure_results_dir_is_wiped_between_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     use_echo_adapter(monkeypatch)
     stale = tmp_path / "demo" / "echo-stage" / "allure-results" / "echo" / "stale.json"
     stale.parent.mkdir(parents=True)
@@ -103,13 +111,18 @@ def test_allure_results_dir_is_wiped_between_runs(tmp_path: Path, monkeypatch: p
     assert not stale.exists()
 
 
-def test_stage_env_carries_extra_env_and_uqo_variables(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_stage_env_carries_extra_env_and_testo_variables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     use_echo_adapter(monkeypatch)
     stage = _stage(
         args=(
-            "--print-env", "STAGE_TOKEN",
-            "--print-env", "UQO_LAST_TEST_TYPE",
-            "--print-env", "UQO_SHARED_ALLURE_RESULTS_DIR",
+            "--print-env",
+            "STAGE_TOKEN",
+            "--print-env",
+            "TESTO_LAST_TEST_TYPE",
+            "--print-env",
+            "TESTO_SHARED_ALLURE_RESULTS_DIR",
         ),
         extra_env=(("STAGE_TOKEN", "s3cr3t"),),
     )
@@ -117,12 +130,14 @@ def test_stage_env_carries_extra_env_and_uqo_variables(tmp_path: Path, monkeypat
     result = run_stage(stage, plan_name="demo", artifacts_root=tmp_path)
 
     assert "STAGE_TOKEN=s3cr3t" in result.output_tail
-    assert "UQO_LAST_TEST_TYPE=pytest" in result.output_tail
+    assert "TESTO_LAST_TEST_TYPE=pytest" in result.output_tail
     results_dir = (tmp_path / "demo" / "echo-stage" / "allure-results" / "echo").resolve()
-    assert f"UQO_SHARED_ALLURE_RESULTS_DIR={results_dir}" in result.output_tail
+    assert f"TESTO_SHARED_ALLURE_RESULTS_DIR={results_dir}" in result.output_tail
 
 
-def test_parent_env_seam_replaces_os_environ(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_parent_env_seam_replaces_os_environ(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     use_echo_adapter(monkeypatch)
     stage = _stage(args=("--print-env", "FROM_PARENT_ONLY"))
     assert "FROM_PARENT_ONLY" not in os.environ
@@ -147,7 +162,9 @@ def test_on_chunk_streams_live_output(tmp_path: Path, monkeypatch: pytest.Monkey
     assert b"streamed-bytes" in b"".join(chunks)
 
 
-def test_missing_binary_returns_127_with_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_missing_binary_returns_127_with_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # EC-03a: FileNotFoundError from Popen is normalised to rc 127.
     use_adapter(monkeypatch, MissingBinaryAdapter())
 
@@ -159,7 +176,22 @@ def test_missing_binary_returns_127_with_error(tmp_path: Path, monkeypatch: pyte
     assert result.command == ("testo-missing-binary-9c2f4e",)
 
 
-def test_timeout_kills_stage_and_returns_124(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_stage_result_records_the_stage_tier(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The run record keeps the tier the stage ran with, so the test pyramid
+    # doesn't depend on whatever testosterone.yaml says later.
+    use_echo_adapter(monkeypatch)
+    stage = Stage(name="flows", framework="pytest", target_repo=Path("."), tier="e2e")
+
+    result = run_stage(stage, plan_name="demo", artifacts_root=tmp_path)
+
+    assert result.tier == "e2e"
+
+
+def test_timeout_kills_stage_and_returns_124(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # EC-03b: documented timeout contract — rc 124 + timed_out, whatever
     # signal actually reaped the process.
     use_adapter(monkeypatch, HangAdapter())
@@ -176,8 +208,29 @@ def test_timeout_kills_stage_and_returns_124(tmp_path: Path, monkeypatch: pytest
     assert "hanging" in result.output_tail  # pre-timeout output was captured
 
 
+def test_behavex_report_failure_sets_stage_error_not_returncode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from testo_core.reporting import native_reports
+
+    def broken_report(_stage_dir: Path, *, raise_errors: bool = False) -> None:
+        raise RuntimeError("report.json is truncated")
+
+    use_echo_adapter(monkeypatch)
+    monkeypatch.setattr(native_reports, "ensure_behavex_report_html", broken_report)
+    stage = dataclasses.replace(_stage(args=("--text", "ok")), framework="behavex")
+
+    result = run_stage(stage, plan_name="demo", artifacts_root=tmp_path)
+
+    assert result.returncode == 0
+    assert result.error == "BehaveX HTML report generation failed: report.json is truncated"
+    assert result.error in (tmp_path / "demo" / "echo-stage" / "run.log").read_text()
+
+
 def test_command_records_full_argv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     use_echo_adapter(monkeypatch)
-    result = run_stage(_stage(args=("--text", "argv-check")), plan_name="demo", artifacts_root=tmp_path)
+    result = run_stage(
+        _stage(args=("--text", "argv-check")), plan_name="demo", artifacts_root=tmp_path
+    )
     assert result.command[-2:] == ("--text", "argv-check")
     assert "echo.py" in result.command[1]

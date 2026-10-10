@@ -17,8 +17,8 @@ from testo_core.repository.factory import (
     ("url", "adapter_type"),
     [
         ("sqlite:///:memory:", SQLiteRepositoryAdapter),
-        ("postgresql+psycopg://user:pass@localhost:5432/uqo", PostgreSQLRepositoryAdapter),
-        ("mysql+pymysql://user:pass@localhost:3306/uqo", MySQLRepositoryAdapter),
+        ("postgresql+psycopg://user:pass@localhost:5432/testo", PostgreSQLRepositoryAdapter),
+        ("mysql+pymysql://user:pass@localhost:3306/testo", MySQLRepositoryAdapter),
     ],
 )
 def test_select_repository_adapter_supported(url: str, adapter_type: type[object]) -> None:
@@ -32,16 +32,24 @@ def test_select_repository_adapter_rejects_unsupported() -> None:
 
 
 def test_create_repository_for_url_returns_sqlmodel_repo() -> None:
-    repo = create_repository_for_url(url="sqlite:///:memory:", engine=create_engine("sqlite:///:memory:"))
+    repo = create_repository_for_url(
+        url="sqlite:///:memory:", engine=create_engine("sqlite:///:memory:")
+    )
     assert isinstance(repo, SQLModelRunRepository)
 
 
 def test_postgresql_adapter_requires_driver(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("testo_core.repository.factory.find_spec", lambda name: None if name == "psycopg" else object())
+    monkeypatch.setattr(
+        "testo_core.repository.factory.find_spec",
+        lambda name: None if name == "psycopg" else object(),
+    )
     adapter = PostgreSQLRepositoryAdapter()
 
     with pytest.raises(ValueError, match="requires PostgreSQL driver module `psycopg`"):
-        adapter.build(engine=create_engine("sqlite:///:memory:"), url="postgresql+psycopg://u:p@localhost:5432/db")
+        adapter.build(
+            engine=create_engine("sqlite:///:memory:"),
+            url="postgresql+psycopg://u:p@localhost:5432/db",
+        )
 
 
 def test_mysql_adapter_requires_driver(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -49,4 +57,6 @@ def test_mysql_adapter_requires_driver(monkeypatch: pytest.MonkeyPatch) -> None:
     adapter = MySQLRepositoryAdapter()
 
     with pytest.raises(ValueError, match="requires an installed MySQL driver"):
-        adapter.build(engine=create_engine("sqlite:///:memory:"), url="mysql+pymysql://u:p@localhost:3306/db")
+        adapter.build(
+            engine=create_engine("sqlite:///:memory:"), url="mysql+pymysql://u:p@localhost:3306/db"
+        )

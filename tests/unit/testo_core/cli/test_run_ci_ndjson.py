@@ -15,9 +15,9 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from testo_core.cli import runner as cli_runner_mod
 from testo_core.cli.app import app
-from testo_core.triggers import TriggerResult
+from testo_core.config.triggers import TriggerResult
+from testo_core.services import cycle_run as cycle_run_mod
 from tests.fixtures.engine import (
     HangAdapter,
     assert_ndjson_events,
@@ -48,7 +48,9 @@ def test_ci_stdout_is_pure_ndjson_for_a_passing_run(
 
     assert result.exit_code == 0
     events = parse_ndjson(result.output)  # raises if any line is not JSON
-    assert_ndjson_events(events, ["plan_started", "stage_started", "stage_finished", "plan_finished"])
+    assert_ndjson_events(
+        events, ["plan_started", "stage_started", "stage_finished", "plan_finished"]
+    )
 
     assert events[0] == {"event": "plan_started", "plan": "smoke", "stage_count": 1}
     started = events[1]
@@ -113,7 +115,7 @@ def test_ci_cycle_trigger_resting_event(
 ) -> None:
     use_echo_adapter(monkeypatch)
     monkeypatch.setattr(
-        cli_runner_mod,
+        cycle_run_mod,
         "evaluate_cycle_trigger",
         lambda *, plan, cfg: TriggerResult(
             stimulus=False,
@@ -149,7 +151,7 @@ def test_ci_cycle_trigger_activated_precedes_plan_events(
 ) -> None:
     use_echo_adapter(monkeypatch)
     monkeypatch.setattr(
-        cli_runner_mod,
+        cycle_run_mod,
         "evaluate_cycle_trigger",
         lambda *, plan, cfg: TriggerResult(
             stimulus=True,
@@ -170,7 +172,8 @@ def test_ci_cycle_trigger_activated_precedes_plan_events(
     assert result.exit_code == 0
     events = parse_ndjson(result.output)
     assert_ndjson_events(
-        events, ["cycle_trigger", "plan_started", "stage_started", "stage_finished", "plan_finished"]
+        events,
+        ["cycle_trigger", "plan_started", "stage_started", "stage_finished", "plan_finished"],
     )
     assert events[0]["status"] == "activated"
     assert events[0]["matched"] == ["src/app.py"]

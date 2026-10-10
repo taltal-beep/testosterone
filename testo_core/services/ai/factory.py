@@ -6,7 +6,9 @@ from .providers.anthropic_provider import AnthropicProvider
 from .providers.openai_provider import OpenAiProvider
 
 
-def build_ai_provider(*, config: AiProviderConfig, runtime_api_key: str | None = None) -> AiProvider:
+def build_ai_provider(
+    *, config: AiProviderConfig, runtime_api_key: str | None = None
+) -> AiProvider:
     config.validate()
     api_key = config.resolve_api_key(runtime_api_key=runtime_api_key)
     if config.provider == "openai":

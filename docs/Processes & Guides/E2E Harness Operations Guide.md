@@ -1,3 +1,10 @@
+---
+type: guide
+status: current
+created: 2026-05-03
+updated: 2026-10-07
+---
+
 # E2E Harness Operations
 
 This document defines deterministic execution and cleanup for the tiered E2E harness.
@@ -24,25 +31,25 @@ Implementation lives under `tests/e2e/flows/`, `tests/e2e/provisioners/`, and `t
 
 Common:
 
-- `UQO_E2E_RUN_ID` (optional; auto-generated if not set)
-- `UQO_E2E_KEEP_ON_FAIL` (default `false`)
-- `UQO_E2E_MAX_CLEANUP_ATTEMPTS` (default `3`)
-- `UQO_E2E_EXTERNAL_DRY_RUN` (`true` by default; set `false` in external CI gates)
+- `TESTO_E2E_RUN_ID` (optional; auto-generated if not set)
+- `TESTO_E2E_KEEP_ON_FAIL` (default `false`)
+- `TESTO_E2E_MAX_CLEANUP_ATTEMPTS` (default `3`)
+- `TESTO_E2E_EXTERNAL_DRY_RUN` (`true` by default; set `false` in external CI gates)
 
 GitHub external:
 
-- `UQO_E2E_GITHUB_TOKEN`
-- `UQO_E2E_GITHUB_OWNER`
+- `TESTO_E2E_GITHUB_TOKEN`
+- `TESTO_E2E_GITHUB_OWNER`
 
 GitLab external:
 
-- `UQO_E2E_GITLAB_TOKEN`
-- `UQO_E2E_GITLAB_GROUP_ID`
-- `UQO_E2E_GITLAB_BASE_URL` (optional, defaults to `https://gitlab.com/api/v4`)
+- `TESTO_E2E_GITLAB_TOKEN`
+- `TESTO_E2E_GITLAB_GROUP_ID`
+- `TESTO_E2E_GITLAB_BASE_URL` (optional, defaults to `https://gitlab.com/api/v4`)
 
 ## Isolation and naming
 
-- Ephemeral resources are named using `uqo-e2e-<run-id>-<provider>-<scenario>`.
+- Ephemeral resources are named using `testo-e2e-<run-id>-<provider>-<scenario>`.
 - Artifacts are written under `.artifacts/e2e/<run-id>/`.
 - External CI jobs use `external-e2e` concurrency/resource locking.
 
@@ -70,4 +77,4 @@ On failed heavy/external runs, upload:
 
 ---
 **Context & Links:**
-- [[QA Strategies#Testing the orchestrator itself]], [[Technical Debt Tracker]], [[CI-CD Pipeline Setup]]
+- [QA Strategies § Testing the orchestrator itself](../Testing%20Workflows/QA%20Strategies.md#testing-the-orchestrator-itself), [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md), [CI-CD Pipeline Setup](CI-CD%20Pipeline%20Setup.md)

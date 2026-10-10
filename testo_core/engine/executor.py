@@ -15,6 +15,7 @@ under ``testo_core/engine/backends/`` and adapt to the same return type.
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import signal
@@ -33,6 +34,8 @@ from testo_core.reporting.paths import plan_artifacts_dir, safe_child_path
 
 _TERMINATE_GRACE_S: float = 5.0
 _DEFAULT_TAIL_LINES: int = 200
+
+logger = logging.getLogger(__name__)
 
 
 def _import_junit(stage: Stage, *, results_dir: Path, log_path: Path, started_at: float) -> None:
@@ -58,12 +61,36 @@ def _import_junit(stage: Stage, *, results_dir: Path, log_path: Path, started_at
         ]
         lines += [f"[testo] junit_xml: skipped malformed report {err}" for err in imported.errors]
     except Exception as exc:  # noqa: BLE001 — never let reporting fail a stage
+        logger.warning("junit_xml import failed for stage %s", stage.name, exc_info=True)
         lines = [f"[testo] junit_xml: import failed: {exc}"]
+    _append_run_log(log_path, lines)
+
+
+def _ensure_behavex_html(stage_root: Path, *, log_path: Path) -> str | None:
+    """Post-stage hook: render BehaveX's HTML report when it only wrote ``report.json``.
+
+    Best-effort like :func:`_import_junit`, but the failure is returned so the
+    caller can put it on ``StageResult.error`` (exit code unchanged).
+    """
+    from testo_core.reporting.native_reports import ensure_behavex_report_html
+
+    try:
+        ensure_behavex_report_html(stage_root, raise_errors=True)
+    except Exception as exc:  # noqa: BLE001 — BehaveX's generator raises arbitrary types
+        # native_reports already logged the traceback; here it only becomes stage evidence.
+        logger.debug("BehaveX HTML report generation failed in %s", stage_root, exc_info=True)
+        message = f"BehaveX HTML report generation failed: {exc}"
+        _append_run_log(log_path, [f"[testo] {message}"])
+        return message
+    return None
+
+
+def _append_run_log(log_path: Path, lines: list[str]) -> None:
     try:
         with log_path.open("a", encoding="utf-8") as log:
             log.write("\n".join(lines) + "\n")
     except OSError:
-        pass
+        logger.warning("could not append to %s", log_path, exc_info=True)
 
 
 def run_stage(
@@ -94,9 +121,9 @@ def run_stage(
     )
 
     env = merged_env(parent_env if parent_env is not None else os.environ, stage.extra_env)
-    env.setdefault("UQO_LAST_TEST_TYPE", stage.framework)
-    env.setdefault("UQO_ARTIFACTS_ROOT", str(artifacts_root.expanduser().resolve()))
-    env["UQO_SHARED_ALLURE_RESULTS_DIR"] = str(results_dir)
+    env.setdefault("TESTO_LAST_TEST_TYPE", stage.framework)
+    env.setdefault("TESTO_ARTIFACTS_ROOT", str(artifacts_root.expanduser().resolve()))
+    env["TESTO_SHARED_ALLURE_RESULTS_DIR"] = str(results_dir)
     adapter_env = getattr(adapter, "extra_env", None)
     if adapter_env is not None:
         for key, value in adapter_env().items():
@@ -158,12 +185,9 @@ def run_stage(
         output_tail = buffer.tail(max_lines=tail_lines)
 
     if stage.framework == "behavex":
-        try:
-            from testo_core.reporting.native_reports import ensure_behavex_report_html
-
-            ensure_behavex_report_html(stage_root)
-        except Exception:
-            pass
+        report_error = _ensure_behavex_html(stage_root, log_path=log_path)
+        # A timeout/launch error is the more important message; keep it.
+        error = error or report_error
 
     if stage.junit_xml:
         _import_junit(stage, results_dir=results_dir, log_path=log_path, started_at=started_at)
@@ -172,6 +196,7 @@ def run_stage(
     return StageResult(
         stage_name=stage.name,
         framework=stage.framework,
+        tier=stage.tier,
         returncode=int(returncode),
         started_at=started_at,
         finished_at=finished_at,
@@ -217,6 +242,7 @@ def _failure_result(
     return StageResult(
         stage_name=stage.name,
         framework=stage.framework,
+        tier=stage.tier,
         returncode=int(returncode),
         started_at=started_at,
         finished_at=finished_at,

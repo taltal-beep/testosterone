@@ -14,7 +14,9 @@ function overviewPayload(overrides: Record<string, unknown> = {}) {
       health_pct: 98,
       pass_count: 12,
       fail_count: 1,
-      duration_ms: 1222
+      duration_ms: 1222,
+      cycle: "smoke",
+      baseline_run_id: "run-0"
     },
     trend_indicators: {
       health: { direction: "up", delta_abs: 2, delta_pct: 2.1 },
@@ -31,12 +33,12 @@ function overviewPayload(overrides: Record<string, unknown> = {}) {
     },
     report_links: {
       allure: { url: "http://allure/run-1", state: "available" },
-      locust: { url: "/history/run-1/locust_report.html", state: "available" },
       behave: { url: "/history/run-1/allure_reports/behavex/index.html", state: "available" }
     },
     recent_runs: [
       {
         run_id: "run-1",
+        cycle: "fake-api",
         created_at: 1,
         status: "COMPLETED",
         returncode: 0,
@@ -94,6 +96,29 @@ describe("DashboardPage", () => {
       "href",
       "/compare?current_run_id=run-1&baseline_run_id=run-0"
     );
+    expect(screen.getByRole("link", { name: /^fake-api · / })).toHaveAttribute("href", "/runs/run-1");
+  });
+
+  it("names the cycle and the same-cycle run the trends compare against", async () => {
+    stubOverviewFetch(overviewPayload());
+    renderDashboard();
+
+    await waitFor(() => expect(screen.getByTestId("trend-baseline")).toHaveTextContent("Latest run: smoke."));
+    expect(screen.getByRole("link", { name: "previous smoke run" })).toHaveAttribute(
+      "href",
+      "/compare?current_run_id=run-1&baseline_run_id=run-0"
+    );
+  });
+
+  it("says there is no trend for the first run of a cycle", async () => {
+    const payload = overviewPayload();
+    stubOverviewFetch({ ...payload, headline_kpis: { ...payload.headline_kpis, baseline_run_id: null } });
+    renderDashboard();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("trend-baseline")).toHaveTextContent("No earlier run of this cycle")
+    );
+    expect(screen.queryByRole("link", { name: "previous smoke run" })).not.toBeInTheDocument();
   });
 
   it("renders the first-run guide when no runs exist", async () => {
@@ -123,7 +148,6 @@ describe("DashboardPage", () => {
       overviewPayload({
         report_links: {
           allure: { url: null, state: "unknown" },
-          locust: { url: null, state: "missing" },
           behave: { url: null, state: "missing" }
         },
         data_freshness: { generated_at: 1, source_window_size: 1, degraded: true, notes: ["single_run_window"] }
@@ -133,7 +157,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => expect(screen.getByText(/Some metrics are degraded:/)).toBeInTheDocument());
     expect(screen.getByText("Allure report (state unknown)")).toBeInTheDocument();
-    expect(screen.getByText("Locust report (not available)")).toBeInTheDocument();
+    expect(screen.getByText("Behave report (not available)")).toBeInTheDocument();
   });
 
   it("maps trend semantics correctly", () => {

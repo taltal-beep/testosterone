@@ -29,15 +29,18 @@ def test_upload_payload_only(payload, fastapi_client) -> None:
     assert isinstance(body["size"], int)
 
 
-def test_upload_file_only(monkeypatch: pytest.MonkeyPatch, mock_api_app, api_recorder, fastapi_client) -> None:
+def test_upload_file_only(
+    monkeypatch: pytest.MonkeyPatch, mock_api_app, api_recorder, fastapi_client
+) -> None:
     # Use underlying TestClient for multipart; `fastapi_client` wrapper is JSON-oriented.
     from fastapi.testclient import TestClient  # type: ignore
 
     client = TestClient(mock_api_app)
     content = b"abc" * 10
     with step("POST /upload file-only multipart"):
-        r = client.post("/upload", files={"file": ("f.bin", BytesIO(content), "application/octet-stream")})
+        r = client.post(
+            "/upload", files={"file": ("f.bin", BytesIO(content), "application/octet-stream")}
+        )
     assert r.status_code == 200
     j = r.json()
     assert j["size"] >= len(content)
-

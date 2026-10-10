@@ -13,10 +13,12 @@ Three implementations are provided:
 
 from __future__ import annotations
 
-from contextlib import nullcontext
+import logging
+from contextlib import AbstractContextManager, nullcontext
 from typing import Protocol
 
 from rich.console import Console
+from rich.progress import Progress
 
 from testo_core.cli.ui.ci_renderer import emit_ndjson
 from testo_core.cli.ui.panels import StagePanelData, render_plan_summary, render_stage_panel
@@ -29,6 +31,8 @@ from testo_core.engine.events import (
     StageOutputChunk,
     StageStarted,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Renderer(Protocol):
@@ -48,8 +52,8 @@ class BufferedRenderer:
         self._console = console
         self._tail_lines = output_tail_lines
         self._panels: list[StagePanelData] = []
-        self._progress_ctx = nullcontext()
-        self._progress = None
+        self._progress_ctx: AbstractContextManager[Progress | None] = nullcontext()
+        self._progress: Progress | None = None
 
     def handle(self, event: EngineEvent) -> None:
         if isinstance(event, PlanStarted):
@@ -88,10 +92,7 @@ class StreamRenderer(BufferedRenderer):
 
     def handle(self, event: EngineEvent) -> None:
         if isinstance(event, StageOutputChunk):
-            try:
-                text = event.chunk.decode("utf-8", errors="replace")
-            except Exception:  # pragma: no cover - defensive
-                text = repr(event.chunk)
+            text = event.chunk.decode("utf-8", errors="replace")
             self._console.out(text, end="", highlight=False)
             return
         super().handle(event)
@@ -162,7 +163,8 @@ def _panel_from_result(result) -> StagePanelData:  # type: ignore[no-untyped-def
         artifacts_dir = getattr(result, "artifacts_dir", None)
         if artifacts_dir is not None:
             results_dir = str((artifacts_dir / "allure-results" / str(result.framework)).resolve())
-    except Exception:
+    except OSError:
+        logger.debug("could not resolve results dir for %s", result.stage_name, exc_info=True)
         results_dir = None
     return StagePanelData(
         name=result.stage_name,

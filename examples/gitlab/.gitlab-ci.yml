@@ -1,8 +1,0 @@
-include:
-  - project: "ariel-evn/unified-quality-orchestration-reporting-dashboard"
-    file: "/ci/gitlab/testo.gitlab-ci.yml"
-
-variables:
-  UQO_CONFIG_PATH: ".uqo/config.yaml"
-  UQO_STREAM_JSON: "true"
-  UQO_PERSIST: "true"

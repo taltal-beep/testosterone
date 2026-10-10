@@ -22,7 +22,9 @@ class _FakeFailureService:
             error_code="summary_not_available",
         )
 
-    def generate_summary(self, *, run_id: str, force_refresh: bool = False) -> FailureAnalysisSummary:  # noqa: ARG002
+    def generate_summary(
+        self, *, run_id: str, force_refresh: bool = False
+    ) -> FailureAnalysisSummary:  # noqa: ARG002
         return FailureAnalysisSummary(
             schema_version="v1",
             run_id=run_id,

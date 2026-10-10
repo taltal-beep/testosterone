@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from testo_core.run_history import CompletedRunView
+from testo_core.history.views import CompletedRunView
 from testo_core.security.redaction import redact_text, redact_value
 
 
@@ -67,8 +67,12 @@ def build_failure_context(
     raw_meta = _redacted_context_text(metadata.get("sync"))
 
     log_section, log_truncated = _truncate(raw_log, limit=budget.max_log_chars, label="log")
-    trace_section, trace_truncated = _truncate(raw_trace, limit=budget.max_trace_chars, label="trace")
-    meta_section, meta_truncated = _truncate(raw_meta, limit=budget.max_metadata_chars, label="metadata")
+    trace_section, trace_truncated = _truncate(
+        raw_trace, limit=budget.max_trace_chars, label="trace"
+    )
+    meta_section, meta_truncated = _truncate(
+        raw_meta, limit=budget.max_metadata_chars, label="metadata"
+    )
 
     prompt = (
         "You are an assistant that explains CI/test failures in concise operational language.\n"

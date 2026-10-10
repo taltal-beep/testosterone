@@ -81,7 +81,7 @@ def test_int02_full_testo_run_ci_with_echo_adapter(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     use_echo_adapter(monkeypatch)
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'uqo_history.db'}")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'testo_history.db'}")
     cfg = write_multi_stage_config(
         tmp_path,
         cycle="ci-smoke",
@@ -99,7 +99,14 @@ def test_int02_full_testo_run_ci_with_echo_adapter(
     events = parse_ndjson(result.output)
     assert_ndjson_events(
         events,
-        ["plan_started", "stage_started", "stage_finished", "stage_started", "stage_finished", "plan_finished"],
+        [
+            "plan_started",
+            "stage_started",
+            "stage_finished",
+            "stage_started",
+            "stage_finished",
+            "plan_finished",
+        ],
     )
     assert [e["returncode"] for e in events if e["event"] == "stage_finished"] == [0, 1]
     assert events[-1]["exit_code"] == 1
@@ -107,6 +114,6 @@ def test_int02_full_testo_run_ci_with_echo_adapter(
     # plan_result.json persisted by the default persistence stack.
     assert (tmp_path / "artifacts" / "ci-smoke" / "plan_result.json").is_file()
     # Real subprocess output reached the per-stage logs.
-    assert "ci-fail" in (
-        tmp_path / "artifacts" / "ci-smoke" / "fail-stage" / "run.log"
-    ).read_text(encoding="utf-8")
+    assert "ci-fail" in (tmp_path / "artifacts" / "ci-smoke" / "fail-stage" / "run.log").read_text(
+        encoding="utf-8"
+    )

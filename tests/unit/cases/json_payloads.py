@@ -20,4 +20,3 @@ def common_json_cases() -> list[JsonCase]:
         JsonCase("sqli", {"q": "' OR '1'='1"}),
         JsonCase("special_chars", {"s": " \t\r\n \" ' \\ /"}),
     ]
-

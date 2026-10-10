@@ -41,7 +41,7 @@ def try_inject_prior_history(
         return
     depth = max(1, int(trend_depth))
     try:
-        from testo_core.db import get_report_archive_repository
+        from testo_core.repository.db import get_report_archive_repository
 
         repo = get_report_archive_repository()
         rows = repo.list_recent_for_cycle(cycle_name=plan_name, limit=depth + 1)
@@ -63,7 +63,8 @@ def try_inject_prior_history(
                 if not prior_root.is_dir():
                     continue
                 copied_any = (
-                    any(_copy_matching_history(prior_root, st.results_dir) for st in results.stages) or copied_any
+                    any(_copy_matching_history(prior_root, st.results_dir) for st in results.stages)
+                    or copied_any
                 )
 
         if console and copied_any:
@@ -71,4 +72,5 @@ def try_inject_prior_history(
                 f"[dim]Injected Allure history from up to {depth} prior archived run(s) (trends).[/]"
             )
     except Exception:
-        logger.debug("Allure history injection skipped", exc_info=True)
+        # Broad on purpose: trend history is optional; DB, zip and copy errors must not fail a run.
+        logger.warning("Allure history injection skipped", exc_info=True)

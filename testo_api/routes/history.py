@@ -16,7 +16,8 @@ from testo_api.models import (
 )
 from testo_core.config.errors import ConfigError
 from testo_core.config.loader import discover_and_load
-from testo_core.run_history import get_run, list_run_sessions, snapshot_files_for_download
+from testo_core.history.read_model import get_run, list_run_sessions
+from testo_core.history.snapshots import snapshot_files_for_download
 
 router = APIRouter(prefix="/api/v1", tags=["history"])
 
@@ -103,7 +104,7 @@ def get_run_reports(run_id: str) -> RunReportsResponse:
     allure_base = os.getenv("ALLURE_SERVER_URL", "").rstrip("/")
     allure_url = None
     if allure_base:
-        from testo_core.run_history import allure_report_url_for_run
+        from testo_core.history.report_links import allure_report_url_for_run
 
         allure_url = allure_report_url_for_run(run_id)
     return RunReportsResponse(
@@ -116,15 +117,17 @@ def get_run_reports(run_id: str) -> RunReportsResponse:
 @router.get("/runs/{run_id}/pyramid", response_model=RunPyramidResponse)
 def get_run_pyramid(run_id: str, config_path: str | None = None) -> RunPyramidResponse:
     """Unit/integration/e2e tier composition for a run (UI/API parity with ``testo report pyramid``)."""
-    from testo_core.reporting.pyramid_data import build_pyramid_model
+    from testo_core.reporting.pyramid_data import build_pyramid_model, run_needs_config_tiers
     from testo_core.reporting.pyramid_viz import classify_shape
 
     record = get_run(run_id=run_id)
     if record is None:
         raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
 
+    # Runs record each stage's tier. Only older records without one fall back
+    # to the tiers in the current YAML.
     stages: tuple = ()
-    if record.cycle:
+    if record.cycle and run_needs_config_tiers(record):
         try:
             cfg = discover_and_load(
                 config_path=Path(config_path).expanduser().resolve() if config_path else None

@@ -7,11 +7,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from testo_core.run_history import CompletedRunView, snapshot_files_for_download
+from testo_core.history.snapshots import snapshot_files_for_download
+from testo_core.history.views import CompletedRunView
 from testo_core.services.report_archive_diff import CaseChange, _load_cases, diff_case_maps
 
 
-def diff_run_snapshots(*, baseline: CompletedRunView, current: CompletedRunView, tmp: Path) -> list[CaseChange]:
+def diff_run_snapshots(
+    *, baseline: CompletedRunView, current: CompletedRunView, tmp: Path
+) -> list[CaseChange]:
     """Materialize both runs' snapshots under ``tmp`` and return case-level changes."""
     base_root = _materialize_snapshot(record=baseline, dest=tmp / "baseline")
     cur_root = _materialize_snapshot(record=current, dest=tmp / "current")
@@ -21,11 +24,10 @@ def diff_run_snapshots(*, baseline: CompletedRunView, current: CompletedRunView,
 
 
 def _materialize_snapshot(*, record: CompletedRunView, dest: Path) -> Path:
-    """Write a run's snapshot files (local disk or S3) to a plain local dir.
+    """Write a run's snapshot files to a plain local dir.
 
-    Reuses ``snapshot_files_for_download`` -- already handles the local-vs-S3
-    branching for the "download run artifacts" feature -- instead of
-    re-implementing storage access here.
+    Reuses ``snapshot_files_for_download`` (the "download run artifacts" feature)
+    instead of re-implementing snapshot access here.
     """
     dest.mkdir(parents=True, exist_ok=True)
     for rel_label, data in snapshot_files_for_download(record=record):

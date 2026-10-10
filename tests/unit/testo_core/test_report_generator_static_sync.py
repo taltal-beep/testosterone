@@ -1,4 +1,4 @@
-"""Coverage for static mirroring helpers in ``testo_core.report_generator``."""
+"""Coverage for static mirroring helpers in ``testo_core.reporting.report_generator``."""
 
 from __future__ import annotations
 
@@ -6,10 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from testo_core import report_generator as rg
+from testo_core.reporting import report_generator as rg
 
 
-def test_publish_allure_index_to_static_chmod_branch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_publish_allure_index_to_static_chmod_branch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # Make report_dir == STATIC_ALLURE_REPORT_DIR
     static_dir = tmp_path / "static"
     report_dir = static_dir / "allure_report"
@@ -24,7 +26,9 @@ def test_publish_allure_index_to_static_chmod_branch(tmp_path: Path, monkeypatch
     assert out is not None
 
 
-def test_sync_all_reports_to_static_all_branches(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sync_all_reports_to_static_all_branches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
 
@@ -47,4 +51,3 @@ def test_sync_all_reports_to_static_all_branches(tmp_path: Path, monkeypatch: py
     out = rg.sync_all_reports_to_static(artifacts_root=artifacts, run_id="rid")
     assert out["allure"] is not None
     assert out["behavex"] is not None
-

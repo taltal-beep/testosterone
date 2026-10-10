@@ -57,7 +57,9 @@ def _plan(*names: str, plan_name: str = "lifecycle-plan") -> Plan:
     return Plan(name=plan_name, description=None, stages=tuple(_stage(n) for n in names))
 
 
-def _result(stage: Stage, *, returncode: int = 0, timed_out: bool = False, error: str | None = None) -> StageResult:
+def _result(
+    stage: Stage, *, returncode: int = 0, timed_out: bool = False, error: str | None = None
+) -> StageResult:
     now = time.time()
     return StageResult(
         stage_name=stage.name,
@@ -91,7 +93,9 @@ def test_events_ndjson_full_lifecycle_and_field_contract(
     plan = _plan("lint", "unit")
     _stub_executor(monkeypatch, _result)
 
-    orchestrator.run_plan(plan, renderer=_RecordingRenderer(), artifacts_root=tmp_path, persist=False)
+    orchestrator.run_plan(
+        plan, renderer=_RecordingRenderer(), artifacts_root=tmp_path, persist=False
+    )
 
     events = read_artifact_events(tmp_path, plan.name)
     assert [e["event"] for e in events] == [
@@ -130,7 +134,9 @@ def test_artifact_mirror_includes_error_on_timeout(
     plan = _plan("hang")
     _stub_executor(
         monkeypatch,
-        lambda stage: _result(stage, returncode=124, timed_out=True, error="stage exceeded timeout_s=0.5"),
+        lambda stage: _result(
+            stage, returncode=124, timed_out=True, error="stage exceeded timeout_s=0.5"
+        ),
     )
 
     result = orchestrator.run_plan(
@@ -138,7 +144,9 @@ def test_artifact_mirror_includes_error_on_timeout(
     )
 
     assert result.exit_code is EngineExitCode.INFRA_FAILURE
-    finished = [e for e in read_artifact_events(tmp_path, plan.name) if e["event"] == "stage_finished"][0]
+    finished = [
+        e for e in read_artifact_events(tmp_path, plan.name) if e["event"] == "stage_finished"
+    ][0]
     assert finished["timed_out"] is True
     assert finished["returncode"] == 124
     assert finished["error"] == "stage exceeded timeout_s=0.5"
@@ -205,7 +213,9 @@ def test_buffered_renderer_gets_no_chunk_callback(
     assert seen_callbacks == [None]
 
 
-def test_internal_failure_yields_exit_code_4(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_internal_failure_yields_exit_code_4(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # EC-04: an exception escaping the executor is converted into a synthetic
     # rc=4 stage result with internal_failure=True, classifying as 4.
     plan = _plan("kaboom")
@@ -223,7 +233,9 @@ def test_internal_failure_yields_exit_code_4(tmp_path: Path, monkeypatch: pytest
     assert result.stages[0].internal_failure is True
     assert "adapter blew up" in (result.stages[0].error or "")
 
-    finished = [e for e in read_artifact_events(tmp_path, plan.name) if e["event"] == "stage_finished"][0]
+    finished = [
+        e for e in read_artifact_events(tmp_path, plan.name) if e["event"] == "stage_finished"
+    ][0]
     assert finished["internal_failure"] is True
     plan_finished = read_artifact_events(tmp_path, plan.name)[-1]
     assert plan_finished["exit_code"] == 4
@@ -299,12 +311,16 @@ def test_persist_false_writes_no_plan_result_json(
     plan = _plan("unpersisted")
     _stub_executor(monkeypatch, _result)
 
-    orchestrator.run_plan(plan, renderer=_RecordingRenderer(), artifacts_root=tmp_path, persist=False)
+    orchestrator.run_plan(
+        plan, renderer=_RecordingRenderer(), artifacts_root=tmp_path, persist=False
+    )
 
     assert not (tmp_path / plan.name / "plan_result.json").exists()
 
 
-def test_json_backend_writes_plan_result_schema(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_json_backend_writes_plan_result_schema(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # LC: plan_result.json is the durable summary next to events.ndjson.
     plan = _plan("json-plan", plan_name="json-plan-cycle")
     _stub_executor(monkeypatch, lambda stage: _result(stage, returncode=1))
@@ -320,4 +336,10 @@ def test_json_backend_writes_plan_result_schema(tmp_path: Path, monkeypatch: pyt
     assert payload["aggregate_returncode"] == 1
     assert payload["stages"][0]["name"] == "json-plan"
     assert payload["stages"][0]["returncode"] == 1
-    assert set(payload["stages"][0]) >= {"framework", "duration_s", "log_path", "timed_out", "error"}
+    assert set(payload["stages"][0]) >= {
+        "framework",
+        "duration_s",
+        "log_path",
+        "timed_out",
+        "error",
+    }

@@ -6,7 +6,9 @@ from typing import Any
 
 _TOKEN_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"sk-[A-Za-z0-9_\-]{8,}"),
-    re.compile(r"(?:api[_-]?key|token|secret)\s*[:=]\s*([\"'])?([A-Za-z0-9_\-]{8,})(\1)?", re.IGNORECASE),
+    re.compile(
+        r"(?:api[_-]?key|token|secret)\s*[:=]\s*([\"'])?([A-Za-z0-9_\-]{8,})(\1)?", re.IGNORECASE
+    ),
     re.compile(r"Bearer\s+[A-Za-z0-9_\-]{8,}", re.IGNORECASE),
 )
 _SENSITIVE_KEY_PATTERN = re.compile(
@@ -27,7 +29,9 @@ def redact_mapping(payload: Mapping[str, Any]) -> dict[str, Any]:
     redacted: dict[str, Any] = {}
     for key, value in payload.items():
         key_text = str(key)
-        redacted[key_text] = _REDACTED if _SENSITIVE_KEY_PATTERN.search(key_text) else redact_value(value)
+        redacted[key_text] = (
+            _REDACTED if _SENSITIVE_KEY_PATTERN.search(key_text) else redact_value(value)
+        )
     return redacted
 
 

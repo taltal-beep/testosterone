@@ -1,5 +1,0 @@
-request_type=GET
-name=GET /slow
-response_time_ms=2002.1928750211373
-response_length=32
-exception=

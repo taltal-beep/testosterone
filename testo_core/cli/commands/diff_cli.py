@@ -61,7 +61,7 @@ def diff_reports(
 ) -> None:
     """Compare two ``ReportArchive`` rows (regressions, fixes, duration deltas)."""
     from testo_core.cli.ui.console import default_console
-    from testo_core.db import get_report_archive_repository
+    from testo_core.repository.db import get_report_archive_repository
     from testo_core.services.report_archive_diff import parse_archive_uuid
 
     console = default_console()
@@ -91,12 +91,16 @@ def summary_reports(
 ) -> None:
     """Diff the two most recent archived runs (newest vs previous)."""
     from testo_core.cli.ui.console import default_console
-    from testo_core.db import get_report_archive_repository
+    from testo_core.repository.db import get_report_archive_repository
 
     console = default_console()
     repo = get_report_archive_repository()
     cycle_key = cycle.strip() if cycle else None
-    rows = repo.list_recent_for_cycle(cycle_name=cycle_key, limit=2) if cycle_key else repo.list_recent(limit=2)
+    rows = (
+        repo.list_recent_for_cycle(cycle_name=cycle_key, limit=2)
+        if cycle_key
+        else repo.list_recent(limit=2)
+    )
     if len(rows) < 2:
         console.print("[fail]Need at least two archived runs in the database for ``summary``.[/]")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))

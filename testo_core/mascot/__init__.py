@@ -405,7 +405,14 @@ _GLOVES_RECOIL: Frame = _paste(
     3,
 )
 
-GLOVES: Animation = [_GLOVES_APART, _GLOVES_CLOSE, _GLOVES_HIT, _GLOVES_HIT, _GLOVES_RECOIL, _GLOVES_CLOSE]
+GLOVES: Animation = [
+    _GLOVES_APART,
+    _GLOVES_CLOSE,
+    _GLOVES_HIT,
+    _GLOVES_HIT,
+    _GLOVES_RECOIL,
+    _GLOVES_CLOSE,
+]
 
 ANIMATIONS: dict[str, Animation] = {
     "flex": FLEX,

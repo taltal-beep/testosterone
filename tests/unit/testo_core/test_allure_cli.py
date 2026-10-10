@@ -10,7 +10,9 @@ import pytest
 from testo_core.reporting import allure_cli as cli
 
 
-def test_resolve_prefers_local_node_modules(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_prefers_local_node_modules(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     root = tmp_path / "repo"
     root.mkdir()
     bin_dir = root / "node_modules" / ".bin"
@@ -32,7 +34,9 @@ def test_resolve_testo_allure_bin_override(tmp_path: Path, monkeypatch: pytest.M
     assert cmd.argv == ("/custom/allure",)
 
 
-def test_build_generate_argv_uses_awesome_for_single_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_generate_argv_uses_awesome_for_single_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     root = tmp_path / "repo"
     root.mkdir()
     (root / "allurerc.mjs").write_text("export default {}", encoding="utf-8")
@@ -50,5 +54,7 @@ def test_build_generate_argv_uses_awesome_for_single_file(tmp_path: Path, monkey
 
 
 def test_is_allure_available_false_when_unresolved(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "resolve_allure_command", MagicMock(side_effect=cli.AllureCLINotFoundError("x")))
+    monkeypatch.setattr(
+        cli, "resolve_allure_command", MagicMock(side_effect=cli.AllureCLINotFoundError("x"))
+    )
     assert cli.is_allure_available() is False

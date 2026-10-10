@@ -1,10 +1,17 @@
+---
+type: architecture
+status: current
+created: 2026-06-25
+updated: 2026-10-10
+---
+
 # Deep Dive — Execution Logic
 
-[[Architecture Overview]]
+[Architecture Overview](Architecture%20Overview.md)
 
-This note maps how **Testo** (`testo run`) initializes a test session, executes it stage-by-stage on the host, preserves state, and tears down. It is the implementation companion to [[Architecture Overview]] and [[QA Strategies]].
+This note maps how **Testo** (`testo run`) initializes a test session, executes it stage-by-stage on the host, preserves state, and tears down. It is the implementation companion to [Architecture Overview](Architecture%20Overview.md) and [QA Strategies](../Testing%20Workflows/QA%20Strategies.md).
 
-The default path uses **host subprocesses** — no Docker. The legacy **UQO headless** stack (`uqo run`, `testo_core/runners.py`, `HeadlessEngineService`) is documented briefly at the end.
+Every run uses **host subprocesses** — no Docker. The Docker-based execution stack (the project's original "UQO" design) that existed until v1.1 is summarized at the end.
 
 ---
 
@@ -17,7 +24,7 @@ The default path uses **host subprocesses** — no Docker. The legacy **UQO head
 | Execution unit | **Cycle** (plan) → ordered **stages** |
 | Stage runtime | One `subprocess.Popen` per stage |
 | Stage ordering | **Strictly sequential** in `run_plan()` |
-| Parallelism | Framework-internal only (e.g. BehaveX `--workers`) |
+| Parallelism | Framework-internal only, via `workers` (BehaveX; pytest with pytest-xdist) — see [Framework level](#framework-level--optional) |
 | Durability | `artifacts/<cycle>/` — logs, NDJSON events, Allure JSON |
 | Exit codes | `EngineExitCode` 0–4 via `classify_exit_code()` |
 
@@ -29,6 +36,7 @@ The default path uses **host subprocesses** — no Docker. The legacy **UQO head
 sequenceDiagram
   participant CLI as testo_run
   participant Runner as cli_runner
+  participant Svc as CycleRunService
   participant Config as config_loader
   participant Trig as triggers
   participant Orch as orchestrator
@@ -36,9 +44,11 @@ sequenceDiagram
   participant FW as framework_adapter
 
   CLI->>Runner: execute_plan_command
-  Runner->>Config: discover_and_load / resolve_stages
-  Runner->>Trig: evaluate_cycle_trigger optional
-  Runner->>Orch: run_plan
+  Runner->>Config: discover_and_load / resolve_plan
+  Runner->>Svc: run(cfg, plan, renderer, options)
+  Svc->>Config: resolve_stages_for_plan
+  Svc->>Trig: evaluate_cycle_trigger optional
+  Svc->>Orch: run_plan
   loop each stage
     Orch->>Exec: run_stage
     Exec->>FW: build_argv
@@ -46,7 +56,7 @@ sequenceDiagram
     Exec-->>Orch: StageResult
   end
   Orch->>Orch: plan_result.json + events.ndjson
-  Runner->>Runner: reporters + optional DB archive
+  Svc->>Svc: reporters + optional DB archive + trigger snapshot
 ```
 
 ### Phase map
@@ -56,11 +66,11 @@ sequenceDiagram
 | 1. CLI parse | `testo_core/cli/commands/run.py` | Validates flags; defers heavy imports |
 | 2. Config load | `testo_core/config/loader.py` | `discover_and_load()` → `TestosteroneConfig` |
 | 3. Plan resolve | `testo_core/config/resolver.py` | `resolve_plan()` / `resolve_stages_for_plan()` |
-| 4. Trigger gate | `testo_core/triggers.py` | Optional skip (exit 0) unless `--force` |
+| 4. Trigger gate | `testo_core/services/cycle_run.py` → `config/triggers.py` | Optional skip (exit 0) unless `--force` |
 | 5. Renderer pick | `testo_core/cli/runner.py` | Buffered / Stream / CI (NDJSON) |
 | 6. Engine run | `testo_core/engine/orchestrator.py` | `run_plan()` — sequential stages |
 | 7. Subprocess | `testo_core/engine/executor.py` | `run_stage()` per stage |
-| 8. Post-run | `testo_core/cli/runner.py` | Reporters, trigger snapshot, DB archive |
+| 8. Post-run | `testo_core/services/cycle_run.py` | Reporters, native report snapshot, DB archive, trigger snapshot |
 
 ---
 
@@ -74,6 +84,8 @@ sequenceDiagram
 - **Single cycle** — `resolve_plan(cfg, plan_name=...)`.
 - **`--tag`** — filters cycles when using `all`, or validates tag membership for one cycle.
 - **`--dry-run`** — prints resolved argv/cwd table (or NDJSON `dry_run_stage` events); no subprocesses.
+
+Each resolved cycle is handed to `CycleRunService.run()` (`testo_core/services/cycle_run.py`), which owns the trigger gate, the engine call and every post-run step. The API's `testo_api/cycle_execution_manager.py` calls the same service (for named cycles and for ad-hoc one-stage runs built by `single_stage_plan()`), so a run started from the dashboard goes through exactly the same steps; the two callers differ only in the renderer and the listener that presents trigger/archive messages (Rich panels or NDJSON on stdout for the CLI, lines in `events.ndjson` for the API).
 
 Config errors return exit code **2** (`EngineExitCode.INVALID_INPUT`). In `--ci` mode, errors emit:
 
@@ -110,7 +122,7 @@ An empty resolved stage list is a hard error (exit **2**).
 | `--stream` | `StreamRenderer` | `true` | Same panels + live stdout chunks |
 | `--ci` | `CIRenderer` | `false` | NDJSON lines on stdout only |
 
-Workers override: `_apply_workers_override()` clones the plan with `workers=` set on every stage (BehaveX parallelism).
+Workers override: `_apply_workers_override()` clones the plan with `workers=` set on every stage (only frameworks that use `workers` act on it).
 
 ---
 
@@ -158,6 +170,10 @@ per-test `passed`/`failed`/`broken`/`skipped`/`total` counts:
   across every stage divided by the sum of `total` across every stage (not an
   average of the per-stage percentages). This is what the Run Detail page's
   Summary card and the Dashboard/Runs list health figures show.
+- **Crashed stages** — a stage that exited non-zero without producing any
+  results (e.g. it crashed at startup) has no pass rate, so the overall figure
+  is scaled by the share of stages that did not crash: one stage at 100% plus
+  one crashed stage gives 50%, not the 100% the other stage alone would show.
 - **Fallback** — if no stage produced any parseable Allure results (empty
   `total` everywhere), the overall figure falls back to the older binary
   estimate (`passed_stages / len(stages) * 100`, i.e. did each stage
@@ -165,6 +181,23 @@ per-test `passed`/`failed`/`broken`/`skipped`/`total` counts:
   approximate health instead of a bare 0%. Runs persisted before this change
   only have that binary estimate — `stage_health` is empty for them, and the
   frontend shows "Per-stage breakdown not available for this run."
+
+### Test time
+
+The same parse gives each test's duration (Allure `stop - start`), so both
+backends also store test time, summed by `run_test_totals()` in
+`testo_core/persistence/health.py`:
+
+- **`test_time_ms`** on each stage: the sum of that stage's test durations.
+- **`metrics_duration_ms`** on the run: the sum over every test. It is not wall
+  time (`duration_s`), which also counts collection, fixtures and process start.
+- **`avg_case_ms`** on the run: `metrics_duration_ms / total_tests`, `null`
+  when the run has no tests.
+
+Compare shows these as "Test time (sum)" and "Avg per test". Runs persisted
+before 2026-10-10 have neither key and show `n/a` there.
+`tests/contract/testo_core/test_run_metadata_contract.py` fails when
+`testo_core/history/views.py` reads a metadata key that persistence never writes.
 
 ---
 
@@ -185,9 +218,9 @@ Steps:
 1. `get_adapter(stage.framework)` → `PytestAdapter` | `BehaveAdapter` | `BehaveXAdapter` | `CommandAdapter` (argv = `stage.args` verbatim)
 2. `adapter.build_argv(target_repo, results_dir, stage_args, workers)`
 3. `merged_env(parent_env, stage.extra_env)` plus injected vars:
-   - `UQO_SHARED_ALLURE_RESULTS_DIR` → Allure output dir
-   - `UQO_ARTIFACTS_ROOT` → artifacts root
-   - `UQO_LAST_TEST_TYPE` → framework name
+   - `TESTO_SHARED_ALLURE_RESULTS_DIR` → Allure output dir
+   - `TESTO_ARTIFACTS_ROOT` → artifacts root
+   - `TESTO_LAST_TEST_TYPE` → framework name
 
 ### Process model
 
@@ -204,7 +237,7 @@ subprocess.Popen(argv, cwd=target_repo, stdout=PIPE, stderr=STDOUT)
 
 ### Post-stage hook
 
-For `behavex`, `ensure_behavex_report_html(stage_root)` runs best-effort (exceptions swallowed).
+For `behavex`, `ensure_behavex_report_html(stage_root)` runs best-effort: a failure is logged, appended to `run.log` and set as the stage's `error` (unless a timeout or launch error is already there). The exit code is unchanged.
 
 For any stage with `junit_xml` globs (typically `equipment: command`), `_import_junit` converts the matching JUnit XML (only files inside `target_repo`, only files written since the stage started) into one Allure `*-result.json` per `<testcase>` in `allure-results/<framework>/`: `<failure>` → failed, `<error>` → broken, `<skipped>` → skipped, otherwise passed. It is best-effort, like the BehaveX hook. The process exit code still decides the stage result, and the import outcome (count, or malformed files skipped) is appended to `run.log` as `[testo] junit_xml: ...`.
 
@@ -246,8 +279,16 @@ Two consumers write the same logical events:
 
 ### Framework level — optional
 
-- YAML `workers:` on a stage, or CLI `--workers`, flows into BehaveX argv.
-- Pytest may use its own `-n` if passed via `args:`.
+`workers:` (stage, or `defaults:`, default `4`; CLI `--workers` overrides every stage) means something different per framework:
+
+| Framework | What `workers: N` does |
+|-----------|------------------------|
+| `behavex` | `--parallel-processes N --parallel-scheme feature`, unless `args:` already set them. |
+| `pytest` | `-n N` when N > 1 **and** pytest-xdist is importable by the `pytest` on PATH (the adapter reads its shebang and probes that interpreter). Without xdist it logs one warning and runs serially. A `-n`/`--numprocesses` or `-p no:xdist` in `args:` wins. |
+| `behave` | Nothing — native behave is single-process. Setting `workers:` on the stage loads fine but logs a warning. |
+| `command` | Nothing — the command owns its own flags (same warning). |
+
+The API's `GET /api/v1/cycles/{cycle}` returns `workers: null` for `behave` and `command` stages, so the UI only shows *Workers* where it can apply (pytest's is labelled "with pytest-xdist").
 
 ### Threading in the engine
 
@@ -290,7 +331,7 @@ Cycles run **one after another** in sorted name order. No thread pool across cyc
 
 ## Architectural bottlenecks and race conditions
 
-These are **current code behaviors** worth knowing for CI design and future refactors. See also [[Technical Debt Tracker]] and [[Troubleshooting and Error Codes]].
+These are **current code behaviors** worth knowing for CI design and future refactors. See also [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md) and [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md).
 
 | Issue | Location | Impact |
 |-------|----------|--------|
@@ -298,7 +339,7 @@ These are **current code behaviors** worth knowing for CI design and future refa
 | Sequential multi-cycle | `execute_plan_command` with `plan_name == "all"` | Wall-clock time grows linearly with cycle count |
 | Per-stage Allure wipe | `executor` `shutil.rmtree(results_dir)` | Correct isolation; cannot accumulate Allure results across retries within one stage without code changes |
 | Log reader join timeout | `executor` `reader.join(timeout=2.0)` | Rare truncated tail in `output_tail` / last lines of `run.log` under heavy I/O |
-| Reporter errors swallowed | `executor` BehaveX HTML hook; `ReporterFactory` partial failures | Missing native HTML or reporter output may be silent |
+| Reporter failures don't fail the run | `ReporterFactory` partial failures | A failed reporter is logged and returned as `ok=False`, but the exit code stays green |
 
 ### Exit classification reference
 
@@ -315,16 +356,18 @@ Stage timeouts emit **124** after `_terminate()`; orchestrator sets `internal_fa
 
 ---
 
-## Legacy UQO / Docker path (contrast)
+## Removed: the UQO headless / Docker path
 
-| Aspect | `testo run` (modern) | `uqo run` / `HeadlessEngineService` |
-|--------|----------------------|-------------------------------------|
-| Runtime | Host subprocess | Docker container on `uqo-net` |
-| Module | `testo_core/engine/*` | `testo_core/runners.py`, `services/headless_engine.py` |
-| Output | Rich / NDJSON / artifacts | Ghost JSON / NDJSON + Postgres + MinIO |
-| Timeout | `stage.timeout_s` | `UQO_CONTAINER_TIMEOUT_S` |
+Until v1.1 a second stack ran beside the engine: `uqo run --config` and the API's `/api/v1/executions` called `HeadlessEngineService`, which ran each framework in a one-off Docker container via `testo_core/runners.py` and wrote history through `run_history.record_completed_run`. It duplicated trigger-less execution, persistence and exit-code logic, so behaviour drifted between surfaces. It was removed; what only it provided now lives on the engine path:
 
-Platform compose stack (Postgres, MinIO, Allure Server) is described in repo `ARCHITECTURE.md`, not required for default `testo run`.
+| Former legacy-only feature | Now |
+|----------------------------|-----|
+| Run one framework without a cycle | `POST /api/v1/adhoc-executions` → `single_stage_plan()` → `CycleRunService` |
+| CI provenance on run records | `DbBackend` + `services/ci_provenance.py` |
+| Failed cases / traceback / log tail for AI summaries | `persistence/failure_context.py` via `DbBackend` |
+| InfluxDB / Prometheus push | `integrations.push_run_metrics_if_configured()` after every cycle |
+
+The compose stack (Postgres only) is described in repo `ARCHITECTURE.md` and is not required for `testo run`.
 
 ### Official documentation
 
@@ -338,8 +381,8 @@ Platform compose stack (Postgres, MinIO, Allure Server) is described in repo `AR
 
 ## Related notes
 
-- [[Architecture Overview]] — module map and artifact layout
-- [[QA Strategies]] — triggers, CI output, typical flows
-- [[Command Reference]] — flags and exit codes
-- [[Troubleshooting and Error Codes]] — failure playbook
-- [[Technical Debt Tracker]] — prioritized refactor backlog
+- [Architecture Overview](Architecture%20Overview.md) — module map and artifact layout
+- [QA Strategies](../Testing%20Workflows/QA%20Strategies.md) — triggers, CI output, typical flows
+- [Command Reference](../CLI%20Commands/Command%20Reference.md) — flags and exit codes
+- [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md) — failure playbook
+- [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md) — prioritized refactor backlog

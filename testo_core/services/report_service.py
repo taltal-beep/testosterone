@@ -14,16 +14,16 @@ from testo_core.paths import (
     STATIC_ALLURE_REPORTS_DIR,
 )
 from testo_core.paths import default_artifacts_root as paths_default_artifacts_root
-from testo_core.report_generator import (
+from testo_core.reporting.report_generator import (
     ReportPaths,
     default_report_paths,
     make_report_zip,
     read_single_file_html,
 )
-from testo_core.report_generator import (
+from testo_core.reporting.report_generator import (
     generate_allure_html as _generate_allure_html,
 )
-from testo_core.report_generator import (
+from testo_core.reporting.report_generator import (
     generate_allure_reports as _generate_allure_reports,
 )
 
@@ -100,7 +100,9 @@ class ReportService:
 
     def make_report_zip(self, *, base_name: str = "allure-report") -> Path:
         paths = self.report_paths()
-        return make_report_zip(report_dir=paths.report_dir, out_dir=self._artifacts_root, base_name=base_name)
+        return make_report_zip(
+            report_dir=paths.report_dir, out_dir=self._artifacts_root, base_name=base_name
+        )
 
     def read_single_file_html(self) -> tuple[bool, str, bytes | None]:
         paths = self.report_paths()
@@ -111,5 +113,9 @@ class ReportService:
         """Whether any Allure HTML report exists under ``static/``."""
         has_allure = False
         if STATIC_ALLURE_REPORTS_DIR.is_dir():
-            has_allure = any((d / "index.html").is_file() for d in STATIC_ALLURE_REPORTS_DIR.iterdir() if d.is_dir())
+            has_allure = any(
+                (d / "index.html").is_file()
+                for d in STATIC_ALLURE_REPORTS_DIR.iterdir()
+                if d.is_dir()
+            )
         return has_allure or STATIC_ALLURE_INDEX.is_file() or STATIC_ALLURE_HTML.is_file()

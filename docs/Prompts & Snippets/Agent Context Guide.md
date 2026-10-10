@@ -1,24 +1,34 @@
+---
+type: guide
+status: current
+created: 2026-06-25
+updated: 2026-10-08
+---
+
 # Agent Context Guide
 
-You are assisting an engineer on the Testo CLI orchestration project. To save tokens and avoid scanning the entire codebase blindly, use this file as your master map to find existing documentation.
+Map for AI coding agents working on Testosterone (`testo-core`, CLI `testo`): which note to read before touching what, so you don't have to scan the whole codebase.
 
-## Core Reference Map
+## Where to look
 
-* **Architecture & Flow:** If asked to modify execution logic, runtime state, or core modules, read `[[Architecture Overview]]` and `[[Deep Dive - Execution Logic]]` first. Do not hallucinate the lifecycle phases.
-* **CLI Modifications:** Before adding, editing, or refactoring a command, flag, or exit code, reference `[[Command Reference]]` and `[[Troubleshooting and Error Codes]]` to maintain structural consistency.
-* **Release & Deployments:** When dealing with CI/CD pipelines, container environments, or infrastructure runners, check the active checklists in `[[Release Management/]]` (e.g. `[[Release Checklist - Phase 2 CI Integrations]]`, `[[Release Checklist - Phase 2 Ghost Mode]]`, `[[Release Checklist - Phase 2 Runner Image]]`).
-* **CI/CD & Ghost Mode:** `[[CI-CD Pipeline Setup]]`, `[[QA Strategies#CI and streaming output]]`
-* **Reporting Integrations:** `[[ReportPortal Local Setup Guide]]`, `[[QA Strategies#How results are logged and surfaced]]`, `[[Command Reference]]` (reporter types section)
-* **E2E Validation:** `[[E2E Harness Operations Guide]]`
-* **UI Migration:** `[[Streamlit to React Migration Guide]]`
-* **Delta Semantics:** `[[Delta Comparison Policy]]`
-* **Engineering Debt:** `[[Technical Debt Tracker]]`
-* **Prompts / AI Experiments:** `[[AI Prompt Engineering Lab]]`
-* **Business & Strategy Context:** For the "why" behind features, upcoming milestones, or legacy migrations, read `[[Roadmap & Strategy/Product Roadmap]]`.
+* **Architecture & flow:** [System Diagram](../Architecture/System%20Diagram.md) is the one-picture view. Before changing execution logic, runtime state or core modules, read [Architecture Overview](../Architecture/Architecture%20Overview.md) and [Deep Dive - Execution Logic](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md). Don't guess the lifecycle phases.
+* **CLI changes:** before adding or changing a command, flag or exit code, read [Command Reference](../CLI%20Commands/Command%20Reference.md) and [Troubleshooting and Error Codes](../CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md). `tests/contract/testo_core/test_cli_docs_drift.py` fails if the reference documents a command that doesn't exist.
+* **CI and releases:** [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md), [QA Strategies § CI and streaming output](../Testing%20Workflows/QA%20Strategies.md#ci-and-streaming-output), and the publishing guides ([PyPI](../Processes%20&%20Guides/Publishing%20to%20PyPI.md), [Docker images](../Processes%20&%20Guides/Publishing%20Docker%20Images.md), [Artifactory](../Processes%20&%20Guides/Publishing%20to%20Artifactory.md)).
+* **Pages demo:** [GitLab Pages Demo](../Processes%20&%20Guides/GitLab%20Pages%20Demo.md) (covers GitHub Pages too).
+* **Reporting:** [QA Strategies § How results are logged and surfaced](../Testing%20Workflows/QA%20Strategies.md#how-results-are-logged-and-surfaced) and the reporter section of [Command Reference](../CLI%20Commands/Command%20Reference.md).
+* **E2E harness:** [E2E Harness Operations Guide](../Processes%20&%20Guides/E2E%20Harness%20Operations%20Guide.md).
+* **Docs vault and wiki:** [vault schema](../CLAUDE.md) and [Docs Vault and Wiki Sync](../Specs%20&%20ADRs/Docs%20Vault%20and%20Wiki%20Sync%20-%202026-10-07.md). Images go under `docs/assets/` and must be embedded from a note to reach Obsidian and the wiki.
+* **UI:** the React frontend in `frontend/` is the only UI; its API types are generated from FastAPI's OpenAPI schema.
+* **Delta semantics:** [Delta Comparison Policy](../Specs%20&%20ADRs/Delta%20Comparison%20Policy.md).
+* **Design decisions:** [Specs & ADRs](../Specs%20&%20ADRs/README.md).
+* **Open debt and next steps:** [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md), [Product Roadmap](../Roadmap%20&%20Strategy/Product%20Roadmap.md).
+* **History:** dated plans, audits and phase checklists are in [Archive](../Archive/README.md). They describe the code as it was, not as it is.
 
-## Rules for AI Agent Behavior
+## Rules
 
-1. **Read Before Writing:** Always check the relevant documentation file listed above before refactoring core architecture or modifying a CLI argument.
-2. **Documentation Debt:** If you modify a CLI command, change execution state logic, or alter infrastructure setups in the source code, you are strictly required to update the corresponding documentation file in `/docs` within the same execution plan or pull request.
-3. **Token Conservation:** Keep code explanations concise. If an architectural explanation or troubleshooting step is already detailed in the documentation, point the engineer to that file using `[[Wiki-links]]` instead of printing massive text walls in the chat.
-4. **Wiki-link Stems:** Obsidian resolves `[[links]]` from filename stems. After vault refactors, update this guide and `[[Index]]` in the same change set so the knowledge graph stays intact.
+The full conventions (frontmatter, ingest / query / lint, the log) are in the [vault schema](../CLAUDE.md); `python scripts/docs_vault.py lint` checks them.
+
+1. **Read before writing.** Check the relevant note above before refactoring core architecture or changing a CLI argument.
+2. **Keep docs in step.** If you change a CLI command, execution state logic or infrastructure setup, update the matching note under `docs/` in the same pull request. Bump the note's `updated` date.
+3. **Point, don't paste.** If a note already explains something, link to it instead of repeating it.
+4. **Links.** Use standard relative markdown links with spaces encoded as `%20` (e.g. `[Command Reference](../CLI%20Commands/Command%20Reference.md)`), so they work on GitHub and in Obsidian. When you move or rename a note, update the links to it and [Index](../Index.md) in the same change.

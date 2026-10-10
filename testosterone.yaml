@@ -57,33 +57,51 @@ cycles:
         args:
           - features
 
-  # Same as sample-all-frameworks but injects random failures in sample_target_repo
-  # (pytest + Behave + BehaveX). Each stage rolls independently per test/scenario.
-  # Tune probability via TESTO_SAMPLE_RANDOM_FAIL_P in extra_env or export it globally (0–1).
-  sample-all-frameworks-stochastic:
-    description: >
-      Full sample cycle with TESTO_SAMPLE_RANDOM_FAIL_P=0.35 (each run differs).
-      For a stable green run use sample-all-frameworks instead.
+  # --- GitLab Pages demo (.gitlab-ci.yml) ------------------------------------
+  # Testosterone running its own Python suite, split by tier so the dashboard's
+  # pyramid is real. The nested pytest gets its own throwaway DB so the suite's
+  # tests never write into the history of the run that is executing them.
+  self-test:
+    description: Testosterone's own fast suite, run by testosterone.
     stages:
-      - name: pytest-sample
+      - name: core-unit
         equipment: pytest
-        target_repo: sample_target_repo
-        args:
-          - -q
-          - tests
+        target_repo: .
+        args: ["-q", "-p", "no:cacheprovider", "--no-cov", "-m", "unit and tier_fast and not quarantined", "tests"]
+        tier: unit
         extra_env:
-          TESTO_SAMPLE_RANDOM_FAIL_P: "0.35"
-      - name: behave-features
+          DATABASE_URL: "sqlite:////tmp/testo-self-test.db"
+      - name: core-integration
+        equipment: pytest
+        target_repo: .
+        args: ["-q", "-p", "no:cacheprovider", "--no-cov", "-m", "(integration or contract) and tier_fast and not quarantined", "tests"]
+        tier: integration
+        extra_env:
+          DATABASE_URL: "sqlite:////tmp/testo-self-test.db"
+
+  # The demo target: https://github.com/taltal-beep/fake-api, cloned into
+  # .demo/fake-api by the pipeline. Its failures are built into the app
+  # (a flaky route, a broken one, a slow one), not injected into the tests.
+  fake-api:
+    description: Fake Doing Bullshit app (taltal-beep/fake-api) — unit, API, Behave and browser tests.
+    stages:
+      - name: unit
+        equipment: pytest
+        target_repo: .demo/fake-api
+        args: ["-q", "-p", "no:cacheprovider", "tests/unit"]
+        tier: unit
+      - name: api
+        equipment: pytest
+        target_repo: .demo/fake-api
+        args: ["-q", "-p", "no:cacheprovider", "tests/api"]
+        tier: integration
+      - name: buttons
         equipment: behave
-        target_repo: sample_target_repo
-        args:
-          - features
-        extra_env:
-          TESTO_SAMPLE_RANDOM_FAIL_P: "0.35"
-      - name: flow-tests
-        equipment: behavex
-        target_repo: sample_target_repo
-        args:
-          - features
-        extra_env:
-          TESTO_SAMPLE_RANDOM_FAIL_P: "0.35"
+        target_repo: .demo/fake-api
+        args: ["features/buttons.feature"]
+        tier: integration
+      - name: ui
+        equipment: pytest
+        target_repo: .demo/fake-api
+        args: ["-q", "-p", "no:cacheprovider", "tests/e2e"]
+        tier: e2e

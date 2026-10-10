@@ -40,4 +40,3 @@ class FlowScenario:
     provisioner: Provisioner
     executor: Executor
     verifiers: list[Verifier]
-

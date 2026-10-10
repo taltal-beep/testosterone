@@ -32,8 +32,8 @@ def aggregate_cycle_metrics(plan_dir: Path) -> dict[str, int | None]:
     if not plan_dir.is_dir():
         return _empty_metrics()
 
-    from testo_core.metrics import parse_allure_results_dir
     from testo_core.reporting.collector import collect_results
+    from testo_core.reporting.metrics import parse_allure_results_dir
 
     cr = collect_results(plan_dir.parent, plan_name=plan_dir.name)
     total_tests = passed = failed = broken = skipped = unknown = 0
@@ -105,7 +105,9 @@ def build_cycle_zip_bytes(
     return buf.getvalue(), summary, exit_code
 
 
-def extract_archive_to_plan_dir(*, zip_bytes: bytes, dest_artifacts_root: Path, plan_name: str) -> Path:
+def extract_archive_to_plan_dir(
+    *, zip_bytes: bytes, dest_artifacts_root: Path, plan_name: str
+) -> Path:
     """Extract a stored zip so paths match ``plan_artifacts_dir`` layout."""
     dest = plan_artifacts_dir(dest_artifacts_root, plan_name)
     dest.mkdir(parents=True, exist_ok=True)
@@ -133,7 +135,7 @@ def try_persist_cycle_report(
     exit_code_override: int | None = None,
 ) -> uuid.UUID | None:
     """Best-effort insert of a zipped cycle directory into ``ReportArchive``."""
-    from testo_core.db import get_report_archive_repository
+    from testo_core.repository.db import get_report_archive_repository
 
     log = logging.getLogger(__name__)
     try:
@@ -153,5 +155,6 @@ def try_persist_cycle_report(
         )
         return row.id
     except Exception:
+        # Broad on purpose: the caller turns None into exit 3 under --ci (or ignores it otherwise).
         log.exception("report archive persistence failed for cycle %s", plan_name)
         return None

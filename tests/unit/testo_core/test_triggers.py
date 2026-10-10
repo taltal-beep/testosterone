@@ -1,4 +1,4 @@
-"""Tests for :mod:`testo_core.triggers`."""
+"""Tests for :mod:`testo_core.config.triggers`."""
 
 from __future__ import annotations
 
@@ -7,8 +7,9 @@ from pathlib import Path
 
 import pytest
 
+from testo_core.config import triggers
 from testo_core.config.loader import load_config
-from testo_core.triggers import (
+from testo_core.config.triggers import (
     evaluate_cycle_trigger,
     path_matches_trigger_glob,
     persist_trigger_snapshot,
@@ -142,12 +143,16 @@ cycles:
 def test_git_trigger_matches_changed_file(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
-    init = subprocess.run(["git", "init", "-b", "main"], cwd=repo, capture_output=True, text=True, timeout=30)
+    init = subprocess.run(
+        ["git", "init", "-b", "main"], cwd=repo, capture_output=True, text=True, timeout=30
+    )
     if init.returncode != 0:
         init = subprocess.run(["git", "init"], cwd=repo, capture_output=True, text=True, timeout=30)
     if init.returncode != 0:
         pytest.skip(f"git init failed: {init.stderr}")
-    subprocess.run(["git", "config", "user.email", "t@test"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "t@test"], cwd=repo, check=True, capture_output=True
+    )
     subprocess.run(["git", "config", "user.name", "t"], cwd=repo, check=True, capture_output=True)
     (repo / "services").mkdir()
     (repo / "services" / "db").mkdir(parents=True)
@@ -186,3 +191,45 @@ cycles:
     assert tr2.stimulus is True
     assert tr2.mode == "git"
     assert "services/db/x.py" in tr2.matched_paths
+
+
+def test_git_failure_falls_back_to_snapshot_visibly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A Git error must not silently turn into a snapshot run: warn and say so in the reason."""
+    anchor = tmp_path / "proj"
+    (anchor / "src").mkdir(parents=True)
+    yml = anchor / "testosterone.yaml"
+    yml.write_text(
+        """
+version: 1
+defaults:
+  target_repo: .
+  artifacts_root: artifacts
+cycles:
+  c1:
+    description: d
+    trigger:
+      paths:
+        - "src/**"
+    stages:
+      - name: s1
+        equipment: pytest
+        args: []
+""",
+        encoding="utf-8",
+    )
+    cfg = load_config(yml)
+
+    def broken_git(**_kwargs: object) -> None:
+        raise RuntimeError("bad revision 'origin/main'")
+
+    monkeypatch.setattr(triggers, "_git_repo_root", lambda _anchor: anchor)
+    monkeypatch.setattr(triggers, "_evaluate_git_trigger", broken_git)
+
+    with caplog.at_level("WARNING", logger="testo_core.config.triggers"):
+        tr = evaluate_cycle_trigger(plan=cfg.cycles["c1"], cfg=cfg)
+
+    assert tr.mode == "snapshot"
+    assert tr.reason.startswith("Git evaluation failed (bad revision 'origin/main')")
+    assert "falling back to snapshot mode" in caplog.text

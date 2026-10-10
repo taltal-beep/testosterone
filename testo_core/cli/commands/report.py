@@ -7,12 +7,15 @@ Default (no subcommand): generate / serve / export from Allure results.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
 
 import typer
 
 from testo_core.engine.exit_codes import EngineExitCode
+
+logger = logging.getLogger(__name__)
 
 report_app = typer.Typer(
     name="report",
@@ -158,13 +161,17 @@ def report_native(
     cycle_dir = resolve_cycle_dir(artifacts_root=artifacts_root, cycle=resolved_cycle)
     if cycle_dir is None:
         label = resolved_cycle or "(latest)"
-        console.print(f"[fail]No cycle artifacts found for[/] {label} under {relpath_for_display(Path(artifacts_root))}")
+        console.print(
+            f"[fail]No cycle artifacts found for[/] {label} under {relpath_for_display(Path(artifacts_root))}"
+        )
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
     if routine_name is None or not str(routine_name).strip():
         rows = list_native_rows(cycle_dir=cycle_dir)
         if not rows:
-            console.print("[warn]No raw data found for this routine[/] — no stage directories under the cycle.")
+            console.print(
+                "[warn]No raw data found for this routine[/] — no stage directories under the cycle."
+            )
             raise typer.Exit(code=0)
 
         table = Table(title="Native reports", show_lines=False, title_justify="left")
@@ -186,14 +193,16 @@ def report_native(
             html_targets = [r for r in rows if r.open_path is not None and r.open_kind == "html"]
             any_failed = False
             for r in html_targets:
-                if open_native_uri(r.open_path):
+                target = r.open_path
+                assert target is not None  # filtered above
+                if open_native_uri(target):
                     console.print(
-                        f"[ok]Opened[/] [html] {relpath_for_display(r.open_path)} [muted]({r.routine})[/]"
+                        f"[ok]Opened[/] [html] {relpath_for_display(target)} [muted]({r.routine})[/]"
                     )
                 else:
                     any_failed = True
                     console.print(
-                        f"[fail]Could not open browser for[/] {r.open_path.resolve()} [muted]({r.routine})[/]"
+                        f"[fail]Could not open browser for[/] {target.resolve()} [muted]({r.routine})[/]"
                     )
             if any_failed:
                 raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE))
@@ -202,7 +211,9 @@ def report_native(
     routine = str(routine_name).strip()
     stage_dir = find_stage_dir(cycle_dir, routine)
     if stage_dir is None:
-        console.print(f"[fail]Unknown routine[/] {routine!r} under {relpath_for_display(cycle_dir)}")
+        console.print(
+            f"[fail]Unknown routine[/] {routine!r} under {relpath_for_display(cycle_dir)}"
+        )
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
     eq_map = load_stage_equipment(cycle_dir)
@@ -221,12 +232,12 @@ def report_native(
         raise typer.Exit(code=0)
 
     if open_native_uri(row.open_path):
-        console.print(
-            f"[ok]Opened[/] [{row.open_kind}] {relpath_for_display(row.open_path)}"
-        )
+        console.print(f"[ok]Opened[/] [{row.open_kind}] {relpath_for_display(row.open_path)}")
         raise typer.Exit(code=0)
 
-    console.print("[fail]Could not open the default browser for[/] " f"{relpath_for_display(row.open_path)}")
+    console.print(
+        f"[fail]Could not open the default browser for[/] {relpath_for_display(row.open_path)}"
+    )
     raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE))
 
 
@@ -237,12 +248,14 @@ def report_list_archived(
     from rich.table import Table
 
     from testo_core.cli.ui.console import default_console
-    from testo_core.db import get_report_archive_repository
+    from testo_core.repository.db import get_report_archive_repository
 
     console = default_console()
     try:
         rows = get_report_archive_repository().list_recent(limit=limit)
     except Exception as exc:
+        # Broad on purpose: any DB/driver error maps to exit 3 with its message.
+        logger.debug("listing archived reports failed", exc_info=True)
         console.print(f"[fail]could not list reports:[/] {exc}")
         raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE)) from exc
 
@@ -312,8 +325,8 @@ def report_open_archived(
     import uuid
 
     from testo_core.cli.ui.console import default_console
-    from testo_core.db import get_report_archive_repository
     from testo_core.reporting.entry import dispatch_report
+    from testo_core.repository.db import get_report_archive_repository
     from testo_core.services.report_archive import extract_archive_to_plan_dir
 
     console = default_console()
@@ -326,6 +339,8 @@ def report_open_archived(
     try:
         row = get_report_archive_repository().get(rid)
     except Exception as exc:
+        # Broad on purpose: any DB/driver error maps to exit 3 with its message.
+        logger.debug("loading archived report %s failed", rid, exc_info=True)
         console.print(f"[fail]could not load report:[/] {exc}")
         raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE)) from exc
 
@@ -355,7 +370,9 @@ def report_open_archived(
     raise typer.Exit(code=int(exit_code))
 
 
-@report_app.command("pyramid", help="Render the unit/integration/e2e test pyramid for a completed run.")
+@report_app.command(
+    "pyramid", help="Render the unit/integration/e2e test pyramid for a completed run."
+)
 def report_pyramid(
     run_id: str = typer.Argument(
         ...,
@@ -372,9 +389,9 @@ def report_pyramid(
     from testo_core.cli.ui.console import default_console
     from testo_core.config.errors import ConfigError
     from testo_core.config.loader import discover_and_load
-    from testo_core.reporting.pyramid_data import build_pyramid_model
+    from testo_core.history.read_model import get_run
+    from testo_core.reporting.pyramid_data import build_pyramid_model, run_needs_config_tiers
     from testo_core.reporting.pyramid_viz import classify_shape, render_pyramid_lines
-    from testo_core.run_history import get_run
 
     console = default_console()
     run = get_run(run_id=run_id)
@@ -382,8 +399,10 @@ def report_pyramid(
         console.print(f"[fail]no run found with id[/] {run_id!r}")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
+    # Runs record each stage's tier. Only older records without one fall back
+    # to the tiers in the current YAML.
     stages: tuple[Any, ...] = ()
-    if run.cycle:
+    if run.cycle and run_needs_config_tiers(run):
         try:
             cfg = discover_and_load(config_path=config)
         except ConfigError as exc:

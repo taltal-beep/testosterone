@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import logging
 import os
 import time
 from collections.abc import Mapping
@@ -27,6 +28,8 @@ from testo_core.engine.executor import run_stage
 from testo_core.engine.exit_codes import classify_exit_code
 from testo_core.engine.result import PlanResult, StageResult
 from testo_core.reporting.paths import plan_artifacts_dir
+
+logger = logging.getLogger(__name__)
 
 
 class _EventSink(Protocol):
@@ -70,7 +73,9 @@ def run_plan(
     on_chunk = _make_on_chunk(renderer, stream=renderer.wants_streaming)
 
     with _NdjsonRecorder(events_path) as recorder:
-        recorder.write({"event": "plan_started", "plan": plan.name, "stage_count": len(plan.stages)})
+        recorder.write(
+            {"event": "plan_started", "plan": plan.name, "stage_count": len(plan.stages)}
+        )
 
         for idx, stage in enumerate(plan.stages, start=1):
             renderer.handle(
@@ -95,6 +100,9 @@ def run_plan(
                     on_chunk=on_chunk(stage.name),
                 )
             except Exception as exc:
+                # Broad on purpose: an engine bug becomes an internal-failure result (exit 4)
+                # so later stages, persistence and reporters still run.
+                logger.exception("stage %s crashed inside the engine", stage.name)
                 stage_result = _internal_failure_result(stage=stage, exc=exc)
 
             stage_results.append(stage_result)
@@ -223,6 +231,7 @@ def _internal_failure_result(*, stage, exc: Exception) -> StageResult:  # type: 
     return StageResult(
         stage_name=stage.name,
         framework=stage.framework,
+        tier=stage.tier,
         returncode=4,
         started_at=now,
         finished_at=now,
@@ -235,5 +244,3 @@ def _internal_failure_result(*, stage, exc: Exception) -> StageResult:  # type: 
         error=f"internal error: {exc}",
         internal_failure=True,
     )
-
-

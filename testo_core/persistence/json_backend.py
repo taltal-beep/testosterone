@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 
 from testo_core.engine.result import PlanResult
-from testo_core.persistence.health import compute_stage_health
+from testo_core.persistence.health import compute_stage_health, run_test_totals
 from testo_core.reporting.paths import plan_artifacts_dir
 
 logger = logging.getLogger(__name__)
@@ -41,21 +41,22 @@ class JsonBackend:
                     {
                         "name": s.stage_name,
                         "framework": s.framework,
+                        "tier": s.tier,
                         "returncode": int(s.returncode),
                         "duration_s": s.duration_s,
                         "log_path": str(s.log_path) if s.log_path else None,
                         "timed_out": s.timed_out,
                         "error": s.error,
-                        **{k: v for k, v in stage_health_by_name.get(s.stage_name, {}).items() if k != "name"},
+                        **{
+                            k: v
+                            for k, v in stage_health_by_name.get(s.stage_name, {}).items()
+                            if k != "name"
+                        },
                     }
                     for s in result.stages
                 ],
                 "health_pct": health_pct,
-                "total_tests": sum(h["total_tests"] for h in stage_health) if stage_health else None,
-                "passed": sum(h["passed"] for h in stage_health) if stage_health else None,
-                "failed": sum(h["failed"] for h in stage_health) if stage_health else None,
-                "broken": sum(h["broken"] for h in stage_health) if stage_health else None,
-                "skipped": sum(h["skipped"] for h in stage_health) if stage_health else None,
+                **run_test_totals(stage_health),
             }
             target.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
         except OSError:

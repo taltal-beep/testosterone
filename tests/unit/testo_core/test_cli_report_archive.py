@@ -9,8 +9,8 @@ import pytest
 from typer.testing import CliRunner
 
 from testo_core.cli.app import app
-from testo_core.db import get_report_archive_repository, reset_repository_cache
-from testo_core.db_config import reset_engine_cache
+from testo_core.repository.db import get_report_archive_repository, reset_repository_cache
+from testo_core.repository.db_config import reset_engine_cache
 from testo_core.services.report_archive import build_cycle_zip_bytes
 
 
@@ -35,7 +35,9 @@ def _minimal_cycle_artifacts(base: Path, plan: str = "cyc") -> bytes:
     return blob
 
 
-def test_report_list_empty(runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_report_list_empty(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("DATABASE_URL", "sqlite:///:memory:")
     reset_repository_cache()

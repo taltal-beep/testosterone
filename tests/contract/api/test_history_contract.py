@@ -3,8 +3,8 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from testo_api.main import create_app
+from testo_core.history.views import CompletedRunView, RunSessionView
 from testo_core.repository.models import RunStatus
-from testo_core.run_history import CompletedRunView, RunSessionView
 
 
 def test_runs_and_details_contract(monkeypatch) -> None:  # noqa: ANN001
@@ -114,6 +114,80 @@ def test_run_pyramid_contract(monkeypatch) -> None:  # noqa: ANN001
         "shape": "irregular",
         "message": "Non-ideal tier ordering",
     }
+
+
+def _cycle_run(stage_health: list[dict]) -> CompletedRunView:
+    return CompletedRunView(
+        run_id="run-2",
+        status=RunStatus.COMPLETED,
+        created_at=1.0,
+        started_at=1.0,
+        finished_at=2.0,
+        test_kind="cycle",
+        returncode=0,
+        wall_duration_ms=1000.0,
+        metrics_duration_ms=1000,
+        total_tests=None,
+        passed=None,
+        failed=None,
+        broken=None,
+        skipped=None,
+        avg_case_ms=None,
+        health_pct=None,
+        target_repo=None,
+        snapshot_dir=None,
+        audit_json=None,
+        cycle="smoke",
+        stage_health=stage_health,
+    )
+
+
+def test_run_pyramid_uses_tiers_recorded_in_the_run(monkeypatch) -> None:  # noqa: ANN001
+    run = _cycle_run(
+        [
+            {"name": "unit-tests", "tier": "unit", "total_tests": 8},
+            {"name": "api-tests", "tier": "integration", "total_tests": 3},
+            {"name": "ui-tests", "tier": "e2e", "total_tests": 1},
+        ]
+    )
+    monkeypatch.setattr("testo_api.routes.history.get_run", lambda run_id: run)  # noqa: ARG005
+
+    def _no_config(**_kwargs):  # noqa: ANN202, ANN003
+        raise AssertionError("pyramid must not read testosterone.yaml when tiers are recorded")
+
+    monkeypatch.setattr("testo_api.routes.history.discover_and_load", _no_config)
+
+    resp = TestClient(create_app()).get("/api/v1/runs/run-2/pyramid")
+    assert resp.status_code == 200
+    assert resp.json()["unit"] == 8
+    assert resp.json()["integration"] == 3
+    assert resp.json()["e2e"] == 1
+    assert resp.json()["shape"] == "healthy"
+
+
+def test_run_pyramid_falls_back_to_yaml_for_runs_without_tiers(  # noqa: ANN001
+    monkeypatch, tmp_path
+) -> None:
+    run = _cycle_run([{"name": "api-tests", "total_tests": 3}])
+    monkeypatch.setattr("testo_api.routes.history.get_run", lambda run_id: run)  # noqa: ARG005
+    config = tmp_path / "testosterone.yaml"
+    config.write_text(
+        "cycles:\n"
+        "  smoke:\n"
+        "    stages:\n"
+        "      - name: api-tests\n"
+        "        equipment: pytest\n"
+        "        target_repo: .\n"
+        "        tier: integration\n",
+        encoding="utf-8",
+    )
+
+    resp = TestClient(create_app()).get(
+        "/api/v1/runs/run-2/pyramid", params={"config_path": str(config)}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["integration"] == 3
+    assert resp.json()["unit"] == 0
 
 
 def test_run_pyramid_contract_missing_run(monkeypatch) -> None:  # noqa: ANN001

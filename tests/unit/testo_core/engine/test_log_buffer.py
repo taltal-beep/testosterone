@@ -99,3 +99,17 @@ def test_merged_env_overlays_extra_pairs() -> None:
     # Parent mapping is copied, never mutated.
     assert parent["OVERRIDE"] == "old"
     assert merged_env(parent, None) == parent
+
+
+def test_on_chunk_failure_is_logged_once(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    def cb(chunk: bytes) -> None:
+        raise RuntimeError("renderer bug")
+
+    with caplog.at_level("WARNING", logger="testo_core.engine.log_buffer"):
+        with _buffer(tmp_path, on_chunk=cb) as buf:
+            buf.feed(b"a")
+            buf.feed(b"b")
+
+    failures = [r for r in caplog.records if "renderer failed" in r.getMessage()]
+    assert len(failures) == 1
+    assert failures[0].exc_info is not None

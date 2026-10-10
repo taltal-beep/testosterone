@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from testo_api.cycle_execution_manager import CycleExecutionManager, iter_sse_from_ndjson_file
+from testo_api.cycle_execution_manager import CycleExecutionManager, iter_execution_sse
 from testo_api.dependencies import get_cycle_execution_manager
 from testo_api.models import (
+    AdhocExecutionRequest,
     CycleDetailResponse,
     CycleExecutionAcceptedResponse,
     CycleExecutionRequest,
@@ -17,8 +19,11 @@ from testo_api.models import (
     CycleTriggerSummary,
     StageSummary,
 )
-from testo_core.config.errors import ConfigError
+from testo_core.config.errors import ConfigError, ConfigValidationError
 from testo_core.config.loader import discover_and_load
+from testo_core.config.schema import PARALLEL_FRAMEWORKS
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["cycles"])
 
@@ -30,6 +35,20 @@ def _load_config(config_path: str | None = None):
         )
     except ConfigError as exc:
         raise HTTPException(status_code=503, detail=f"config error: {exc}") from exc
+
+
+def _optional_path(raw: str | None) -> Path | None:
+    return Path(raw).expanduser().resolve() if raw else None
+
+
+def _accepted(request: Request, execution_id: str) -> CycleExecutionAcceptedResponse:
+    base = str(request.base_url).rstrip("/")
+    return CycleExecutionAcceptedResponse(
+        execution_id=execution_id,
+        status="queued",
+        events_url=f"{base}/api/v1/cycle-executions/{execution_id}/events",
+        summary_url=f"{base}/api/v1/cycle-executions/{execution_id}",
+    )
 
 
 @router.get("/cycles", response_model=CycleListResponse)
@@ -71,17 +90,23 @@ def get_cycle(cycle: str, config_path: str | None = None) -> CycleDetailResponse
                 target_repo=str(stage.target_repo),
                 args=list(stage.args),
                 timeout_s=stage.timeout_s,
-                workers=stage.workers,
+                # Only frameworks that act on it; showing "Workers 4" on a
+                # single-process behave stage would claim parallelism it lacks.
+                workers=stage.workers if stage.framework in PARALLEL_FRAMEWORKS else None,
             )
             for stage in plan.stages
         ],
-        trigger=CycleTriggerSummary(paths=list(plan.trigger.paths), since_ref=plan.trigger.since_ref)
+        trigger=CycleTriggerSummary(
+            paths=list(plan.trigger.paths), since_ref=plan.trigger.since_ref
+        )
         if plan.trigger
         else None,
     )
 
 
-@router.post("/cycles/{cycle}/executions", response_model=CycleExecutionAcceptedResponse, status_code=202)
+@router.post(
+    "/cycles/{cycle}/executions", response_model=CycleExecutionAcceptedResponse, status_code=202
+)
 def create_cycle_execution(
     cycle: str,
     payload: CycleExecutionRequest,
@@ -91,12 +116,14 @@ def create_cycle_execution(
     try:
         state = manager.create_execution(
             cycle=str(cycle),
-            config_path=Path(payload.config_path).expanduser().resolve() if payload.config_path else None,
-            artifacts_root_override=Path(payload.artifacts_root).expanduser().resolve() if payload.artifacts_root else None,
+            config_path=_optional_path(payload.config_path),
+            artifacts_root_override=_optional_path(payload.artifacts_root),
             persist=bool(payload.persist),
             force=bool(payload.force),
             fail_fast=bool(payload.fail_fast),
-            reporter_override=list(payload.reporter_override) if payload.reporter_override else None,
+            reporter_override=list(payload.reporter_override)
+            if payload.reporter_override
+            else None,
             report_db=bool(payload.report_db),
             async_report_db=bool(payload.async_report_db),
             workers_override=payload.workers_override,
@@ -106,14 +133,51 @@ def create_cycle_execution(
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
+        # Broad on purpose: existing API contract maps any start-up failure to a structured 400.
+        logger.warning("could not start cycle %s", cycle, exc_info=True)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    base = str(request.base_url).rstrip("/")
-    return CycleExecutionAcceptedResponse(
-        execution_id=state.execution_id,
-        status="queued",
-        events_url=f"{base}/api/v1/cycle-executions/{state.execution_id}/events",
-        summary_url=f"{base}/api/v1/cycle-executions/{state.execution_id}",
+    return _accepted(request, state.execution_id)
+
+
+@router.post("/adhoc-executions", response_model=CycleExecutionAcceptedResponse, status_code=202)
+def create_adhoc_execution(
+    payload: AdhocExecutionRequest,
+    request: Request,
+    manager: CycleExecutionManager = Depends(get_cycle_execution_manager),
+) -> CycleExecutionAcceptedResponse:
+    """Run one framework directly as a one-stage ``adhoc`` cycle.
+
+    Same engine, persistence and event stream as a named cycle: progress and
+    status live under ``/cycle-executions/{execution_id}``.
+    """
+    try:
+        state = manager.create_adhoc_execution(
+            framework=payload.framework,
+            target_repo=Path(payload.target_repo),
+            args=payload.args,
+            timeout_s=payload.timeout_s,
+            extra_env=payload.extra_env,
+            config_path=_optional_path(payload.config_path),
+            artifacts_root_override=_optional_path(payload.artifacts_root),
+            persist=bool(payload.persist),
+            report_db=bool(payload.report_db),
+        )
+    except ConfigValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return _accepted(request, state.execution_id)
+
+
+def _execution_not_found(execution_id: str, manager: CycleExecutionManager) -> HTTPException:
+    return HTTPException(
+        status_code=404,
+        detail=(
+            f"Execution not found: {execution_id}. Only running executions and the last "
+            f"{manager.max_finished} finished ones are kept in memory; completed runs "
+            "remain in the run history (/api/v1/runs)."
+        ),
     )
 
 
@@ -124,7 +188,7 @@ def get_cycle_execution(
 ) -> CycleExecutionStatusResponse:
     state = manager.get(execution_id)
     if state is None:
-        raise HTTPException(status_code=404, detail=f"Execution not found: {execution_id}")
+        raise _execution_not_found(execution_id, manager)
     with state.lock:
         return CycleExecutionStatusResponse(
             execution_id=execution_id,
@@ -142,31 +206,9 @@ def stream_cycle_execution_events(
     execution_id: str,
     manager: CycleExecutionManager = Depends(get_cycle_execution_manager),
 ) -> StreamingResponse:
-    state = manager.get(execution_id)
-    if state is None:
-        raise HTTPException(status_code=404, detail=f"Execution not found: {execution_id}")
-
-    try:
-        events_path, start_offset, _done = manager.resolve_events_path(execution_id)
-    except RuntimeError:
-        # execution exists but events not ready yet; treat as empty stream until initialized
-        with state.lock:
-            events_path = state.events_path or Path("artifacts") / state.cycle / "events.ndjson"
-            start_offset = int(state.events_start_offset_bytes or 0)
-
-    def is_done() -> bool:
-        s = manager.get(execution_id)
-        if s is None:
-            return True
-        with s.lock:
-            return bool(s.done)
-
+    if manager.get(execution_id) is None:
+        raise _execution_not_found(execution_id, manager)
     return StreamingResponse(
-        iter_sse_from_ndjson_file(
-            events_path=events_path,
-            start_offset_bytes=start_offset,
-            is_done=is_done,
-        ),
+        iter_execution_sse(manager, execution_id),
         media_type="text/event-stream",
     )
-

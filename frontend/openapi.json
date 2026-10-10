@@ -1,0 +1,3243 @@
+{
+  "components": {
+    "schemas": {
+      "AdhocExecutionRequest": {
+        "description": "Run one framework directly, without a cycle in ``testosterone.yaml``.",
+        "properties": {
+          "args": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Args",
+            "type": "array"
+          },
+          "artifacts_root": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifacts Root"
+          },
+          "config_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Path"
+          },
+          "extra_env": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Env"
+          },
+          "framework": {
+            "enum": [
+              "pytest",
+              "behave",
+              "behavex",
+              "command"
+            ],
+            "title": "Framework",
+            "type": "string"
+          },
+          "persist": {
+            "default": true,
+            "title": "Persist",
+            "type": "boolean"
+          },
+          "report_db": {
+            "default": true,
+            "title": "Report Db",
+            "type": "boolean"
+          },
+          "target_repo": {
+            "title": "Target Repo",
+            "type": "string"
+          },
+          "timeout_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout S"
+          }
+        },
+        "required": [
+          "framework",
+          "target_repo"
+        ],
+        "title": "AdhocExecutionRequest",
+        "type": "object"
+      },
+      "AiConfigStatusResponse": {
+        "properties": {
+          "api_key_env_var": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Env Var"
+          },
+          "api_key_source": {
+            "enum": [
+              "env",
+              "runtime_input"
+            ],
+            "title": "Api Key Source",
+            "type": "string"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "key_present": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Present"
+          },
+          "max_input_chars": {
+            "title": "Max Input Chars",
+            "type": "integer"
+          },
+          "max_output_tokens": {
+            "title": "Max Output Tokens",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "openai",
+              "anthropic"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "retry_count": {
+            "title": "Retry Count",
+            "type": "integer"
+          },
+          "timeout_s": {
+            "title": "Timeout S",
+            "type": "number"
+          }
+        },
+        "required": [
+          "enabled",
+          "configured",
+          "provider",
+          "model",
+          "api_key_source",
+          "api_key_env_var",
+          "key_present",
+          "timeout_s",
+          "retry_count",
+          "max_input_chars",
+          "max_output_tokens"
+        ],
+        "title": "AiConfigStatusResponse",
+        "type": "object"
+      },
+      "AiConfigUpdateRequest": {
+        "properties": {
+          "api_key_env_var": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Env Var"
+          },
+          "api_key_input": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Input"
+          },
+          "api_key_source": {
+            "default": "env",
+            "enum": [
+              "env",
+              "runtime_input"
+            ],
+            "title": "Api Key Source",
+            "type": "string"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "max_input_chars": {
+            "default": 16000,
+            "title": "Max Input Chars",
+            "type": "integer"
+          },
+          "max_output_tokens": {
+            "default": 300,
+            "title": "Max Output Tokens",
+            "type": "integer"
+          },
+          "model": {
+            "default": "gpt-4o-mini",
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "default": "openai",
+            "enum": [
+              "openai",
+              "anthropic"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "retry_count": {
+            "default": 1,
+            "title": "Retry Count",
+            "type": "integer"
+          },
+          "timeout_s": {
+            "default": 8.0,
+            "title": "Timeout S",
+            "type": "number"
+          }
+        },
+        "title": "AiConfigUpdateRequest",
+        "type": "object"
+      },
+      "AiSummaryResponse": {
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "context_stats": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Context Stats",
+            "type": "object"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "number"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "no_summary_generated"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Text"
+          }
+        },
+        "required": [
+          "schema_version",
+          "run_id",
+          "status",
+          "summary_text",
+          "confidence",
+          "limitations",
+          "provider",
+          "model",
+          "generated_at",
+          "context_stats",
+          "error_code"
+        ],
+        "title": "AiSummaryResponse",
+        "type": "object"
+      },
+      "CycleDetailResponse": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/StageSummary"
+            },
+            "title": "Stages",
+            "type": "array"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CycleTriggerSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "stages",
+          "trigger"
+        ],
+        "title": "CycleDetailResponse",
+        "type": "object"
+      },
+      "CycleExecutionAcceptedResponse": {
+        "properties": {
+          "events_url": {
+            "title": "Events Url",
+            "type": "string"
+          },
+          "execution_id": {
+            "title": "Execution Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary_url": {
+            "title": "Summary Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "execution_id",
+          "status",
+          "events_url",
+          "summary_url"
+        ],
+        "title": "CycleExecutionAcceptedResponse",
+        "type": "object"
+      },
+      "CycleExecutionRequest": {
+        "properties": {
+          "artifacts_root": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifacts Root"
+          },
+          "async_report_db": {
+            "default": false,
+            "title": "Async Report Db",
+            "type": "boolean"
+          },
+          "config_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Path"
+          },
+          "fail_fast": {
+            "default": false,
+            "title": "Fail Fast",
+            "type": "boolean"
+          },
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "persist": {
+            "default": true,
+            "title": "Persist",
+            "type": "boolean"
+          },
+          "report_db": {
+            "default": true,
+            "title": "Report Db",
+            "type": "boolean"
+          },
+          "reporter_override": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reporter Override"
+          },
+          "stream": {
+            "default": false,
+            "title": "Stream",
+            "type": "boolean"
+          },
+          "workers_override": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workers Override"
+          }
+        },
+        "title": "CycleExecutionRequest",
+        "type": "object"
+      },
+      "CycleExecutionStatusResponse": {
+        "properties": {
+          "artifacts_root": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifacts Root"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "events_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Events Path"
+          },
+          "execution_id": {
+            "title": "Execution Id",
+            "type": "string"
+          },
+          "plan_result_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Result Path"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "execution_id",
+          "cycle",
+          "status",
+          "artifacts_root",
+          "events_path",
+          "plan_result_path",
+          "error"
+        ],
+        "title": "CycleExecutionStatusResponse",
+        "type": "object"
+      },
+      "CycleListResponse": {
+        "properties": {
+          "config_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Path"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CycleSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "config_path"
+        ],
+        "title": "CycleListResponse",
+        "type": "object"
+      },
+      "CycleSummary": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "equipment": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Equipment",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "stage_count": {
+            "title": "Stage Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "stage_count",
+          "equipment"
+        ],
+        "title": "CycleSummary",
+        "type": "object"
+      },
+      "CycleTriggerSummary": {
+        "properties": {
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Paths",
+            "type": "array"
+          },
+          "since_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Since Ref"
+          }
+        },
+        "required": [
+          "paths",
+          "since_ref"
+        ],
+        "title": "CycleTriggerSummary",
+        "type": "object"
+      },
+      "DashboardDataFreshnessResponse": {
+        "properties": {
+          "degraded": {
+            "title": "Degraded",
+            "type": "boolean"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "number"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "source_window_size": {
+            "title": "Source Window Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "generated_at",
+          "source_window_size",
+          "degraded",
+          "notes"
+        ],
+        "title": "DashboardDataFreshnessResponse",
+        "type": "object"
+      },
+      "DashboardHeadlineKpis": {
+        "properties": {
+          "baseline_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Run Id"
+          },
+          "cycle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "fail_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fail Count"
+          },
+          "health_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Pct"
+          },
+          "latest_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Run Id"
+          },
+          "latest_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Status"
+          },
+          "pass_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass Count"
+          }
+        },
+        "required": [
+          "latest_run_id",
+          "latest_status",
+          "health_pct",
+          "pass_count",
+          "fail_count",
+          "duration_ms",
+          "cycle",
+          "baseline_run_id"
+        ],
+        "title": "DashboardHeadlineKpis",
+        "type": "object"
+      },
+      "DashboardOverviewResponse": {
+        "properties": {
+          "data_freshness": {
+            "$ref": "#/components/schemas/DashboardDataFreshnessResponse"
+          },
+          "headline_kpis": {
+            "$ref": "#/components/schemas/DashboardHeadlineKpis"
+          },
+          "performance_rollup": {
+            "$ref": "#/components/schemas/DashboardRollupResponse"
+          },
+          "recent_runs": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardRecentRunItem"
+            },
+            "title": "Recent Runs",
+            "type": "array"
+          },
+          "reliability_rollup": {
+            "$ref": "#/components/schemas/DashboardRollupResponse"
+          },
+          "report_links": {
+            "$ref": "#/components/schemas/DashboardReportLinksResponse"
+          },
+          "trend_indicators": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DashboardTrendIndicator"
+            },
+            "propertyNames": {
+              "enum": [
+                "health",
+                "failed_count",
+                "duration"
+              ]
+            },
+            "title": "Trend Indicators",
+            "type": "object"
+          }
+        },
+        "required": [
+          "headline_kpis",
+          "trend_indicators",
+          "reliability_rollup",
+          "performance_rollup",
+          "report_links",
+          "recent_runs",
+          "data_freshness"
+        ],
+        "title": "DashboardOverviewResponse",
+        "type": "object"
+      },
+      "DashboardRecentRunItem": {
+        "properties": {
+          "compare_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compare Url"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "cycle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "health_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Pct"
+          },
+          "returncode": {
+            "title": "Returncode",
+            "type": "integer"
+          },
+          "run_detail_url": {
+            "title": "Run Detail Url",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "required": [
+          "run_id",
+          "cycle",
+          "created_at",
+          "status",
+          "returncode",
+          "health_pct",
+          "duration_ms",
+          "run_detail_url",
+          "compare_url"
+        ],
+        "title": "DashboardRecentRunItem",
+        "type": "object"
+      },
+      "DashboardRecentRunsResponse": {
+        "properties": {
+          "generated_at": {
+            "title": "Generated At",
+            "type": "number"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardRecentRunItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "generated_at"
+        ],
+        "title": "DashboardRecentRunsResponse",
+        "type": "object"
+      },
+      "DashboardReportLinkResponse": {
+        "properties": {
+          "state": {
+            "enum": [
+              "available",
+              "missing",
+              "unknown"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "url",
+          "state"
+        ],
+        "title": "DashboardReportLinkResponse",
+        "type": "object"
+      },
+      "DashboardReportLinksResponse": {
+        "properties": {
+          "allure": {
+            "$ref": "#/components/schemas/DashboardReportLinkResponse"
+          },
+          "behave": {
+            "$ref": "#/components/schemas/DashboardReportLinkResponse"
+          }
+        },
+        "required": [
+          "allure",
+          "behave"
+        ],
+        "title": "DashboardReportLinksResponse",
+        "type": "object"
+      },
+      "DashboardRollupResponse": {
+        "properties": {
+          "status_summary": {
+            "$ref": "#/components/schemas/DashboardRollupSummaryResponse"
+          },
+          "top_highlights": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Top Highlights",
+            "type": "array"
+          }
+        },
+        "required": [
+          "status_summary",
+          "top_highlights"
+        ],
+        "title": "DashboardRollupResponse",
+        "type": "object"
+      },
+      "DashboardRollupSummaryResponse": {
+        "properties": {
+          "improvements": {
+            "title": "Improvements",
+            "type": "integer"
+          },
+          "regressions": {
+            "title": "Regressions",
+            "type": "integer"
+          },
+          "unchanged": {
+            "title": "Unchanged",
+            "type": "integer"
+          },
+          "unknown": {
+            "title": "Unknown",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "regressions",
+          "improvements",
+          "unchanged",
+          "unknown"
+        ],
+        "title": "DashboardRollupSummaryResponse",
+        "type": "object"
+      },
+      "DashboardTrendIndicator": {
+        "properties": {
+          "delta_abs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Abs"
+          },
+          "delta_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Pct"
+          },
+          "direction": {
+            "enum": [
+              "up",
+              "down",
+              "flat",
+              "unknown"
+            ],
+            "title": "Direction",
+            "type": "string"
+          }
+        },
+        "required": [
+          "direction",
+          "delta_abs",
+          "delta_pct"
+        ],
+        "title": "DashboardTrendIndicator",
+        "type": "object"
+      },
+      "DeltaCaseChange": {
+        "properties": {
+          "baseline_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Status"
+          },
+          "current_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Status"
+          },
+          "duration_delta_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Delta Ms"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "added",
+              "removed",
+              "regression",
+              "fix",
+              "status_change"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "group",
+          "baseline_status",
+          "current_status",
+          "kind",
+          "duration_delta_ms"
+        ],
+        "title": "DeltaCaseChange",
+        "type": "object"
+      },
+      "DeltaCaseChangesResponse": {
+        "properties": {
+          "baseline_run_id": {
+            "title": "Baseline Run Id",
+            "type": "string"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/DeltaCaseChange"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "current_run_id": {
+            "title": "Current Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_run_id",
+          "baseline_run_id",
+          "changes"
+        ],
+        "title": "DeltaCaseChangesResponse",
+        "type": "object"
+      },
+      "DeltaComparisonMeta": {
+        "properties": {
+          "baseline_run_id": {
+            "title": "Baseline Run Id",
+            "type": "string"
+          },
+          "baseline_test_kind": {
+            "title": "Baseline Test Kind",
+            "type": "string"
+          },
+          "current_run_id": {
+            "title": "Current Run Id",
+            "type": "string"
+          },
+          "current_test_kind": {
+            "title": "Current Test Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_run_id",
+          "baseline_run_id",
+          "current_test_kind",
+          "baseline_test_kind"
+        ],
+        "title": "DeltaComparisonMeta",
+        "type": "object"
+      },
+      "DeltaComparisonResponse": {
+        "properties": {
+          "comparison": {
+            "$ref": "#/components/schemas/DeltaComparisonMeta"
+          },
+          "highlights": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Highlights",
+            "type": "array"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/DeltaMetricsResponse"
+          },
+          "stage_deltas": {
+            "items": {
+              "$ref": "#/components/schemas/DeltaStageDelta"
+            },
+            "title": "Stage Deltas",
+            "type": "array"
+          },
+          "status_summary": {
+            "$ref": "#/components/schemas/DeltaStatusSummaryResponse"
+          }
+        },
+        "required": [
+          "comparison",
+          "metrics",
+          "status_summary",
+          "highlights",
+          "stage_deltas"
+        ],
+        "title": "DeltaComparisonResponse",
+        "type": "object"
+      },
+      "DeltaMetricNode": {
+        "properties": {
+          "absolute_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Absolute Delta"
+          },
+          "baseline_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Value"
+          },
+          "classification": {
+            "enum": [
+              "regression",
+              "improvement",
+              "neutral",
+              "unknown"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "current_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Value"
+          },
+          "direction": {
+            "enum": [
+              "higher_is_better",
+              "lower_is_better"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "relative_delta_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relative Delta Pct"
+          },
+          "unit": {
+            "enum": [
+              "tests",
+              "pct",
+              "ms"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_value",
+          "baseline_value",
+          "absolute_delta",
+          "relative_delta_pct",
+          "classification",
+          "reason",
+          "direction",
+          "unit"
+        ],
+        "title": "DeltaMetricNode",
+        "type": "object"
+      },
+      "DeltaMetricsResponse": {
+        "properties": {
+          "performance": {
+            "$ref": "#/components/schemas/DeltaPerformanceMetrics"
+          },
+          "reliability": {
+            "$ref": "#/components/schemas/DeltaReliabilityMetrics"
+          }
+        },
+        "required": [
+          "reliability",
+          "performance"
+        ],
+        "title": "DeltaMetricsResponse",
+        "type": "object"
+      },
+      "DeltaPerformanceMetrics": {
+        "properties": {
+          "avg_case_ms": {
+            "$ref": "#/components/schemas/DeltaMetricNode"
+          },
+          "metrics_duration_ms": {
+            "$ref": "#/components/schemas/DeltaMetricNode"
+          },
+          "wall_duration_ms": {
+            "$ref": "#/components/schemas/DeltaMetricNode"
+          }
+        },
+        "required": [
+          "wall_duration_ms",
+          "metrics_duration_ms",
+          "avg_case_ms"
+        ],
+        "title": "DeltaPerformanceMetrics",
+        "type": "object"
+      },
+      "DeltaReliabilityMetrics": {
+        "properties": {
+          "broken": {
+            "$ref": "#/components/schemas/DeltaMetricNode"
+          },
+          "failed": {
+            "$ref": "#/components/schemas/DeltaMetricNode"
+          },
+          "health_pct": {
+            "$ref": "#/components/schemas/DeltaMetricNode"
+          },
+          "passed": {
+            "$ref": "#/components/schemas/DeltaMetricNode"
+          },
+          "skipped": {
+            "$ref": "#/components/schemas/DeltaMetricNode"
+          },
+          "total_tests": {
+            "$ref": "#/components/schemas/DeltaMetricNode"
+          }
+        },
+        "required": [
+          "total_tests",
+          "passed",
+          "failed",
+          "broken",
+          "skipped",
+          "health_pct"
+        ],
+        "title": "DeltaReliabilityMetrics",
+        "type": "object"
+      },
+      "DeltaStageDelta": {
+        "properties": {
+          "baseline_health_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Health Pct"
+          },
+          "baseline_passed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Passed"
+          },
+          "baseline_total_tests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Total Tests"
+          },
+          "classification": {
+            "enum": [
+              "regression",
+              "improvement",
+              "neutral",
+              "unknown"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "current_health_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Health Pct"
+          },
+          "current_passed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Passed"
+          },
+          "current_total_tests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Total Tests"
+          },
+          "framework": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Framework"
+          },
+          "health_pct_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Pct Delta"
+          },
+          "stage_name": {
+            "title": "Stage Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stage_name",
+          "framework",
+          "baseline_total_tests",
+          "current_total_tests",
+          "baseline_passed",
+          "current_passed",
+          "baseline_health_pct",
+          "current_health_pct",
+          "health_pct_delta",
+          "classification"
+        ],
+        "title": "DeltaStageDelta",
+        "type": "object"
+      },
+      "DeltaStatusSummaryResponse": {
+        "properties": {
+          "improvements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Improvements",
+            "type": "array"
+          },
+          "regressions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Regressions",
+            "type": "array"
+          },
+          "unchanged": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unchanged",
+            "type": "array"
+          },
+          "unknown": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unknown",
+            "type": "array"
+          }
+        },
+        "required": [
+          "regressions",
+          "improvements",
+          "unchanged",
+          "unknown"
+        ],
+        "title": "DeltaStatusSummaryResponse",
+        "type": "object"
+      },
+      "GenerateAiSummaryRequest": {
+        "properties": {
+          "force_refresh": {
+            "default": false,
+            "title": "Force Refresh",
+            "type": "boolean"
+          }
+        },
+        "title": "GenerateAiSummaryRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthLiveResponse": {
+        "properties": {
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "HealthLiveResponse",
+        "type": "object"
+      },
+      "HealthReadyResponse": {
+        "properties": {
+          "checks": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ReadinessCheck"
+            },
+            "title": "Checks",
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "degraded"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "checks"
+        ],
+        "title": "HealthReadyResponse",
+        "type": "object"
+      },
+      "ReadinessCheck": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "detail"
+        ],
+        "title": "ReadinessCheck",
+        "type": "object"
+      },
+      "RunDetail": {
+        "properties": {
+          "audit_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Json"
+          },
+          "avg_case_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Case Ms"
+          },
+          "broken": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broken"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "cycle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle"
+          },
+          "failed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed"
+          },
+          "finished_at": {
+            "title": "Finished At",
+            "type": "number"
+          },
+          "health_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Pct"
+          },
+          "metrics_duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics Duration Ms"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "returncode": {
+            "title": "Returncode",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "skipped": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skipped"
+          },
+          "snapshot_dir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Dir"
+          },
+          "stage_health": {
+            "items": {
+              "$ref": "#/components/schemas/StageHealth"
+            },
+            "title": "Stage Health",
+            "type": "array"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "number"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "target_repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Repo"
+          },
+          "test_kind": {
+            "title": "Test Kind",
+            "type": "string"
+          },
+          "total_tests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Tests"
+          },
+          "wall_duration_ms": {
+            "title": "Wall Duration Ms",
+            "type": "number"
+          }
+        },
+        "required": [
+          "run_id",
+          "status",
+          "created_at",
+          "started_at",
+          "finished_at",
+          "test_kind",
+          "cycle",
+          "returncode",
+          "wall_duration_ms",
+          "metrics_duration_ms",
+          "total_tests",
+          "passed",
+          "failed",
+          "broken",
+          "skipped",
+          "avg_case_ms",
+          "health_pct",
+          "target_repo",
+          "snapshot_dir",
+          "audit_json",
+          "stage_health"
+        ],
+        "title": "RunDetail",
+        "type": "object"
+      },
+      "RunDetailResponse": {
+        "properties": {
+          "metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics"
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunDetail"
+          },
+          "sync": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sync"
+          }
+        },
+        "required": [
+          "run",
+          "metrics",
+          "sync"
+        ],
+        "title": "RunDetailResponse",
+        "type": "object"
+      },
+      "RunListItem": {
+        "properties": {
+          "broken": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broken"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "cycle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle"
+          },
+          "failed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed"
+          },
+          "health_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Pct"
+          },
+          "links_under_static": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Links Under Static",
+            "type": "object"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "returncode": {
+            "title": "Returncode",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "skipped": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skipped"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "total_tests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Tests"
+          }
+        },
+        "required": [
+          "run_id",
+          "created_at",
+          "returncode",
+          "status",
+          "cycle",
+          "health_pct",
+          "total_tests",
+          "passed",
+          "failed",
+          "skipped",
+          "broken",
+          "links_under_static"
+        ],
+        "title": "RunListItem",
+        "type": "object"
+      },
+      "RunListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunListItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "RunListResponse",
+        "type": "object"
+      },
+      "RunPyramidResponse": {
+        "properties": {
+          "e2e": {
+            "title": "E2E",
+            "type": "integer"
+          },
+          "integration": {
+            "title": "Integration",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "shape": {
+            "enum": [
+              "healthy",
+              "top_heavy",
+              "mid_bulge",
+              "irregular"
+            ],
+            "title": "Shape",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "unit",
+          "integration",
+          "e2e",
+          "shape",
+          "message"
+        ],
+        "title": "RunPyramidResponse",
+        "type": "object"
+      },
+      "RunReportsResponse": {
+        "properties": {
+          "allure_server_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allure Server Url"
+          },
+          "artifact_links": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Artifact Links",
+            "type": "array"
+          },
+          "static_links": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Static Links",
+            "type": "object"
+          }
+        },
+        "required": [
+          "allure_server_url",
+          "static_links",
+          "artifact_links"
+        ],
+        "title": "RunReportsResponse",
+        "type": "object"
+      },
+      "StageHealth": {
+        "properties": {
+          "broken": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broken"
+          },
+          "failed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed"
+          },
+          "framework": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Framework"
+          },
+          "health_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Pct"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "skipped": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skipped"
+          },
+          "total_tests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Tests"
+          }
+        },
+        "required": [
+          "name",
+          "framework",
+          "total_tests",
+          "passed",
+          "failed",
+          "broken",
+          "skipped",
+          "health_pct"
+        ],
+        "title": "StageHealth",
+        "type": "object"
+      },
+      "StageSummary": {
+        "properties": {
+          "args": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Args",
+            "type": "array"
+          },
+          "equipment": {
+            "title": "Equipment",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "target_repo": {
+            "title": "Target Repo",
+            "type": "string"
+          },
+          "timeout_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout S"
+          },
+          "workers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workers"
+          }
+        },
+        "required": [
+          "name",
+          "equipment",
+          "target_repo",
+          "args",
+          "timeout_s",
+          "workers"
+        ],
+        "title": "StageSummary",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Testosterone API",
+    "version": "1.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/adhoc-executions": {
+      "post": {
+        "description": "Run one framework directly as a one-stage ``adhoc`` cycle.\n\nSame engine, persistence and event stream as a named cycle: progress and\nstatus live under ``/cycle-executions/{execution_id}``.",
+        "operationId": "create_adhoc_execution_api_v1_adhoc_executions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdhocExecutionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleExecutionAcceptedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Adhoc Execution",
+        "tags": [
+          "cycles"
+        ]
+      }
+    },
+    "/api/v1/ai/config": {
+      "put": {
+        "operationId": "update_ai_config_api_v1_ai_config_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiConfigUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiConfigStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Ai Config",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/config/status": {
+      "get": {
+        "operationId": "get_ai_config_status_api_v1_ai_config_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiConfigStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Ai Config Status",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/analytics/delta": {
+      "get": {
+        "operationId": "get_delta_comparison_api_v1_analytics_delta_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "current_run_id",
+            "required": true,
+            "schema": {
+              "title": "Current Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "baseline_run_id",
+            "required": true,
+            "schema": {
+              "title": "Baseline Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaComparisonResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Delta Comparison",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/delta/cases": {
+      "get": {
+        "description": "Per-test added/removed/regression/fix breakdown -- UI parity with ``testo diff``.\n\nComputed on-demand from each run's own artifact snapshot every request (no\ncaching): extracts both snapshots into a temp dir and matches cases by\nhistoryId/fullName/uuid, same as the CLI's full (non ``--metrics-only``) diff.",
+        "operationId": "get_delta_case_changes_api_v1_analytics_delta_cases_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "current_run_id",
+            "required": true,
+            "schema": {
+              "title": "Current Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "baseline_run_id",
+            "required": true,
+            "schema": {
+              "title": "Baseline Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaCaseChangesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Delta Case Changes",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/cycle-executions/{execution_id}": {
+      "get": {
+        "operationId": "get_cycle_execution_api_v1_cycle_executions__execution_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "execution_id",
+            "required": true,
+            "schema": {
+              "title": "Execution Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleExecutionStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cycle Execution",
+        "tags": [
+          "cycles"
+        ]
+      }
+    },
+    "/api/v1/cycle-executions/{execution_id}/events": {
+      "get": {
+        "operationId": "stream_cycle_execution_events_api_v1_cycle_executions__execution_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "execution_id",
+            "required": true,
+            "schema": {
+              "title": "Execution Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Cycle Execution Events",
+        "tags": [
+          "cycles"
+        ]
+      }
+    },
+    "/api/v1/cycles": {
+      "get": {
+        "description": "List every cycle defined in the resolved configuration (UI parity with ``testo cycles list``).",
+        "operationId": "list_cycles_api_v1_cycles_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "config_path",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Config Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Cycles",
+        "tags": [
+          "cycles"
+        ]
+      }
+    },
+    "/api/v1/cycles/{cycle}": {
+      "get": {
+        "description": "Resolved view of one cycle (UI parity with ``testo cycles show <name>``).",
+        "operationId": "get_cycle_api_v1_cycles__cycle__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cycle",
+            "required": true,
+            "schema": {
+              "title": "Cycle",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "config_path",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Config Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cycle",
+        "tags": [
+          "cycles"
+        ]
+      }
+    },
+    "/api/v1/cycles/{cycle}/executions": {
+      "post": {
+        "operationId": "create_cycle_execution_api_v1_cycles__cycle__executions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cycle",
+            "required": true,
+            "schema": {
+              "title": "Cycle",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CycleExecutionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleExecutionAcceptedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Cycle Execution",
+        "tags": [
+          "cycles"
+        ]
+      }
+    },
+    "/api/v1/dashboard/overview": {
+      "get": {
+        "operationId": "get_dashboard_overview_api_v1_dashboard_overview_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "recent_limit",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "title": "Recent Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardOverviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Dashboard Overview",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/dashboard/runs/recent": {
+      "get": {
+        "operationId": "get_dashboard_recent_runs_api_v1_dashboard_runs_recent_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardRecentRunsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Dashboard Recent Runs",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/health/live": {
+      "get": {
+        "operationId": "live_api_v1_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthLiveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Live",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "operationId": "ready_api_v1_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthReadyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ready",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/runs": {
+      "get": {
+        "operationId": "list_runs_api_v1_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Runs",
+        "tags": [
+          "history"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}": {
+      "get": {
+        "operationId": "get_run_detail_api_v1_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run Detail",
+        "tags": [
+          "history"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/ai-summary": {
+      "get": {
+        "operationId": "get_run_ai_summary_api_v1_runs__run_id__ai_summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiSummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run Ai Summary",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/ai-summary:generate": {
+      "post": {
+        "operationId": "generate_run_ai_summary_api_v1_runs__run_id__ai_summary_generate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateAiSummaryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiSummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate Run Ai Summary",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/pyramid": {
+      "get": {
+        "description": "Unit/integration/e2e tier composition for a run (UI/API parity with ``testo report pyramid``).",
+        "operationId": "get_run_pyramid_api_v1_runs__run_id__pyramid_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "config_path",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Config Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunPyramidResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run Pyramid",
+        "tags": [
+          "history"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/reports": {
+      "get": {
+        "operationId": "get_run_reports_api_v1_runs__run_id__reports_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunReportsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run Reports",
+        "tags": [
+          "history"
+        ]
+      }
+    }
+  }
+}

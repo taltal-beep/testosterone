@@ -19,8 +19,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
+      # --no-cov: a marker subset can't meet pytest.ini's project-wide gate.
       - name: Run heavy optional suite
-        run: python -m pytest -q -m "tier_heavy and not tier_external" --maxfail=1 --durations=25
+        run: python -m pytest -q -m "tier_heavy and not tier_external" --maxfail=1 --durations=25 --no-cov
       - name: Upload diagnostics artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4

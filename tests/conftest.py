@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import hashlib
 import importlib.util
 import json
 import os
-import random
 import re
 import sys
 import time
@@ -32,28 +30,6 @@ def _try_import_allure():
         return None
 
 
-def _env_flag(name: str, default: str = "0") -> bool:
-    return str(os.getenv(name, default)).strip().lower() in {"1", "true", "yes", "y", "on"}
-
-
-def _env_float(name: str, default: float) -> float:
-    raw = os.getenv(name)
-    if raw is None:
-        return float(default)
-    try:
-        return float(str(raw).strip())
-    except Exception:
-        return float(default)
-
-
-def _env_str(name: str, default: str) -> str:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    v = str(raw).strip()
-    return v if v else default
-
-
 def _path_kind(path: Path) -> str:
     p = str(path).replace("\\", "/").lstrip("./")
     if p.startswith("tests/e2e/") or "/tests/e2e/" in p:
@@ -65,41 +41,6 @@ def _path_kind(path: Path) -> str:
     if p.startswith("tests/contracts/") or "/tests/contracts/" in p:
         return "contract"
     return "unit"
-
-
-def _is_mock_api_test_path(path_str: str) -> bool:
-    """True only for mock API flow/e2e dirs or ``test_sandbox_api*.py`` unit files."""
-    p = path_str.replace("\\", "/")
-    return "/sandbox_api/" in p or "/test_sandbox_api" in p
-
-
-def _mock_api_flaky_probability() -> float:
-    """Clamp ``SANDBOX_API_FLAKY_P`` to ``[0, 1]`` (0 = off; chaos runs often use 0.07)."""
-    return max(0.0, min(1.0, _env_float("SANDBOX_API_FLAKY_P", 0.0)))
-
-
-@pytest.fixture(autouse=True)
-def _optional_mock_api_flaky(request: pytest.FixtureRequest) -> None:
-    """Opt-in random failures for mock API tests only (never other ``testo_core`` tests).
-
-    Set ``SANDBOX_API_FLAKY_P=0.07`` to make each eligible test fail independently with
-    probability 7%. Unset or ``0`` disables this entirely.
-    """
-    p = _mock_api_flaky_probability()
-    if p <= 0:
-        return
-    node = request.node
-    raw = getattr(node, "path", None)
-    try:
-        path_str = raw.as_posix() if raw is not None else str(getattr(node, "fspath", ""))
-    except Exception:
-        path_str = str(node)
-    if not _is_mock_api_test_path(path_str):
-        return
-    if random.random() < p:
-        pytest.fail(
-            f"Simulated flaky mock API (SANDBOX_API_FLAKY_P={p}); unset or set to 0 to disable."
-        )
 
 
 def _default_feature(kind: str) -> str:
@@ -151,7 +92,10 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
             _add_marker_if_missing(item, "tier_heavy")
             continue
 
-        if "/tests/integration/test_runner_image_mode_smoke.py" in p or "/tests/integration/ui/" in p:
+        if (
+            "/tests/integration/test_runner_image_mode_smoke.py" in p
+            or "/tests/integration/ui/" in p
+        ):
             _add_marker_if_missing(item, "tier_heavy")
             continue
 
@@ -173,7 +117,7 @@ def _default_run_id() -> str:
 
 @pytest.fixture(scope="session")
 def e2e_run_id() -> str:
-    configured = os.getenv("UQO_E2E_RUN_ID")
+    configured = os.getenv("TESTO_E2E_RUN_ID")
     if configured:
         return _sanitize_run_id(configured)
     return _default_run_id()
@@ -193,7 +137,9 @@ class CleanupLedger:
         self.run_id = run_id
         self.records: list[CleanupRecord] = []
 
-    def add(self, *, resource_type: str, resource_id: str, provider: str, status: str, detail: str = "") -> None:
+    def add(
+        self, *, resource_type: str, resource_id: str, provider: str, status: str, detail: str = ""
+    ) -> None:
         self.records.append(
             CleanupRecord(
                 resource_type=resource_type,
@@ -258,32 +204,6 @@ def pytest_runtest_setup(item: pytest.Item) -> None:
         allure.dynamic.severity(sev)
 
 
-@pytest.hookimpl(tryfirst=True)
-def pytest_runtest_call(item: pytest.Item) -> None:
-    """
-    Opt-in flaky demo mode:
-      - enabled via `UQO_FLAKY_DEMO=1`
-      - deterministic per-test via `UQO_FLAKY_SEED`
-      - rate via `UQO_FLAKY_RATE` (default 0.025 = 2.5%)
-
-    Only affects tests explicitly marked `@pytest.mark.flaky_demo`.
-    """
-    if not _env_flag("UQO_FLAKY_DEMO", "0"):
-        return
-    if item.get_closest_marker("flaky_demo") is None:
-        return
-
-    rate = max(0.0, min(1.0, _env_float("UQO_FLAKY_RATE", 0.025)))
-    seed = _env_str("UQO_FLAKY_SEED", "uqo-demo")
-    key = f"{seed}:{item.nodeid}".encode("utf-8", errors="ignore")
-    digest = hashlib.sha256(key).hexdigest()
-    # Use first 16 hex chars as a stable int seed.
-    stable_seed = int(digest[:16], 16)
-    rnd = random.Random(stable_seed)
-    if rnd.random() < rate:
-        pytest.fail(f"Flaky demo failure (seed={seed}, rate={rate}).", pytrace=False)
-
-
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[Any]):
     """
@@ -304,7 +224,9 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[Any]):
     if kind == "unit" and item.get_closest_marker("attach_http_on_fail") is None:
         return
 
-    rec: ApiRecorder | None = item.funcargs.get("api_recorder") if hasattr(item, "funcargs") else None  # type: ignore[attr-defined]
+    rec: ApiRecorder | None = (
+        item.funcargs.get("api_recorder") if hasattr(item, "funcargs") else None
+    )  # type: ignore[attr-defined]
     if rec is None or rec.last is None:
         return
 
@@ -331,7 +253,10 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[Any]):
         from tests._allure_utils import attach_json
 
         attach_json("http_request_json", last.request_json)
-        attach_json("http_response_json", last.response_json if last.response_json is not None else {"text": last.response_text})
+        attach_json(
+            "http_response_json",
+            last.response_json if last.response_json is not None else {"text": last.response_text},
+        )
     except Exception:
         pass
 
@@ -386,9 +311,7 @@ def mock_api_app():
     """
     In-process FastAPI app for integration/contract tests.
     """
-    from testo_core.sandbox_api import sample_target_repo
-
-    mock_api_path = sample_target_repo() / "mock_api.py"
+    mock_api_path = _ROOT / "sample_target_repo" / "mock_api.py"
     if not mock_api_path.exists():
         raise FileNotFoundError(f"Missing mock API at {mock_api_path}")
 
@@ -415,7 +338,15 @@ def fastapi_client(mock_api_app, api_recorder: ApiRecorder):
     client = TestClient(mock_api_app)
 
     class _Client:
-        def request(self, method: str, url: str, *, json: Any | None = None, headers: dict[str, str] | None = None, timeout: float | None = None):
+        def request(
+            self,
+            method: str,
+            url: str,
+            *,
+            json: Any | None = None,
+            headers: dict[str, str] | None = None,
+            timeout: float | None = None,
+        ):
             # TestClient ignores `timeout`, but keep signature parallel to requests.
             hdrs = dict(headers or {})
             resp = client.request(method, url, json=json, headers=hdrs)
@@ -479,22 +410,3 @@ def auth_token(fastapi_client) -> str:
 @pytest.fixture
 def auth_headers(auth_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {auth_token}"}
-
-
-@pytest.fixture
-def sandbox_server() -> str:
-    """
-    Black-box sandbox server fixture (managed uvicorn).
-
-    Returns base URL (e.g. http://127.0.0.1:8000).
-    """
-    from testo_core import sandbox_api as sa
-
-    ok, msg = sa.start_sandbox_if_needed()
-    assert ok is True, msg
-    try:
-        yield str(sa.MOCK_BASE_URL)
-    finally:
-        sa.stop_sandbox_if_managed()
-
-

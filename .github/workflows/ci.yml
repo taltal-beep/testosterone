@@ -3,10 +3,15 @@ name: ci
 # Unified CI/CD pipeline: format -> test -> deploy
 #
 # Stages:
-#   format               ruff lint (blocking) + ruff format check + mypy (both advisory)
-#   test                 fast required pytest suite (folds in the old pr-fast workflow)
+#   format               ruff lint + ruff format check + mypy on testo_core and testo_api (all blocking)
+#   test                 fast required pytest suite with the coverage gate (folds in
+#                        the old pr-fast workflow); uploads coverage.xml
+#   frontend             React dashboard: typecheck, generated API types up to date,
+#                        vitest unit tests, production build
 #   changelog_required    PR-only: fails if non-doc changes don't touch CHANGELOG.md
 #                          (escape hatch: 'no-changelog' PR label)
+#   docs_vault           lints the docs/ vault against docs/CLAUDE.md (frontmatter,
+#                        links, orphans; on PRs also the `updated` date)
 #   deploy               builds the distributable wheel on a published release
 #
 # Code review is handled by a local pre-push hook (.claude/settings.json),
@@ -32,33 +37,24 @@ jobs:
   format:
     name: format (ruff)
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install ruff + mypy
-        run: python -m pip install --upgrade ruff mypy
-      # Tree is clean under [tool.ruff.lint] (select E,F,I,UP,B) as of this
-      # change, so this is now a hard gate. `ruff format --check` stays
-      # non-blocking below -- 149 files would need reformatting, a much
-      # bigger, separate change.
+      # mypy needs the real dependencies (SQLModel, Rich, FastAPI, ...) to
+      # check against their types instead of treating them as Any.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
       - name: Ruff lint
         run: ruff check --output-format=github .
-      # NOTE: non-blocking -- 149 files are not yet `ruff format`-clean.
-      # Annotations still appear on the PR. Adopting `ruff format` repo-wide
-      # is a deliberate, separate change (large diff); remove
-      # `continue-on-error` once that lands.
       - name: Ruff format check
-        continue-on-error: true
         run: ruff format --check --diff .
-      # Advisory only -- 43 pre-existing errors across 14 files, tracked in
-      # docs/Testing Workflows/Technical Debt Tracker.md. Flip to blocking
-      # once that backlog is cleared.
-      - name: mypy (advisory)
-        continue-on-error: true
-        run: mypy testo_core
+      - name: mypy
+        run: mypy testo_core testo_api
 
   test:
     name: test (fast required)
@@ -74,8 +70,21 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
-      - name: Run fast required suite
-        run: python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1 --no-cov
+      # Coverage sources (testo_core + testo_api, line + branch) and the 65%
+      # gate come from pytest.ini; measuring costs ~15 s on this suite.
+      - name: Run fast required suite (with coverage gate)
+        run: python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1 --cov-report=xml
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: ignore
+      # frontend/openapi.json is the contract the React app's types are
+      # generated from; fail if a Pydantic model changed without re-exporting.
+      - name: OpenAPI schema up to date
+        run: python scripts/export_openapi.py --check
       - name: Upload diagnostics artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -87,6 +96,36 @@ jobs:
             **/*summary*.json
             **/*api*.json
             **/*.png
+
+  frontend:
+    name: frontend (typecheck + vitest + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Generated API types up to date
+        run: |
+          npm run gen:api
+          git diff --exit-code -- src/lib/api-schema.ts || {
+            echo "::error::src/lib/api-schema.ts is stale. Run 'npm --prefix frontend run gen:api' and commit the result."
+            exit 1
+          }
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
 
   changelog_required:
     name: changelog required
@@ -114,6 +153,29 @@ jobs:
           fi
           echo "::error::This PR changes code but does not update CHANGELOG.md. Add an entry under [Unreleased], or apply the 'no-changelog' label if this change doesn't warrant one."
           exit 1
+
+  docs_vault:
+    name: docs vault lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      # Rules live in docs/CLAUDE.md: frontmatter, no broken links, no
+      # wikilinks, no orphan notes. Stdlib only, so nothing to install.
+      - name: Lint the vault
+        if: github.event_name != 'pull_request'
+        run: python scripts/docs_vault.py lint
+      # On pull requests also require `updated` to move on every edited note.
+      - name: Lint the vault (with updated-date check)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin "${{ github.base_ref }}"
+          python scripts/docs_vault.py lint --base "origin/${{ github.base_ref }}"
 
   deploy:
     name: deploy (build wheel)

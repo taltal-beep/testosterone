@@ -34,7 +34,9 @@ def test_run_configured_reporters_extent_stub(tmp_path: Path) -> None:
         version=1,
         defaults=Defaults(artifacts_root=artifacts),
         cycles={},
-        reporters=(ReporterSpec(type="extent", options=(("output_dir", str(tmp_path / "extent")),)),),
+        reporters=(
+            ReporterSpec(type="extent", options=(("output_dir", str(tmp_path / "extent")),)),
+        ),
     )
     outcomes = run_configured_reporters(
         cfg=cfg,

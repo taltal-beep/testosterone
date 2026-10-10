@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from rich import box
 from rich.columns import Columns
-from rich.console import Console
+from rich.console import Console, RenderableType
 from rich.panel import Panel
 from rich.rule import Rule
 from rich.table import Table
@@ -227,7 +227,7 @@ def _fill_change_table(
     include_group: bool,
 ) -> None:
     for c in rows:
-        row: list[object] = []
+        row: list[RenderableType] = []
         if include_group:
             row.append(c.group)
         row.extend(
@@ -268,7 +268,9 @@ def render_change_sections(
                 name_max_width=name_max_width,
                 include_group=False,
             )
-            _fill_change_table(sub, sorted(by_g[g], key=lambda x: x.name.lower()), include_group=False)
+            _fill_change_table(
+                sub, sorted(by_g[g], key=lambda x: x.name.lower()), include_group=False
+            )
             console.print(sub)
             console.print("")
 
@@ -292,7 +294,9 @@ def render_change_sections(
         )
 
 
-def render_metrics_only_table(console: Console, *, baseline: ReportArchive, current: ReportArchive) -> None:
+def render_metrics_only_table(
+    console: Console, *, baseline: ReportArchive, current: ReportArchive
+) -> None:
     """Original flat metrics comparison (``--metrics-only``)."""
 
     table = Table(title="Run metrics (archive columns)", title_justify="left")

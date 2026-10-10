@@ -7,7 +7,7 @@ venv/
 # Local secrets (copy from .env.example)
 .env
 
-# Default local SQLite DB when DATABASE_URL is unset (engine/db_config.py)
+# Default local SQLite DB when DATABASE_URL is unset (testo_core/repository/db_config.py)
 uqo_history.db
 testo_history.db
 
@@ -28,15 +28,8 @@ build/
 # Local release-gate run logs
 artifacts/release-gate-*/
 
-# Mirrored report HTML for Streamlit static serving
-static/allure_report.html
-static/allure_report/
-static/allure_reports/
-static/locust_report.html
-static/behave/
-
-# Per-run Allure/reporter HTML served by the Run Detail page's Report Links
-static/history/
+# Generated report HTML (static/history/ is served by the API for each run's Report Links)
+static/
 
 # Persisted run history (SQLite + per-run HTML snapshots)
 artifacts/uqo_run_history.sqlite
@@ -45,9 +38,12 @@ artifacts/history/
 
 # Local/generated artifacts
 .coverage
+coverage.xml
 artifacts/allure-report/
 artifacts/allure-results/
 artifacts/allure-results-archive/
+artifacts/allure-report.zip
+artifacts/metrics.json
 
 # Runtime logs
 logs/
@@ -63,7 +59,8 @@ node_modules/
 artifacts/sample-behave/
 artifacts/sample-pytests/
 artifacts/sample-all-frameworks/
-artifacts/sample-all-frameworks-stochastic/
+artifacts/self-test/
+artifacts/fake-api/
 .testo/
 
 # Local test-suite scratch DBs
@@ -73,5 +70,7 @@ tests/artifacts/
 data/
 
 
-# ReportPortal local stack Postgres data
-data/reportportal/postgres/
+# GitLab Pages demo output (scripts/export_static_site.py + the Pages job)
+/public/
+/.ci-history/
+/.demo/

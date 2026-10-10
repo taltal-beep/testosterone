@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 import shutil
+import subprocess
 from pathlib import Path
 
 import typer
 
 from testo_core.engine.exit_codes import EngineExitCode
+
+logger = logging.getLogger(__name__)
 
 
 def _check_node() -> tuple[str, str]:
@@ -15,8 +19,6 @@ def _check_node() -> tuple[str, str]:
     if not node:
         return "[warn]WARN[/]", "Node.js not on PATH (required for Allure Report 3)"
     try:
-        import subprocess
-
         proc = subprocess.run(  # noqa: S603
             [node, "--version"],
             capture_output=True,
@@ -26,17 +28,21 @@ def _check_node() -> tuple[str, str]:
         )
         ver = (proc.stdout or proc.stderr or "").strip() or "unknown"
         return "[ok]PASS[/]", f"{node} ({ver})"
-    except Exception as exc:
+    except (OSError, subprocess.TimeoutExpired) as exc:
         return "[warn]WARN[/]", f"node found but version check failed: {exc}"
 
 
 def _check_allure3() -> tuple[str, str]:
-    try:
-        from testo_core.reporting.allure_cli import find_repo_root, resolve_allure_command
+    from testo_core.reporting.allure_cli import (
+        AllureCLINotFoundError,
+        find_repo_root,
+        resolve_allure_command,
+    )
 
+    try:
         cmd = resolve_allure_command(repo_root=find_repo_root())
         return "[ok]PASS[/]", " ".join(cmd.argv)
-    except Exception as exc:
+    except (AllureCLINotFoundError, OSError) as exc:
         return "[warn]WARN[/]", str(exc)
 
 
@@ -98,7 +104,9 @@ def doctor(
     if docker_path:
         table.add_row("Docker CLI", "[ok]PASS[/]", docker_path)
     else:
-        table.add_row("Docker CLI", "[warn]WARN[/]", "`docker` not on PATH (optional for some workflows)")
+        table.add_row(
+            "Docker CLI", "[warn]WARN[/]", "`docker` not on PATH (optional for some workflows)"
+        )
 
     legacy_java = shutil.which("allure")
     if legacy_java and allure_status.startswith("[warn]"):
@@ -114,7 +122,9 @@ def doctor(
         from testo_core.config.database_section import database_url_from_discovered_config
 
         anchor = cfg.source_path.parent.expanduser().resolve() if cfg.source_path else Path.cwd()
-        db_url = (os.environ.get("DATABASE_URL") or "").strip() or database_url_from_discovered_config(cwd=anchor)
+        db_url = (
+            os.environ.get("DATABASE_URL") or ""
+        ).strip() or database_url_from_discovered_config(cwd=anchor)
         db_url = db_url or None
 
     if db_url:
@@ -137,6 +147,8 @@ def doctor(
                     conn.execute(text("SELECT 1"))
                 table.add_row("Database", "[ok]PASS[/]", "connection probe succeeded")
             except Exception as exc:
+                # Broad on purpose: any driver/URL/connection error is reported as a FAIL row.
+                logger.debug("database probe failed", exc_info=True)
                 hard_fail = True
                 table.add_row("Database", "[fail]FAIL[/]", str(exc))
     else:

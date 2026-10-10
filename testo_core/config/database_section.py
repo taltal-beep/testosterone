@@ -1,6 +1,6 @@
 """Read/write optional ``database:`` settings in testosterone config files.
 
-Keeps :mod:`testo_core.db_config` free of full plan-schema imports.
+Keeps :mod:`testo_core.repository.db_config` free of full plan-schema imports.
 """
 
 from __future__ import annotations
@@ -46,7 +46,9 @@ def load_raw_config_dict(path: Path) -> dict[str, Any]:
             raise ConfigValidationError(f"invalid pyproject.toml at {path}: {exc}") from exc
         raw = data.get("tool", {}).get("testosterone")
         if raw is None:
-            raise ConfigDiscoveryError(f"pyproject.toml at {path} has no [tool.testosterone] table.")
+            raise ConfigDiscoveryError(
+                f"pyproject.toml at {path} has no [tool.testosterone] table."
+            )
         if not isinstance(raw, dict):
             raise ConfigValidationError("[tool.testosterone] must be a table.")
         return raw

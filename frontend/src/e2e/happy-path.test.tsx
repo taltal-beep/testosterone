@@ -80,7 +80,6 @@ describe("happy path", () => {
               },
               report_links: {
                 allure: { url: "http://allure/report", state: "available" },
-                locust: { url: "history/run-1/locust_report.html", state: "available" },
                 behave: { url: "history/run-1/behave/index.html", state: "available" }
               },
               recent_runs: [
@@ -245,13 +244,8 @@ describe("happy path", () => {
     await router.navigate("/runs/run-1");
     await waitFor(() => expect(screen.getByText("run-1")).toBeInTheDocument());
     await router.navigate("/compare?current_run_id=run-1&baseline_run_id=run-2");
-    await waitFor(() =>
-      expect(
-        screen.getByText((_, element) => element?.textContent?.includes("Comparing run-1 against baseline run-2.") ?? false, {
-          selector: "p"
-        })
-      ).toBeInTheDocument()
-    );
+    await waitFor(() => expect(screen.getByTestId("status-summary")).toHaveTextContent("6 improvements"));
+    expect(screen.getByRole("heading", { name: "Reliability" })).toBeInTheDocument();
   });
 });
 

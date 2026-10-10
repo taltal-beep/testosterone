@@ -11,6 +11,7 @@ Layout matches :mod:`testo_core.engine.executor` output::
 from __future__ import annotations
 
 import json
+import logging
 import webbrowser
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,17 +23,23 @@ from testo_core.reporting.paths import (
     relpath_for_display,
 )
 
+logger = logging.getLogger(__name__)
 
-def ensure_behavex_report_html(stage_dir: Path) -> Path | None:
+
+def ensure_behavex_report_html(stage_dir: Path, *, raise_errors: bool = False) -> Path | None:
     """If ``report.json`` exists but ``report.html`` is missing, generate HTML (BehaveX skips HTML when a formatter is set).
 
-    Returns ``report.html`` path when present or successfully generated.
+    Returns ``report.html`` path when present or successfully generated. Failures are
+    logged and the next report root is tried; with ``raise_errors=True`` the first
+    failure is re-raised when no root produced HTML, so the caller can record it
+    (the executor puts it on ``StageResult.error``).
     """
     stage_dir = stage_dir.expanduser().resolve()
     roots = (
         stage_dir / "behave_reports",
         stage_dir / "allure-results" / "behave_reports",
     )
+    first_error: Exception | None = None
     for root in roots:
         html = root / "report.html"
         if html.is_file():
@@ -42,7 +49,9 @@ def ensure_behavex_report_html(stage_dir: Path) -> Path | None:
             continue
         try:
             payload: dict[str, Any] = json.loads(js.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError, TypeError):
+        except (OSError, json.JSONDecodeError, TypeError) as exc:
+            logger.warning("unreadable BehaveX report %s", js, exc_info=True)
+            first_error = first_error or exc
             continue
         root.mkdir(parents=True, exist_ok=True)
         br = str(root.resolve())
@@ -60,13 +69,18 @@ def ensure_behavex_report_html(stage_dir: Path) -> Path | None:
             from behavex.outputs.report_html import generate_report
 
             generate_report(payload)
-        except Exception:
+        except Exception as exc:
+            # Broad on purpose: BehaveX's report generator is third-party and raises arbitrary types.
+            logger.warning("BehaveX HTML report generation failed under %s", root, exc_info=True)
+            first_error = first_error or exc
             continue
         finally:
             cr.environ.clear()
             cr.environ.update(saved_environ)
         if html.is_file():
             return html
+    if raise_errors and first_error is not None:
+        raise first_error
     return None
 
 
@@ -133,7 +147,9 @@ def _infer_equipment(stage_dir: Path, routine_name: str, from_json: dict[str, st
         return from_json[routine_name]
     # Fallback: allure-results subdir names, prefer behavex if behave_reports exists
     ar = stage_dir / "allure-results"
-    if (stage_dir / "behave_reports").is_dir() or (stage_dir / "allure-results" / "behave_reports").is_dir():
+    if (stage_dir / "behave_reports").is_dir() or (
+        stage_dir / "allure-results" / "behave_reports"
+    ).is_dir():
         return "behavex"
     if ar.is_dir():
         try:
@@ -200,7 +216,9 @@ def native_row_for_stage(stage_dir: Path, equipment: str) -> NativeReportRow:
     if eq == "behavex":
         html, images = _behavex_candidates(stage_dir)
         if html is not None:
-            return NativeReportRow(routine=routine, equipment=eq, open_path=html, open_kind="html", notes="")
+            return NativeReportRow(
+                routine=routine, equipment=eq, open_path=html, open_kind="html", notes=""
+            )
         if images is not None:
             return NativeReportRow(
                 routine=routine,
@@ -215,7 +233,9 @@ def native_row_for_stage(stage_dir: Path, equipment: str) -> NativeReportRow:
     if eq == "pytest":
         path, kind = _pytest_candidates(stage_dir)
         if path is not None:
-            return NativeReportRow(routine=routine, equipment=eq, open_path=path, open_kind=kind, notes="")
+            return NativeReportRow(
+                routine=routine, equipment=eq, open_path=path, open_kind=kind, notes=""
+            )
         return NativeReportRow(
             routine=routine, equipment=eq, open_path=None, open_kind="", notes="no raw data"
         )

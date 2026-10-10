@@ -8,9 +8,9 @@ from urllib.parse import urlparse
 
 from sqlalchemy.engine import Engine
 
-from testo_core.db_config import _dialect
 from testo_core.repository.adapters import SQLModelRunRepository
 from testo_core.repository.base import BaseRunRepository
+from testo_core.repository.db_config import _dialect
 
 
 @dataclass(frozen=True)
@@ -46,20 +46,26 @@ class MySQLRepositoryAdapter:
         return SQLModelRunRepository(engine=engine)
 
 
-SUPPORTED_DIALECT_ADAPTERS = {
+SUPPORTED_DIALECT_ADAPTERS: dict[
+    str, SQLiteRepositoryAdapter | PostgreSQLRepositoryAdapter | MySQLRepositoryAdapter
+] = {
     "sqlite": SQLiteRepositoryAdapter(),
     "postgresql": PostgreSQLRepositoryAdapter(),
     "mysql": MySQLRepositoryAdapter(),
 }
 
 
-def select_repository_adapter(*, url: str) -> SQLiteRepositoryAdapter | PostgreSQLRepositoryAdapter | MySQLRepositoryAdapter:
+def select_repository_adapter(
+    *, url: str
+) -> SQLiteRepositoryAdapter | PostgreSQLRepositoryAdapter | MySQLRepositoryAdapter:
     """Return the explicit adapter strategy for ``url``."""
     dialect = _dialect(url)
     adapter = SUPPORTED_DIALECT_ADAPTERS.get(dialect)
     if adapter is None:
         allowed = ", ".join(sorted(SUPPORTED_DIALECT_ADAPTERS))
-        raise ValueError(f"Unsupported database dialect `{dialect}`. Supported dialects: {allowed}.")
+        raise ValueError(
+            f"Unsupported database dialect `{dialect}`. Supported dialects: {allowed}."
+        )
     return adapter
 
 
@@ -106,6 +112,4 @@ def _validate_driver_installed(*, url: str, dialect: str) -> None:
             return
 
         readable = ", ".join(candidate_modules)
-        raise ValueError(
-            f"Database URL `{url}` requires an installed MySQL driver ({readable})."
-        )
+        raise ValueError(f"Database URL `{url}` requires an installed MySQL driver ({readable}).")

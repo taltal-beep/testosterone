@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import testo_core.integrations as integrations
-from testo_core.metrics import RunMetrics
+import testo_core.reporting.integrations as integrations
+from testo_core.reporting.metrics import RunMetrics
 from tests.unit.cases.strings import common_string_cases
 
 pytestmark = [pytest.mark.unit]
@@ -20,22 +20,55 @@ def test_escape_prom_label_value_never_contains_raw_newlines(case) -> None:
 @pytest.mark.parametrize(
     "metrics",
     [
-        RunMetrics(timestamp=1, total_tests=0, passed=0, failed=0, broken=0, skipped=0, unknown=0, duration_ms=0, run_id="r"),
-        RunMetrics(timestamp=1, total_tests=2, passed=1, failed=1, broken=0, skipped=0, unknown=0, duration_ms=10, run_id="rid"),
+        RunMetrics(
+            timestamp=1,
+            total_tests=0,
+            passed=0,
+            failed=0,
+            broken=0,
+            skipped=0,
+            unknown=0,
+            duration_ms=0,
+            run_id="r",
+        ),
+        RunMetrics(
+            timestamp=1,
+            total_tests=2,
+            passed=1,
+            failed=1,
+            broken=0,
+            skipped=0,
+            unknown=0,
+            duration_ms=10,
+            run_id="rid",
+        ),
     ],
 )
 def test_prometheus_exposition_contains_expected_gauges(metrics: RunMetrics) -> None:
     body = integrations._prometheus_exposition(metrics)
-    assert "uqo_total_tests" in body
-    assert "uqo_passed" in body
-    assert "uqo_failed" in body
-    assert f'{int(metrics.total_tests)}' in body
+    assert "testo_total_tests" in body
+    assert "testo_passed" in body
+    assert "testo_failed" in body
+    assert f"{int(metrics.total_tests)}" in body
 
 
 def test_push_to_prometheus_http_error_branch() -> None:
-    m = RunMetrics(timestamp=1, total_tests=1, passed=0, failed=1, broken=0, skipped=0, unknown=0, duration_ms=1, run_id="rid")
-    with patch("testo_core.integrations.prometheus_settings_from_env", return_value={"pushgateway_url": "http://x", "job_name": "uqo"}):
-        with patch("testo_core.integrations.requests.post") as post:
+    m = RunMetrics(
+        timestamp=1,
+        total_tests=1,
+        passed=0,
+        failed=1,
+        broken=0,
+        skipped=0,
+        unknown=0,
+        duration_ms=1,
+        run_id="rid",
+    )
+    with patch(
+        "testo_core.reporting.integrations.prometheus_settings_from_env",
+        return_value={"pushgateway_url": "http://x", "job_name": "testo"},
+    ):
+        with patch("testo_core.reporting.integrations.requests.post") as post:
             post.return_value = MagicMock(status_code=500, text="boom")
             ok, msg = integrations.push_to_prometheus(m)
     assert ok is False
@@ -43,8 +76,21 @@ def test_push_to_prometheus_http_error_branch() -> None:
 
 
 def test_push_to_prometheus_missing_url_branch() -> None:
-    m = RunMetrics(timestamp=1, total_tests=1, passed=1, failed=0, broken=0, skipped=0, unknown=0, duration_ms=1, run_id="rid")
-    with patch("testo_core.integrations.prometheus_settings_from_env", return_value={"pushgateway_url": None, "job_name": "uqo"}):
+    m = RunMetrics(
+        timestamp=1,
+        total_tests=1,
+        passed=1,
+        failed=0,
+        broken=0,
+        skipped=0,
+        unknown=0,
+        duration_ms=1,
+        run_id="rid",
+    )
+    with patch(
+        "testo_core.reporting.integrations.prometheus_settings_from_env",
+        return_value={"pushgateway_url": None, "job_name": "testo"},
+    ):
         ok, msg = integrations.push_to_prometheus(m)
     assert ok is False
     assert "PROMETHEUS_PUSHGATEWAY_URL" in msg
@@ -60,10 +106,11 @@ def test_push_to_prometheus_missing_url_branch() -> None:
         ("  x  ", "x"),
     ],
 )
-def test__env_normalization(monkeypatch: pytest.MonkeyPatch, env_value: str | None, expected: str | None) -> None:
-    name = "UQO_TEST_ENV_HELPER"
+def test__env_normalization(
+    monkeypatch: pytest.MonkeyPatch, env_value: str | None, expected: str | None
+) -> None:
+    name = "TESTO_TEST_ENV_HELPER"
     monkeypatch.delenv(name, raising=False)
     if env_value is not None:
         monkeypatch.setenv(name, env_value)
     assert integrations._env(name, "d") == expected
-

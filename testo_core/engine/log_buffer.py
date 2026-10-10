@@ -18,15 +18,17 @@ are lost when the orchestrator moves on to the next stage.
 
 from __future__ import annotations
 
-import os
+import logging
 import threading
 from collections import deque
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 from typing import IO
 
 DEFAULT_RING_BYTES: int = 64 * 1024  # 64 KiB
 _READ_CHUNK_BYTES: int = 4096
+
+logger = logging.getLogger(__name__)
 
 
 class LogBuffer:
@@ -46,6 +48,7 @@ class LogBuffer:
         self._ring_size: int = 0
         self._ring_capacity: int = max(1, int(ring_bytes))
         self._on_chunk = on_chunk
+        self._on_chunk_failed = False
         self._closed = False
         self._lock = threading.Lock()
 
@@ -72,8 +75,12 @@ class LogBuffer:
         if self._on_chunk is not None:
             try:
                 self._on_chunk(chunk)
-            except Exception:  # pragma: no cover - renderer must never crash the run
-                pass
+            except Exception:
+                # Broad on purpose: a broken renderer must never crash the run. Log once
+                # per buffer so a renderer failing on every chunk doesn't flood stderr.
+                if not self._on_chunk_failed:
+                    self._on_chunk_failed = True
+                    logger.warning("log chunk renderer failed; output continues", exc_info=True)
 
     def tail(self, *, max_lines: int | None = None, max_bytes: int | None = None) -> str:
         """Return the most recent buffered output as text."""
@@ -127,7 +134,9 @@ def drain_stream_into_buffer(
         return
 
 
-def merged_env(parent: dict[str, str] | os._Environ[str], extra: Iterable[tuple[str, str]] | None) -> dict[str, str]:
+def merged_env(
+    parent: Mapping[str, str], extra: Iterable[tuple[str, str]] | None
+) -> dict[str, str]:
     """Return a copy of ``parent`` overlaid with ``extra`` env vars."""
     out = dict(parent)
     for k, v in extra or ():

@@ -1,0 +1,151 @@
+name: Pages demo
+
+# GitHub twin of the GitLab demo pipeline (.gitlab-ci.yml): runs real
+# `testo run` cycles, freezes the read-only API into JSON with
+# scripts/export_static_site.py and publishes the React UI to GitHub Pages at
+# https://<owner>.github.io/<repo>/.
+#
+#   - self-test: testosterone running its own fast suite. Red fails the job.
+#   - fake-api:  github.com/taltal-beep/fake-api, whose flaky, broken and slow
+#                routes fail its tests on purpose. Red is expected.
+#
+# Pull requests that touch the demo build the site without deploying it, so a
+# broken demo shows up before merge. Pushes to main, the nightly schedule and
+# manual runs deploy.
+#
+# One-time setup: Settings -> Pages -> Source -> "GitHub Actions".
+# Optional: an ANTHROPIC_API_KEY repository secret to freeze AI failure summaries.
+#
+# See docs/Processes & Guides/GitLab Pages Demo.md
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - ".github/workflows/pages-demo.yml"
+      - "scripts/export_static_site.py"
+      - "frontend/src/lib/static-backend.ts"
+      - "frontend/src/components/StaticBuildBanner.tsx"
+      - "testosterone.yaml"
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-demo-${{ github.ref }}
+  # Never cancel a deploy halfway; superseded PR builds can go.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  FAKE_API_REPO: https://github.com/taltal-beep/fake-api.git
+  FAKE_API_REF: main
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  build:
+    name: run cycles and build the site
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Site paths
+        # Project Pages live under /<repo>/; a <owner>.github.io repo is served at the root.
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          repo="${GITHUB_REPOSITORY#*/}"
+          if [ "${repo,,}" = "${owner}.github.io" ]; then base=""; else base="/${repo}"; fi
+          echo "PAGES_PATH=${base}" >> "$GITHUB_ENV"
+          echo "PAGES_URL=https://${owner}.github.io${base}" >> "$GITHUB_ENV"
+          echo "DATABASE_URL=sqlite:///${GITHUB_WORKSPACE}/.ci-history/testo.db" >> "$GITHUB_ENV"
+
+      # Run history (DB + per-run reports and artifacts) carries over between
+      # runs, so the trend grows and Compare has the previous run to diff against.
+      # Caches are immutable, hence a fresh key per run restored by prefix.
+      - name: Restore run history
+        uses: actions/cache@v4
+        with:
+          path: |
+            .ci-history
+            static/history
+          key: testo-demo-history-${{ github.run_id }}
+          restore-keys: testo-demo-history-
+
+      - name: Install
+        run: |
+          python -m pip install -e ".[dev]"
+          npm install --no-audit --no-fund
+          git clone --depth 1 --branch "$FAKE_API_REF" "$FAKE_API_REPO" .demo/fake-api
+          python -m pip install -r .demo/fake-api/requirements.txt
+          python -m playwright install --with-deps chromium
+          mkdir -p .ci-history static/history
+
+      - name: Testosterone tests itself
+        run: |
+          set -o pipefail
+          testo run --cycle self-test --ci | tee self-test.ndjson
+
+      - name: Testosterone tests fake-api (fails on purpose)
+        run: testo run --cycle fake-api --ci | tee fake-api.ndjson || true
+
+      - name: Export the API as static JSON
+        env:
+          # Optional. With it, failed runs ship a pre-generated AI failure
+          # summary; without it, the demo says summaries are generated live.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python scripts/export_static_site.py --out public --site-url "$PAGES_URL"
+          # Keep the cached history bounded: the 20 newest runs are plenty.
+          ls -1dt static/history/*/ | tail -n +21 | xargs -r rm -rf
+
+      - name: Build the UI in static mode
+        working-directory: frontend
+        env:
+          VITE_BASE: ${{ env.PAGES_PATH }}/
+          VITE_STATIC_DATA_BASE: ${{ env.PAGES_PATH }}/data
+          VITE_API_BASE_URL: ${{ env.PAGES_URL }}
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Assemble the site
+        # GitHub Pages serves 404.html for unknown paths, which is how deep
+        # links such as /runs/<id> survive a refresh.
+        run: |
+          cp -r frontend/dist/. public/
+          cp public/index.html public/404.html
+          touch public/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    name: deploy to GitHub Pages
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

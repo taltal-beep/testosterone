@@ -1,16 +1,17 @@
-import { Navigate, createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 
 import { AppShell } from "./AppShell";
+import { NotFoundPage } from "./NotFoundPage";
 import { ComparePage } from "../features/compare/ComparePage";
 import { CycleDetailPage } from "../features/cycles/CycleDetailPage";
 import { CyclesPage } from "../features/cycles/CyclesPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
-import { ExecutionPage } from "../features/execution/ExecutionPage";
+import { QuickRunPage } from "../features/execution/QuickRunPage";
 import { HistoryPage } from "../features/history/HistoryPage";
 import { RunDetailPage } from "../features/run-detail/RunDetailPage";
 import { AIIntegrationSettingsPage } from "../features/settings/AIIntegrationSettingsPage";
 
-export const router = createBrowserRouter([
+export const routes = [
   {
     path: "/",
     element: <AppShell />,
@@ -40,26 +41,23 @@ export const router = createBrowserRouter([
         element: <ComparePage />
       },
       {
-        path: "advanced/execution",
-        element: <ExecutionPage />
+        path: "quick-run",
+        element: <QuickRunPage />
       },
       {
         path: "settings/ai",
         element: <AIIntegrationSettingsPage />
       },
-      // Legacy paths kept as redirects so old bookmarks don't break.
       {
-        path: "history",
-        element: <Navigate to="/runs" replace />
-      },
-      {
-        path: "runner",
-        element: <Navigate to="/cycles" replace />
-      },
-      {
-        path: "execution",
-        element: <Navigate to="/advanced/execution" replace />
+        path: "*",
+        element: <NotFoundPage />
       }
     ]
   }
-]);
+];
+
+export const router = createBrowserRouter(routes, {
+  // The static demo is served from a project subpath on GitLab Pages, so the
+  // router has to resolve routes against Vite's base instead of "/".
+  basename: import.meta.env.BASE_URL
+});

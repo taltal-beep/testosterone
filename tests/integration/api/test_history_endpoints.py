@@ -15,6 +15,21 @@ def test_health_endpoints() -> None:
     assert ready.status_code in {200, 503}
     payload = ready.json()
     assert set(payload.keys()) == {"status", "checks"}
-    assert "db" in payload["checks"]
-    assert "repository" in payload["checks"]
-    assert "s3" in payload["checks"]
+    assert set(payload["checks"]) == {"db", "repository"}
+
+
+def test_readiness_is_ready_with_file_sqlite(monkeypatch, tmp_path) -> None:  # noqa: ANN001
+    from testo_core.repository.db import reset_repository_cache
+    from testo_core.repository.db_config import reset_engine_cache
+
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'history.db'}")
+    reset_repository_cache()
+    reset_engine_cache()
+    try:
+        ready = TestClient(create_app()).get("/api/v1/health/ready")
+    finally:
+        reset_repository_cache()
+        reset_engine_cache()
+
+    assert ready.status_code == 200
+    assert ready.json()["status"] == "ready"

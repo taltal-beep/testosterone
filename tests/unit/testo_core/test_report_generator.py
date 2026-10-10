@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from testo_core import report_generator as rg
-from testo_core.report_generator import generate_allure_html, generate_allure_reports
+from testo_core.reporting import report_generator as rg
+from testo_core.reporting.report_generator import generate_allure_html, generate_allure_reports
 
 
 @pytest.fixture
@@ -20,7 +20,9 @@ def fake_ok_subprocess() -> MagicMock:
     return MagicMock(return_value=p)
 
 
-def test_generate_allure_html_success(tmp_path: Path, fake_ok_subprocess: MagicMock, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_allure_html_success(
+    tmp_path: Path, fake_ok_subprocess: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
     res = tmp_path / "allure-results"
     res.mkdir()
     (res / "pytest").mkdir()
@@ -46,7 +48,9 @@ def test_generate_allure_html_success(tmp_path: Path, fake_ok_subprocess: MagicM
 
 
 def test_generate_allure_html_missing_results(tmp_path: Path) -> None:
-    ok, msg, health = generate_allure_html(results_dir=tmp_path / "nope", report_dir=tmp_path / "out")
+    ok, msg, health = generate_allure_html(
+        results_dir=tmp_path / "nope", report_dir=tmp_path / "out"
+    )
     assert ok is False
     assert "does not exist" in msg
 
@@ -57,16 +61,22 @@ def test_invoke_allure_generate_file_not_found(tmp_path: Path) -> None:
 
     res = tmp_path / "allure-results"
     res.mkdir()
-    ok, msg, _ = generate_allure_html(results_dir=res, report_dir=tmp_path / "rep", subprocess_run=boom)
+    ok, msg, _ = generate_allure_html(
+        results_dir=res, report_dir=tmp_path / "rep", subprocess_run=boom
+    )
     assert ok is False
     assert "Allure Report 3" in msg or "not found" in msg.lower()
 
 
-def test_generate_allure_reports_individual_builds_per_framework_commands(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_allure_reports_individual_builds_per_framework_commands(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     res = tmp_path / "allure-results"
     res.mkdir()
     (res / "pytest").mkdir()
-    (res / "pytest" / "a-result.json").write_text('{"status":"passed","start":0,"stop":1}', encoding="utf-8")
+    (res / "pytest" / "a-result.json").write_text(
+        '{"status":"passed","start":0,"stop":1}', encoding="utf-8"
+    )
 
     calls: list[list[str]] = []
 
@@ -119,7 +129,9 @@ def test_flatten_behavex_nested_results_moves_to_root(tmp_path: Path) -> None:
     behave = tmp_path / "behavex"
     nested = behave / "allure"
     nested.mkdir(parents=True)
-    (nested / "x-result.json").write_text('{"status":"passed","start":0,"stop":1}', encoding="utf-8")
+    (nested / "x-result.json").write_text(
+        '{"status":"passed","start":0,"stop":1}', encoding="utf-8"
+    )
 
     moved = rg._flatten_allure_result_json(root=behave)
     assert moved == 1
