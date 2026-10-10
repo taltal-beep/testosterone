@@ -2,7 +2,7 @@
 type: roadmap
 status: current
 created: 2026-06-25
-updated: 2026-10-08
+updated: 2026-10-10
 ---
 
 # Product Roadmap
@@ -30,6 +30,10 @@ Where Testosterone (`testo-core`, CLI `testo`) stands today and what comes next.
 - **Release v1.1.0.** Tag `v1.0.0` and `v1.1.0`, move `v1`, and create the GitHub Release.
 - **Repo allow-list for the API.** `testo-api` binds `127.0.0.1` and can require `TESTO_API_TOKEN` on mutating requests; before it runs anywhere shared it also needs an allow-list of target repos.
 - **Parallel stages.** Stages run sequentially; only BehaveX parallelizes internally. Opt-in parallel stages need isolated per-stage artifact trees and aggregated exit classification.
+- **Concurrent run guard.** Today the only guard is the API's in-memory check that rejects a second run of the same cycle with 409 (`testo_api/cycle_execution_manager.py`). Two CLI runs of one cycle on one machine share `artifacts/<cycle>/` and overwrite each other, and nothing stops a CI run and a local run from hitting the same deployment at once. Every run enters through `CycleRunService.run()`, so a guard goes there, before `run_plan`, without a refactor. Three levels, smallest first:
+  1. A lock file per cycle under `artifacts/<cycle>/`: a second run on the same machine exits `3` with a clear message.
+  2. A per-environment lease in the database (an `environment:` key on the cycle, a row with an expiry): a second run against the same environment waits or fails. Only works across machines that share one database (e.g. Postgres), not per-machine SQLite.
+  3. A real run queue. That is a central service and not worth it yet.
 - **Smaller items** (signal-aware exit codes, reporter failure policy): see [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md).
 
 ## How it got here
