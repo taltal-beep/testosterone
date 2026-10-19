@@ -37,6 +37,10 @@ Added [Setup Prompts](Prompts%20&%20Snippets/Setup%20Prompts.md), copy-paste pro
 
 Added [Getting Started](Getting%20Started.md), linked from Index, and [Docs Site - 2026-10-19](Specs%20&%20ADRs/Docs%20Site%20-%202026-10-19.md). The vault is now also built as a MkDocs site under `/docs/` of the Pages demo; the notes themselves did not change shape.
 
+## 2026-10-19: post-publish features note
+
+Added [Open Source Features - 2026-10-19](Specs%20&%20ADRs/Open%20Source%20Features%20-%202026-10-19.md), the decision record for the Tier 3 feature pull requests (flaky test detection first).
+
 ## 2026-10-19: GitHub Action PR comment note
 
 Added [GitHub Action PR Comment - 2026-10-19](Specs%20&%20ADRs/GitHub%20Action%20PR%20Comment%20-%202026-10-19.md), linked from the Specs & ADRs README.
