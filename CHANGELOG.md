@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- GitHub Action run summary: after a persisted run the action writes the results, failing tests and per-test changes since the previous run to the job summary, and with `comment-on-pr: "true"` keeps one comment per cycle on the pull request (edited in place). New inputs `job-summary`, `comment-on-pr`, `github-token` and `package`. The text comes from the new `testo report markdown` command. This repository's CI runs the action on its own checkout and comments on its own pull requests
 - Docs site: the `docs/` vault built with MkDocs Material (`mkdocs.yml`, `scripts/mkdocs_hooks.py`, `[docs]` extra) and published at <https://taltal-beep.github.io/testosterone/docs/> by the Pages demo workflow. A new `docs_site` CI job builds it with `--strict`
 - `docs/Getting Started.md`: from `pip install testo-core` to a regression in `testo summary` and the GitHub Action, with the same project in `examples/getting-started/`. A new `getting_started` CI job runs that example through the GitHub Action
 
