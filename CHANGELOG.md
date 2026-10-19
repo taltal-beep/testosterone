@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- `equipment: playwright`: runs `npx playwright test` with its JUnit and HTML reporters wired in, so Playwright tests count in summaries, diffs and the UI with no `junit_xml` setup, the HTML report is kept per run as the native report, and `workers` becomes `--workers`. Also offered on the Quick Run page
 - Docs site: the `docs/` vault built with MkDocs Material (`mkdocs.yml`, `scripts/mkdocs_hooks.py`, `[docs]` extra) and published at <https://taltal-beep.github.io/testosterone/docs/> by the Pages demo workflow. A new `docs_site` CI job builds it with `--strict`
 - `docs/Getting Started.md`: from `pip install testo-core` to a regression in `testo summary` and the GitHub Action, with the same project in `examples/getting-started/`. A new `getting_started` CI job runs that example through the GitHub Action
 
