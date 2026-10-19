@@ -21,7 +21,10 @@ Design decisions that still describe the code. The code is the source of truth; 
 | One engine, generated API types, blocking type checks | [Architecture Consolidation - 2026-10-06](Architecture%20Consolidation%20-%202026-10-06.md) |
 | Interview-readiness batch (pull requests 67 to 91, v1.1.0) | [Interview Readiness Fixes - 2026-10-07](Interview%20Readiness%20Fixes%20-%202026-10-07.md) |
 | Docs vault as second brain, wiki generated from `docs/` | [Docs Vault and Wiki Sync - 2026-10-07](Docs%20Vault%20and%20Wiki%20Sync%20-%202026-10-07.md) |
+| Post-publish features: flaky tests, PR comments, plugins, adapters | [Open Source Features - 2026-10-19](Open%20Source%20Features%20-%202026-10-19.md) |
+| Run summary and PR comment from the GitHub Action | [GitHub Action PR Comment - 2026-10-19](GitHub%20Action%20PR%20Comment%20-%202026-10-19.md) |
 | Getting Started guide and the MkDocs docs site | [Docs Site - 2026-10-19](Docs%20Site%20-%202026-10-19.md) |
+| Third-party frameworks and reporters through entry points | [Plugin API - 2026-10-19](Plugin%20API%20-%202026-10-19.md) |
 | Playwright as its own equipment | [Playwright Adapter - 2026-10-19](Playwright%20Adapter%20-%202026-10-19.md) |
 | Changelog enforcement | [changelog_automation_policy.md](../changelog_automation_policy.md) |
 

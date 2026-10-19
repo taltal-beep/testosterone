@@ -215,7 +215,7 @@ artifacts/<cycle>/<stage>/
 
 Steps:
 
-1. `get_adapter(stage.framework)` → `PytestAdapter` | `BehaveAdapter` | `BehaveXAdapter` | `PlaywrightAdapter` | `CommandAdapter` (argv = `stage.args` verbatim)
+1. `get_adapter(stage.framework)` → `PytestAdapter` | `BehaveAdapter` | `BehaveXAdapter` | `PlaywrightAdapter` | `CommandAdapter` (argv = `stage.args` verbatim), or a `testo.frameworks` plugin adapter
 2. `adapter.build_argv(target_repo, results_dir, stage_args, workers)`
 3. `merged_env(parent_env, stage.extra_env)` plus injected vars:
    - `TESTO_SHARED_ALLURE_RESULTS_DIR` → Allure output dir

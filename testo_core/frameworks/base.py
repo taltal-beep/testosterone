@@ -51,7 +51,8 @@ class FrameworkAdapter(Protocol):
 def get_adapter(framework: str) -> FrameworkAdapter:
     """Return the registered adapter for ``framework``.
 
-    Imports are kept inside this function so adding a new framework cannot
+    Built-in names are checked first, then ``testo.frameworks`` entry points
+    (:mod:`testo_core.plugins`). Imports are kept inside this function so adding a new framework cannot
     break ``testo --help`` import-time performance.
     """
     if framework == "pytest":
@@ -74,4 +75,9 @@ def get_adapter(framework: str) -> FrameworkAdapter:
         from testo_core.frameworks.playwright_adapter import PlaywrightAdapter
 
         return PlaywrightAdapter()
+
+    from testo_core import plugins
+
+    if framework in plugins.framework_names():
+        return plugins.load_framework(framework)
     raise ValueError(f"Unsupported framework: {framework!r}")
