@@ -167,7 +167,7 @@ def render_markdown(summary: RunSummary, *, run_url: str | None = None) -> str:
     elif not summary.changes:
         lines.append("No test changed outcome since the previous run.")
     else:
-        kinds = [c.kind for c in summary.changes]
+        kinds: list[str] = [c.kind for c in summary.changes]
         tally = ", ".join(
             f"{n} {_CHANGE_TALLY[k][0 if n == 1 else 1]}"
             for k in _CHANGE_ORDER
