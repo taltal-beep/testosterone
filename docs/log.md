@@ -36,3 +36,7 @@ Added [Setup Prompts](Prompts%20&%20Snippets/Setup%20Prompts.md), copy-paste pro
 ## 2026-10-19: getting started and docs site
 
 Added [Getting Started](Getting%20Started.md), linked from Index, and [Docs Site - 2026-10-19](Specs%20&%20ADRs/Docs%20Site%20-%202026-10-19.md). The vault is now also built as a MkDocs site under `/docs/` of the Pages demo; the notes themselves did not change shape.
+
+## 2026-10-19: plugin API
+
+Added [Plugin API - 2026-10-19](Specs%20&%20ADRs/Plugin%20API%20-%202026-10-19.md) and a Plugins section in [Command Reference](CLI%20Commands/Command%20Reference.md#plugins).

@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- Plugin API: a package can add a test runner or a reporter through the `testo.frameworks` and `testo.reporters` entry point groups (`testo_core/plugins.py`), with no change to Testosterone. `testo plugins` lists built-ins and installed plugins (`--check` imports and verifies them, `--json`), and `examples/plugin/` is a complete plugin with a `unittest` adapter and a `json-summary` reporter
 - Docs site: the `docs/` vault built with MkDocs Material (`mkdocs.yml`, `scripts/mkdocs_hooks.py`, `[docs]` extra) and published at <https://taltal-beep.github.io/testosterone/docs/> by the Pages demo workflow. A new `docs_site` CI job builds it with `--strict`
 - `docs/Getting Started.md`: from `pip install testo-core` to a regression in `testo summary` and the GitHub Action, with the same project in `examples/getting-started/`. A new `getting_started` CI job runs that example through the GitHub Action
 
