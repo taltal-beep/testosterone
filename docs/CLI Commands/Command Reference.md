@@ -114,6 +114,7 @@ testo report pyramid <run-id>
 | `testo report open --id <uuid>` | Extract archive and regenerate/serve Allure |
 | `testo report compare` | Rich diff + Allure comparison (optional baseline/current UUIDs) |
 | `testo report native [ROUTINE]` | List or open BehaveX/pytest native HTML under stage dirs |
+| `testo report markdown [--cycle NAME \| --run-id ID] [--out FILE] [--run-url URL]` | The cycle's latest run (or one run) as GitHub-flavored Markdown: headline counts, per-stage table, failing tests, and per-test changes since the cycle's previous run. The first line is a hidden `<!-- testo-summary:<cycle> -->` marker. Exit `2` when no run is recorded. The GitHub Action uses it for the job summary and the PR comment |
 | `testo report pyramid RUN_ID [-c CONFIG]` | ASCII unit/integration/e2e test pyramid for a completed run (`run_id`, not the archive UUID); stage→tier is the stage's `tier:` (default inferred from `equipment`: pytest→unit, behave→integration, behavex→e2e) as recorded in the run when it executed; `-c` is only read for older runs that predate recorded tiers. See [Architecture Overview § Test pyramid](../Architecture/Architecture%20Overview.md#test-pyramid). |
 
 ---
@@ -175,6 +176,27 @@ Rich terminal diff of metrics and (for full diff) extracted Allure deltas. Reads
 Prefer **`testo report compare`** for Rich diff plus Allure visual comparison pipeline.
 
 Note: this operates on `ReportArchive` UUIDs (`testo report list`), a separate id space from run-history `run_id`s — see [Architecture Overview § Persistence](../Architecture/Architecture%20Overview.md#persistence). The React Compare page (`GET /api/v1/analytics/delta` + `/analytics/delta/cases`) reaches equivalent per-stage and per-test detail by `run_id` instead, per [Delta Comparison Policy](../Specs%20&%20ADRs/Delta%20Comparison%20Policy.md).
+
+---
+
+## `testo flaky`
+
+Tests whose outcome keeps flipping across a cycle's recent runs.
+
+```bash
+testo flaky --cycle fake-api               # last 20 runs
+testo flaky --cycle fake-api --window 50 --json
+testo flaky --cycle nightly --fail-on-flaky  # exit 1 when any test is flaky (CI gate)
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--cycle` | required | Cycle whose run history to read |
+| `--window` | `20` | How many of the cycle's most recent runs to look at (min 2) |
+| `--json` | off | Print the report as JSON |
+| `--fail-on-flaky` | off | Exit `1` when any flaky test is found |
+
+A test is flaky when, within the window, it both passed and failed and its outcome changed at least twice (skipped runs are ignored). One change is a regression or a fix, which `testo summary` shows. Exit `2` when fewer than two runs with per-test results exist. Reads run-history records (`run_id`s) and each run's artifact snapshot, the same data as `GET /api/v1/analytics/flaky?cycle=<name>` and the Flaky tests card on the cycle page. See [Open Source Features - 2026-10-19](../Specs%20&%20ADRs/Open%20Source%20Features%20-%202026-10-19.md).
 
 ---
 
