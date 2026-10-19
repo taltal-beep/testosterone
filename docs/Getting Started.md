@@ -89,7 +89,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install pytest            # your project's test dependencies
-      - uses: taltal-beep/testosterone/integrations/github-action@v1.1.1
+      - uses: taltal-beep/testosterone/integrations/github-action@v1
         with:
           cycle: unit
           python-version: "3.11"         # same Python as above, so it sees your dependencies
