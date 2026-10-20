@@ -193,7 +193,7 @@ job, commit and branch. Inputs and outputs: [integrations/github-action/README.m
   Pushgateway when `PROMETHEUS_PUSHGATEWAY_URL` is set (`PROMETHEUS_JOB_NAME` defaults to `testo`).
   Pushes are best-effort and never change the run result.
 - **Reporters:** `allure`, `extent`, `reportportal`, `testbeats` under `reporters:`.
-- **AI failure summaries:** opt in on the AI settings page with an OpenAI or Anthropic key.
+- **AI failure summaries:** opt in on the AI settings page with an OpenAI or Anthropic key, or point it at any OpenAI-compatible endpoint (a free tier such as Groq or Gemini, or a local Ollama).
   Failed runs store their failing cases, first traceback and log tail (redacted), which is
   what the summary is built from.
 
