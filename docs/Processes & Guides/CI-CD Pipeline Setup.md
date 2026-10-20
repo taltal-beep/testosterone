@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-10-08
+updated: 2026-10-19
 ---
 
 # CI Integrations
@@ -33,13 +33,20 @@ Run records written in CI include (when the provider exposes them):
 
 ## GitHub Action
 
-Source lives under `integrations/github-action/` (inputs: `config-path`, `cycle`, `ci-mode`, `persist`, `python-version`; outputs: `exit_code`, `status`, `summary_json`, `summary_path`).
+Source lives under `integrations/github-action/` (inputs: `config-path`, `cycle`, `ci-mode`, `persist`, `python-version`, `package`, `job-summary`, `comment-on-pr`, `github-token`; outputs: `exit_code`, `status`, `summary_json`, `summary_path`).
 
 ```yaml
-- uses: taltal-beep/testosterone/integrations/github-action@v1
-  with:
-    cycle: smoke
+permissions:
+  contents: read
+  pull-requests: write        # only for comment-on-pr
+steps:
+  - uses: taltal-beep/testosterone/integrations/github-action@v1
+    with:
+      cycle: smoke
+      comment-on-pr: "true"
 ```
+
+After a persisted run the action renders it with `testo report markdown` and writes it to the job summary (`job-summary`, default on). With `comment-on-pr: "true"` on `pull_request` events it keeps one comment per cycle on the pull request, found by its hidden marker and edited on later pushes. Both are best-effort: an error, such as a fork's read-only token, is a workflow warning and never changes the exit code. `package` is what gets pip-installed (`testo-core` by default; this repository's own CI passes `.`). Design: [GitHub Action PR Comment - 2026-10-19](../Specs%20&%20ADRs/GitHub%20Action%20PR%20Comment%20-%202026-10-19.md).
 
 ## GitLab include template
 
@@ -83,20 +90,22 @@ What runs on Testosterone itself, as opposed to the wrappers above that run it i
 
 | Workflow | Runs on | What it does |
 |----------|---------|--------------|
-| `ci.yml` | pull request, push to `main`, release | Blocking gates: ruff lint and format, mypy on `testo_core` and `testo_api`; the fast pytest suite with the coverage gate; frontend typecheck, generated API types up to date, vitest and build; `CHANGELOG.md` touched; docs vault lint. Builds the wheel on a release |
+| `ci.yml` | pull request, push to `main`, release | Blocking gates: ruff lint and format, mypy on `testo_core` and `testo_api`; the fast pytest suite with the coverage gate; frontend typecheck, generated API types up to date, vitest and build; `CHANGELOG.md` touched; docs vault lint; the docs site with `mkdocs build --strict`; `examples/getting-started/` through the local GitHub Action, once with the PyPI release and once with this checkout (which also posts the PR comment); builds the sdist and wheel, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`). Builds the wheel on a release |
 | `commitlint.yml` | pull request | Conventional commit messages |
 | `changelog-on-main.yml` | push to `main` | Drafts a `CHANGELOG.md` [Unreleased] entry from the pushed commits with Claude and commits it to `main`; skips when its bot secrets are missing |
-| `pages-demo.yml` | push to `main`, nightly | Runs the self-test and fake-api cycles and publishes the read-only UI to GitHub Pages ([GitLab Pages Demo](GitLab%20Pages%20Demo.md)) |
+| `pages-demo.yml` | push to `main`, nightly | Runs the self-test and fake-api cycles and publishes the read-only UI and the docs site to GitHub Pages ([GitLab Pages Demo](GitLab%20Pages%20Demo.md)) |
 | `wiki-sync.yml` | push to `main` touching `docs/` | Regenerates the GitHub wiki from `docs/` ([Docs Vault and Wiki Sync](../Specs%20&%20ADRs/Docs%20Vault%20and%20Wiki%20Sync%20-%202026-10-07.md)) |
 | `mirror-to-gitlab.yml` | push to `main` | Mirrors the repo to GitLab when `GITLAB_MIRROR_URL` / `GITLAB_MIRROR_TOKEN` are set |
 | `pr-heavy.yml` | labeled pull request, manual | Heavy test tier |
 | `nightly-external.yml` | nightly, manual | External test tier |
 | `release-gate.yml` | manual | Release checks before publishing |
-| `publish.yml`, `docker-publish.yml`, `artifactory-publish.yml` | GitHub Release published | PyPI, GHCR runner image, JFrog Artifactory ([Publishing to PyPI](Publishing%20to%20PyPI.md)) |
+| `dependabot.yml` (config, not a workflow) | weekly | Grouped dependency update PRs for pip, npm (`/` and `frontend/`) and GitHub Actions, committed as `chore(deps)` with the `no-changelog` label so commitlint and `changelog_required` pass |
+| `publish.yml`, `docker-publish.yml`, `artifactory-publish.yml` | GitHub Release published (`publish.yml` and `docker-publish.yml` can also be run by hand for an existing tag) | PyPI, GHCR runner image, JFrog Artifactory ([Publishing to PyPI](Publishing%20to%20PyPI.md), [Publishing Docker Images](Publishing%20Docker%20Images.md)) |
+| `move-major-tag.yml` | GitHub Release published (not prereleases), manual | Force-moves the `v<major>` tag (e.g. `v1`) to the release's commit |
 
 ## Versioning policy
 
-- GitHub action: publish immutable semver tags (`v1.0.0`, `v1.0.1`, ...), keep `v1` moving to latest stable `v1.x`, and recommend SHA pinning for strict supply-chain policies.
+- GitHub action: publish immutable semver tags (`v1.0.0`, `v1.0.1`, ...), keep `v1` moving to latest stable `v1.x` (done by `move-major-tag.yml`), and recommend SHA pinning for strict supply-chain policies.
 - GitLab template: pin `include` to immutable tag or commit SHA in production pipelines.
 - Runner image tags:
   - immutable: `v1.x.y`, `sha-<commit>`

@@ -10,11 +10,37 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 - Unit tests for the Extent, ReportPortal and TestBeats reporters, the reporter factory, reporter config parsing and Docker results collection (recovered from an old branch)
+- Flaky test detection: `testo flaky --cycle <name>` (`--window`, `--json`, `--fail-on-flaky`), `GET /api/v1/analytics/flaky` and a Flaky tests card on the cycle page (also in the Pages demo). A test is flaky when it both passed and failed and flipped at least twice in the cycle's last runs (`testo_core/services/flaky_service.py`)
+- GitHub Action run summary: after a persisted run the action writes the results, failing tests and per-test changes since the previous run to the job summary, and with `comment-on-pr: "true"` keeps one comment per cycle on the pull request (edited in place). New inputs `job-summary`, `comment-on-pr`, `github-token` and `package`. The text comes from the new `testo report markdown` command. This repository's CI runs the action on its own checkout and comments on its own pull requests
+- Plugin API: a package can add a test runner or a reporter through the `testo.frameworks` and `testo.reporters` entry point groups (`testo_core/plugins.py`), with no change to Testosterone. `testo plugins` lists built-ins and installed plugins (`--check` imports and verifies them, `--json`), and `examples/plugin/` is a complete plugin with a `unittest` adapter and a `json-summary` reporter
+- `equipment: playwright`: runs `npx playwright test` with its JUnit and HTML reporters wired in, so Playwright tests count in summaries, diffs and the UI with no `junit_xml` setup, the HTML report is kept per run as the native report, and `workers` becomes `--workers`. Also offered on the Quick Run page
+- Docs site: the `docs/` vault built with MkDocs Material (`mkdocs.yml`, `scripts/mkdocs_hooks.py`, `[docs]` extra) and published at <https://taltal-beep.github.io/testosterone/docs/> by the Pages demo workflow. A new `docs_site` CI job builds it with `--strict`
+- `docs/Getting Started.md`: from `pip install testo-core` to a regression in `testo summary` and the GitHub Action, with the same project in `examples/getting-started/`. A new `getting_started` CI job runs that example through the GitHub Action
+
+### Changed
+- Web UI restyled after the Vision UI dashboard look: navy palette, glass cards over a blue glow, Plus Jakarta Sans, a desktop sidebar with icon tiles and a docs card, and icon tiles on the Dashboard KPI cards. Faint line art of the testosterone molecule and of vials with a syringe sits behind the pages. Phones keep the top bar and menu. See `docs/Specs & ADRs/UI Restyle - 2026-10-19.md`
+- `publish.yml` publishes straight to PyPI (the Test PyPI step is gone; the build, metadata and clean-install checks still run before the upload) and can be run by hand for an existing release tag
+- Runner image: `Dockerfile.testo-runner` uses the floating `python:3.11-slim-bookworm` base (the `3.11.9` pin carried 9 fixable CRITICAL Debian CVEs that failed the v1.1.1 image scan), and `docker-publish.yml` scans and smoke-runs the image before pushing it and can be run by hand for an existing release tag
+- Setup prompts install `testo-core` from PyPI instead of the GitHub zip
+- `move-major-tag.yml` keeps the moving `v1` tag on the latest stable release (and can be run by hand for an existing tag)
+
+## [1.1.1] - 2026-10-19
+
+First release meant for PyPI (`pip install testo-core`).
+
+### Added
+- Open-source community files: `SECURITY.md` (private vulnerability reporting), `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `CITATION.cff`, issue forms (`.github/ISSUE_TEMPLATE/*.yml`, blank issues off, links to Discussions and the security form) and `.github/dependabot.yml` (weekly grouped updates for pip, npm and GitHub Actions, `chore(deps)` commits with the `no-changelog` label; `commitlint.config.js` skips Dependabot's long commit bodies). `CONTRIBUTING.md` gains "Finding something to work on" and a note on the AI-agent files, and its Quickstart link is fixed
+- README: animated walkthroughs of the web UI and of the CLI (`docs/assets/demo/`)
+- `docs/Prompts & Snippets/Setup Prompts.md`: copy-paste prompts for an AI coding assistant to install Testosterone in another project, write its `testosterone.yaml`, run it in GitHub Actions or GitLab CI, open the web UI and troubleshoot. They install from GitHub until `testo-core` is on PyPI. Command Reference no longer calls `doctor`, `clean`, `watch` and `init` unimplemented
 
 ### Fixed
+- `pip install testo-core` followed by `testo run` crashed with `ModuleNotFoundError: No module named 'sqlalchemy'`: run history is always saved (SQLite by default) but `sqlmodel` was only in the `[db]` extra. It is now a core dependency; `[db]` keeps the Postgres driver and `tomli-w`. A new `package` CI job (`scripts/package_smoke.sh`) installs the built wheel with no extras and runs a cycle, and the publish workflow runs the same check before uploading
 - Compare showed "n/a" / "Unknown" for "Test time (sum)" and "Avg per test" on every run because nothing stored them. Both persistence backends now write `metrics_duration_ms` (sum of per-test Allure durations) and `avg_case_ms` (that sum over the test count, `null` with no tests), plus `test_time_ms` per stage. Runs saved earlier still show "n/a". A new contract test fails when `history/views.py` reads a run metadata key that persistence never writes
 
 ### Changed
+- Package metadata for PyPI: description, MIT license expression, author, keywords, classifiers and project links (homepage, docs, demo, issues, changelog). The README shown on PyPI has its relative images and links rewritten to GitHub URLs at build time (`hatch-fancy-pypi-readme`), and the sdist now carries only the Python package, its tests and the top-level docs (about 260 KB instead of 3.5 MB)
+- `publish.yml` fails before uploading when the release tag does not match `pyproject.toml`'s version, and runs `twine check --strict`
+- README: PyPI badge and a `pip install testo-core` quickstart
 - Pages demo: the read-only notice is now a dismissible alert with a × button, remembered across reloads, and a "Read-only demo" badge in the header reopens it
 - Detailed architecture diagram (`docs/assets/testosterone-architecture-detailed-{dark,light}.png`, drawn by `scripts/render_architecture_diagram.js`) showing `CycleRunService`, the `history/` read side and the repository; it replaces the six-box picture in the README and leads `docs/Architecture/System Diagram.md`
 - Docs vault: the architecture diagram now has its own note (`docs/Architecture/System Diagram.md`) so it shows in Obsidian and the GitHub wiki, not only the README; Architecture Overview's text sketch is a Mermaid flowchart. New decision note for the vault and wiki sync, the second wave of the 2026-10-07 interview fixes, and this repo's workflows in CI-CD Pipeline Setup. `scripts/docs_vault.py lint --base` accepts a second edit to a note already dated today
