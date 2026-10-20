@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 # Architecture Overview
@@ -155,6 +155,12 @@ artifacts/
 ```
 
 The collector and `testo report` both assume this layout. See `testo_core/reporting/collector.py`.
+
+`artifacts/` and the SQLite file are relative to the working directory. Per-run report copies (`static/history/<run_id>/`, served by the API at `/history`) live under the **data root**, `paths.ORCHESTRATOR_ROOT`, which `testo_core/paths.py` resolves once at import:
+
+1. `$TESTO_HOME`, when set.
+2. The repository root, when `testo_core` runs from a source checkout or an editable install (a `pyproject.toml` next to the package).
+3. Otherwise `<cwd>/.testo/`, so a `pip install` never writes into `site-packages`. The `package` CI job (`scripts/package_smoke.sh`) checks this.
 
 ## Test pyramid
 
