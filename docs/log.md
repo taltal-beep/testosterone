@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-10-21
+updated: 2026-10-22
 ---
 
 # Vault log
@@ -60,3 +60,7 @@ Added [UI Restyle - 2026-10-19](Specs%20&%20ADRs/UI%20Restyle%20-%202026-10-19.m
 ## 2026-10-21: BehaveX reports
 
 Added [BehaveX Reports - 2026-10-21](Specs%20&%20ADRs/BehaveX%20Reports%20-%202026-10-21.md) to Specs & ADRs.
+
+## 2026-10-22: flaky test quarantine
+
+Added [Flaky Test Quarantine - 2026-10-22](Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md) to Specs & ADRs.

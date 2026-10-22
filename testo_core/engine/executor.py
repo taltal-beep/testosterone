@@ -26,8 +26,10 @@ import time
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from testo_core.config.schema import Stage
+from testo_core.config.schema import QuarantineRule, Stage
 from testo_core.engine.log_buffer import LogBuffer, drain_stream_into_buffer, merged_env
+from testo_core.engine.quarantine import WAIVABLE_RETURNCODE, QuarantineVerdict
+from testo_core.engine.quarantine import evaluate as evaluate_quarantine
 from testo_core.engine.result import StageResult
 from testo_core.frameworks.base import FrameworkAdapter, get_adapter
 from testo_core.reporting.paths import plan_artifacts_dir, safe_child_path
@@ -123,8 +125,12 @@ def run_stage(
     parent_env: Mapping[str, str] | None = None,
     on_chunk: Callable[[bytes], None] | None = None,
     tail_lines: int = _DEFAULT_TAIL_LINES,
+    quarantine: tuple[QuarantineRule, ...] = (),
 ) -> StageResult:
-    """Execute one stage and return a :class:`StageResult`."""
+    """Execute one stage and return a :class:`StageResult`.
+
+    ``quarantine`` is the plan's rules; see :mod:`testo_core.engine.quarantine`.
+    """
     adapter: FrameworkAdapter = get_adapter(stage.framework)
     plan_root = plan_artifacts_dir(artifacts_root, plan_name)
     stage_root = safe_child_path(plan_root, stage.name, label="stage name")
@@ -149,6 +155,7 @@ def run_stage(
             parent_env=parent_env,
             on_chunk=on_chunk,
             tail_lines=tail_lines,
+            quarantine=quarantine,
         )
     except Exception as exc:
         logger.exception("stage %s crashed inside the executor", stage.name)
@@ -183,6 +190,7 @@ def _run_resolved_stage(
     parent_env: Mapping[str, str] | None,
     on_chunk: Callable[[bytes], None] | None,
     tail_lines: int,
+    quarantine: tuple[QuarantineRule, ...] = (),
 ) -> StageResult:
     argv = adapter.build_argv(
         target_repo=target_repo,
@@ -277,6 +285,15 @@ def _run_resolved_stage(
             started_at=started_at,
         )
 
+    quarantined: tuple[str, ...] = ()
+    waived_returncode: int | None = None
+    if quarantine and returncode == WAIVABLE_RETURNCODE and not timed_out:
+        verdict = evaluate_quarantine(quarantine, results_dir)
+        quarantined = verdict.quarantined
+        if verdict.waives_stage:
+            waived_returncode, returncode = returncode, 0
+        _append_run_log(log_path, _quarantine_log_lines(verdict))
+
     duration = max(0.0, finished_at - started_at)
     return StageResult(
         stage_name=stage.name,
@@ -293,7 +310,23 @@ def _run_resolved_stage(
         timed_out=timed_out,
         error=error,
         target_repo=target_repo,
+        quarantined=quarantined,
+        waived_returncode=waived_returncode,
     )
+
+
+def _quarantine_log_lines(verdict: QuarantineVerdict) -> list[str]:
+    if not verdict.quarantined:
+        return []
+    lines = [f"[testo] quarantine: failed but quarantined: {name}" for name in verdict.quarantined]
+    if verdict.waives_stage:
+        lines.append("[testo] quarantine: every failure is quarantined; the stage passes")
+    else:
+        lines.append(
+            f"[testo] quarantine: {len(verdict.unquarantined)} failure(s) not quarantined; "
+            "the stage still fails"
+        )
+    return lines
 
 
 def _terminate(proc: subprocess.Popen[bytes]) -> int:
