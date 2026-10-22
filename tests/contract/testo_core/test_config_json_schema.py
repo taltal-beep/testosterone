@@ -121,7 +121,7 @@ def test_full_config_is_valid() -> None:
         ({"cycels": {}}, "'cycels' was unexpected"),
         (
             {"quarantine": [{"test": "t", "ownr": "@x"}], "cycles": {}},
-            "'ownr' was unexpected",
+            "is not valid under any of the given schemas",
         ),
     ],
 )
