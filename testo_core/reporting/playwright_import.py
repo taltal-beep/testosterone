@@ -88,7 +88,7 @@ def _ms(value: Any) -> int:
         return 0
 
 
-def _error_details(attempt: dict) -> dict[str, str]:
+def _error_details(attempt: dict) -> dict[str, Any]:
     error = attempt.get("error") if isinstance(attempt.get("error"), dict) else None
     if error is None:
         errors = attempt.get("errors") or []
@@ -97,7 +97,7 @@ def _error_details(attempt: dict) -> dict[str, str]:
         return {}
     message = _clean(error.get("message"))
     trace = _clean(error.get("stack")) or message
-    details = {}
+    details: dict[str, Any] = {}
     if message:
         details["message"] = message.splitlines()[0]
     if trace:
@@ -262,7 +262,7 @@ def _results_for_report(
                 # Last attempt's attachments also go on the test, where Allure shows them first.
                 if steps and steps[-1]["attachments"]:
                     result["attachments"] = steps[-1]["attachments"]
-                details: dict[str, Any] = {}
+                details = {}
                 failing = next(
                     (s for s in reversed(steps) if s["status"] in ("failed", "broken")), None
                 )
@@ -320,7 +320,9 @@ def playwright_results_for_file(
     results_dir.mkdir(parents=True, exist_ok=True)
     root = attachments_root.expanduser().resolve() if attachments_root is not None else None
     attachments = _Attachments(results_dir, root, max_attachment_bytes)
-    stats = report.get("stats") if isinstance(report.get("stats"), dict) else {}
+    stats = report.get("stats")
+    if not isinstance(stats, dict):
+        stats = {}
     fallback_ms = _start_ms(stats.get("startTime"), int(path.stat().st_mtime * 1000))
     results, flaky = _results_for_report(
         report, tool=tool, fallback_ms=fallback_ms, attachments=attachments
