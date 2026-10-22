@@ -178,4 +178,5 @@ def _panel_from_result(result) -> StagePanelData:  # type: ignore[no-untyped-def
         results_dir=results_dir,
         command=" ".join(result.command),
         quarantined=tuple(getattr(result, "quarantined", ())),
+        error=getattr(result, "error", None),
     )

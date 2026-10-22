@@ -15,7 +15,7 @@ Related: [Architecture Overview](../Architecture/Architecture%20Overview.md), [C
 
 ## Mental model
 
-A **cycle** (plan) is an ordered list of **stages**. Each stage names an **equipment** framework (`pytest`, `behave`, `behavex`), a **target_repo**, and CLI **args**. The engine runs stages **one after another** on the host unless a trigger skips the whole cycle.
+A **cycle** (plan) is an ordered list of **stages**. Each stage names an **equipment** framework (`pytest`, `behave`, `behavex`, `playwright`, `command`, `junit`; `behave` and `behavex` come with the `bdd` extra), a **target_repo**, and CLI **args**. The engine runs stages **one after another** on the host unless a trigger skips the whole cycle.
 
 ```mermaid
 flowchart LR
@@ -81,7 +81,15 @@ cycles:
         owner: "@taltal"
 ```
 
-A stage that exits `1` passes when every failed test matches a rule; one unquarantined failure, or any other exit code (timeout, crash, collection error), still fails it. `testo flaky` marks quarantined tests and prints a snippet for the rest. See [Flaky Test Quarantine - 2026-10-22](../Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md).
+A stage that exits `1` passes when every failed test matches a rule; one unquarantined failure, or any other exit code (timeout, crash, collection error), still fails it. The same goes for `equipment: junit` stages, whose exit code comes from the recorded results. `testo flaky` marks quarantined tests and prints a snippet for the rest. See [Flaky Test Quarantine - 2026-10-22](../Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md).
+
+**Results an earlier step wrote (`equipment: junit`):** no command runs; the stage records the JUnit XML its `junit_xml` globs match (files of any age) and fails when a test failed or nothing matched. `testo ingest` builds exactly this stage on the fly ([Command Reference § testo ingest](../CLI%20Commands/Command%20Reference.md#testo-ingest)).
+
+```yaml
+      - name: go-tests
+        equipment: junit
+        junit_xml: ["reports/go-*.xml"]   # required for junit
+```
 
 **Post-run reporters** (global `reporters:` block) run after all stages complete — Allure HTML, Extent dashboard, ReportPortal upload, TestBeats Slack/Teams preview.
 

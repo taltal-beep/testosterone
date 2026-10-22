@@ -64,3 +64,6 @@ Added [BehaveX Reports - 2026-10-21](Specs%20&%20ADRs/BehaveX%20Reports%20-%2020
 ## 2026-10-22: flaky test quarantine
 
 Added [Flaky Test Quarantine - 2026-10-22](Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md) to Specs & ADRs.
+## 2026-10-22: Ingest and team server
+
+Added [Team Server](Processes%20&%20Guides/Team%20Server.md) to Processes & Guides and [Ingest and Team Server - 2026-10-22](Specs%20&%20ADRs/Ingest%20and%20Team%20Server%20-%202026-10-22.md) to Specs & ADRs, both linked from Index or their hub.

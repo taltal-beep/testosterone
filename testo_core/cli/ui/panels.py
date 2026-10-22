@@ -29,6 +29,7 @@ class StagePanelData:
     output_tail: str
     results_dir: str | None = None
     command: str | None = None
+    error: str | None = None
     # Failed tests a ``quarantine:`` rule matched (they don't fail the stage on their own).
     quarantined: tuple[str, ...] = ()
 
@@ -58,6 +59,8 @@ def render_stage_panel(console: Console, data: StagePanelData, *, tail_max_lines
                 "[muted]quarantined failures:[/] " + ", ".join(escape(n) for n in data.quarantined)
             )
         )
+    if data.error:
+        rows.append(Text.from_markup("[fail]error:[/]    ").append(data.error))
 
     tail = data.output_tail.rstrip("\n")
     if tail:

@@ -214,3 +214,24 @@ def test_plan_exit_code_honors_the_quarantine(tmp_path: Path) -> None:
     finished = next(e for e in events if e["event"] == "stage_finished")
     assert finished["quarantined"] == ["test_flaky_route"]
     assert finished["waived_returncode"] == 1
+
+
+def test_quarantine_applies_to_recorded_junit_stages(tmp_path: Path) -> None:
+    # ``equipment: junit`` runs no process, so the gate reads the recorded results.
+    from testo_core.services.cycle_run import junit_ingest_plan
+
+    (tmp_path / "junit.xml").write_text(
+        '<testsuite name="pay"><testcase classname="pay" name="test_flaky_refund">'
+        '<failure message="boom">trace</failure></testcase></testsuite>',
+        encoding="utf-8",
+    )
+    stage = junit_ingest_plan(cycle="web", reports=["junit.xml"], target_repo=tmp_path).stages[0]
+    result = run_stage(
+        stage,
+        plan_name="web",
+        artifacts_root=tmp_path / "out",
+        quarantine=(QuarantineRule(test="test_flaky_*"),),
+    )
+    assert result.returncode == 0
+    assert result.waived_returncode == 1
+    assert result.quarantined == ("test_flaky_refund",)
