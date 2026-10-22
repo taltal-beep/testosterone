@@ -28,12 +28,18 @@ import threading
 import time
 from collections.abc import Callable, Mapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from testo_core.config.schema import Stage
+from testo_core.config.schema import QuarantineRule, Stage
 from testo_core.engine.log_buffer import LogBuffer, drain_stream_into_buffer, merged_env
+from testo_core.engine.quarantine import WAIVABLE_RETURNCODE, QuarantineVerdict
+from testo_core.engine.quarantine import evaluate as evaluate_quarantine
 from testo_core.engine.result import StageResult
 from testo_core.frameworks.base import FrameworkAdapter, get_adapter
 from testo_core.reporting.paths import plan_artifacts_dir, safe_child_path
+
+if TYPE_CHECKING:
+    from testo_core.reporting.junit_import import JunitImportResult
 
 _TERMINATE_GRACE_S: float = 5.0
 # Installed by the ``bdd`` extra, not by a plain ``pip install testo-core``.
@@ -51,8 +57,9 @@ def _import_junit(
     results_dir: Path,
     log_path: Path,
     started_at: float,
+    first_match_only: bool = False,
 ) -> None:
-    """Post-stage hook: turn the stage's JUnit XML into Allure results.
+    """Post-stage hook: turn the stage's JUnit XML (or Playwright JSON) into Allure results.
 
     Best-effort by design (like the BehaveX report hook): the process exit
     code already decides pass/fail, so a missing or malformed report is
@@ -67,16 +74,26 @@ def _import_junit(
             results_dir=results_dir,
             tool=stage.name,
             not_before=started_at,
+            first_match_only=first_match_only,
         )
         lines = [
             f"[testo] junit_xml: imported {imported.tests} test(s) "
             f"from {len(imported.files)} file(s) matching {list(patterns)}"
+            + _playwright_extras(imported)
         ]
-        lines += [f"[testo] junit_xml: skipped malformed report {err}" for err in imported.errors]
+        lines += [f"[testo] junit_xml: skipped {err}" for err in imported.errors]
     except Exception as exc:  # noqa: BLE001 — never let reporting fail a stage
         logger.warning("junit_xml import failed for stage %s", stage.name, exc_info=True)
         lines = [f"[testo] junit_xml: import failed: {exc}"]
     _append_run_log(log_path, lines)
+
+
+def _playwright_extras(imported: JunitImportResult) -> str:
+    """``", 1 flaky, 6 attachment(s)"`` when a Playwright JSON report had any."""
+    extras = [f"{imported.flaky} flaky"] if imported.flaky else []
+    if imported.attachments:
+        extras.append(f"{imported.attachments} attachment(s)")
+    return "".join(f", {e}" for e in extras)
 
 
 def _finish_behavex_reports(stage_root: Path, results_dir: Path, *, log_path: Path) -> str | None:
@@ -128,8 +145,12 @@ def run_stage(
     parent_env: Mapping[str, str] | None = None,
     on_chunk: Callable[[bytes], None] | None = None,
     tail_lines: int = _DEFAULT_TAIL_LINES,
+    quarantine: tuple[QuarantineRule, ...] = (),
 ) -> StageResult:
-    """Execute one stage and return a :class:`StageResult`."""
+    """Execute one stage and return a :class:`StageResult`.
+
+    ``quarantine`` is the plan's rules; see :mod:`testo_core.engine.quarantine`.
+    """
     adapter: FrameworkAdapter = get_adapter(stage.framework)
     plan_root = plan_artifacts_dir(artifacts_root, plan_name)
     stage_root = safe_child_path(plan_root, stage.name, label="stage name")
@@ -154,6 +175,7 @@ def run_stage(
             parent_env=parent_env,
             on_chunk=on_chunk,
             tail_lines=tail_lines,
+            quarantine=quarantine,
         )
     except Exception as exc:
         logger.exception("stage %s crashed inside the executor", stage.name)
@@ -188,10 +210,15 @@ def _run_resolved_stage(
     parent_env: Mapping[str, str] | None,
     on_chunk: Callable[[bytes], None] | None,
     tail_lines: int,
+    quarantine: tuple[QuarantineRule, ...] = (),
 ) -> StageResult:
     if not getattr(adapter, "runs_process", True):
         return _record_junit_stage(
-            stage, target_repo=target_repo, results_dir=results_dir, log_path=log_path
+            stage,
+            target_repo=target_repo,
+            results_dir=results_dir,
+            log_path=log_path,
+            quarantine=quarantine,
         )
 
     argv = adapter.build_argv(
@@ -287,7 +314,18 @@ def _run_resolved_stage(
             results_dir=results_dir,
             log_path=log_path,
             started_at=started_at,
+            # An adapter's defaults are alternatives (Playwright: JSON, else JUnit).
+            first_match_only=not stage.junit_xml,
         )
+
+    quarantined: tuple[str, ...] = ()
+    waived_returncode: int | None = None
+    if quarantine and returncode == WAIVABLE_RETURNCODE and not timed_out:
+        verdict = evaluate_quarantine(quarantine, results_dir)
+        quarantined = verdict.quarantined
+        if verdict.waives_stage:
+            waived_returncode, returncode = returncode, 0
+        _append_run_log(log_path, _quarantine_log_lines(verdict))
 
     duration = max(0.0, finished_at - started_at)
     return StageResult(
@@ -305,11 +343,32 @@ def _run_resolved_stage(
         timed_out=timed_out,
         error=error,
         target_repo=target_repo,
+        quarantined=quarantined,
+        waived_returncode=waived_returncode,
     )
 
 
+def _quarantine_log_lines(verdict: QuarantineVerdict) -> list[str]:
+    if not verdict.quarantined:
+        return []
+    lines = [f"[testo] quarantine: failed but quarantined: {name}" for name in verdict.quarantined]
+    if verdict.waives_stage:
+        lines.append("[testo] quarantine: every failure is quarantined; the stage passes")
+    else:
+        lines.append(
+            f"[testo] quarantine: {len(verdict.unquarantined)} failure(s) not quarantined; "
+            "the stage still fails"
+        )
+    return lines
+
+
 def _record_junit_stage(
-    stage: Stage, *, target_repo: Path, results_dir: Path, log_path: Path
+    stage: Stage,
+    *,
+    target_repo: Path,
+    results_dir: Path,
+    log_path: Path,
+    quarantine: tuple[QuarantineRule, ...] = (),
 ) -> StageResult:
     """A ``junit`` stage: no process, the results are JUnit XML some earlier step wrote.
 
@@ -328,17 +387,26 @@ def _record_junit_stage(
         tool=stage.name,
     )
     lines = [
-        f"[testo] junit: recorded {imported.tests} test(s), {imported.failed} failed, "
+        f"[testo] junit: recorded {imported.tests} test(s), {imported.failed} failed"
+        f"{_playwright_extras(imported)}, "
         f"from {len(imported.files)} file(s) matching {list(stage.junit_xml)}"
     ]
     lines += [f"[testo] junit: {path}" for path in imported.files]
-    lines += [f"[testo] junit: skipped malformed report {err}" for err in imported.errors]
+    lines += [f"[testo] junit: skipped {err}" for err in imported.errors]
     error: str | None = None
     if not imported.files:
         error = f"no JUnit XML matched {list(stage.junit_xml)} in {target_repo}"
         lines.append(f"[testo] junit: {error}")
-    log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     returncode = 1 if (imported.failed or not imported.files) else 0
+    quarantined: tuple[str, ...] = ()
+    waived_returncode: int | None = None
+    if quarantine and imported.files and returncode == WAIVABLE_RETURNCODE:
+        verdict = evaluate_quarantine(quarantine, results_dir)
+        quarantined = verdict.quarantined
+        if verdict.waives_stage:
+            waived_returncode, returncode = returncode, 0
+        lines += _quarantine_log_lines(verdict)
+    log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     finished_at = time.time()
     return StageResult(
         stage_name=stage.name,
@@ -354,6 +422,8 @@ def _record_junit_stage(
         output_tail="\n".join(lines),
         error=error,
         target_repo=target_repo,
+        quarantined=quarantined,
+        waived_returncode=waived_returncode,
     )
 
 
