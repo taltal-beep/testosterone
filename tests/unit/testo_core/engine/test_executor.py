@@ -240,6 +240,25 @@ def test_behavex_report_failure_sets_stage_error_not_returncode(
     assert result.error in (tmp_path / "demo" / "echo-stage" / "run.log").read_text()
 
 
+def test_behavex_allure_export_failure_sets_stage_error_not_returncode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from testo_core.reporting import behavex_allure
+
+    def broken_export(_report_dir: Path, _results_dir: Path) -> int:
+        raise RuntimeError("formatter crashed")
+
+    use_echo_adapter(monkeypatch)
+    monkeypatch.setattr(behavex_allure, "export_behavex_allure_results", broken_export)
+    stage = dataclasses.replace(_stage(args=("--text", "ok")), framework="behavex")
+
+    result = run_stage(stage, plan_name="demo", artifacts_root=tmp_path)
+
+    assert result.returncode == 0
+    assert result.error == "BehaveX Allure export failed: formatter crashed"
+    assert result.error in (tmp_path / "demo" / "echo-stage" / "run.log").read_text()
+
+
 def test_command_records_full_argv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     use_echo_adapter(monkeypatch)
     result = run_stage(
@@ -247,3 +266,21 @@ def test_command_records_full_argv(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     )
     assert result.command[-2:] == ("--text", "argv-check")
     assert "echo.py" in result.command[1]
+
+
+class _MissingBehaveAdapter(MissingBinaryAdapter):
+    def build_argv(self, **_: object) -> list[str]:
+        return ["behave", "features/smoke.feature"]
+
+
+def test_missing_behave_names_the_bdd_extra(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A plain ``pip install testo-core`` has no Behave; the error says how to get it.
+    monkeypatch.setenv("PATH", str(tmp_path / "empty-bin"))
+    use_adapter(monkeypatch, _MissingBehaveAdapter())
+
+    result = run_stage(_stage(name="flows"), plan_name="demo", artifacts_root=tmp_path)
+
+    assert result.returncode == 127
+    assert result.error is not None and "testo-core[bdd]" in result.error

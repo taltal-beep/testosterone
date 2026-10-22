@@ -9,6 +9,9 @@ Responsibilities:
 * Enforce ``timeout_s`` by sending SIGTERM, then SIGKILL after a short grace.
 * Return a :class:`StageResult` describing the outcome.
 
+An adapter with ``runs_process = False`` (the ``junit`` equipment behind
+``testo ingest``) skips the subprocess: the stage only records JUnit XML.
+
 No Docker, no SSH, no DB.  Future backends (Docker, remote runner) will live
 under ``testo_core/engine/backends/`` and adapt to the same return type.
 """
@@ -33,6 +36,8 @@ from testo_core.frameworks.base import FrameworkAdapter, get_adapter
 from testo_core.reporting.paths import plan_artifacts_dir, safe_child_path
 
 _TERMINATE_GRACE_S: float = 5.0
+# Installed by the ``bdd`` extra, not by a plain ``pip install testo-core``.
+_BDD_EXECUTABLES: frozenset[str] = frozenset({"behave", "behavex"})
 _DEFAULT_TAIL_LINES: int = 200
 
 logger = logging.getLogger(__name__)
@@ -74,23 +79,37 @@ def _import_junit(
     _append_run_log(log_path, lines)
 
 
-def _ensure_behavex_html(stage_root: Path, *, log_path: Path) -> str | None:
-    """Post-stage hook: render BehaveX's HTML report when it only wrote ``report.json``.
+def _finish_behavex_reports(stage_root: Path, results_dir: Path, *, log_path: Path) -> str | None:
+    """Post-stage hook: export BehaveX's ``report.json`` to Allure, and make sure ``report.html`` exists.
 
-    Best-effort like :func:`_import_junit`, but the failure is returned so the
-    caller can put it on ``StageResult.error`` (exit code unchanged).
+    The adapter runs BehaveX without ``--formatter`` so it writes its HTML report;
+    the Allure results come from ``report.json`` here. The HTML fallback only does
+    work when a stage passed its own ``--formatter`` (BehaveX then skips the HTML).
+    Best-effort like :func:`_import_junit`, but the first failure is returned so
+    the caller can put it on ``StageResult.error`` (exit code unchanged).
     """
+    from testo_core.reporting.behavex_allure import export_behavex_allure_results
     from testo_core.reporting.native_reports import ensure_behavex_report_html
 
+    errors: list[str] = []
+    try:
+        exported = export_behavex_allure_results(stage_root / "behave_reports", results_dir)
+        if exported is not None:
+            _append_run_log(
+                log_path, [f"[testo] behavex: exported {exported} scenario(s) to Allure"]
+            )
+    except Exception as exc:  # noqa: BLE001 — BehaveX's formatter raises arbitrary types
+        logger.warning("BehaveX Allure export failed in %s", stage_root, exc_info=True)
+        errors.append(f"BehaveX Allure export failed: {exc}")
     try:
         ensure_behavex_report_html(stage_root, raise_errors=True)
     except Exception as exc:  # noqa: BLE001 — BehaveX's generator raises arbitrary types
         # native_reports already logged the traceback; here it only becomes stage evidence.
         logger.debug("BehaveX HTML report generation failed in %s", stage_root, exc_info=True)
-        message = f"BehaveX HTML report generation failed: {exc}"
-        _append_run_log(log_path, [f"[testo] {message}"])
-        return message
-    return None
+        errors.append(f"BehaveX HTML report generation failed: {exc}")
+    if errors:
+        _append_run_log(log_path, [f"[testo] {message}" for message in errors])
+    return errors[0] if errors else None
 
 
 def _append_run_log(log_path: Path, lines: list[str]) -> None:
@@ -170,6 +189,11 @@ def _run_resolved_stage(
     on_chunk: Callable[[bytes], None] | None,
     tail_lines: int,
 ) -> StageResult:
+    if not getattr(adapter, "runs_process", True):
+        return _record_junit_stage(
+            stage, target_repo=target_repo, results_dir=results_dir, log_path=log_path
+        )
+
     argv = adapter.build_argv(
         target_repo=target_repo,
         results_dir=results_dir,
@@ -209,6 +233,8 @@ def _run_resolved_stage(
             )
         except FileNotFoundError as exc:
             error = f"executable not found: {exc.filename or argv[0]}"
+            if argv and argv[0] in _BDD_EXECUTABLES:
+                error += " (Behave and BehaveX are optional: pip install 'testo-core[bdd]')"
             finished_at = time.time()
             return _failure_result(
                 stage=stage,
@@ -248,7 +274,7 @@ def _run_resolved_stage(
         output_tail = buffer.tail(max_lines=tail_lines)
 
     if stage.framework == "behavex":
-        report_error = _ensure_behavex_html(stage_root, log_path=log_path)
+        report_error = _finish_behavex_reports(stage_root, results_dir, log_path=log_path)
         # A timeout/launch error is the more important message; keep it.
         error = error or report_error
 
@@ -277,6 +303,55 @@ def _run_resolved_stage(
         command=tuple(argv),
         output_tail=output_tail,
         timed_out=timed_out,
+        error=error,
+        target_repo=target_repo,
+    )
+
+
+def _record_junit_stage(
+    stage: Stage, *, target_repo: Path, results_dir: Path, log_path: Path
+) -> StageResult:
+    """A ``junit`` stage: no process, the results are JUnit XML some earlier step wrote.
+
+    Unlike the post-stage hook, files are not filtered by age (they predate this
+    stage by definition), and the returncode comes from the results: 1 when a
+    case failed or broke, or when no file matched (ingesting nothing should be
+    loud in CI), 0 otherwise. Duration is the summed test time from the reports.
+    """
+    from testo_core.reporting.junit_import import import_junit_reports
+
+    started_at = time.time()
+    imported = import_junit_reports(
+        target_repo=target_repo,
+        patterns=stage.junit_xml,
+        results_dir=results_dir,
+        tool=stage.name,
+    )
+    lines = [
+        f"[testo] junit: recorded {imported.tests} test(s), {imported.failed} failed, "
+        f"from {len(imported.files)} file(s) matching {list(stage.junit_xml)}"
+    ]
+    lines += [f"[testo] junit: {path}" for path in imported.files]
+    lines += [f"[testo] junit: skipped malformed report {err}" for err in imported.errors]
+    error: str | None = None
+    if not imported.files:
+        error = f"no JUnit XML matched {list(stage.junit_xml)} in {target_repo}"
+        lines.append(f"[testo] junit: {error}")
+    log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    returncode = 1 if (imported.failed or not imported.files) else 0
+    finished_at = time.time()
+    return StageResult(
+        stage_name=stage.name,
+        framework=stage.framework,
+        tier=stage.tier,
+        returncode=returncode,
+        started_at=started_at,
+        finished_at=finished_at,
+        duration_s=imported.duration_s,
+        log_path=log_path,
+        artifacts_dir=log_path.parent,
+        command=(),
+        output_tail="\n".join(lines),
         error=error,
         target_repo=target_repo,
     )

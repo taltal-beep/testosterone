@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- `testo ingest`: record JUnit XML that any runner already wrote (Jest, Vitest, `go test`, JUnit5, ...) as a run of a cycle, with no `testosterone.yaml` needed. Ingested runs get the same history, Compare, `testo flaky`, reporters and PR comment as `testo run`. Backed by a new `equipment: junit` that runs no process and fails the stage when a test failed or no report matched
+- Team server: `POST /api/v1/ingest` records uploaded JUnit XML, and `testo ingest --server URL --token` uploads with the CI job's provenance (provider, pipeline, job, commit, branch, repository). The API serves the built web UI when `TESTO_UI_DIR` is set. New `testo-server` Docker image (`Dockerfile.testo-server`, published with `testo-runner`) and `deploy/server/docker-compose.yml` with Postgres. Guide: `docs/Processes & Guides/Team Server.md`
 - Unit tests for the Extent, ReportPortal and TestBeats reporters, the reporter factory, reporter config parsing and Docker results collection (recovered from an old branch)
 - AI failure summaries without a paid key: an `openai_compatible` provider with a base URL, so Gemini, Groq, OpenRouter (free keys) or a local Ollama (no key) work. The settings page offers presets for them
 - Flaky test detection: `testo flaky --cycle <name>` (`--window`, `--json`, `--fail-on-flaky`), `GET /api/v1/analytics/flaky` and a Flaky tests card on the cycle page (also in the Pages demo). A test is flaky when it both passed and failed and flipped at least twice in the cycle's last runs (`testo_core/services/flaky_service.py`)
@@ -20,13 +22,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 - AI settings (never the key) are saved to `artifacts/ai_settings.json` and survive an API restart (`TESTO_AI_SETTINGS_PATH` moves it; empty keeps them in memory). The settings page resets the model when the provider changes, names the missing environment variable and refuses a key pasted as a variable name. The summary prompt asks for a short plain-text `What failed` / `Likely cause` / `Next steps` reply, and the Run Details card shows provider errors in words
+- **Behave and BehaveX are now an extra.** `pip install testo-core` no longer installs `behave`, `behavex` and `allure-behave` (35 packages instead of 47). **Migration:** if a cycle has `behave` or `behavex` stages, install `testo-core[bdd]`; in the GitHub Action pass `package: "testo-core[bdd]"`, and in the GitLab template set `TESTO_PACKAGE: "testo-core[bdd]"` (new variable). The `testo-runner` image and the `dev` extra include it. Without it a Behave stage fails with exit 3 and the stage error names the extra, which the CLI stage panel now shows (the `--ci` stream keeps it in the artifact event mirror, as before)
+- README and PyPI description lead with what the project answers on every run (what broke, what's flaky, what got slower) and with `testo ingest` for any runner, next to running cycles; new PyPI keywords
 - Web UI restyled after the Vision UI dashboard look: navy palette, glass cards over a blue glow, Plus Jakarta Sans, a desktop sidebar with icon tiles and a docs card, and icon tiles on the Dashboard KPI cards. Faint line art of the testosterone molecule and of vials with a syringe sits behind the pages. Phones keep the top bar and menu. See `docs/Specs & ADRs/UI Restyle - 2026-10-19.md`
 - `publish.yml` publishes straight to PyPI (the Test PyPI step is gone; the build, metadata and clean-install checks still run before the upload) and can be run by hand for an existing release tag
 - Runner image: `Dockerfile.testo-runner` uses the floating `python:3.11-slim-bookworm` base (the `3.11.9` pin carried 9 fixable CRITICAL Debian CVEs that failed the v1.1.1 image scan), and `docker-publish.yml` scans and smoke-runs the image before pushing it and can be run by hand for an existing release tag
 - Setup prompts install `testo-core` from PyPI instead of the GitHub zip
 - `move-major-tag.yml` keeps the moving `v1` tag on the latest stable release (and can be run by hand for an existing tag)
+- README: a "What's new" section for the changes since 1.1.1, new screenshots and UI walkthrough of the restyled UI on real self-test and fake-api runs (including the flaky tests card), a terminal recording of `testo flaky`, `testo report markdown` and `testo plugins`, and the Playwright equipment, plugins, `testo report markdown`, `testo summary` and PR comments in the reference sections
 
 ### Fixed
+- BehaveX stages get BehaveX's own HTML report again. The adapter passed BehaveX's Allure `--formatter`, and BehaveX skips `report.html` whenever a formatter is set, so the report Testo showed was re-rendered afterwards without scenario logs. BehaveX now runs plain and the executor converts its `report.json` to Allure results after the stage (`testo_core/reporting/behavex_allure.py`). A `--formatter` in a stage's `args` is still passed through
 - New run-history records include the repository used by a run when its attempted stages have one resolved target; runs using multiple repositories leave it unknown.
 
 ## [1.1.1] - 2026-10-19
