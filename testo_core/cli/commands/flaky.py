@@ -22,6 +22,9 @@ def flaky(
     window: int = typer.Option(
         20, "--window", min=2, help="How many of the cycle's most recent runs to look at."
     ),
+    new: bool = typer.Option(
+        False, "--new", help="Only tests that the cycle's latest run made flaky."
+    ),
     as_json: bool = typer.Option(False, "--json", help="Print the report as JSON."),
     fail_on_flaky: bool = typer.Option(
         False,
@@ -40,9 +43,11 @@ def flaky(
 
     from testo_core.cli.ui.console import default_console
     from testo_core.config.errors import ConfigError
-    from testo_core.services.flaky_service import find_flaky_tests
+    from testo_core.services.flaky_service import find_flaky_tests, newly_flaky_tests
 
     report = find_flaky_tests(cycle=cycle.strip(), window=window)
+    if new:
+        report = replace(report, flaky=newly_flaky_tests(cycle=report.cycle, window=window))
     try:
         rules = _quarantine_rules(report.cycle, config)
     except ConfigError as exc:
@@ -82,7 +87,7 @@ def flaky(
         f"of[/] [bold]{report.cycle}[/]"
     )
     if not report.flaky:
-        console.print("[ok]No flaky tests.[/]")
+        console.print(f"[ok]No {'newly ' if new else ''}flaky tests.[/]")
         raise typer.Exit(code=exit_code)
 
     table = Table(title=f"Flaky tests ({len(report.flaky)})", title_justify="left")

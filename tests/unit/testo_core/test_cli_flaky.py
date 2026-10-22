@@ -92,3 +92,13 @@ def test_bad_config_is_invalid_input(monkeypatch: pytest.MonkeyPatch, tmp_path) 
     missing = tmp_path / "nope.yaml"
     result = CliRunner().invoke(app, ["flaky", "--cycle", "x", "--config", str(missing)])
     assert result.exit_code == 2
+
+
+def test_new_keeps_only_tests_the_latest_run_made_flaky(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch(monkeypatch, runs=3, flaky=(_FLAKY,))
+    monkeypatch.setattr(
+        "testo_core.services.flaky_service.newly_flaky_tests", lambda *, cycle, window: ()
+    )
+    result = CliRunner().invoke(app, ["flaky", "--cycle", "x", "--new", "--json"])
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["flaky"] == []
