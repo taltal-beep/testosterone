@@ -9,6 +9,9 @@ Responsibilities:
 * Enforce ``timeout_s`` by sending SIGTERM, then SIGKILL after a short grace.
 * Return a :class:`StageResult` describing the outcome.
 
+An adapter with ``runs_process = False`` (the ``junit`` equipment behind
+``testo ingest``) skips the subprocess: the stage only records JUnit XML.
+
 No Docker, no SSH, no DB.  Future backends (Docker, remote runner) will live
 under ``testo_core/engine/backends/`` and adapt to the same return type.
 """
@@ -33,6 +36,8 @@ from testo_core.frameworks.base import FrameworkAdapter, get_adapter
 from testo_core.reporting.paths import plan_artifacts_dir, safe_child_path
 
 _TERMINATE_GRACE_S: float = 5.0
+# Installed by the ``bdd`` extra, not by a plain ``pip install testo-core``.
+_BDD_EXECUTABLES: frozenset[str] = frozenset({"behave", "behavex"})
 _DEFAULT_TAIL_LINES: int = 200
 
 logger = logging.getLogger(__name__)
@@ -184,6 +189,11 @@ def _run_resolved_stage(
     on_chunk: Callable[[bytes], None] | None,
     tail_lines: int,
 ) -> StageResult:
+    if not getattr(adapter, "runs_process", True):
+        return _record_junit_stage(
+            stage, target_repo=target_repo, results_dir=results_dir, log_path=log_path
+        )
+
     argv = adapter.build_argv(
         target_repo=target_repo,
         results_dir=results_dir,
@@ -223,6 +233,8 @@ def _run_resolved_stage(
             )
         except FileNotFoundError as exc:
             error = f"executable not found: {exc.filename or argv[0]}"
+            if argv and argv[0] in _BDD_EXECUTABLES:
+                error += " (Behave and BehaveX are optional: pip install 'testo-core[bdd]')"
             finished_at = time.time()
             return _failure_result(
                 stage=stage,
@@ -291,6 +303,55 @@ def _run_resolved_stage(
         command=tuple(argv),
         output_tail=output_tail,
         timed_out=timed_out,
+        error=error,
+        target_repo=target_repo,
+    )
+
+
+def _record_junit_stage(
+    stage: Stage, *, target_repo: Path, results_dir: Path, log_path: Path
+) -> StageResult:
+    """A ``junit`` stage: no process, the results are JUnit XML some earlier step wrote.
+
+    Unlike the post-stage hook, files are not filtered by age (they predate this
+    stage by definition), and the returncode comes from the results: 1 when a
+    case failed or broke, or when no file matched (ingesting nothing should be
+    loud in CI), 0 otherwise. Duration is the summed test time from the reports.
+    """
+    from testo_core.reporting.junit_import import import_junit_reports
+
+    started_at = time.time()
+    imported = import_junit_reports(
+        target_repo=target_repo,
+        patterns=stage.junit_xml,
+        results_dir=results_dir,
+        tool=stage.name,
+    )
+    lines = [
+        f"[testo] junit: recorded {imported.tests} test(s), {imported.failed} failed, "
+        f"from {len(imported.files)} file(s) matching {list(stage.junit_xml)}"
+    ]
+    lines += [f"[testo] junit: {path}" for path in imported.files]
+    lines += [f"[testo] junit: skipped malformed report {err}" for err in imported.errors]
+    error: str | None = None
+    if not imported.files:
+        error = f"no JUnit XML matched {list(stage.junit_xml)} in {target_repo}"
+        lines.append(f"[testo] junit: {error}")
+    log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    returncode = 1 if (imported.failed or not imported.files) else 0
+    finished_at = time.time()
+    return StageResult(
+        stage_name=stage.name,
+        framework=stage.framework,
+        tier=stage.tier,
+        returncode=returncode,
+        started_at=started_at,
+        finished_at=finished_at,
+        duration_s=imported.duration_s,
+        log_path=log_path,
+        artifacts_dir=log_path.parent,
+        command=(),
+        output_tail="\n".join(lines),
         error=error,
         target_repo=target_repo,
     )
