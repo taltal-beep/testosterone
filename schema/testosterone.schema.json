@@ -72,6 +72,9 @@
         "$ref": "#/definitions/reporter"
       }
     },
+    "quarantine": {
+      "$ref": "#/definitions/quarantine"
+    },
     "cycles": {
       "type": "object",
       "minProperties": 1,
@@ -121,6 +124,7 @@
                 "behave",
                 "behavex",
                 "command",
+                "junit",
                 "playwright",
                 "pytest"
               ]
@@ -139,6 +143,7 @@
                 "behave",
                 "behavex",
                 "command",
+                "junit",
                 "playwright",
                 "pytest"
               ]
@@ -205,7 +210,7 @@
             "integration",
             "unit"
           ],
-          "description": "Test-pyramid tier the stage's tests count under. Default by equipment: behave=integration, behavex=e2e, command=unit, playwright=e2e, pytest=unit."
+          "description": "Test-pyramid tier the stage's tests count under. Default by equipment: behave=integration, behavex=e2e, command=unit, junit=unit, playwright=e2e, pytest=unit."
         },
         "junit_xml": {
           "description": "Glob(s), relative to target_repo, of JUnit XML reports the stage writes. They are imported as results after the stage.",
@@ -244,6 +249,10 @@
             "$ref": "#/definitions/stage"
           }
         },
+        "quarantine": {
+          "$ref": "#/definitions/quarantine",
+          "description": "Added to the top-level quarantine list for this cycle."
+        },
         "trigger": {
           "type": "object",
           "description": "Run the cycle only when files matching these globs changed.",
@@ -271,6 +280,39 @@
       },
       "additionalProperties": false
     },
+    "quarantine": {
+      "type": "array",
+      "description": "Tests whose failures don't fail their stage. They still run and still show as failed in results.",
+      "items": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "description": "fnmatch glob on the test's name or full name."
+          },
+          {
+            "type": "object",
+            "required": [
+              "test"
+            ],
+            "properties": {
+              "test": {
+                "type": "string",
+                "minLength": 1,
+                "description": "fnmatch glob on the test's name or full name."
+              },
+              "reason": {
+                "type": "string"
+              },
+              "owner": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
     "reporter": {
       "type": "object",
       "description": "A post-run reporter. Keys other than 'type' are its options.",
@@ -286,6 +328,8 @@
                 "allure",
                 "extent",
                 "reportportal",
+                "slack",
+                "teams",
                 "testbeats"
               ]
             },

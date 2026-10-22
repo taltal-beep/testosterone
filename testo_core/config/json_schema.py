@@ -119,6 +119,35 @@ def build_json_schema() -> dict[str, Any]:
         "additionalProperties": False,
     }
 
+    quarantine = {
+        "type": "array",
+        "description": "Tests whose failures don't fail their stage. They still run and still "
+        "show as failed in results.",
+        "items": {
+            "anyOf": [
+                {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "fnmatch glob on the test's name or full name.",
+                },
+                {
+                    "type": "object",
+                    "required": ["test"],
+                    "properties": {
+                        "test": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "fnmatch glob on the test's name or full name.",
+                        },
+                        "reason": {"type": "string"},
+                        "owner": {"type": "string"},
+                    },
+                    "additionalProperties": False,
+                },
+            ]
+        },
+    }
+
     cycle = {
         "type": "object",
         "description": "A named list of stages, run with `testo run --cycle <name>`.",
@@ -126,6 +155,10 @@ def build_json_schema() -> dict[str, Any]:
         "properties": {
             "description": {"type": "string"},
             "stages": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/stage"}},
+            "quarantine": {
+                "$ref": "#/definitions/quarantine",
+                "description": "Added to the top-level quarantine list for this cycle.",
+            },
             "trigger": {
                 "type": "object",
                 "description": "Run the cycle only when files matching these globs changed.",
@@ -195,6 +228,7 @@ def build_json_schema() -> dict[str, Any]:
                 "additionalProperties": False,
             },
             "reporters": {"type": "array", "items": {"$ref": "#/definitions/reporter"}},
+            "quarantine": {"$ref": "#/definitions/quarantine"},
             "cycles": {
                 "type": "object",
                 "minProperties": 1,
@@ -203,5 +237,10 @@ def build_json_schema() -> dict[str, Any]:
             },
         },
         "additionalProperties": False,
-        "definitions": {"stage": stage, "cycle": cycle, "reporter": reporter},
+        "definitions": {
+            "stage": stage,
+            "cycle": cycle,
+            "quarantine": quarantine,
+            "reporter": reporter,
+        },
     }

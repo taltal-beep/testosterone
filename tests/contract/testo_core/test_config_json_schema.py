@@ -68,10 +68,12 @@ def test_full_config_is_valid() -> None:
         "version": 1,
         "database": {"url": "sqlite:////tmp/t.db"},
         "defaults": {"target_repo": ".", "timeout_s": None, "workers": 2, "extra_env": {"A": 1}},
-        "reporters": [{"type": "allure"}, {"type": "extent", "output_dir": "r"}],
+        "reporters": [{"type": "allure"}, {"type": "slack", "when": "change"}],
+        "quarantine": ["test_upload_retries"],
         "cycles": {
             "pr": {
                 "description": "PR gate",
+                "quarantine": [{"test": "test_flaky_*", "reason": "races", "owner": "@taltal"}],
                 "trigger": {"paths": ["src/**"], "since_ref": "origin/main"},
                 "stages": [
                     {"name": "unit", "equipment": "pytest", "args": "-q tests", "tier": "unit"},
@@ -83,6 +85,7 @@ def test_full_config_is_valid() -> None:
                         "if": "env.CI",
                     },
                     {"name": "legacy", "framework": "behave", "args": ["features/smoke.feature"]},
+                    {"name": "go", "equipment": "junit", "junit_xml": ["reports/go-*.xml"]},
                 ],
             }
         },
@@ -116,6 +119,10 @@ def test_full_config_is_valid() -> None:
             "does not match",
         ),
         ({"cycels": {}}, "'cycels' was unexpected"),
+        (
+            {"quarantine": [{"test": "t", "ownr": "@x"}], "cycles": {}},
+            "'ownr' was unexpected",
+        ),
     ],
 )
 def test_invalid_configs_are_flagged(doc: dict[str, Any], fragment: str) -> None:
