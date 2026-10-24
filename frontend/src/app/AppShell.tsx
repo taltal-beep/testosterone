@@ -149,8 +149,8 @@ function HelpCard() {
 function useDismiss(
   open: boolean,
   close: () => void,
-  ref: RefObject<HTMLElement>,
-  trigger: RefObject<HTMLElement>
+  ref: RefObject<HTMLElement | null>,
+  trigger: RefObject<HTMLElement | null>
 ) {
   useEffect(() => {
     if (!open) return;
