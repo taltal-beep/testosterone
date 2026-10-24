@@ -190,6 +190,11 @@ The defaults assume one trusted user on one machine:
   stop a cross-site "simple" POST, so mutating requests whose `Origin` is not on that list
   get `403` even without a token. That is what keeps a random web page (or a DNS-rebinding
   one) in the developer's browser from starting runs on the localhost API.
+- Sessions are stateless: the `/login` cookie is an HMAC of the token, so signing out only
+  clears that browser's copy. A copied cookie keeps working until `TESTO_API_TOKEN` changes,
+  so rotate the token to sign everyone out.
+- The AI provider's `base_url` is free-form, so anyone with a write token can point it at any
+  host and the provider key is sent there. Treat the write token as able to read that key.
 
 A shared token is not multi-user security. Exposing the API to a team would need real
 authentication with per-user audit, an allow-list of repos and commands instead of free-form

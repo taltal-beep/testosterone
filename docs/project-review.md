@@ -154,3 +154,4 @@ The first pass's three-phase plan is done; its steps are in the Progress log bel
 - 2026-10-24, step 3 as separate pull requests: T1 reporter, provider and CLI tests (#143), D7 frontend ESLint (#144), T2 frontend state tests (#145), D5 Vite 8 and Vitest 5 (#146; TypeScript 7 waits on `typescript-eslint`). S3: Taltal chose a cookie login over a read token, so `TESTO_PROTECT_READS=1` makes every read need the token or the `/login` session cookie (the team server compose file turns it on); see the [Team Server](Processes%20&%20Guides/Team%20Server.md) guide.
 - 2026-10-24: D6 done, the mascot moved to `scripts/mascot/` and out of the wheel.
 - 2026-10-24, second pass at `3aeb3b3`: overall 8 → 8.5; new findings S6 to S8, T5, D8 and D9.
+- 2026-10-24: S6 fixed (the server image sets `TESTO_PROTECT_READS=1`), S5 and S7 documented in the ARCHITECTURE security model.
