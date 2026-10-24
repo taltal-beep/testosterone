@@ -31,7 +31,7 @@ read-only static site.
 
 ## What's new
 
-Added since v1.1.1:
+New in 1.2.0:
 
 - **`testo ingest`: bring any runner.** Keep your CI as it is and add one step after the tests:
   `testo ingest 'reports/**/*.xml' --cycle web`. JUnit XML from Jest, Vitest, `go test`, JUnit5
