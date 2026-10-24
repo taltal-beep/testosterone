@@ -336,6 +336,23 @@ testo init
 
 ---
 
+## `testo users`
+
+Accounts for a team server that runs with `TESTO_AUTH=accounts` ([Team Server § Accounts](../Processes%20&%20Guides/Team%20Server.md#accounts)). It writes to the database in `DATABASE_URL`, so run it where the server's database is reachable (for the compose file: `docker compose exec server testo users …`).
+
+| Command | Effect |
+|---------|--------|
+| `testo users add NAME [--role viewer\|runner\|admin] [--password-stdin]` | Create an account (default role `viewer`). Prompts for the password twice unless `--password-stdin`; at least 10 characters |
+| `testo users list` | Usernames, roles and creation dates |
+| `testo users set-role NAME ROLE` | Change the role |
+| `testo users reset-password NAME [--password-stdin]` | Set a new password |
+| `testo users sign-out NAME` | Sign the account out of every browser |
+| `testo users remove NAME` | Delete the account (its audit log lines stay) |
+
+`set-role`, `reset-password` and `sign-out` all end the account's existing sessions. Exit code `2` for a bad name, password or role, or an unknown account.
+
+---
+
 ## `testo version`
 
 ```bash

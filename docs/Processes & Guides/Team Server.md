@@ -28,6 +28,7 @@ Open <http://localhost:8000> and sign in with the token on the `/login` page. Th
 | `TESTO_API_TOKEN` | required | Bearer token for every write. The image binds `0.0.0.0`, so without it `testo-api` refuses to start unless `TESTO_ALLOW_UNAUTHENTICATED=1` |
 | `TESTO_PROTECT_READS` | `1` (set in the image) | `1`: reads need the token or the `/login` cookie too. `0`: anyone who can reach the server can read runs, logs and reports |
 | `TESTO_MAX_CONCURRENT_RUNS` | `2` | Runs started from the UI or API that execute at once; the rest wait as `queued` |
+| `TESTO_AUTH` | `token` | `token`: everyone shares `TESTO_API_TOKEN`. `accounts`: people sign in with their own username and password, with roles and an audit log ([Accounts](#accounts)) |
 | `TESTO_RUN_QUEUE` | `memory` | Where `queued` runs wait. `memory`: a restart drops them. `db`: they are also rows in the database (`queued_run`) and are queued again when the server starts, so a restart or upgrade loses nothing that hadn't started. A run that was already running is not repeated; it shows as failed in the history |
 | `FORWARDED_ALLOW_IPS` | unset | Behind an HTTPS reverse proxy, the proxy's address, so the session cookie is marked `Secure` |
 | `POSTGRES_PASSWORD` | `testo` | Database password (internal to the compose network) |
@@ -35,6 +36,34 @@ Open <http://localhost:8000> and sign in with the token on the `/login` page. Th
 | `TESTO_SERVER_TAG` | `1` | Image tag to pull |
 
 Run history lives in Postgres (`postgres_data` volume); per-run artifacts and reports in `testo_data` (`/data` in the container). Put the server behind HTTPS (any reverse proxy) before exposing it beyond your network.
+
+## Accounts
+
+The shared token is fine for one person or a small team. When you want to know who did what, or to let some people look without starting runs, turn on accounts:
+
+```bash
+export TESTO_AUTH=accounts      # TESTO_API_TOKEN stays set: CI keeps using it
+docker compose up -d
+docker compose exec server testo users add alice --role admin
+docker compose exec server testo users add bob --role runner
+docker compose exec server testo users add carol            # viewer
+```
+
+People then sign in at `/login` with their username and password. Admins can also leave the username empty and use the token, which is how you get in before any account exists.
+
+| Role | Can |
+|------|-----|
+| `viewer` | See runs, logs, reports and the live run stream |
+| `runner` | Also start runs from the UI or API and upload results |
+| `admin` | Also change the AI provider settings and read the audit log |
+
+- Reads always need a session in this mode, whatever `TESTO_PROTECT_READS` says.
+- The token is an admin for CI and scripts (`Authorization: Bearer`), and it signs the session cookies: changing it signs everyone out. `testo users sign-out NAME`, `set-role` and `reset-password` sign one person out.
+- Every write and every sign-in attempt is recorded with its user and status. Admins read the latest at `GET /api/v1/audit?limit=100`.
+- The UI shows who is signed in, with a Sign out button.
+- A `runner` can start any command the API can run, as the server's own user, so give that role to people you'd trust with a shell on the server.
+
+Set `TESTO_AUTH=token` (or unset it) to go back; the accounts stay in the database for next time.
 
 ## Upload from CI
 

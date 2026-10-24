@@ -104,3 +104,34 @@ class QueuedRun(SQLModel, table=True):
         default_factory=dict,
         sa_column=Column("request_json", _METADATA_JSON_COL, nullable=False),
     )
+
+
+class UserAccount(SQLModel, table=True):
+    """A team server account, used only when ``TESTO_AUTH=accounts``.
+
+    ``password_hash`` is ``scrypt$<n>$<r>$<p>$<salt hex>$<hash hex>``. Bumping
+    ``session_version`` signs the user out of every browser.
+    """
+
+    __tablename__ = "user_account"
+    __table_args__ = {"extend_existing": True}
+
+    username: str = Field(primary_key=True, max_length=64)
+    password_hash: str = Field(max_length=512)
+    role: str = Field(default="viewer", max_length=16)
+    session_version: int = Field(default=1)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))
+
+
+class AuditEvent(SQLModel, table=True):
+    """One write to the API by a signed-in user (``TESTO_AUTH=accounts``)."""
+
+    __tablename__ = "audit_event"
+    __table_args__ = {"extend_existing": True}
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC), index=True)
+    username: str = Field(index=True, max_length=64)
+    method: str = Field(max_length=8)
+    path: str = Field(max_length=1024)
+    status: int = Field(default=0)

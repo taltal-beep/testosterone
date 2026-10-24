@@ -10,6 +10,10 @@ The API starts test runs, i.e. it runs commands on the host by design. It binds
   the cookie, including the UI, report files under ``/history`` and the live
   run stream, which a browser can't send a header with. Health checks and
   the login page stay open. See :func:`guard_read_request`.
+- ``TESTO_AUTH=accounts`` (with a token): people sign in with their own
+  username and password (:mod:`testo_core.accounts`), reads are protected, writes
+  need the ``runner`` role and server settings ``admin``. The token stays an
+  admin credential for CI and signs the session cookies. Default ``token``.
 - ``TESTO_CORS_ORIGINS``: comma-separated browser origins allowed to call the
   API. Defaults to the Vite dev and preview servers. A mutating request that
   carries any other ``Origin`` is refused even without a token, because CORS
@@ -21,15 +25,26 @@ The API starts test runs, i.e. it runs commands on the host by design. It binds
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import ipaddress
+import logging
 import os
+import time
+from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
+from typing import TYPE_CHECKING, Literal
 from urllib.parse import urlencode, urlsplit
 
 from fastapi import HTTPException, Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
+
+if TYPE_CHECKING:
+    from testo_core.accounts import Account, AccountStore
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_CORS_ORIGINS = (
     "http://localhost:5173",
@@ -43,19 +58,84 @@ CONFIG_FILE_NAMES = frozenset({"testosterone.yaml", "testosterone.yml", "pyproje
 SESSION_COOKIE = "testo_session"
 LOGIN_PATH = "/login"
 LOGIN_POST_PATH = "/api/v1/auth/login"
+LOGOUT_PATH = "/api/v1/auth/logout"
 # Reachable without a session even when reads are protected.
-_OPEN_PATHS = frozenset({LOGIN_PATH, LOGIN_POST_PATH, "/api/v1/auth/logout"})
+_OPEN_PATHS = frozenset({LOGIN_PATH, LOGIN_POST_PATH, LOGOUT_PATH})
 _OPEN_PREFIXES = ("/api/v1/health/",)
+# Writes under these need the admin role in accounts mode; every other write needs runner.
+_ADMIN_WRITE_PREFIXES = ("/api/v1/ai/",)
+SESSION_MAX_AGE = 30 * 24 * 3600
+
+AuthMode = Literal["token", "accounts"]
+
+
+@dataclass(frozen=True)
+class Principal:
+    """Who a request comes from: an account, or ``token`` for the API token (an admin)."""
+
+    username: str
+    role: str
+
+
+TOKEN_PRINCIPAL = Principal(username="token", role="admin")
 
 
 def api_token() -> str:
     return os.getenv("TESTO_API_TOKEN", "").strip()
 
 
+def auth_mode() -> AuthMode:
+    raw = os.getenv("TESTO_AUTH", "token").strip().lower() or "token"
+    return "accounts" if raw == "accounts" else "token"
+
+
+def accounts_enabled() -> bool:
+    """``TESTO_AUTH=accounts`` and a token to sign sessions with."""
+    return auth_mode() == "accounts" and bool(api_token())
+
+
 def reads_protected() -> bool:
-    """``TESTO_PROTECT_READS`` is on and there is a token to protect them with."""
+    """Reads need a session: ``TESTO_PROTECT_READS`` is on, or accounts are (needs a token)."""
     flag = os.getenv("TESTO_PROTECT_READS", "0").strip().lower() in ("1", "true", "yes")
-    return flag and bool(api_token())
+    return (flag or auth_mode() == "accounts") and bool(api_token())
+
+
+@cache
+def account_store() -> AccountStore:
+    """The accounts on the run-history database, opened on first use."""
+    from testo_core.accounts import AccountStore
+
+    return AccountStore()
+
+
+def account_session_value(token: str, account: Account, *, now: float | None = None) -> str:
+    """Cookie for an account: ``<user>:<session version>:<expiry>`` signed with the token.
+
+    Changing the token, or bumping the account's session version (role or password
+    change, ``testo users sign-out``), invalidates it.
+    """
+    expires = int((time.time() if now is None else now) + SESSION_MAX_AGE)
+    payload = f"{account.username}:{account.session_version}:{expires}".encode()
+    sig = hmac.new(token.encode(), b"testo-account-v1:" + payload, hashlib.sha256).hexdigest()
+    return base64.urlsafe_b64encode(payload).decode().rstrip("=") + "." + sig
+
+
+def _account_from_cookie(token: str, cookie: str) -> Principal | None:
+    encoded, _, sig = cookie.partition(".")
+    try:
+        payload = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
+        username, version, expires = payload.decode().split(":")
+    except (ValueError, UnicodeDecodeError):
+        return None
+    expected = hmac.new(token.encode(), b"testo-account-v1:" + payload, hashlib.sha256)
+    if not hmac.compare_digest(sig.encode(), expected.hexdigest().encode()):
+        return None
+    if int(expires) < time.time():
+        return None
+    account = account_store().get(username)
+    if account is None or str(account.session_version) != version:
+        return None
+    return Principal(username=account.username, role=account.role)
 
 
 def session_value(token: str) -> str:
@@ -64,18 +144,67 @@ def session_value(token: str) -> str:
     return hmac.new(token.encode(), b"testo-session-v1", hashlib.sha256).hexdigest()
 
 
-def is_authenticated(request: Request) -> bool:
-    """A valid bearer token or session cookie (always False without a token)."""
+def current_principal(request: Request) -> Principal | None:
+    """Who sent ``request``: a valid bearer token or session cookie, else None.
+
+    Always None without ``TESTO_API_TOKEN``. Worked out once per request.
+    """
+    if "principal" in request.scope.get("state", {}):
+        return request.state.principal  # type: ignore[no-any-return]
+    principal = _resolve_principal(request)
+    request.state.principal = principal
+    return principal
+
+
+def _resolve_principal(request: Request) -> Principal | None:
     expected = api_token()
     if not expected:
-        return False
+        return None
     scheme, _, supplied = request.headers.get("Authorization", "").partition(" ")
     if scheme.lower() == "bearer" and hmac.compare_digest(
         supplied.strip().encode(), expected.encode()
     ):
-        return True
+        return TOKEN_PRINCIPAL
     cookie = request.cookies.get(SESSION_COOKIE, "")
-    return bool(cookie) and hmac.compare_digest(cookie.encode(), session_value(expected).encode())
+    if not cookie:
+        return None
+    if hmac.compare_digest(cookie.encode(), session_value(expected).encode()):
+        return TOKEN_PRINCIPAL
+    if not accounts_enabled():
+        return None
+    try:
+        return _account_from_cookie(expected, cookie)
+    except Exception:
+        # Broad on purpose: a database error means nobody can be verified, not a 500 page.
+        logger.warning("could not check the session against the accounts", exc_info=True)
+        return None
+
+
+def is_authenticated(request: Request) -> bool:
+    """A valid bearer token or session cookie (always False without a token)."""
+    return current_principal(request) is not None
+
+
+def audit_write(request: Request, status: int) -> None:
+    """Record a write in the audit log (accounts mode); the login route records sign-ins."""
+    principal = request.scope.get("state", {}).get("principal")
+    if principal is None or request.url.path == LOGIN_POST_PATH:
+        return
+    try:
+        account_store().record(
+            username=principal.username,
+            method=request.method,
+            path=request.url.path,
+            status=status,
+        )
+    except Exception:
+        # Broad on purpose: the write already happened; a lost audit line is only logged.
+        logger.warning("could not write the audit log", exc_info=True)
+
+
+def required_role(request: Request) -> str:
+    """The role a write needs in accounts mode."""
+    return "admin" if request.url.path.startswith(_ADMIN_WRITE_PREFIXES) else "runner"
 
 
 def safe_next(raw: str | None) -> str:
@@ -119,12 +248,23 @@ def guard_mutating_request(request: Request) -> None:
     # The login form is how a browser gets a session, so it can't need one.
     if not expected or request.url.path == LOGIN_POST_PATH:
         return
-    if not is_authenticated(request):
+    principal = current_principal(request)
+    if principal is None:
         raise HTTPException(
             status_code=401,
             detail="Missing or invalid API token.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if accounts_enabled() and request.url.path != LOGOUT_PATH:
+        from testo_core.accounts import role_at_least
+
+        needed = required_role(request)
+        if not role_at_least(principal.role, needed):
+            raise HTTPException(
+                status_code=403,
+                detail=f"This needs the {needed} role; {principal.username} is a "
+                f"{principal.role}. Ask an admin (`testo users set-role`).",
+            )
 
 
 def guard_read_request(request: Request) -> Response | None:

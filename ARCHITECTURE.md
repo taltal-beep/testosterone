@@ -205,10 +205,19 @@ The defaults assume one trusted user on one machine:
 - The AI provider's `base_url` is free-form, so anyone with a write token can point it at any
   host and the provider key is sent there. Treat the write token as able to read that key.
 
-A shared token is not multi-user security. Exposing the API to a team would need real
-authentication with per-user audit, an allow-list of repos and commands instead of free-form
-`args`/`extra_env`, and runs in sandboxed, disposable runners (containers with no host
-credentials) rather than as the API's own user.
+- `TESTO_AUTH=accounts` (off by default) replaces the shared token for people: each person
+  signs in at `/login` with a username and password (`scrypt`-hashed, managed with
+  `testo users`, no sign-up page). Roles are `viewer` (reads), `runner` (also starts runs and
+  uploads) and `admin` (also AI settings and the audit log at `GET /api/v1/audit`); every
+  write and sign-in attempt is recorded with its user. Reads are always protected in this
+  mode. The token stays an admin credential for CI and signs the session cookies, which carry
+  the account's session version, so a role or password change signs that person out
+  everywhere. See [Switchable Team Features](docs/Specs%20&%20ADRs/Switchable%20Team%20Features%20-%202026-10-24.md).
+
+Accounts give a team per-user access and an audit trail, but a `runner` can still run any
+command (`framework: command`, free-form `args`/`extra_env`) as the API's own user. Exposing
+the server beyond people you trust would also need an allow-list of repos and commands, and
+runs in sandboxed, disposable runners (containers with no host credentials).
 
 ## Trade-offs and known limits
 

@@ -92,3 +92,38 @@ describe("AppShell mobile menu", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 });
+
+describe("AppShell user badge", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function stubMe(body: object) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) =>
+        Promise.resolve(
+          url.endsWith("/api/v1/auth/me")
+            ? { ok: true, status: 200, json: async () => body }
+            : { ok: false, status: 404, json: async () => ({}) }
+        )
+      )
+    );
+  }
+
+  it("shows who is signed in when the server has accounts", async () => {
+    stubMe({ auth_mode: "accounts", signed_in: true, username: "ada", role: "admin" });
+    renderShell();
+    const badges = await screen.findAllByTestId("user-badge");
+    expect(badges[0]).toHaveTextContent("ada · admin");
+    expect(within(badges[0]).getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+  });
+
+  it("stays hidden with the shared token", async () => {
+    stubMe({ auth_mode: "token", signed_in: true, username: "token", role: "admin" });
+    renderShell();
+    await screen.findAllByTestId("health-indicator");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByTestId("user-badge")).not.toBeInTheDocument();
+  });
+});
