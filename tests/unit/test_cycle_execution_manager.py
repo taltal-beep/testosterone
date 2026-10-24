@@ -18,6 +18,7 @@ from testo_api.cycle_execution_manager import (
     CycleExecutionState,
 )
 from testo_api.execution_events import iter_execution_sse, iter_sse_from_ndjson_file
+from testo_api.run_queue import RunRequest
 from testo_core.config.triggers import TriggerResult
 from testo_core.services import cycle_run as cycle_run_mod
 from tests.fixtures.engine import (
@@ -121,6 +122,10 @@ def test_adhoc_execution_rejects_unknown_framework_before_starting(tmp_path: Pat
 # --- Bounded registry -------------------------------------------------------
 
 
+def _request(cycle: str) -> RunRequest:
+    return RunRequest(kind="cycle", cycle=cycle, persist=False, report_db=False)
+
+
 def _start_blocked(
     manager: CycleExecutionManager, cycle: str, release: threading.Event
 ) -> CycleExecutionState:
@@ -130,20 +135,7 @@ def _start_blocked(
         assert release.wait(10)
         raise RuntimeError("config went away")
 
-    return manager._start(
-        cycle=cycle,
-        load_plan=load_plan,
-        artifacts_root_override=None,
-        persist=False,
-        force=False,
-        fail_fast=False,
-        reporter_override=None,
-        report_db=False,
-        async_report_db=False,
-        workers_override=None,
-        stream=False,
-        ci=True,
-    )
+    return manager._start(_request(cycle), load_plan)
 
 
 def test_registry_evicts_oldest_finished_executions_beyond_the_cap(
@@ -248,20 +240,7 @@ def test_a_run_raising_system_exit_does_not_kill_its_worker() -> None:
     def load_plan():  # noqa: ANN202
         raise SystemExit(3)  # e.g. test code imported by the run calls sys.exit()
 
-    crashed = manager._start(
-        cycle="exits",
-        load_plan=load_plan,
-        artifacts_root_override=None,
-        persist=False,
-        force=False,
-        fail_fast=False,
-        reporter_override=None,
-        report_db=False,
-        async_report_db=False,
-        workers_override=None,
-        stream=False,
-        ci=True,
-    )
+    crashed = manager._start(_request("exits"), load_plan)
     _wait(crashed)
     assert crashed.status == "failed"
 

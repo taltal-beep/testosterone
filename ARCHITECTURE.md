@@ -66,7 +66,8 @@ flowchart TD
    The API keeps running executions plus the last `TESTO_MAX_FINISHED_EXECUTIONS` (default
    200) finished ones in memory; older ones are only in the run history. At most
    `TESTO_MAX_CONCURRENT_RUNS` (default 2) execute at once; the rest wait in a FIFO queue
-   as `queued`. Stages run in order unless a cycle sets `max_parallel_stages`.
+   as `queued`, in memory or, with `TESTO_RUN_QUEUE=db`, also in the database so they
+   survive a restart (`testo_api/run_queue.py`). Stages run in order unless a cycle sets `max_parallel_stages`.
 5. **Persist.** `JsonBackend` writes `plan_result.json`; `DbBackend` writes a `RunRecord`
    (status, durations, per-stage health, failed cases + traceback + log tail when the run
    failed, CI provider/commit/ref when run in CI). Failures here never fail the run.

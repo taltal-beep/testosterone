@@ -80,3 +80,7 @@ Added [Config JSON Schema - 2026-10-22](Specs%20&%20ADRs/Config%20JSON%20Schema%
 ## 2026-10-24: project review
 
 Added [Project Review](project-review.md), a whole-repo scorecard and verdict, linked from [Index](Index.md).
+
+## 2026-10-24: switchable team features
+
+Added [Switchable Team Features - 2026-10-24](Specs%20&%20ADRs/Switchable%20Team%20Features%20-%202026-10-24.md) to Specs & ADRs (the `TESTO_RUN_QUEUE` and `TESTO_AUTH` switches).

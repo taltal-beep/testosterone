@@ -14,6 +14,7 @@ from typing import Literal
 from uuid import uuid4
 
 from testo_api.execution_events import NdjsonCycleListener, append_ndjson_line
+from testo_api.run_queue import RunRequest, RunStore, run_store_from_env
 from testo_core.config.errors import ConfigDiscoveryError
 from testo_core.config.loader import discover_and_load
 from testo_core.config.resolver import resolve_plan
@@ -66,6 +67,36 @@ def _max_concurrent_from_env() -> int:
 PlanLoader = Callable[[], tuple[TestosteroneConfig, Plan]]
 
 
+def _adhoc_plan(request: RunRequest) -> Plan:
+    return single_stage_plan(
+        framework=str(request.framework),
+        target_repo=Path(str(request.target_repo)),
+        args=request.args,
+        timeout_s=request.timeout_s,
+        extra_env=request.extra_env,
+    )
+
+
+def plan_loader(request: RunRequest) -> PlanLoader:
+    """Build the (config, plan) loader for a request; it runs on the worker thread."""
+    config_path = Path(request.config_path) if request.config_path is not None else None
+
+    def load_cycle() -> tuple[TestosteroneConfig, Plan]:
+        cfg = discover_and_load(config_path=config_path)
+        return cfg, resolve_plan(cfg, plan_name=request.cycle)
+
+    def load_adhoc() -> tuple[TestosteroneConfig, Plan]:
+        try:
+            cfg = discover_and_load(config_path=config_path)
+        except ConfigDiscoveryError:
+            if config_path is not None:
+                raise
+            cfg = TestosteroneConfig(version=1, defaults=Defaults())
+        return cfg, _adhoc_plan(request)
+
+    return load_adhoc if request.kind == "adhoc" else load_cycle
+
+
 @dataclass
 class CycleExecutionState:
     execution_id: str
@@ -111,8 +142,9 @@ class CycleExecutionManager:
     Executions run on a fixed pool of `max_concurrent` worker threads (default from
     `TESTO_MAX_CONCURRENT_RUNS`). A new execution is accepted at once with status
     `queued` and waits in a FIFO queue until a worker is free; one cycle still can't
-    be queued or running twice. The queue lives in memory, like the registry: a
-    restart drops queued runs (they never started, so there is nothing to clean up).
+    be queued or running twice. With `TESTO_RUN_QUEUE=memory` (the default) a restart
+    drops queued runs; with `db` they are kept as rows and `recover_queued()` queues
+    them again on startup (see `testo_api.run_queue`).
 
     The registry is bounded: every running execution is kept, plus the last
     `max_finished` finished ones (default from `TESTO_MAX_FINISHED_EXECUTIONS`).
@@ -121,7 +153,11 @@ class CycleExecutionManager:
     """
 
     def __init__(
-        self, *, max_finished: int | None = None, max_concurrent: int | None = None
+        self,
+        *,
+        max_finished: int | None = None,
+        max_concurrent: int | None = None,
+        run_store: RunStore | None = None,
     ) -> None:
         self._states: dict[str, CycleExecutionState] = {}
         self._states_lock = threading.Lock()
@@ -136,6 +172,22 @@ class CycleExecutionManager:
         self._queue: queue.SimpleQueue[Callable[[], None]] = queue.SimpleQueue()
         # Workers start on the first execution, so importing the API starts no threads.
         self._workers: list[threading.Thread] = []
+        # Opened on first use (from `TESTO_RUN_QUEUE` unless given), so importing the
+        # API opens no database connection.
+        self._run_store = run_store
+        self._run_store_lock = threading.Lock()
+
+    @property
+    def _store(self) -> RunStore:
+        with self._run_store_lock:
+            if self._run_store is None:
+                self._run_store = run_store_from_env()
+            return self._run_store
+
+    @property
+    def run_queue(self) -> str:
+        """``memory`` or ``db``: where queued runs wait (see `testo_api.run_queue`)."""
+        return self._store.kind
 
     def create_execution(
         self,
@@ -153,24 +205,22 @@ class CycleExecutionManager:
         stream: bool = False,
         ci: bool = True,
     ) -> CycleExecutionState:
-        def load_plan() -> tuple[TestosteroneConfig, Plan]:
-            cfg = discover_and_load(config_path=config_path)
-            return cfg, resolve_plan(cfg, plan_name=cycle)
-
-        return self._start(
+        request = RunRequest(
+            kind="cycle",
             cycle=str(cycle),
-            load_plan=load_plan,
-            artifacts_root_override=artifacts_root_override,
+            config_path=RunRequest.path_or_none(config_path),
+            artifacts_root=RunRequest.path_or_none(artifacts_root_override),
             persist=persist,
             force=force,
             fail_fast=fail_fast,
-            reporter_override=reporter_override,
+            reporter_override=tuple(reporter_override) if reporter_override else None,
             report_db=report_db,
             async_report_db=async_report_db,
             workers_override=workers_override,
             stream=stream,
             ci=ci,
         )
+        return self._start(request, plan_loader(request))
 
     def create_adhoc_execution(
         self,
@@ -190,81 +240,85 @@ class CycleExecutionManager:
         Validates the stage up front (``ConfigValidationError``). Defaults and
         reporters come from the discovered config when there is one.
         """
-        plan = single_stage_plan(
-            framework=framework,
-            target_repo=target_repo,
-            args=args,
-            timeout_s=timeout_s,
-            extra_env=extra_env,
-        )
-
-        def load_plan() -> tuple[TestosteroneConfig, Plan]:
-            try:
-                cfg = discover_and_load(config_path=config_path)
-            except ConfigDiscoveryError:
-                if config_path is not None:
-                    raise
-                cfg = TestosteroneConfig(version=1, defaults=Defaults())
-            return cfg, plan
-
-        return self._start(
+        request = RunRequest(
+            kind="adhoc",
             cycle=ADHOC_PLAN_NAME,
-            load_plan=load_plan,
-            artifacts_root_override=artifacts_root_override,
+            config_path=RunRequest.path_or_none(config_path),
+            artifacts_root=RunRequest.path_or_none(artifacts_root_override),
             persist=persist,
-            force=False,
-            fail_fast=False,
-            reporter_override=None,
             report_db=report_db,
-            async_report_db=False,
-            workers_override=None,
             stream=True,
-            ci=True,
+            framework=framework,
+            target_repo=str(target_repo),
+            args=tuple(args),
+            timeout_s=timeout_s,
+            extra_env=dict(extra_env or {}),
         )
+        _adhoc_plan(request)  # validate now, so a bad stage is a 400 and not a failed run
+        return self._start(request, plan_loader(request))
+
+    def recover_queued(self) -> int:
+        """Queue again the runs an earlier process left waiting (``TESTO_RUN_QUEUE=db``).
+
+        They keep their execution ids, so clients that were following them can go on.
+        A run whose cycle is already queued here is dropped. Returns how many were queued.
+        """
+        recovered = 0
+        for pending in self._store.pending():
+            try:
+                self._start(
+                    pending.request,
+                    plan_loader(pending.request),
+                    execution_id=pending.execution_id,
+                    created_at=pending.created_at,
+                )
+            except RuntimeError:
+                logger.warning(
+                    "dropping queued run %s: cycle %s is already queued",
+                    pending.execution_id,
+                    pending.request.cycle,
+                )
+                self._store.claim(pending.execution_id)
+                continue
+            recovered += 1
+        return recovered
 
     def _start(
         self,
-        *,
-        cycle: str,
+        request: RunRequest,
         load_plan: PlanLoader,
-        artifacts_root_override: Path | None,
-        persist: bool,
-        force: bool,
-        fail_fast: bool,
-        reporter_override: list[str] | None,
-        report_db: bool,
-        async_report_db: bool,
-        workers_override: int | None,
-        stream: bool,
-        ci: bool,
+        *,
+        execution_id: str | None = None,
+        created_at: float | None = None,
     ) -> CycleExecutionState:
-        execution_id = str(uuid4())
-        state = CycleExecutionState(execution_id=execution_id, cycle=cycle, created_at=time.time())
+        recovered = execution_id is not None
+        execution_id = execution_id or str(uuid4())
+        state = CycleExecutionState(
+            execution_id=execution_id,
+            cycle=request.cycle,
+            created_at=time.time() if created_at is None else created_at,
+        )
 
         with self._states_lock:
-            existing = self._active_by_cycle.get(str(cycle))
+            existing = self._active_by_cycle.get(request.cycle)
             if existing is not None:
-                raise RuntimeError(f"cycle {cycle!r} already running (execution_id={existing})")
+                raise RuntimeError(
+                    f"cycle {request.cycle!r} already running (execution_id={existing})"
+                )
             self._states[execution_id] = state
-            self._active_by_cycle[str(cycle)] = execution_id
+            self._active_by_cycle[request.cycle] = execution_id
 
+        if not recovered:
+            try:
+                self._store.add(execution_id, request, state.created_at)
+            except Exception:
+                # Broad on purpose: a DB error must not leave the cycle marked busy.
+                with self._states_lock:
+                    self._states.pop(execution_id, None)
+                    self._active_by_cycle.pop(request.cycle, None)
+                raise
         self._ensure_workers()
-        self._queue.put(
-            lambda: self._run_execution(
-                state,
-                load_plan,
-                artifacts_root_override,
-                persist,
-                force,
-                fail_fast,
-                reporter_override,
-                report_db,
-                async_report_db,
-                workers_override,
-                stream,
-                ci,
-            )
-        )
+        self._queue.put(lambda: self._claim_and_run(state, request, load_plan))
         return state
 
     def get(self, execution_id: str) -> CycleExecutionState | None:
@@ -296,21 +350,31 @@ class CycleExecutionManager:
                 # one bad run never shrinks the pool and strands the queue.
                 logger.exception("run worker caught an exception that escaped its run")
 
-    def _run_execution(
-        self,
-        state: CycleExecutionState,
-        load_plan: PlanLoader,
-        artifacts_root_override: Path | None,
-        persist: bool,
-        force: bool,
-        fail_fast: bool,
-        reporter_override: list[str] | None,
-        report_db: bool,
-        async_report_db: bool,
-        workers_override: int | None,
-        stream: bool,
-        ci: bool,
+    def _claim_and_run(
+        self, state: CycleExecutionState, request: RunRequest, load_plan: PlanLoader
     ) -> None:
+        try:
+            claimed = self._store.claim(state.execution_id)
+        except Exception as exc:
+            # Broad on purpose: the run can't start safely, so it fails with the DB's message.
+            logger.exception("could not claim queued run %s", state.execution_id)
+            self._finish(state, status="failed", error=f"run queue unavailable: {exc}")
+            return
+        if not claimed:
+            # Another server process recovered and started this run; it is theirs now.
+            with self._states_lock:
+                self._states.pop(state.execution_id, None)
+                if self._active_by_cycle.get(state.cycle) == state.execution_id:
+                    self._active_by_cycle.pop(state.cycle, None)
+            return
+        self._run_execution(state, request, load_plan)
+
+    def _run_execution(
+        self, state: CycleExecutionState, request: RunRequest, load_plan: PlanLoader
+    ) -> None:
+        artifacts_root_override = (
+            Path(request.artifacts_root) if request.artifacts_root is not None else None
+        )
         status: CycleExecutionStatus = "failed"
         error: str | None = "execution interrupted"
         try:
@@ -351,21 +415,23 @@ class CycleExecutionManager:
 
             # Same use case as `testo run`; `run_plan` persists events.ndjson and
             # plan_result.json under artifacts/<cycle>/, which the SSE route tails.
-            outcome = CycleRunService(listener=NdjsonCycleListener(events_path, ci=ci)).run(
+            outcome = CycleRunService(listener=NdjsonCycleListener(events_path, ci=request.ci)).run(
                 cfg=cfg,
                 plan=plan,
                 renderer=_NullRenderer(),
                 options=CycleRunOptions(
-                    persist=persist,
-                    force=force,
-                    fail_fast=fail_fast,
-                    workers_override=workers_override,
-                    reporter_override=reporter_override,
-                    report_db=report_db,
-                    async_report_db=async_report_db,
+                    persist=request.persist,
+                    force=request.force,
+                    fail_fast=request.fail_fast,
+                    workers_override=request.workers_override,
+                    reporter_override=list(request.reporter_override)
+                    if request.reporter_override
+                    else None,
+                    report_db=request.report_db,
+                    async_report_db=request.async_report_db,
                     artifacts_root=artifacts_root,
                     parent_env=parent_env,
-                    ci=ci,
+                    ci=request.ci,
                 ),
             )
             if outcome.skipped:
@@ -402,21 +468,26 @@ class CycleExecutionManager:
                 )
             error = err
         finally:
-            # Record where this run's events end before freeing the cycle: the next run
-            # appends to the same file, and streams of this run must stop here.
-            if state.events_path is not None:
-                try:
-                    end = state.events_path.stat().st_size
-                except OSError:
-                    end = state.events_start_offset_bytes
-                with state.lock:
-                    state.events_end_offset_bytes = end
-            # Free the cycle and update the registry before reporting `done`, so a client
-            # that sees the run finish can start the cycle again right away.
-            with self._states_lock:
-                if self._active_by_cycle.get(state.cycle) == state.execution_id:
-                    self._active_by_cycle.pop(state.cycle, None)
-                self._finished.append(state.execution_id)
-                while len(self._finished) > self.max_finished:
-                    self._states.pop(self._finished.popleft(), None)
-            state.mark_done(status=status, error=error)
+            self._finish(state, status=status, error=error)
+
+    def _finish(
+        self, state: CycleExecutionState, *, status: CycleExecutionStatus, error: str | None
+    ) -> None:
+        # Record where this run's events end before freeing the cycle: the next run
+        # appends to the same file, and streams of this run must stop here.
+        if state.events_path is not None:
+            try:
+                end = state.events_path.stat().st_size
+            except OSError:
+                end = state.events_start_offset_bytes
+            with state.lock:
+                state.events_end_offset_bytes = end
+        # Free the cycle and update the registry before reporting `done`, so a client
+        # that sees the run finish can start the cycle again right away.
+        with self._states_lock:
+            if self._active_by_cycle.get(state.cycle) == state.execution_id:
+                self._active_by_cycle.pop(state.cycle, None)
+            self._finished.append(state.execution_id)
+            while len(self._finished) > self.max_finished:
+                self._states.pop(self._finished.popleft(), None)
+        state.mark_done(status=status, error=error)
