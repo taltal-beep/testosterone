@@ -34,17 +34,17 @@ export function subscribeToCycleExecutionEvents(
 ): () => void {
   const source = new EventSource(eventsUrl);
 
-  const handle = (eventName: CycleNdjsonEvent["event"]) => (evt: MessageEvent) => {
+  const handle = (evt: MessageEvent) => {
     handlers.onEvent(JSON.parse(evt.data) as CycleNdjsonEvent);
   };
 
-  source.addEventListener("plan_started", handle("plan_started"));
-  source.addEventListener("stage_started", handle("stage_started"));
-  source.addEventListener("stage_finished", handle("stage_finished"));
-  source.addEventListener("plan_aborted", handle("plan_aborted"));
-  source.addEventListener("plan_finished", handle("plan_finished"));
-  source.addEventListener("cycle_trigger", handle("cycle_trigger"));
-  source.addEventListener("error", handle("error"));
+  source.addEventListener("plan_started", handle);
+  source.addEventListener("stage_started", handle);
+  source.addEventListener("stage_finished", handle);
+  source.addEventListener("plan_aborted", handle);
+  source.addEventListener("plan_finished", handle);
+  source.addEventListener("cycle_trigger", handle);
+  source.addEventListener("error", handle);
 
   source.onerror = (evt) => {
     handlers.onError?.(evt);

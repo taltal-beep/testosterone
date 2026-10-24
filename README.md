@@ -284,6 +284,7 @@ ruff format --check .
 mypy testo_core testo_api
 pytest -q -m "tier_fast and not quarantined" --no-cov
 npm --prefix frontend run typecheck
+npm --prefix frontend run lint
 npm --prefix frontend test
 ```
 
