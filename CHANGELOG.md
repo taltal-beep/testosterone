@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- Frontend lint: ESLint with `typescript-eslint` and the React hook rules (`frontend/eslint.config.js`, `npm --prefix frontend run lint`), blocking in CI's `frontend` job
+
 ## [1.2.0] - 2026-10-24
 
 ### Added

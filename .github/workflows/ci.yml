@@ -8,7 +8,7 @@ name: ci
 #                        the old pr-fast workflow); uploads coverage.xml
 #   test_python_versions the same suite on Python 3.12 and 3.13, the other versions
 #                        pyproject.toml lists (no coverage gate, not a required check)
-#   frontend             React dashboard: typecheck, generated API types up to date,
+#   frontend             React dashboard: typecheck, ESLint, generated API types up to date,
 #                        vitest unit tests, production build
 #   changelog_required    PR-only: fails if non-doc changes don't touch CHANGELOG.md
 #                          (escape hatch: 'no-changelog' PR label)
@@ -159,6 +159,8 @@ jobs:
           }
       - name: Typecheck
         run: npm run typecheck
+      - name: Lint
+        run: npm run lint
       - name: Unit tests
         run: npm test
       - name: Production build
