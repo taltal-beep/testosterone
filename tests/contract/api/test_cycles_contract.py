@@ -86,7 +86,7 @@ def test_get_unknown_cycle_is_404_with_available_names(
 
 
 def test_missing_config_is_503(client: TestClient, tmp_path: Path) -> None:
-    resp = client.get("/api/v1/cycles", params={"config_path": str(tmp_path / "missing.yaml")})
+    resp = client.get("/api/v1/cycles", params={"config_path": str(tmp_path / "testosterone.yaml")})
     assert resp.status_code == 503
     error = resp.json()["error"]
     assert error["code"] == "infra_failure"

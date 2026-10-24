@@ -172,9 +172,17 @@ Testosterone is a **local developer tool**, and the API is a command runner by d
 The defaults assume one trusted user on one machine:
 
 - `testo-api` binds `127.0.0.1` (`TESTO_API_HOST`). Binding anything else without a token
-  logs a warning at startup.
-- `TESTO_API_TOKEN`, when set, requires `Authorization: Bearer <token>` on every mutating
-  request (constant-time compare, `401` otherwise). Reads stay open. The frontend sends
+  refuses to start (exit 2) unless `TESTO_ALLOW_UNAUTHENTICATED=1` says the network is
+  already trusted; then it logs a warning.
+- `TESTO_API_TOKEN`, when set, requires `Authorization: Bearer <token>` or the session cookie
+  from `/login` on every mutating request (constant-time compare, `401` otherwise). The
+  cookie is HttpOnly, `SameSite=Strict` and an HMAC of the token, never the token itself.
+  `TESTO_PROTECT_READS=1` extends that to every request, the `/history` report files and the
+  UI included (a middleware, since those are static mounts); browsers asking for a page are
+  sent to `/login`, and only health checks stay open. The team server turns it on. Otherwise
+  reads stay open, so the `?config_path=`
+  that read routes accept only loads files named `testosterone.yaml`, `testosterone.yml` or
+  `pyproject.toml` (`400` otherwise); an arbitrary path would let anyone probe the server's files. The frontend sends
   `localStorage["testo.apiToken"]` or the build-time `VITE_TESTO_API_TOKEN`, which ends up in
   the JS bundle, so only bake it into a UI served to the people who hold the token anyway.
 - CORS allows only the Vite dev/preview servers unless `TESTO_CORS_ORIGINS` lists origins;

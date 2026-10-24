@@ -137,6 +137,7 @@ def test_target_inside_another_pytest_project_keeps_its_own_rootdir(tmp_path: Pa
     path pulled pytest's rootdir up to the outer project and the target's
     ``pythonpath`` was ignored, so every import of the target's package failed.
     """
+    import shutil
     import subprocess
     import sys
 
@@ -167,6 +168,12 @@ def test_target_inside_another_pytest_project_keeps_its_own_rootdir(tmp_path: Pa
     # Run the console script as the engine does: ``python -m pytest`` would put
     # the cwd on sys.path and hide a wrong rootdir.
     pytest_bin = Path(sys.executable).with_name("pytest")
+    if not pytest_bin.is_file():
+        # e.g. ``pip install --user``: the console script is not next to the interpreter.
+        found = shutil.which("pytest")
+        if found is None:
+            pytest.skip("no pytest console script on PATH")
+        pytest_bin = Path(found)
     proc = subprocess.run(
         [str(pytest_bin), *argv[1:]], cwd=target, capture_output=True, text=True, timeout=60
     )

@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-10-22
+updated: 2026-10-24
 ---
 
 # CI Integrations
@@ -82,7 +82,7 @@ Tier selection is marker-driven and shared between local runs and GitHub Actions
 
 Reference CI definitions:
 
-- GitHub: `.github/workflows/ci.yml` (unified format → test → deploy pipeline; the fast-required gate lives in its `test` job), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`. Code review runs via a local pre-push hook (`.claude/settings.json`), not in CI.
+- GitHub: `.github/workflows/ci.yml` (unified format → test → deploy pipeline; the fast-required gate lives in its `test` job on Python 3.11, and `test_python_versions` runs the same suite on 3.12 and 3.13 without the coverage gate), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`. Code review runs via a local pre-push hook (`.claude/settings.json`), not in CI.
 
 All tier jobs upload diagnostics artifacts (`logs`, summary JSON, API responses, screenshots when present) on failure, and external suites run with `external-e2e` concurrency isolation.
 
@@ -92,7 +92,7 @@ What runs on Testosterone itself, as opposed to the wrappers above that run it i
 
 | Workflow | Runs on | What it does |
 |----------|---------|--------------|
-| `ci.yml` | pull request, push to `main`, release | Blocking gates: ruff lint and format, mypy on `testo_core` and `testo_api`; the fast pytest suite with the coverage gate; frontend typecheck, generated API types up to date, vitest and build; `CHANGELOG.md` touched; docs vault lint; the docs site with `mkdocs build --strict`; `examples/getting-started/` through the local GitHub Action, once with the PyPI release and once with this checkout (which also posts the PR comment); builds the sdist and wheel, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`). Builds the wheel on a release |
+| `ci.yml` | pull request, push to `main`, release | Blocking gates: ruff lint and format, mypy on `testo_core` and `testo_api`; the fast pytest suite with the coverage gate; frontend typecheck, ESLint, generated API types up to date, vitest and build; `CHANGELOG.md` touched; docs vault lint; the docs site with `mkdocs build --strict`; `examples/getting-started/` through the local GitHub Action, once with the PyPI release and once with this checkout (which also posts the PR comment); builds the sdist and wheel, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`). Builds the wheel on a release |
 | `commitlint.yml` | pull request | Conventional commit messages |
 | `changelog-on-main.yml` | push to `main` | Drafts a `CHANGELOG.md` [Unreleased] entry from the pushed commits with Claude and commits it to `main`; skips when its bot secrets are missing |
 | `pages-demo.yml` | push to `main`, nightly | Runs the self-test and fake-api cycles and publishes the read-only UI and the docs site to GitHub Pages ([GitLab Pages Demo](GitLab%20Pages%20Demo.md)) |

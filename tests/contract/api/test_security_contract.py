@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app
+from testo_api.main import create_app, run
 from testo_api.security import is_loopback_host
 
 _ADHOC = "/api/v1/adhoc-executions"
@@ -31,7 +33,7 @@ def _client(manager: _FakeManager | None = None) -> TestClient:
 
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("TESTO_API_TOKEN", "TESTO_CORS_ORIGINS"):
+    for name in ("TESTO_API_TOKEN", "TESTO_CORS_ORIGINS", "TESTO_PROTECT_READS"):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -134,3 +136,180 @@ def test_cors_wildcard_never_allows_credentials(monkeypatch: pytest.MonkeyPatch)
 )
 def test_is_loopback_host(host: str, loopback: bool) -> None:
     assert is_loopback_host(host) is loopback
+
+
+def _run_without_uvicorn(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    import sys
+    import types
+
+    calls: list[str] = []
+    fake = types.SimpleNamespace(run=lambda *_a, **kw: calls.append(kw["host"]))
+    monkeypatch.setitem(sys.modules, "uvicorn", fake)
+    return calls
+
+
+def test_public_bind_without_token_refuses_to_start(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = _run_without_uvicorn(monkeypatch)
+    monkeypatch.setenv("TESTO_API_HOST", "0.0.0.0")
+    monkeypatch.delenv("TESTO_API_TOKEN", raising=False)
+    monkeypatch.delenv("TESTO_ALLOW_UNAUTHENTICATED", raising=False)
+    assert run() == 2
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    "env",
+    [
+        {"TESTO_API_TOKEN": "s3cret"},
+        {"TESTO_ALLOW_UNAUTHENTICATED": "1"},
+        {"TESTO_API_HOST": "127.0.0.1"},
+    ],
+)
+def test_bind_starts_with_token_opt_out_or_loopback(
+    monkeypatch: pytest.MonkeyPatch, env: dict[str, str]
+) -> None:
+    calls = _run_without_uvicorn(monkeypatch)
+    monkeypatch.setenv("TESTO_API_HOST", "0.0.0.0")
+    monkeypatch.delenv("TESTO_API_TOKEN", raising=False)
+    monkeypatch.delenv("TESTO_ALLOW_UNAUTHENTICATED", raising=False)
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    assert run() == 0
+    assert len(calls) == 1
+
+
+def test_read_config_path_only_loads_config_file_names(tmp_path: Path) -> None:
+    secret = tmp_path / "notes.txt"
+    secret.write_text("password: hunter2\n[ -z x ] && return\n", encoding="utf-8")
+    client = TestClient(create_app())
+    for route in ("/api/v1/cycles", "/api/v1/cycles/smoke"):
+        resp = client.get(route, params={"config_path": str(secret)})
+        assert resp.status_code == 400
+        assert "hunter2" not in resp.text and "notes.txt" not in resp.text
+
+
+# --- TESTO_PROTECT_READS and the /login session cookie ---------------------------
+
+_READ = "/api/v1/runs"
+
+
+def _login(client: TestClient, token: str, next_path: str = "/") -> object:
+    return client.post(
+        "/api/v1/auth/login",
+        data={"token": token, "next": next_path},
+        follow_redirects=False,
+    )
+
+
+def test_reads_stay_open_by_default_even_with_a_token(token: str) -> None:
+    assert _client().get(_READ).status_code == 200
+
+
+@pytest.fixture
+def protected(token: str, monkeypatch: pytest.MonkeyPatch) -> str:
+    monkeypatch.setenv("TESTO_PROTECT_READS", "1")
+    return token
+
+
+def test_protect_reads_without_a_token_changes_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TESTO_PROTECT_READS", "1")
+    assert _client().get(_READ).status_code == 200
+
+
+def test_protected_read_without_session_is_401(protected: str) -> None:
+    resp = _client().get(_READ)
+    assert resp.status_code == 401
+    assert resp.json()["error"]["code"] == "unauthorized"
+    assert resp.json()["request_id"]
+
+
+def test_protected_report_file_is_401(protected: str) -> None:
+    # /history is a static mount, outside any route dependency.
+    assert _client().get("/history/some-run/report.html").status_code == 401
+
+
+def test_protected_page_redirects_a_browser_to_login(protected: str) -> None:
+    resp = _client().get(
+        "/history/run-1/allure/index.html?x=1",
+        headers={"Accept": "text/html"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert (
+        resp.headers["location"] == "/login?next=%2Fhistory%2Frun-1%2Fallure%2Findex.html%3Fx%3D1"
+    )
+
+
+def test_health_and_login_page_stay_open(protected: str) -> None:
+    client = _client()
+    assert client.get("/api/v1/health/live").status_code == 200
+    page = client.get("/login?next=/runs/abc")
+    assert page.status_code == 200
+    assert 'name="next" value="/runs/abc"' in page.text
+
+
+def test_protected_read_with_bearer_token_passes(protected: str) -> None:
+    assert _client().get(_READ, headers={"Authorization": f"Bearer {protected}"}).status_code == 200
+
+
+def test_login_sets_an_httponly_cookie_that_opens_reads(protected: str) -> None:
+    client = _client()
+    resp = _login(client, protected, "/runs/abc")
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/runs/abc"
+    cookie = resp.headers["set-cookie"]
+    assert "testo_session=" in cookie
+    assert "HttpOnly" in cookie
+    assert "SameSite=strict" in cookie
+    assert protected not in cookie  # derived, never the token itself
+    assert client.get(_READ).status_code == 200
+
+
+def test_session_cookie_also_authorizes_writes(protected: str) -> None:
+    client = _client()
+    _login(client, protected)
+    # 422 (empty body) means auth let it through.
+    assert client.post(_ADHOC, json={}).status_code == 422
+
+
+def test_wrong_token_does_not_sign_in(protected: str) -> None:
+    client = _client()
+    resp = _login(client, "nope")
+    assert resp.status_code == 401
+    assert "set-cookie" not in resp.headers
+    assert client.get(_READ).status_code == 401
+
+
+def test_changing_the_token_ends_old_sessions(
+    protected: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client()
+    _login(client, protected)
+    monkeypatch.setenv("TESTO_API_TOKEN", "rotated")
+    assert client.get(_READ).status_code == 401
+
+
+@pytest.mark.parametrize(
+    "target", ["https://evil.example", "//evil.example", "/\\evil.example", "runs"]
+)
+def test_login_never_redirects_off_the_server(protected: str, target: str) -> None:
+    resp = _login(_client(), protected, target)
+    assert resp.headers["location"] == "/"
+
+
+def test_logout_clears_the_session(protected: str) -> None:
+    client = _client()
+    _login(client, protected)
+    resp = client.post("/api/v1/auth/logout", follow_redirects=False)
+    assert resp.status_code == 303
+    assert client.get(_READ).status_code == 401
+
+
+def test_login_from_a_foreign_origin_is_refused(protected: str) -> None:
+    resp = _client().post(
+        "/api/v1/auth/login",
+        data={"token": protected},
+        headers={"Origin": "https://evil.example"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 403

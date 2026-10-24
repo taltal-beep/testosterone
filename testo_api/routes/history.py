@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
@@ -14,6 +13,7 @@ from testo_api.models import (
     RunReportsResponse,
     StageHealth,
 )
+from testo_api.security import read_config_path
 from testo_core.config.errors import ConfigError
 from testo_core.config.loader import discover_and_load
 from testo_core.history.read_model import get_run, list_run_sessions
@@ -129,9 +129,7 @@ def get_run_pyramid(run_id: str, config_path: str | None = None) -> RunPyramidRe
     stages: tuple = ()
     if record.cycle and run_needs_config_tiers(record):
         try:
-            cfg = discover_and_load(
-                config_path=Path(config_path).expanduser().resolve() if config_path else None
-            )
+            cfg = discover_and_load(config_path=read_config_path(config_path))
         except ConfigError as exc:
             raise HTTPException(status_code=503, detail=f"config error: {exc}") from exc
         plan = cfg.cycles.get(record.cycle)

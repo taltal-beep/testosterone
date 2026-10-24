@@ -1,26 +1,19 @@
 from __future__ import annotations
 
-import contextlib
-import http.server
 import logging
 import os
 import shutil
-import socket
 import subprocess
-import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from testo_core.paths import (
-    ORCHESTRATOR_ROOT,
     STATIC_ALLURE_HTML,
     STATIC_ALLURE_INDEX,
     STATIC_ALLURE_REPORT_DIR,
     STATIC_ALLURE_REPORTS_DIR,
-    STATIC_BEHAVE_DIR,
-    STATIC_BEHAVE_INDEX,
     STATIC_DIR,
     allure_report_dir,
 )
@@ -272,61 +265,6 @@ def make_report_zip(*, report_dir: Path, out_dir: Path, base_name: str = "allure
     return zip_path
 
 
-@dataclass
-class ReportServer:
-    port: int
-    root_dir: Path
-    thread: threading.Thread
-    httpd: http.server.ThreadingHTTPServer
-
-    @property
-    def url(self) -> str:
-        return f"http://127.0.0.1:{self.port}/"
-
-    def stop(self) -> None:
-        with contextlib.suppress(Exception):
-            self.httpd.shutdown()
-        with contextlib.suppress(Exception):
-            self.httpd.server_close()
-
-
-def start_report_server(*, report_dir: Path, port: int | None = None) -> ReportServer:
-    """
-    Start a local HTTP server rooted at the generated Allure report dir.
-    This makes embedded viewing work (relative JS/CSS assets).
-    """
-    report_dir = report_dir.expanduser().resolve()
-    if not report_dir.exists():
-        raise FileNotFoundError(report_dir)
-
-    chosen_port = port or _find_free_port()
-
-    handler = _make_handler(report_dir)
-    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", chosen_port), handler)
-
-    t = threading.Thread(target=httpd.serve_forever, daemon=True)
-    t.start()
-
-    return ReportServer(port=chosen_port, root_dir=report_dir, thread=t, httpd=httpd)
-
-
-def start_static_server(*, root_dir: Path, port: int | None = None) -> ReportServer:
-    """
-    Serve a broader directory tree (e.g. orchestrator root), so we can open:
-      - static/allure_report/index.html
-      - static_reports/behavex/*.html
-    """
-    root_dir = root_dir.expanduser().resolve()
-    if not root_dir.exists():
-        raise FileNotFoundError(root_dir)
-    chosen_port = port or _find_free_port()
-    handler = _make_handler(root_dir)
-    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", chosen_port), handler)
-    t = threading.Thread(target=httpd.serve_forever, daemon=True)
-    t.start()
-    return ReportServer(port=chosen_port, root_dir=root_dir, thread=t, httpd=httpd)
-
-
 def _ensure_static_dirs() -> None:
     STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -351,41 +289,8 @@ def _chmod_tree(path: Path, *, dirmode: int = 0o755, filemode: int = 0o644) -> N
         pass
 
 
-def _mirror_behavex_output_tree_to_static(src_dir: Path) -> Path | None:
-    """
-    Copy the full BehaveX output directory (HTML, ``outputs/``, assets) into ``static/behave/``,
-    then copy ``report.html`` to ``index.html`` so Streamlit serves ``/app/static/behave/index.html``.
-    """
-    src_dir = src_dir.expanduser().resolve()
-    report = src_dir / "report.html"
-    if not src_dir.is_dir() or not report.is_file():
-        return None
-
-    STATIC_DIR.mkdir(parents=True, exist_ok=True)
-    if STATIC_BEHAVE_DIR.exists():
-        shutil.rmtree(STATIC_BEHAVE_DIR)
-    shutil.copytree(src_dir, STATIC_BEHAVE_DIR)
-    shutil.copy2(STATIC_BEHAVE_DIR / "report.html", STATIC_BEHAVE_INDEX)
-    _chmod_tree(STATIC_BEHAVE_DIR)
-    try:
-        os.chmod(STATIC_BEHAVE_INDEX, 0o644)
-    except OSError:
-        pass
-    return STATIC_BEHAVE_INDEX if STATIC_BEHAVE_INDEX.is_file() else None
-
-
-def _resolve_behavex_artifacts_output_dir(artifacts_root: Path) -> Path | None:
-    """BehaveX ``-o`` directory under artifacts (prefers ``behave_reports``, then legacy ``behavex-output``)."""
-    artifacts_root = artifacts_root.expanduser().resolve()
-    for sub in ("behave_reports", "behavex-output"):
-        d = artifacts_root / sub
-        if d.is_dir() and (d / "report.html").is_file():
-            return d
-    return None
-
-
 def _mirror_file_readable(src: Path, dst: Path) -> None:
-    """Copy HTML into static/ and set permissive mode so Streamlit can serve it."""
+    """Copy HTML into ``static/`` with world-readable permissions."""
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
     try:
@@ -397,7 +302,8 @@ def _mirror_file_readable(src: Path, dst: Path) -> None:
 def publish_allure_index_to_static(*, report_dir: Path) -> Path | None:
     """
     When ``report_dir`` is ``static/allure_report``, Allure already wrote ``index.html`` there;
-    chmod the tree for Streamlit. Otherwise mirror ``index.html`` to legacy ``static/allure_report.html``.
+    make the tree readable. Otherwise mirror ``index.html`` to ``static/allure_report.html``,
+    which :mod:`testo_core.services.report_service` still looks for.
     """
     report_dir = report_dir.expanduser().resolve()
     src = report_dir / "index.html"
@@ -416,117 +322,6 @@ def publish_allure_index_to_static(*, report_dir: Path) -> Path | None:
         return STATIC_ALLURE_INDEX if STATIC_ALLURE_INDEX.is_file() else src
     _mirror_file_readable(src, STATIC_ALLURE_HTML)
     return STATIC_ALLURE_HTML
-
-
-def collect_behavex_native_report(
-    *,
-    target_repo: Path,
-    run_id: str,
-    artifacts_root: Path | None = None,
-) -> Path | None:
-    """
-    BehaveX writes report.html at OUTPUT/report.html (see `-o`).
-
-    Primary: <artifacts>/behave_reports/report.html
-    Legacy:   <artifacts>/behavex-output/report.html, <target_repo>/output/report.html
-
-    Mirrors the full BehaveX output dir to ``static/behave/`` (assets preserved), sets ``index.html``
-    from ``report.html``, and copies ``report.html`` to ``static_reports/behavex/report_<run_id>.html``.
-    """
-    target_repo = target_repo.expanduser().resolve()
-    candidates: list[Path] = []
-    if artifacts_root is not None:
-        ar = artifacts_root.expanduser().resolve()
-        candidates.append(ar / "behave_reports" / "report.html")
-        candidates.append(ar / "behavex-output" / "report.html")
-    candidates.append(target_repo / "output" / "report.html")
-
-    src: Path | None = None
-    for c in candidates:
-        if c.exists():
-            src = c
-            break
-    if src is None:
-        return None
-
-    root = ORCHESTRATOR_ROOT
-    mirrored = _mirror_behavex_output_tree_to_static(src.parent)
-    if mirrored is None:
-        return None
-
-    dest_dir = (root / "static_reports" / "behavex").resolve()
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest = dest_dir / f"report_{run_id}.html"
-    _mirror_file_readable(src, dest)
-    return dest
-
-
-def sync_all_reports_to_static(
-    *, artifacts_root: Path, run_id: str | None = None
-) -> dict[str, Path | None]:
-    """
-    Copy the latest known report HTML artifacts into ``./static/`` for Streamlit static serving.
-
-    - Allure: any per-framework HTML under ``static/allure_reports/<framework>/index.html``
-    - BehaveX: full ``<artifacts>/behave_reports/`` tree (legacy: ``behavex-output/``) → ``static/behave/``,
-      with ``report.html`` copied to ``static/behave/index.html``
-    """
-    _ = run_id
-    artifacts_root = artifacts_root.expanduser().resolve()
-    out: dict[str, Path | None] = {"allure": None, "behavex": None}
-
-    # Per-framework Allure HTML lives under ``static/allure_reports/``.
-    if STATIC_ALLURE_REPORTS_DIR.is_dir():
-        _ensure_static_dirs()
-        _chmod_tree(STATIC_ALLURE_REPORTS_DIR)
-        # Return one representative index so callers can print a stable path.
-        for d in sorted([p for p in STATIC_ALLURE_REPORTS_DIR.iterdir() if p.is_dir()]):
-            idx = d / "index.html"
-            if idx.is_file():
-                out["allure"] = idx
-                break
-    if out["allure"] is None and STATIC_ALLURE_INDEX.is_file():
-        # Back-compat legacy path
-        _ensure_static_dirs()
-        _chmod_tree(STATIC_ALLURE_REPORT_DIR)
-        out["allure"] = STATIC_ALLURE_INDEX
-    if out["allure"] is None:
-        # Back-compat artifacts → static single-file
-        allure_index = artifacts_root / "allure-report" / "index.html"
-        if allure_index.is_file():
-            _ensure_static_dirs()
-            _mirror_file_readable(allure_index, STATIC_ALLURE_HTML)
-            out["allure"] = STATIC_ALLURE_HTML
-
-    behave_dir = _resolve_behavex_artifacts_output_dir(artifacts_root)
-    if behave_dir is not None:
-        out["behavex"] = _mirror_behavex_output_tree_to_static(behave_dir)
-
-    return out
-
-
-def url_for(server: ReportServer, *, relative_path: str) -> str:
-    rp = relative_path.lstrip("/")
-    return f"{server.url}{rp}"
-
-
-def _find_free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return int(s.getsockname()[1])
-
-
-def _make_handler(root_dir: Path):
-    # python < 3.13 doesn't support passing directory via partial; do it explicitly
-    class Handler(http.server.SimpleHTTPRequestHandler):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, directory=str(root_dir), **kwargs)
-
-        def log_message(self, format: str, *args) -> None:  # noqa: A002
-            # keep Streamlit logs clean
-            return
-
-    return Handler
 
 
 def default_report_paths(*, artifacts_root: Path) -> ReportPaths:

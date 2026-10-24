@@ -1,6 +1,6 @@
 // GENERATED FILE - do not edit by hand.
-// Source of truth: testo_core/mascot/__init__.py
-// Regenerate with: python -m testo_core.mascot.export_ts
+// Source of truth: scripts/mascot/__init__.py
+// Regenerate with: python -m scripts.mascot.export_ts
 
 export type PixelPalette = Record<string, string>;
 export type PixelFrame = string[];

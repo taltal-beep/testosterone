@@ -26,7 +26,8 @@ class FakeEventSource {
 describe("QuickRunPage", () => {
   it("posts an ad-hoc execution and follows the cycle event stream", async () => {
     const source = new FakeEventSource();
-    vi.stubGlobal("EventSource", vi.fn(() => source));
+    // A constructor mock: vitest 4+ refuses `new` on an arrow implementation.
+    vi.stubGlobal("EventSource", vi.fn(function () { return source; }));
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({

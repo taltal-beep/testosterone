@@ -34,7 +34,7 @@ class RunRecord(SQLModel, table=True):
       avoid clashing with SQLAlchemy's ``.metadata``.
     """
 
-    # Streamlit hot-reload can import this module multiple times within the same process,
+    # A reloader (``testo-api`` with TESTO_API_RELOAD=1) can import this module twice in one process,
     # reusing the same SQLAlchemy MetaData instance. Allow redefining the table safely.
     __table_args__ = {"extend_existing": True}
 

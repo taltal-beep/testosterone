@@ -69,7 +69,7 @@ def test_behavex_native_row_with_report_html(tmp_path: Path) -> None:
 def test_behavex_html_generation_failure_is_logged_or_raised(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    from behavex.outputs import report_html
+    report_html = pytest.importorskip("behavex.outputs.report_html", reason="needs testo-core[bdd]")
 
     def broken_generate(_payload: object) -> None:
         raise RuntimeError("template missing")
