@@ -9,27 +9,51 @@ updated: 2026-10-24
 
 [Index](Index.md)
 
-Three passes over the whole repo with the tech-debt, code-review, security-review and architecture checklists (the first pass also used testing-strategy). The **third pass** is `main` at `63ca88f` (2026-10-24), after the second pass's fixes (#150 to #153). The second pass was `3aeb3b3` and the first `f1e3521`, both the same day; their findings are kept below with their status. Open items that should outlive this note move to the [Technical Debt Tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md).
+Four passes over the whole repo with the tech-debt, code-review, security-review and architecture checklists (the first pass also used testing-strategy). The **fourth pass** is `main` after the scale work (#156) and the coverage pull request (#157), 2026-10-24. The third pass was `63ca88f`, the second `3aeb3b3` and the first `f1e3521`, all the same day; their findings are kept below with their status. Open items that should outlive this note move to the [Technical Debt Tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md).
 
 ## Verdict
 
-**Overall: 8.5 / 10 (unchanged from the second pass; the first was 8).** Everything the second pass asked for "now" and "soon" is done except more tests for the Allure and Behave paths. The server image protects reads by default. The security model now covers stateless sessions and the AI `base_url`. The Dependabot queue is empty apart from TypeScript 7, which is blocked upstream. The contributor fix in #124 is merged with its author's commits. testo-core 1.2.0 is on PyPI. No check found a regression, and the architecture took all of this without a new path.
+**Overall: 9 / 10 (was 8.5; the first pass was 8).** Three of the four things that held the third pass at 8.5 are gone:
 
-The score holds because what keeps it from a 9 has not moved. The API runs each execution on its own thread with in-memory state (A1). Stages run one at a time (A2). Three modules are over 500 lines. The Allure, Behave and `testo watch` paths are still under 50% covered (T5). This pass adds one Low finding: report files are served from the API's own origin (S9). None of this blocks using or showing the project. A1 and A2 already have their own thread.
+- **A1:** API runs now queue for a fixed worker pool (`TESTO_MAX_CONCURRENT_RUNS`, default 2) instead of each getting its own thread.
+- **A2:** a cycle can run independent stages in parallel with `max_parallel_stages`, while events and output stay ordered.
+- **T5:** the Allure, report server, Behave, BehaveX export and `testo watch` modules went from 32 to 48% coverage to 92% or more. Total coverage is 86%.
+
+The scale work went into the existing engine and manager, with an ADR and no second path. Every security finding from four passes is fixed, documented or accepted.
+
+It is not higher because of what is left. One new Low finding is in the new worker pool (A4): a run that raises `SystemExit` takes its worker down for good. Three modules are over 500 lines and growing slowly. Run state and the queue are still in memory, so a restart drops queued runs (documented). TypeScript 7 waits on `typescript-eslint`. None of these blocks using, showing or growing the project.
 
 ## Scorecard
 
 | Area | Score | Was | In one line |
 |------|:-----:|:---:|-------------|
-| Architecture | **8.5** | 8.5 | One engine, one service entry point, plugins, a read-side `history/`; every fix since the first pass went in without a second path. Thread-per-run API and sequential stages are the limits |
-| Code quality | **8.5** | 8.5 | `ruff`, `ruff format`, `mypy` and ESLint clean, no dead code (`vulture` empty), no `TODO`s; three modules over 500 lines |
-| Tests | **8** | 8 | 867 fast tests at 84% coverage on Python 3.11 to 3.13, 58 frontend tests; Allure, Behave and `testo watch` paths still under 50% |
-| Security | **8.5** | 8.5 | The server image is safe by default, and the security model now names its limits (stateless sessions, the AI `base_url`); same-origin report files (S9) are the new Low |
-| Docs | **9** | 9 | Linted vault, ADRs, a security model that matches the code, guides updated in the same pull request as each change |
-| CI / DX | **9** | 9 | Python matrix, ESLint, OpenAPI and schema drift checks, image scan, team server smoke; the publish workflow no longer fails a release that did upload |
-| Tech debt | **8.5** | 8 | Dependabot queue cleared, React 19, contributor PR landed, 1.2.0 on PyPI; TypeScript 7 (blocked upstream) and the three 500+ line modules remain |
+| Architecture | **9** | 8.5 | One engine, one service entry point, plugins, a read-side `history/`. Runs queue for a capped pool and stages can run in parallel, both added inside the existing engine with an ADR. State is still in memory (documented) |
+| Code quality | **8.5** | 8.5 | `ruff`, `ruff format`, `mypy` and ESLint clean, `vulture` empty, no `TODO`s. `loader.py` (560), `cycle_execution_manager.py` (581) and `cli/commands/report.py` (501) are over 500 lines |
+| Tests | **9** | 8 | 919 fast tests at 86% coverage on Python 3.11 to 3.13, every module touched by a review at 92% or more, parallel-stage and queue tests, 58 frontend tests; green on a fresh machine |
+| Security | **9** | 8.5 | Every finding from four passes is fixed, documented or accepted: config allow-list, fail-closed bind, cookie login and protected reads by default on the server, sandboxed report attachments, pinned actions |
+| Docs | **9** | 9 | Linted vault, ADRs (including the new Scale Runs and Stages one), a security model that matches the code, guides updated in the same pull request as each change |
+| CI / DX | **9** | 9 | Python matrix, ESLint, OpenAPI and schema drift checks, image scan, team server smoke, a publish workflow that tolerates a slow PyPI index |
+| Tech debt | **8.5** | 8.5 | No dependency backlog besides TypeScript 7 (blocked upstream); the three large modules and the in-memory queue are what is left |
 
-## What was checked (third pass)
+## What was checked (fourth pass)
+
+| Check | Result |
+|-------|--------|
+| `ruff check .` and `ruff format --check .` | Clean |
+| `pytest -m "tier_fast and not quarantined"` | 919 passed, 0 failed, 86% coverage, on the review machine too |
+| `vulture --min-confidence 80`, `TODO`/`FIXME` | Nothing |
+| #156 worker pool | FIFO queue, one cycle queued or running at a time, `queued` status in the API models and the UI, workers started lazily. A job that raises `BaseException` kills its worker (A4, checked by running one) |
+| #156 parallel stages | Events and the renderer stay on the calling thread, results keep config order, `fail_fast` starts nothing new after a failure, duplicate stage names refused when parallel, live output buffered per stage |
+| Open pull requests | Only #106 (TypeScript 7, blocked by `typescript-eslint`) |
+
+## Fourth-pass findings
+
+| # | Severity | Finding | Fix | Status |
+|---|----------|---------|-----|--------|
+| A4 | Low | **A worker that hits `SystemExit` is never replaced.** `_run_execution` catches `Exception`, so a `SystemExit` or `KeyboardInterrupt` raised during a run (a reporter plugin calling `sys.exit()`, say) ends `_worker_loop`'s thread. The run itself is marked failed, but `_ensure_workers` counts dead threads, so the pool shrinks for good; with the default of 2, two such runs leave every later run `queued` forever | Catch `BaseException` per job in `_worker_loop` (log it and keep looping), or drop dead threads in `_ensure_workers`, plus a test | Open |
+| D10 | Code | Three modules over 500 lines, and two grew this round: `cycle_execution_manager.py` (539 to 581) and `config/loader.py` (537 to 560) | Split the worker pool and the SSE helpers out of the manager, and the cycle parsing out of the loader, the next time each changes | Open |
+
+## What was checked (third pass, 63ca88f)
 
 | Check | Result |
 |-------|--------|
@@ -41,7 +65,7 @@ The score holds because what keeps it from a 9 has not moved. The API runs each 
 | Diff since the second pass | `config init` starter, server image `ENV`, React 19 ref types, publish retry: no findings |
 | Open pull requests | Only #106 (TypeScript 7, blocked by `typescript-eslint`) |
 
-## Third-pass findings
+## Third-pass findings (63ca88f)
 
 | # | Severity | Finding | Fix | Status |
 |---|----------|---------|-----|--------|
@@ -160,9 +184,11 @@ Small gaps: `actionlint_py-1.7.12.25.tar.gz` was committed (*removed in #141*) a
 
 ## What's left
 
-1. **When the team server grows.** A1 (a run queue with a concurrency cap and persistent state) and A2 (opt-in parallel stages, tracker item 3), both being planned in their own thread. Also TypeScript 7 once `typescript-eslint` supports it, and splitting `config/loader.py`, `cli/commands/report.py` and `cycle_execution_manager.py` the next time each one changes.
+1. **Soon.** A4 (a few lines and a test in `_worker_loop`).
+2. **Next time the code changes.** D10 (split the three large modules), TypeScript 7 once `typescript-eslint` supports it.
+3. **If the team server outgrows one process.** A persistent run queue and registry, so a restart keeps queued runs and several API processes can share the work.
 
-The first and second passes' fix plans are done; their steps are in the Progress log below.
+The first three passes' fix plans are done; their steps are in the Progress log below.
 
 ## Progress
 
@@ -176,3 +202,4 @@ The first and second passes' fix plans are done; their steps are in the Progress
 - 2026-10-24, third pass at `63ca88f`: overall stays 8.5, and tech debt goes from 8 to 8.5. New findings: S9 and T6.
 - 2026-10-24: S9 fixed (`nosniff` and `frame-ancestors 'self'` on every response, `sandbox` on report attachments) and T6 fixed (the fast suite is green on a machine without `build`).
 - 2026-10-24: T5 fixed, with tests for the Allure wrapper, report server, Behave adapter, BehaveX export and `testo watch` (each 92% or more, total 86%).
+- 2026-10-24, fourth pass after #156 and #157: overall 8.5 → 9. A1 and A2 fixed by #156, T5 by #157. New findings: A4 and D10.
