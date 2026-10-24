@@ -16,6 +16,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Unit tests for the TestBeats and ReportPortal reporter payloads, the Anthropic provider, and the `testo config` and `testo report` commands (coverage 80% to 83%)
 - Frontend tests for the loading, error and empty states of the run detail and Compare pages
 
+- Unit tests for the Allure report wrapper, the local report server, the Behave adapter's argument building, the BehaveX-to-Allure export and `testo watch`'s debounced re-runs (each module now at 92% or more; total coverage 84% to 86%)
 ### Changed
 - The release workflow's "Verify install from PyPI" step retries for up to five minutes instead of one 30-second wait, so a slow PyPI index no longer marks a published release as failed
 - The `testo-server` image sets `TESTO_PROTECT_READS=1`, so a plain `docker run` protects reads too, not only `deploy/server/docker-compose.yml`. Set it to `0` to open reads on a trusted network
