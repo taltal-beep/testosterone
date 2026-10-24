@@ -9,33 +9,51 @@ updated: 2026-10-24
 
 [Index](Index.md)
 
-Four passes over the whole repo with the tech-debt, code-review, security-review and architecture checklists (the first pass also used testing-strategy). The **fourth pass** is `main` after the scale work (#156) and the coverage pull request (#157), 2026-10-24. The third pass was `63ca88f`, the second `3aeb3b3` and the first `f1e3521`, all the same day; their findings are kept below with their status. Open items that should outlive this note move to the [Technical Debt Tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md).
+Five passes over the whole repo with the tech-debt, code-review, security-review and architecture checklists (the first pass also used testing-strategy). The **fifth pass** is `main` after the worker fix and module split (#159), the switchable run queue (#160) and per-user accounts (#161), 2026-10-24. The fourth pass was `06e636c`, the third `63ca88f`, the second `3aeb3b3` and the first `f1e3521`, all the same day; their findings are kept below with their status. Open items that should outlive this note move to the [Technical Debt Tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md).
 
 ## Verdict
 
-**Overall: 9 / 10 (was 8.5; the first pass was 8).** Three of the four things that held the third pass at 8.5 are gone:
+**Overall: 9.5 / 10 (was 9; the first pass was 8).** Everything the fourth pass left open is done, and the two team features that kept the score below 10 now exist without costing small users anything:
 
-- **A1:** API runs now queue for a fixed worker pool (`TESTO_MAX_CONCURRENT_RUNS`, default 2) instead of each getting its own thread.
-- **A2:** a cycle can run independent stages in parallel with `max_parallel_stages`, while events and output stay ordered.
-- **T5:** the Allure, report server, Behave, BehaveX export and `testo watch` modules went from 32 to 48% coverage to 92% or more. Total coverage is 86%.
+- **A4 and D10 (#159):** a run that raises `SystemExit` no longer kills its worker, and no Python module is over 500 lines.
+- **Run queue (#160):** `TESTO_RUN_QUEUE=db` keeps waiting runs in the database and queues them again on startup. The default, `memory`, is unchanged.
+- **Accounts (#161):** `TESTO_AUTH=accounts` gives each person a login, a role (`viewer`, `runner`, `admin`) and an audit trail, managed with `testo users`. The default, `token`, is unchanged.
 
-The scale work went into the existing engine and manager, with an ADR and no second path. Every security finding from four passes is fixed, documented or accepted.
+Both switches are explained in one ADR, [Switchable Team Features](Specs%20&%20ADRs/Switchable%20Team%20Features%20-%202026-10-24.md), went into the existing manager and security layer (no second path), and have tests for both settings.
 
-It is not higher because of what is left. One new Low finding is in the new worker pool (A4): a run that raises `SystemExit` takes its worker down for good. Three modules are over 500 lines and growing slowly. Run state and the queue are still in memory, so a restart drops queued runs (documented). TypeScript 7 waits on `typescript-eslint`. None of these blocks using, showing or growing the project.
+It is not a 10 because of what a 10 would mean here: safe to expose to people you don't trust. A `runner` can still run any command as the server's user (accepted and documented: it is a test runner), sign-in has no lockout (S11), report pages share the API's origin (S10), and one server process is still the supported setup. TypeScript 7 still waits on `typescript-eslint`. None of these matter for one developer, a small team, or a portfolio review.
 
 ## Scorecard
 
 | Area | Score | Was | In one line |
 |------|:-----:|:---:|-------------|
-| Architecture | **9** | 8.5 | One engine, one service entry point, plugins, a read-side `history/`. Runs queue for a capped pool and stages can run in parallel, both added inside the existing engine with an ADR. State is still in memory (documented) |
-| Code quality | **8.5** | 8.5 | `ruff`, `ruff format`, `mypy` and ESLint clean, `vulture` empty, no `TODO`s. `loader.py` (560), `cycle_execution_manager.py` (581) and `cli/commands/report.py` (501) are over 500 lines |
-| Tests | **9** | 8 | 919 fast tests at 86% coverage on Python 3.11 to 3.13, every module touched by a review at 92% or more, parallel-stage and queue tests, 58 frontend tests; green on a fresh machine |
-| Security | **9** | 8.5 | Every finding from four passes is fixed, documented or accepted: config allow-list, fail-closed bind, cookie login and protected reads by default on the server, sandboxed report attachments, pinned actions |
-| Docs | **9** | 9 | Linted vault, ADRs (including the new Scale Runs and Stages one), a security model that matches the code, guides updated in the same pull request as each change |
-| CI / DX | **9** | 9 | Python matrix, ESLint, OpenAPI and schema drift checks, image scan, team server smoke, a publish workflow that tolerates a slow PyPI index |
-| Tech debt | **8.5** | 8.5 | No dependency backlog besides TypeScript 7 (blocked upstream); the three large modules and the in-memory queue are what is left |
+| Architecture | **9.5** | 9 | One engine, one service entry point, plugins, a read-side `history/`. Durable queue and accounts are switches inside the existing manager and security layer, each with an ADR; runs are described by a JSON-safe `RunRequest` |
+| Code quality | **9** | 8.5 | `ruff`, `ruff format`, `mypy` and ESLint clean, `vulture` empty, no `TODO`s, no module over 500 lines (largest: `cycle_execution_manager.py`, 493) |
+| Tests | **9** | 9 | 952 fast tests at 86% coverage on Python 3.11 to 3.13; both settings of each switch tested (restart recovery, claim-once, role boundaries, forged cookies, session revocation); 60 frontend tests |
+| Security | **9.5** | 9 | Optional per-user accounts with `scrypt`, roles, revocable sessions and an audit log, on top of every earlier fix. Left: S10, S11 (Low, documented) and the accepted command-runner model |
+| Docs | **9** | 9 | Linted vault, a new ADR, Team Server and Command Reference sections, a security model that names what accounts do and don't protect |
+| CI / DX | **9** | 9 | Python matrix, ESLint, OpenAPI and schema drift checks, image scan, team server smoke, tolerant publish |
+| Tech debt | **9** | 8.5 | The fourth pass's debt is paid. Left: TypeScript 7 (blocked upstream), and two modes per switch to maintain |
 
-## What was checked (fourth pass)
+## What was checked (fifth pass)
+
+| Check | Result |
+|-------|--------|
+| `ruff check .`, `ruff format --check .`, `mypy`, ESLint, `tsc` | Clean (mypy: the review machine's 2 known stale-package errors only) |
+| `pytest -m "tier_fast and not quarantined"` | 952 passed, 86% coverage; new modules 90% or more (`run_queue.py` 94, `security.py` 94, `accounts.py` 90, `auth.py` 92) |
+| #159 | `_worker_loop` catches `BaseException` per job, `_ensure_workers` drops dead threads; reproduced the old failure, now a test |
+| #160 run queue | A row is deleted (atomically) as its run starts, so an interrupted run is never repeated and two processes never both run a row; recovered runs keep their execution id; a DB error on enqueue frees the cycle |
+| #161 accounts | Salted `scrypt`, dummy hash for unknown names, cookie signed with the token and tied to a session version, role checked on every write, reads always protected, every write and sign-in audited, `/login` still refuses foreign origins, token mode byte-for-byte the old path |
+| Open pull requests | Only #106 (TypeScript 7, blocked by `typescript-eslint`) |
+
+## Fifth-pass findings
+
+| # | Severity | Finding | Fix | Status |
+|---|----------|---------|-----|--------|
+| S10 | Low | **Report pages share the API's origin.** S9 sandboxed attachments, but the Allure report pages under `/history` run script on the server's origin. With accounts, a viewer opening a report that an XSS in the report generator let through would act with the viewer's role. Needs a bug in Allure's own escaping, and a viewer can't write anyway | Serve `/history` from a separate origin (`TESTO_REPORTS_ORIGIN`) if the server is exposed to people you don't trust | Accepted (documented) |
+| S11 | Low | **No sign-in lockout.** Each failed attempt costs an `scrypt` hash and is audited, but nothing slows a password guesser down | Rate-limit `/api/v1/auth/login` at the reverse proxy (documented in the security model), or add a per-name backoff | Accepted (documented) |
+
+## What was checked (fourth pass, 06e636c)
 
 | Check | Result |
 |-------|--------|
@@ -184,11 +202,9 @@ Small gaps: `actionlint_py-1.7.12.25.tar.gz` was committed (*removed in #141*) a
 
 ## What's left
 
-1. **Soon.** A4 (a few lines and a test in `_worker_loop`).
-2. **Next time the code changes.** D10 (split the three large modules), TypeScript 7 once `typescript-eslint` supports it.
-3. **If the team server outgrows one process.** A persistent run queue and registry, so a restart keeps queued runs and several API processes can share the work.
-
-The first three passes' fix plans are done; their steps are in the Progress log below.
+1. **To call it a 10 for an exposed server.** Reports on a separate origin (S10), a sign-in backoff (S11), and, the big one, sandboxed runners: runs in disposable containers with no host credentials and an allow-list of repos and commands, so a `runner` can't use the server as a shell.
+2. **When upstream allows.** TypeScript 7 once `typescript-eslint` supports it.
+3. **If the team server outgrows one process.** A shared one-run-per-cycle guard and concurrency cap across processes; the durable queue already claims rows safely.
 
 ## Progress
 
@@ -203,3 +219,5 @@ The first three passes' fix plans are done; their steps are in the Progress log 
 - 2026-10-24: S9 fixed (`nosniff` and `frame-ancestors 'self'` on every response, `sandbox` on report attachments) and T6 fixed (the fast suite is green on a machine without `build`).
 - 2026-10-24: T5 fixed, with tests for the Allure wrapper, report server, Behave adapter, BehaveX export and `testo watch` (each 92% or more, total 86%).
 - 2026-10-24, fourth pass after #156 and #157: overall 8.5 → 9. A1 and A2 fixed by #156, T5 by #157. New findings: A4 and D10.
+- 2026-10-24: A4 and D10 fixed (#159); switchable run queue (#160) and per-user accounts (#161) added, both off by default.
+- 2026-10-24, fifth pass after #161: overall 9 → 9.5. New findings: S10 and S11 (both Low, accepted and documented).
