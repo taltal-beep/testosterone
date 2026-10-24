@@ -46,6 +46,18 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     except Exception:
         # Broad on purpose: DB URL, driver and connection errors must not block API startup.
         logger.warning("orphaned-run cleanup skipped (DB unavailable?)", exc_info=True)
+
+    # With TESTO_RUN_QUEUE=db, runs that were still waiting when the last process
+    # stopped are queued again (no-op with the default in-memory queue).
+    from testo_api.dependencies import get_cycle_execution_manager
+
+    try:
+        n = get_cycle_execution_manager().recover_queued()
+        if n:
+            logger.warning("Re-queued %s run(s) left waiting by the previous process.", n)
+    except Exception:
+        # Broad on purpose: like the cleanup above, a DB problem must not block startup.
+        logger.warning("queued-run recovery skipped (DB unavailable?)", exc_info=True)
     yield
 
 

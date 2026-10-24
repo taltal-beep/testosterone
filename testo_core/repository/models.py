@@ -85,3 +85,22 @@ class ReportArchive(SQLModel, table=True):
         index=True,
         description="Wall time from plan_result.json duration_s when present.",
     )
+
+
+class QueuedRun(SQLModel, table=True):
+    """An API run waiting for a worker, kept only when ``TESTO_RUN_QUEUE=db``.
+
+    The row is deleted when a worker starts the run, so the table only ever holds
+    runs that have not started. ``request_json`` is ``testo_api.run_queue.RunRequest``.
+    """
+
+    __tablename__ = "queued_run"
+    __table_args__ = {"extend_existing": True}
+
+    id: str = Field(primary_key=True, max_length=64)
+    cycle: str = Field(index=True, max_length=512)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC), index=True)
+    request_json: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column("request_json", _METADATA_JSON_COL, nullable=False),
+    )
