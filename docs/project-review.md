@@ -71,7 +71,7 @@ All Low, most severe first. None was a blocker.
 | S7 | Low | **Sessions are stateless.** The cookie is an HMAC of the token, so sign-out only clears the browser's copy; a copied cookie works until the token changes, for up to 30 days | Acceptable with one shared token; document "rotate the token to sign everyone out", or add a server-side session list if per-user accounts arrive | Documented (#150) |
 | S8 | Info | **No rate limit on `/login`.** A guessed token is the only way in, and the guides tell people to use `openssl rand -hex 32`, so online guessing is not practical | Nothing now; a reverse proxy can rate-limit if needed | Accepted |
 | S5 | Low | **AI `base_url` is free-form** (open from the first pass). A write token can point the provider at any URL, and the key goes there | One sentence in the security model | Documented (#150) |
-| T5 | Test | Lowest-covered modules: `reporting/allure.py` 32%, `reporting/server.py` 37%, `frameworks/behave_adapter.py` 45%, `reporting/behavex_allure.py` 48%, `cli/commands/watch.py` 48% | Tests for the Allure CLI fallbacks and the Behave adapter's argument building | Open |
+| T5 | Test | Lowest-covered modules: `reporting/allure.py` 32%, `reporting/server.py` 37%, `frameworks/behave_adapter.py` 45%, `reporting/behavex_allure.py` 48%, `cli/commands/watch.py` 48% | Tests for the Allure CLI fallbacks and the Behave adapter's argument building | Fixed (#157) |
 | D8 | Dependency | Nine Dependabot pull requests (#132 to #140) are open, including `actions/setup-python` 7 and `@testing-library/jest-dom` 7 (a major bump), and #105 is superseded by the merged Vite 8 upgrade | Review and merge the green ones; close #105 | Done (#151 and the merged Dependabot PRs; #106 blocked upstream) |
 | D9 | Process | Contributor PR #124 has waited since 2026-10-21 for a merge from `main` | Nudge or take it over with credit | Done (#152; #124 shows merged) |
 
@@ -160,8 +160,7 @@ Small gaps: `actionlint_py-1.7.12.25.tar.gz` was committed (*removed in #141*) a
 
 ## What's left
 
-1. **Soon.** T5 (Allure and Behave coverage).
-2. **When the team server grows.** A1 (a run queue with a concurrency cap and persistent state) and A2 (opt-in parallel stages, tracker item 3), both being planned in their own thread. Also TypeScript 7 once `typescript-eslint` supports it, and splitting `config/loader.py`, `cli/commands/report.py` and `cycle_execution_manager.py` the next time each one changes.
+1. **When the team server grows.** A1 (a run queue with a concurrency cap and persistent state) and A2 (opt-in parallel stages, tracker item 3), both being planned in their own thread. Also TypeScript 7 once `typescript-eslint` supports it, and splitting `config/loader.py`, `cli/commands/report.py` and `cycle_execution_manager.py` the next time each one changes.
 
 The first and second passes' fix plans are done; their steps are in the Progress log below.
 
@@ -176,3 +175,4 @@ The first and second passes' fix plans are done; their steps are in the Progress
 - 2026-10-24: D8 and D9 done (#151, #152), and 1.2.0 is on PyPI. The publish workflow now retries its post-upload install check (#153).
 - 2026-10-24, third pass at `63ca88f`: overall stays 8.5, and tech debt goes from 8 to 8.5. New findings: S9 and T6.
 - 2026-10-24: S9 fixed (`nosniff` and `frame-ancestors 'self'` on every response, `sandbox` on report attachments) and T6 fixed (the fast suite is green on a machine without `build`).
+- 2026-10-24: T5 fixed, with tests for the Allure wrapper, report server, Behave adapter, BehaveX export and `testo watch` (each 92% or more, total 86%).
