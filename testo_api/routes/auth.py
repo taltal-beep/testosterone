@@ -131,11 +131,11 @@ def login(
         wait = login_throttle.retry_after(name, address)
         if wait:
             _audit(name, request, 429)
-            response = _page(
+            refusal = _page(
                 target, f"Too many failed sign-ins. Try again in {wait // 60 + 1} minutes.", 429
             )
-            response.headers["Retry-After"] = str(wait)
-            return response
+            refusal.headers["Retry-After"] = str(wait)
+            return refusal
     if accounts and name != "token":
         account = account_store().authenticate(username, token)
         if account is None:
