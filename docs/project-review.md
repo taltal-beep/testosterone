@@ -115,3 +115,7 @@ Each phase fits next to feature work.
 1. **This week (security and hygiene, ~1 day).** S1, S2, S4, A3, D1, and delete the stray tarball.
 2. **Next release (~1 day).** D3 (add 3.12 and 3.13 to the test matrix), D4 (a constraints file used by CI, or an upper bound on `sqlmodel`), T3, then cut the release in D2 so PyPI users get the October features.
 3. **Following month.** T1 and T2 coverage, D7 frontend linter, D5 Vite 8 and TypeScript 7, S3 read token, and decide whether `mascot/` belongs in the core wheel (D6).
+
+## Progress
+
+- 2026-10-24, step 1 done in the same pull request as this note: S1 (read routes only load config file names), S2 (public bind without a token refuses to start), S4 (actions pinned to SHAs, read-only `permissions:`), A3 (API version from package metadata), D1 (dead report helpers and the stray tarball removed).

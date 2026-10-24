@@ -68,7 +68,7 @@ jobs:
       # explicitly by this workflow below.
       - name: Draft changelog entry with Claude
         if: steps.gate.outputs.enabled == 'true'
-        uses: anthropics/claude-code-base-action@beta
+        uses: anthropics/claude-code-base-action@e8132bc5e637a42c27763fc757faa37e1ee43b34 # v0.0.63
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |

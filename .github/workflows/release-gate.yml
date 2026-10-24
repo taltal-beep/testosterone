@@ -7,6 +7,9 @@ concurrency:
   group: external-e2e
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   external_release_gate:
     runs-on: ubuntu-latest

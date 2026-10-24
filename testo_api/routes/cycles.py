@@ -19,6 +19,7 @@ from testo_api.models import (
     CycleTriggerSummary,
     StageSummary,
 )
+from testo_api.security import read_config_path
 from testo_core.config.errors import ConfigError, ConfigValidationError
 from testo_core.config.loader import discover_and_load
 from testo_core.config.schema import PARALLEL_FRAMEWORKS
@@ -30,9 +31,7 @@ router = APIRouter(prefix="/api/v1", tags=["cycles"])
 
 def _load_config(config_path: str | None = None):
     try:
-        return discover_and_load(
-            config_path=Path(config_path).expanduser().resolve() if config_path else None
-        )
+        return discover_and_load(config_path=read_config_path(config_path))
     except ConfigError as exc:
         raise HTTPException(status_code=503, detail=f"config error: {exc}") from exc
 

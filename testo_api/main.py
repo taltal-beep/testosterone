@@ -20,6 +20,7 @@ from testo_api.routes.history import router as history_router
 from testo_api.routes.ingest import router as ingest_router
 from testo_api.security import cors_settings, guard_mutating_request, is_loopback_host
 from testo_api.ui import SpaStaticFiles, ui_dir
+from testo_core import __version__
 from testo_core.paths import STATIC_HISTORY_ROOT
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,7 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Testosterone API",
-        version="1.1.1",
+        version=__version__,
         lifespan=_lifespan,
         dependencies=[Depends(guard_mutating_request)],
     )
@@ -159,11 +160,18 @@ def run(argv: list[str] | None = None) -> int:
     host = os.environ.get("TESTO_API_HOST", "127.0.0.1")
     port = int(os.environ.get("TESTO_API_PORT", "8000"))
     reload = os.environ.get("TESTO_API_RELOAD", "0") in ("1", "true", "True")
-    if not is_loopback_host(host) and not os.environ.get("TESTO_API_TOKEN"):
+    if not is_loopback_host(host) and not os.environ.get("TESTO_API_TOKEN", "").strip():
+        if os.environ.get("TESTO_ALLOW_UNAUTHENTICATED", "0") not in ("1", "true", "True"):
+            sys.stderr.write(
+                f"Refusing to bind {host} without TESTO_API_TOKEN: anyone who can reach this "
+                "port could start runs, i.e. execute commands on this machine. Set "
+                "TESTO_API_TOKEN, bind 127.0.0.1, or set TESTO_ALLOW_UNAUTHENTICATED=1 "
+                "if the network is already trusted.\n"
+            )
+            return 2
         logger.warning(
-            "testo-api is binding %s without TESTO_API_TOKEN: anyone who can reach this "
-            "port can start runs, i.e. execute commands on this machine. Set "
-            "TESTO_API_TOKEN or bind 127.0.0.1.",
+            "testo-api is binding %s without TESTO_API_TOKEN (TESTO_ALLOW_UNAUTHENTICATED=1): "
+            "anyone who can reach this port can start runs.",
             host,
         )
     uvicorn.run("testo_api.main:app", host=host, port=port, reload=reload)

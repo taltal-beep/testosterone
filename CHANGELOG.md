@@ -27,6 +27,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Alerts where developers look: `slack` and `teams` reporters and a `testo notify --to slack|teams` command post a run's failing tests, new regressions, newly flaky tests and fixes to an incoming webhook (URL from `TESTO_SLACK_WEBHOOK_URL` / `TESTO_TEAMS_WEBHOOK_URL` or a `${env:…}` option; `--when failure|change|always`). `testo report annotations` prints failing tests as GitHub `::error` annotations on their file and line, and `testo flaky --new` lists tests the latest run made flaky. The GitHub Action gains `annotations` (on by default), `slack-webhook`, `teams-webhook`, `notify-when` and `flaky-issues` (opens one issue per newly flaky test)
 
 ### Changed
+- `testo-api` refuses to start on a non-loopback host without `TESTO_API_TOKEN` (exit 2) instead of only warning; set `TESTO_ALLOW_UNAUTHENTICATED=1` to start anyway on a trusted network
+- The `?config_path=` on read routes (`GET /api/v1/cycles`, `/cycles/{cycle}`, `/runs/{run_id}/pyramid`) only loads files named `testosterone.yaml`, `testosterone.yml` or `pyproject.toml` and returns `400` for anything else. Reads need no token, so an arbitrary path let anyone probe the server's files and read fragments of them in parse errors
+- The API reports the installed package version instead of a hard-coded one
+- CI: `trivy-action` and `claude-code-base-action` pinned to commit SHAs instead of `@master` / `@beta`; `commitlint`, `pr-heavy` and `release-gate` workflows get a read-only `permissions:` block
 - AI settings (never the key) are saved to `artifacts/ai_settings.json` and survive an API restart (`TESTO_AI_SETTINGS_PATH` moves it; empty keeps them in memory). The settings page resets the model when the provider changes, names the missing environment variable and refuses a key pasted as a variable name. The summary prompt asks for a short plain-text `What failed` / `Likely cause` / `Next steps` reply, and the Run Details card shows provider errors in words
 - `equipment: playwright` uses Playwright's `json` reporter instead of `junit` (`--reporter=list,json,html`, written to `test-results/testo-results.json`), so `testo run` gets the same retries, flaky flags and traces. A stage that sets its own `--reporter=junit` is still imported from `test-results/testo-junit.xml`
 - **Behave and BehaveX are now an extra.** `pip install testo-core` no longer installs `behave`, `behavex` and `allure-behave` (35 packages instead of 47). **Migration:** if a cycle has `behave` or `behavex` stages, install `testo-core[bdd]`; in the GitHub Action pass `package: "testo-core[bdd]"`, and in the GitLab template set `TESTO_PACKAGE: "testo-core[bdd]"` (new variable). The `testo-runner` image and the `dev` extra include it. Without it a Behave stage fails with exit 3 and the stage error names the extra, which the CLI stage panel now shows (the `--ci` stream keeps it in the artifact event mirror, as before)
@@ -41,6 +45,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fixed
 - BehaveX stages get BehaveX's own HTML report again. The adapter passed BehaveX's Allure `--formatter`, and BehaveX skips `report.html` whenever a formatter is set, so the report Testo showed was re-rendered afterwards without scenario logs. BehaveX now runs plain and the executor converts its `report.json` to Allure results after the stage (`testo_core/reporting/behavex_allure.py`). A `--formatter` in a stage's `args` is still passed through
 - New run-history records include the repository used by a run when its attempted stages have one resolved target; runs using multiple repositories leave it unknown.
+
+### Removed
+- Unused report helpers left from the Streamlit UI (removed in v1.1): `start_report_server`, `start_static_server`, `ReportServer`, `url_for`, `sync_all_reports_to_static` and `collect_behavex_native_report` in `testo_core/reporting/report_generator.py`, and a stray `actionlint_py` tarball at the repo root
 
 ## [1.1.1] - 2026-10-19
 
