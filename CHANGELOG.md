@@ -8,6 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-24
+
 ### Added
 - `testo ingest`: record JUnit XML that any runner already wrote (Jest, Vitest, `go test`, JUnit5, ...) as a run of a cycle, with no `testosterone.yaml` needed. Ingested runs get the same history, Compare, `testo flaky`, reporters and PR comment as `testo run`. Backed by a new `equipment: junit` that runs no process and fails the stage when a test failed or no report matched
 - Team server: `POST /api/v1/ingest` records uploaded JUnit XML, and `testo ingest --server URL --token` uploads with the CI job's provenance (provider, pipeline, job, commit, branch, repository). The API serves the built web UI when `TESTO_UI_DIR` is set. New `testo-server` Docker image (`Dockerfile.testo-server`, published with `testo-runner`) and `deploy/server/docker-compose.yml` with Postgres. Guide: `docs/Processes & Guides/Team Server.md`
@@ -289,7 +291,9 @@ First public release. Published to PyPI (`testo-core`), GHCR (`testo-runner`), a
 
 ---
 
-[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/taltal-beep/testosterone/compare/v1.1.1...v1.2.0
+[1.1.1]: https://github.com/taltal-beep/testosterone/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/taltal-beep/testosterone/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/taltal-beep/testosterone/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/taltal-beep/testosterone/releases/tag/v0.1.0
