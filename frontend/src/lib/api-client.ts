@@ -50,6 +50,7 @@ export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8
 
 // Only needed when the API runs with TESTO_API_TOKEN (it then rejects writes without
 // it). Set at build time, or at runtime with localStorage.setItem("testo.apiToken", …).
+// The UI a team server serves needs neither: signing in at /login sets a session cookie.
 function apiToken(): string | null {
   if (import.meta.env.VITE_TESTO_API_TOKEN) return import.meta.env.VITE_TESTO_API_TOKEN;
   try {
@@ -69,6 +70,11 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     }
   });
+  if (resp.status === 401 && API_BASE === "" && !token) {
+    // Served by a team server that protects reads (TESTO_PROTECT_READS): the session
+    // cookie is missing or stale, so sign in and come back here.
+    window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+  }
   if (!resp.ok) {
     // The API answers errors with {error: {code, message}}; surfacing that message
     // beats "API error 405" in the UI (and tells visitors of the read-only static

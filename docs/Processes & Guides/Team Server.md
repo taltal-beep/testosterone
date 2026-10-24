@@ -21,11 +21,13 @@ cd deploy/server
 docker compose up -d          # pulls ghcr.io/taltal-beep/testo-server; add --build to build from the checkout
 ```
 
-Open <http://localhost:8000>. Reading needs no token. Every write (uploads, starting runs, AI settings) needs `Authorization: Bearer $TESTO_API_TOKEN`; in the UI, set it once with `localStorage.setItem("testo.apiToken", "<token>")` in the browser console.
+Open <http://localhost:8000> and sign in with the token on the `/login` page. That sets an HttpOnly session cookie (30 days, `SameSite=Strict`), so the UI, report links and the live run stream all work; the cookie is derived from the token, so changing `TESTO_API_TOKEN` signs everyone out. CI and scripts send `Authorization: Bearer $TESTO_API_TOKEN` instead. Every write (uploads, starting runs, AI settings) needs one of the two, and so does every read while `TESTO_PROTECT_READS` is on, which the compose file does by default; only the health checks and the login page stay open. Run logs and report files can carry whatever a test printed, so keep reads protected unless the server is on a network you already trust.
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `TESTO_API_TOKEN` | required | Bearer token for every write. The image binds `0.0.0.0`, so without it `testo-api` refuses to start unless `TESTO_ALLOW_UNAUTHENTICATED=1` |
+| `TESTO_PROTECT_READS` | `1` in the compose file | `1`: reads need the token or the `/login` cookie too. `0`: anyone who can reach the server can read runs, logs and reports |
+| `FORWARDED_ALLOW_IPS` | unset | Behind an HTTPS reverse proxy, the proxy's address, so the session cookie is marked `Secure` |
 | `POSTGRES_PASSWORD` | `testo` | Database password (internal to the compose network) |
 | `TESTO_SERVER_PORT` | `8000` | Port on the host |
 | `TESTO_SERVER_TAG` | `1` | Image tag to pull |
@@ -65,7 +67,7 @@ The image sets `TESTO_UI_DIR=/app/ui`, which makes the API serve the built React
 ## Limits today
 
 - Cycles that exist only as uploads are not in `testosterone.yaml`, so the Cycles page doesn't list them; their runs show on the Dashboard, Runs and Compare, and `testo flaky --cycle` / `GET /api/v1/analytics/flaky` work.
-- One token for the whole server; no per-user accounts or projects.
+- One token for the whole server; no per-user accounts or projects. Everyone who signs in can also write.
 - Starting runs from the server's UI runs commands inside the server container, which only makes sense for cycles defined there. The team server is meant for uploads.
 
 CI checks all of this end to end: the `team_server` job in `ci.yml` builds the image, starts the compose file and uploads with `testo ingest --server` (`scripts/team_server_smoke.sh`).
