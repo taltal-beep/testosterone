@@ -41,6 +41,7 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     TESTO_HOME=/data \
     TESTO_UI_DIR=/app/ui \
     TESTO_API_HOST=0.0.0.0 \
+    TESTO_PROTECT_READS=1 \
     TESTO_API_PORT=8000
 
 COPY --from=builder /dist/*.whl /tmp/
