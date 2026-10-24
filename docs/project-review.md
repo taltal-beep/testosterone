@@ -13,7 +13,7 @@ A whole-repo review of `main` at `f1e3521` (2026-10-24), done with the tech-debt
 
 ## Verdict
 
-**Overall: 8 / 10.** Testosterone is a well-built, honestly documented tool that reads like the work of a careful team, not a side project. There is one engine, one way in (`CycleRunService`), clear layers, typed and lint-clean Python, a contract test suite that pins exit codes and CI behaviour, and a docs vault that CI keeps honest. What holds it back from a 9 is a handful of fixable things: one real security gap in the API's open reads, a fail-open default when the server binds publicly, dead Streamlit-era code, thin coverage on the reporters and the frontend, and CI that only tests Python 3.11 with no lockfile. None of them is hard; most are an afternoon each.
+**Overall: 8 / 10.** Testosterone is a well-built, honestly documented tool that reads like the work of a careful team, not a side project. There is one engine, one way in (`CycleRunService`), clear layers, typed and lint-clean Python, a contract test suite that pins exit codes and CI behaviour, and a docs vault that CI keeps honest. What holds it back from a 9 is a handful of fixable things: one real security gap in the API's open reads, a fail-open default when the server binds publicly, dead Streamlit-era code, thin coverage on the reporters and the frontend, and CI that only tests Python 3.11. None of them is hard; most are an afternoon each.
 
 ## Scorecard
 
@@ -24,7 +24,7 @@ A whole-repo review of `main` at `f1e3521` (2026-10-24), done with the tech-debt
 | Tests | **7** | 817 fast tests in ~16 s at 79% line+branch coverage with a 65% gate; reporters, `report` CLI and the frontend are thin, and a few tests depend on the local environment |
 | Security | **7** | Thoughtful origin guard, constant-time token check, upload size caps, safe filenames and attachment confinement; open reads accept an arbitrary file path, and a public bind without a token only warns |
 | Docs | **9** | Linted Obsidian vault, ADRs per decision, a getting-started path, an architecture doc with a security model and known limits |
-| CI / DX | **8** | Tiered CI, generated OpenAPI types checked for drift, schema export check, image scan, docs build `--strict`; no Python version matrix, no Python lockfile, no frontend linter |
+| CI / DX | **8** | Tiered CI, generated OpenAPI types checked for drift, schema export check, image scan, docs build `--strict`; no Python version matrix, no frontend linter |
 | Tech debt | **7** | The [tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md) is real and current, but a large unreleased `CHANGELOG` backlog and legacy report-sync code add drag |
 
 ## What was checked
@@ -32,7 +32,7 @@ A whole-repo review of `main` at `f1e3521` (2026-10-24), done with the tech-debt
 | Check | Result |
 |-------|--------|
 | `ruff check .` and `ruff format --check .` | Clean (425 files) |
-| `mypy testo_core` | Clean in CI. Locally 2 errors in `testo_core/repository/models.py` with `sqlmodel` 0.0.48, newer than CI resolves (see D4) |
+| `mypy testo_core testo_api` | Clean, also in a fresh Python 3.13 venv with the latest `sqlmodel` (0.0.48). An earlier run showed 2 errors in `repository/models.py`; that came from stale packages in the review machine's global environment, not from the code |
 | `python scripts/docs_vault.py lint` | ok |
 | `pytest -m "tier_fast and not quarantined"` | 813 passed, 4 failed, 79.4% coverage. All 4 failures were the review machine: no `build` module, the `bdd` extra failed to install, and one test that expects `pytest` next to `sys.executable` |
 | `npm audit` (frontend) | 0 in production dependencies; 6 in dev tooling (Vitest, esbuild, tinypool) |
@@ -83,8 +83,8 @@ Prioritised with the tech-debt formula, priority = (impact + risk) × (6 − eff
 | D2 | Large unreleased backlog: `CHANGELOG.md [Unreleased]` holds ingest, the team server, Playwright JSON, quarantine, alerts, the config schema, the plugin API and a breaking extras change. PyPI users are on 1.1.1 | Release | 4 | 3 | 2 | **28** |
 | D1 | Streamlit-era dead code in `reporting/report_generator.py`: `sync_all_reports_to_static`, `start_report_server`, `start_static_server`, `collect_behavex_native_report` and `url_for` have no caller in `testo_core/` or `testo_api/`, and six comments still mention Streamlit, which was removed in v1.1 | Code | 3 | 2 | 1 | **25** |
 | D3 | No Python version matrix: classifiers claim 3.12 and 3.13, CI runs only 3.11 | Infrastructure | 2 | 3 | 1 | **25** |
-| D4 | No Python lock or constraints file, only lower bounds (`sqlmodel>=0.0.24`); a newer `sqlmodel` already breaks `mypy` | Dependency | 2 | 3 | 2 | **20** |
 | T1 | Thin coverage where users plug in: TestBeats reporter 18%, `cli/commands/config.py` 19%, ReportPortal reporter 26%, Anthropic provider 30%, `cli/commands/report.py` 39% | Test | 3 | 3 | 3 | **18** |
+| D4 | No Python lock or constraints file, only lower bounds, so CI resolves the newest dependencies on every run and an upstream release can turn `main` red with no change here. Normal for a library; checked that today's latest versions pass `mypy` and the suite on 3.12 and 3.13 | Dependency | 1 | 2 | 2 | **12** |
 | D5 | Frontend dependency debt: Dependabot PRs for Vite 8 (#105) and TypeScript 7 (#106) break the build; dev tooling has 6 `npm audit` advisories | Dependency | 2 | 2 | 3 | **12** |
 | D6 | `testo_core/mascot/` (422 lines, 0% coverage) ships inside the core package for a UI animation | Code | 1 | 1 | 2 | **8** |
 | D7 | No frontend linter (ESLint or Biome); `tsc` is the only static check | Infrastructure | 1 | 2 | 2 | **12** |
@@ -113,9 +113,10 @@ Small gaps: `actionlint_py-1.7.12.25.tar.gz` is committed at the repo root and l
 Each phase fits next to feature work.
 
 1. **This week (security and hygiene, ~1 day).** S1, S2, S4, A3, D1, and delete the stray tarball.
-2. **Next release (~1 day).** D3 (add 3.12 and 3.13 to the test matrix), D4 (a constraints file used by CI, or an upper bound on `sqlmodel`), T3, then cut the release in D2 so PyPI users get the October features.
-3. **Following month.** T1 and T2 coverage, D7 frontend linter, D5 Vite 8 and TypeScript 7, S3 read token, and decide whether `mascot/` belongs in the core wheel (D6).
+2. **Next release (~1 day).** D3 (add 3.12 and 3.13 to the test matrix), T3, then cut the release in D2 so PyPI users get the October features.
+3. **Following month.** T1 and T2 coverage, D7 frontend linter, D5 Vite 8 and TypeScript 7, S3 read token, decide whether `mascot/` belongs in the core wheel (D6), and revisit D4 only if an upstream release breaks `main`.
 
 ## Progress
 
 - 2026-10-24, step 1 done in the same pull request as this note: S1 (read routes only load config file names), S2 (public bind without a token refuses to start), S4 (actions pinned to SHAs, read-only `permissions:`), A3 (API version from package metadata), D1 (dead report helpers and the stray tarball removed).
+- 2026-10-24, step 2 in the same pull request: D3 (a `test (python 3.12/3.13)` CI job, suite green on both in clean venvs) and T3 (the rootdir test finds `pytest` on `PATH` when it is not next to the interpreter; BehaveX tests skip without the `bdd` extra). D4 re-scored after a clean-venv check. The release (D2) waits on Taltal.
