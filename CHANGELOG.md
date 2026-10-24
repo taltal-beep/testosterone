@@ -15,6 +15,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Frontend tests for the loading, error and empty states of the run detail and Compare pages
 
 ### Changed
+- The pixel mascot's frame source moved from `testo_core/mascot/` to `scripts/mascot/`, so it no longer ships in the wheel; the UI animations are unchanged. Play it with `python -m scripts.mascot flex`, regenerate the frontend frames with `python -m scripts.mascot.export_ts`
 - Frontend toolchain: Vite 8 (Rolldown) and Vitest 5, replacing Vite 5 and Vitest 2; clears the six dev-only `npm audit` advisories (esbuild dev server, Vitest mocker, tinypool). `vite.config.ts` takes `defineConfig` from `vitest/config`, and the `EventSource` test mocks are constructor functions, which Vitest 4+ requires
 
 ## [1.2.0] - 2026-10-24

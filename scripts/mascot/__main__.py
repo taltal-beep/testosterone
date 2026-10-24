@@ -1,6 +1,6 @@
 """Play a mascot animation in the terminal.
 
-Usage: python -m testo_core.mascot [flex|smash|hurt|gloves] [--fps N] [--loops N]
+Usage: python -m scripts.mascot [flex|smash|hurt|gloves] [--fps N] [--loops N]
 """
 
 from __future__ import annotations
