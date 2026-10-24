@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-19
-updated: 2026-10-22
+updated: 2026-10-24
 ---
 
 # Getting Started
