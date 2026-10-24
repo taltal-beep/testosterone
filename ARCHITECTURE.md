@@ -212,7 +212,9 @@ The defaults assume one trusted user on one machine:
   write and sign-in attempt is recorded with its user. Reads are always protected in this
   mode. The token stays an admin credential for CI and signs the session cookies, which carry
   the account's session version, so a role or password change signs that person out
-  everywhere. See [Switchable Team Features](docs/Specs%20&%20ADRs/Switchable%20Team%20Features%20-%202026-10-24.md).
+  everywhere. There is no lockout after failed sign-ins (each attempt costs an `scrypt` hash and
+  is audited), so rate-limit `/api/v1/auth/login` at the reverse proxy on an exposed server.
+  See [Switchable Team Features](docs/Specs%20&%20ADRs/Switchable%20Team%20Features%20-%202026-10-24.md).
 
 Accounts give a team per-user access and an audit trail, but a `runner` can still run any
 command (`framework: command`, free-form `args`/`extra_env`) as the API's own user. Exposing
