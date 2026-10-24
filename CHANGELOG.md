@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- Frontend tests for the loading, error and empty states of the run detail and Compare pages
+
 ## [1.2.0] - 2026-10-24
 
 ### Added
