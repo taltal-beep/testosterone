@@ -198,7 +198,11 @@ The defaults assume one trusted user on one machine:
   `*-attachment.*` and `data/attachments/`, which include uploaded Playwright files) are served
   with `Content-Security-Policy: sandbox`: an HTML attachment still displays but cannot run
   script with the viewer's session. Report pages themselves are not sandboxed, since they need
-  script and their own origin to load their data.
+  script and their own origin to load their data. `TESTO_REPORTS_ORIGIN` (off by default) gives
+  them that origin: a second hostname for the same server that serves only `/history`. The API
+  host redirects report links there with a 60-second signed ticket, the reports host trades it
+  for its own HttpOnly cookie that can only read reports, and the API's Origin check refuses any
+  write a report page attempts (`testo_api/report_origin.py`).
 - Sessions are stateless: the `/login` cookie is an HMAC of the token, so signing out only
   clears that browser's copy. A copied cookie keeps working until `TESTO_API_TOKEN` changes,
   so rotate the token to sign everyone out.
@@ -212,8 +216,9 @@ The defaults assume one trusted user on one machine:
   write and sign-in attempt is recorded with its user. Reads are always protected in this
   mode. The token stays an admin credential for CI and signs the session cookies, which carry
   the account's session version, so a role or password change signs that person out
-  everywhere. There is no lockout after failed sign-ins (each attempt costs an `scrypt` hash and
-  is audited), so rate-limit `/api/v1/auth/login` at the reverse proxy on an exposed server.
+  everywhere. After `TESTO_LOGIN_MAX_FAILURES` (default 5) failed sign-ins for one name in 15
+  minutes, or four times that from one address, further attempts get `429` without a password
+  check until the window slides (`testo_api/login_throttle.py`, per process).
   See [Switchable Team Features](docs/Specs%20&%20ADRs/Switchable%20Team%20Features%20-%202026-10-24.md).
 
 Accounts give a team per-user access and an audit trail, but a `runner` can still run any

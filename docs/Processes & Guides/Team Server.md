@@ -29,6 +29,8 @@ Open <http://localhost:8000> and sign in with the token on the `/login` page. Th
 | `TESTO_PROTECT_READS` | `1` (set in the image) | `1`: reads need the token or the `/login` cookie too. `0`: anyone who can reach the server can read runs, logs and reports |
 | `TESTO_MAX_CONCURRENT_RUNS` | `2` | Runs started from the UI or API that execute at once; the rest wait as `queued` |
 | `TESTO_AUTH` | `token` | `token`: everyone shares `TESTO_API_TOKEN`. `accounts`: people sign in with their own username and password, with roles and an audit log ([Accounts](#accounts)) |
+| `TESTO_LOGIN_MAX_FAILURES` | `5` | With accounts: failed sign-ins per name in 15 minutes before `/login` answers `429` for a while (four times this per client address) |
+| `TESTO_REPORTS_ORIGIN` | unset | e.g. `https://reports.testo.example.com`: serve report pages from that second hostname instead of the API's ([Reports on their own origin](#reports-on-their-own-origin)) |
 | `TESTO_RUN_QUEUE` | `memory` | Where `queued` runs wait. `memory`: a restart drops them. `db`: they are also rows in the database (`queued_run`) and are queued again when the server starts, so a restart or upgrade loses nothing that hadn't started. A run that was already running is not repeated; it shows as failed in the history |
 | `FORWARDED_ALLOW_IPS` | unset | Behind an HTTPS reverse proxy, the proxy's address, so the session cookie is marked `Secure` |
 | `POSTGRES_PASSWORD` | `testo` | Database password (internal to the compose network) |
@@ -63,7 +65,19 @@ People then sign in at `/login` with their username and password. Admins can als
 - The UI shows who is signed in, with a Sign out button.
 - A `runner` can start any command the API can run, as the server's own user, so give that role to people you'd trust with a shell on the server.
 
+After five wrong passwords for one name within 15 minutes (`TESTO_LOGIN_MAX_FAILURES`), that name has to wait before trying again, even with the right password; the wait is in the audit log as `429`.
+
 Set `TESTO_AUTH=token` (or unset it) to go back; the accounts stay in the database for next time.
+
+## Reports on their own origin
+
+Allure and native reports are web pages that run script. By default they are served from the server's own address, so a script in a report would run with the viewer's session. To keep them apart, point a second hostname at the same server (a DNS name and a reverse-proxy rule) and set:
+
+```bash
+export TESTO_REPORTS_ORIGIN=https://reports.testo.example.com
+```
+
+Report links in the UI keep working: the server checks that the viewer may read, then redirects to the reports host with a 60-second signed ticket, which that host trades for its own cookie. The reports host serves nothing but `/history`, its cookie can only read reports, and the API refuses writes that come from the reports origin. Worth turning on when the server is reachable by people you don't fully trust.
 
 ## Upload from CI
 

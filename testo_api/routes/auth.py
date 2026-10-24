@@ -19,6 +19,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
+from testo_api.login_throttle import login_throttle
 from testo_api.security import (
     LOGIN_PATH,
     LOGIN_POST_PATH,
@@ -123,19 +124,35 @@ def login(
         return _page(
             target, "This server has no TESTO_API_TOKEN, so there is nothing to sign in to.", 400
         )
-    if accounts_enabled() and username.strip():
+    accounts = accounts_enabled()
+    name = username.strip()[:64] if accounts and username.strip() else "token"
+    address = request.client.host if request.client else "unknown"
+    if accounts:
+        wait = login_throttle.retry_after(name, address)
+        if wait:
+            _audit(name, request, 429)
+            response = _page(
+                target, f"Too many failed sign-ins. Try again in {wait // 60 + 1} minutes.", 429
+            )
+            response.headers["Retry-After"] = str(wait)
+            return response
+    if accounts and name != "token":
         account = account_store().authenticate(username, token)
         if account is None:
-            _audit(username.strip()[:64], request, 401)
+            login_throttle.failed(name, address)
+            _audit(name, request, 401)
             return _page(target, "That username and password don't match.", 401)
+        login_throttle.succeeded(name)
         _audit(account.username, request, 303)
         cookie = account_session_value(expected, account)
     elif hmac.compare_digest(token.strip().encode(), expected.encode()):
-        if accounts_enabled():
+        if accounts:
+            login_throttle.succeeded(name)
             _audit("token", request, 303)
         cookie = session_value(expected)
     else:
-        if accounts_enabled():
+        if accounts:
+            login_throttle.failed(name, address)
             _audit("token", request, 401)
         return _page(target, "That token is not right.", 401)
     response = RedirectResponse(target, status_code=303)
