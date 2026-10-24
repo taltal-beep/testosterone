@@ -15,6 +15,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Frontend tests for the loading, error and empty states of the run detail and Compare pages
 
 ### Changed
+- The release workflow's "Verify install from PyPI" step retries for up to five minutes instead of one 30-second wait, so a slow PyPI index no longer marks a published release as failed
 - The `testo-server` image sets `TESTO_PROTECT_READS=1`, so a plain `docker run` protects reads too, not only `deploy/server/docker-compose.yml`. Set it to `0` to open reads on a trusted network
 - Frontend on React 19 (`react`, `react-dom` and their types together), `@testing-library/jest-dom` 7 and the latest TanStack Query and PostCSS patches; replaces Dependabot #132, #133 and #135, which bumped `react` without `react-dom`
 - The pixel mascot's frame source moved from `testo_core/mascot/` to `scripts/mascot/`, so it no longer ships in the wheel; the UI animations are unchanged. Play it with `python -m scripts.mascot flex`, regenerate the frontend frames with `python -m scripts.mascot.export_ts`

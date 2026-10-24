@@ -63,7 +63,16 @@ jobs:
       - name: Verify install from PyPI
         env:
           VERSION: ${{ steps.version.outputs.version }}
+        # PyPI's index can take a few minutes to list a new upload, so retry
+        # instead of failing a release that did publish.
         run: |
-          sleep 30
-          python -m pip install "testo-core==$VERSION"
-          testo --version
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if python -m pip install --no-cache-dir "testo-core==$VERSION"; then
+              testo --version
+              exit 0
+            fi
+            echo "testo-core $VERSION not on the index yet (attempt $attempt), retrying in 30s"
+            sleep 30
+          done
+          echo "::error::testo-core $VERSION was not installable from PyPI after 5 minutes"
+          exit 1
