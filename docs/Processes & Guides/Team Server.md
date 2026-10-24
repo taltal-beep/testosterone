@@ -31,6 +31,7 @@ Open <http://localhost:8000> and sign in with the token on the `/login` page. Th
 | `TESTO_AUTH` | `token` | `token`: everyone shares `TESTO_API_TOKEN`. `accounts`: people sign in with their own username and password, with roles and an audit log ([Accounts](#accounts)) |
 | `TESTO_LOGIN_MAX_FAILURES` | `5` | With accounts: failed sign-ins per name in 15 minutes before `/login` answers `429` for a while (four times this per client address) |
 | `TESTO_REPORTS_ORIGIN` | unset | e.g. `https://reports.testo.example.com`: serve report pages from that second hostname instead of the API's ([Reports on their own origin](#reports-on-their-own-origin)) |
+| `TESTO_RUNNER` | `host` | `container`: each stage of a run started on the server runs in a fresh container through the runner service ([Runs in throwaway containers](#runs-in-throwaway-containers)) |
 | `TESTO_RUN_QUEUE` | `memory` | Where `queued` runs wait. `memory`: a restart drops them. `db`: they are also rows in the database (`queued_run`) and are queued again when the server starts, so a restart or upgrade loses nothing that hadn't started. A run that was already running is not repeated; it shows as failed in the history |
 | `FORWARDED_ALLOW_IPS` | unset | Behind an HTTPS reverse proxy, the proxy's address, so the session cookie is marked `Secure` |
 | `POSTGRES_PASSWORD` | `testo` | Database password (internal to the compose network) |
@@ -63,7 +64,7 @@ People then sign in at `/login` with their username and password. Admins can als
 - The token is an admin for CI and scripts (`Authorization: Bearer`), and it signs the session cookies: changing it signs everyone out. `testo users sign-out NAME`, `set-role` and `reset-password` sign one person out.
 - Every write and every sign-in attempt is recorded with its user and status. Admins read the latest at `GET /api/v1/audit?limit=100`.
 - The UI shows who is signed in, with a Sign out button.
-- A `runner` can start any command the API can run, as the server's own user, so give that role to people you'd trust with a shell on the server.
+- A `runner` can start any command the API can run, as the server's own user, so give that role to people you'd trust with a shell on the server, or run stages in [throwaway containers](#runs-in-throwaway-containers).
 
 After five wrong passwords for one name within 15 minutes (`TESTO_LOGIN_MAX_FAILURES`), that name has to wait before trying again, even with the right password; the wait is in the audit log as `429`.
 
@@ -78,6 +79,37 @@ export TESTO_REPORTS_ORIGIN=https://reports.testo.example.com
 ```
 
 Report links in the UI keep working: the server checks that the viewer may read, then redirects to the reports host with a 60-second signed ticket, which that host trades for its own cookie. The reports host serves nothing but `/history`, its cookie can only read reports, and the API refuses writes that come from the reports origin. Worth turning on when the server is reachable by people you don't fully trust.
+
+## Runs in throwaway containers
+
+Runs started from the server's UI or API (not uploads) normally run inside the server's own container, as its user, next to its token and database settings. To run each stage in a fresh container instead, add the runner service:
+
+```bash
+export TESTO_RUNNER_TOKEN="$(openssl rand -hex 32)"
+export DOCKER_GID="$(stat -c %g /var/run/docker.sock)"
+docker compose -f docker-compose.yml -f docker-compose.runner.yml up -d    # add --build from a checkout
+```
+
+`deploy/server/docker-compose.runner.yml` sets `TESTO_RUNNER=container` on the server and adds a `runner` service, the only container with the Docker socket. For every stage it runs `docker run --rm` with:
+
+- the `testo_repos` (`/repos`) and `testo_artifacts` (`/data/artifacts`) volumes, at the same paths as in the server; put the repositories your cycles test under `/repos`,
+- only the stage's own variables (its `env:` and what Testosterone sets), never the server's token or database URL,
+- no Linux capabilities, no privilege escalation and at most 512 processes,
+- the commands in `TESTO_RUNNER_ALLOWED_COMMANDS` only.
+
+| Variable (on `runner`) | Default | Meaning |
+|----------|---------|---------|
+| `TESTO_RUNNER_TOKEN` | required | Shared with the server, which sends it with every stage |
+| `TESTO_RUNNER_MOUNTS` | required | `volume-or-path:target[:ro]`, comma separated. A stage's directory must be inside one |
+| `TESTO_RUNNER_IMAGE` | `ghcr.io/taltal-beep/testo-runner:1` | Image stages run in (Python, pytest, Behave, BehaveX). Build your own `FROM` it for other tools |
+| `TESTO_RUNNER_ALLOWED_COMMANDS` | `python,python3,pytest,behave,behavex,node,npm,npx` | Tools a stage may start, by name. `*` allows any, still inside the container |
+| `TESTO_RUNNER_NETWORK` | Docker's default | `none` cuts stages off the network; or the name of a network your tests need |
+| `TESTO_RUNNER_MEMORY`, `TESTO_RUNNER_CPUS` | unset | Per-stage limits, e.g. `2g` and `1.5` |
+| `TESTO_RUNNER_PIDS_LIMIT` | `512` | Processes per stage |
+| `TESTO_RUNNER_USER` | `10001:10001` | User stages run as (the images' `testo`, so files stay readable by the server) |
+| `TESTO_RUNNER_MAX_RUNS` | `4` | Stages at once; more wait for a slot |
+
+A timeout stops the container the same way it stops a local process (the stage gets `124`), and if the server goes away mid-run the runner stops the container. Unset `TESTO_RUNNER` (or drop the second compose file) to go back. The runner service has no published port, but the Docker socket is root on the host, so keep it on the compose network; rootless Docker or Podman via `DOCKER_HOST` narrows that further. Why it is built this way: [Throwaway Stage Containers - 2026-10-24](../Specs%20&%20ADRs/Throwaway%20Stage%20Containers%20-%202026-10-24.md).
 
 ## Upload from CI
 
@@ -112,7 +144,7 @@ The image sets `TESTO_UI_DIR=/app/ui`, which makes the API serve the built React
 ## Limits today
 
 - Cycles that exist only as uploads are not in `testosterone.yaml`, so the Cycles page doesn't list them; their runs show on the Dashboard, Runs and Compare, and `testo flaky --cycle` / `GET /api/v1/analytics/flaky` work.
-- One token for the whole server; no per-user accounts or projects. Everyone who signs in can also write.
-- Starting runs from the server's UI runs commands inside the server container, which only makes sense for cycles defined there. The team server is meant for uploads.
+- No projects: everyone who can read sees every cycle. [Accounts](#accounts) give per-person roles, not per-project ones.
+- Starting runs from the server's UI only makes sense for cycles defined in the server's config. Without [throwaway containers](#runs-in-throwaway-containers) they run inside the server container. The team server is mainly meant for uploads.
 
 CI checks all of this end to end: the `team_server` job in `ci.yml` builds the image, starts the compose file and uploads with `testo ingest --server` (`scripts/team_server_smoke.sh`).

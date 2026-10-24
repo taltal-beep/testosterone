@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- Opt-in throwaway containers for runs started on a team server: with `TESTO_RUNNER=container` each stage runs in a fresh container started by a separate runner service (`testo-runner-service`, `Dockerfile.testo-runner-service`, `deploy/server/docker-compose.runner.yml`), with no Linux capabilities, a process limit, fixed mounts and only the stage's own variables. The API never gets the Docker socket. Default `host` (unchanged)
 - Sign-in throttling with `TESTO_AUTH=accounts`: after `TESTO_LOGIN_MAX_FAILURES` (default 5) wrong passwords for a name in 15 minutes, or four times that from one address, `/login` answers `429` until the window slides
 - `TESTO_REPORTS_ORIGIN` serves report pages from a second hostname, so script in a report can't act with the viewer's session on the API's origin. Off by default
 - Per-user accounts for the team server, off by default: with `TESTO_AUTH=accounts` people sign in with their own username and password, roles `viewer` / `runner` / `admin` decide who can start runs or change settings, every write and sign-in is in an audit log (`GET /api/v1/audit`), and `testo users` manages accounts. The UI shows who is signed in. The API token keeps working as an admin for CI
