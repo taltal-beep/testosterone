@@ -10,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 
 from testo_api.routes.ai import router as ai_router
 from testo_api.routes.analytics import router as analytics_router
@@ -20,7 +21,9 @@ from testo_api.routes.health import router as health_router
 from testo_api.routes.history import router as history_router
 from testo_api.routes.ingest import router as ingest_router
 from testo_api.security import (
+    accounts_enabled,
     add_security_headers,
+    audit_write,
     cors_settings,
     guard_mutating_request,
     guard_read_request,
@@ -95,10 +98,19 @@ def create_app() -> FastAPI:
         # Last, so every API route and /history wins over the UI's catch-all.
         app.mount("/", SpaStaticFiles(directory=built_ui, html=True), name="ui")
 
+    # Innermost, so it sees the final status and the principal the guards found.
+    @app.middleware("http")
+    async def audit_writes(request: Request, call_next):  # type: ignore[no-redef]
+        response = await call_next(request)
+        if accounts_enabled() and request.method not in ("GET", "HEAD", "OPTIONS"):
+            await run_in_threadpool(audit_write, request, response.status_code)
+        return response
+
     @app.middleware("http")
     async def protect_reads(request: Request, call_next):  # type: ignore[no-redef]
-        # A middleware, not a dependency, so the static mounts are covered too.
-        refusal = guard_read_request(request)
+        # A middleware, not a dependency, so the static mounts are covered too. In a
+        # thread: with accounts on, checking the session reads the database.
+        refusal = await run_in_threadpool(guard_read_request, request)
         return refusal if refusal is not None else await call_next(request)
 
     # Outside protect_reads, so its 401s and redirects get the headers too.
@@ -208,6 +220,15 @@ def run(argv: list[str] | None = None) -> int:
             "anyone who can reach this port can start runs.",
             host,
         )
+    if (
+        os.environ.get("TESTO_AUTH", "token").strip().lower() == "accounts"
+        and not os.environ.get("TESTO_API_TOKEN", "").strip()
+    ):
+        sys.stderr.write(
+            "TESTO_AUTH=accounts needs TESTO_API_TOKEN: it signs the session cookies and "
+            "stays the admin credential for CI.\n"
+        )
+        return 2
     if (
         os.environ.get("TESTO_PROTECT_READS", "0") in ("1", "true", "True")
         and not os.environ.get("TESTO_API_TOKEN", "").strip()

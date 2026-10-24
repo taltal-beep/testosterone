@@ -45,6 +45,7 @@ export type DashboardOverviewResponse = Schemas["DashboardOverviewResponse"];
 export type DashboardRecentRunsResponse = Schemas["DashboardRecentRunsResponse"];
 
 export type HealthReadyResponse = Schemas["HealthReadyResponse"];
+export type WhoAmI = Schemas["WhoAmIResponse"];
 
 export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -113,6 +114,9 @@ export const apiClient = {
       headers: { "Content-Type": "application/json" }
     });
     return (await resp.json()) as HealthReadyResponse;
+  },
+  getWhoAmI(): Promise<WhoAmI> {
+    return api<WhoAmI>("/api/v1/auth/me");
   },
   listRuns(): Promise<RunListResponse> {
     return api<RunListResponse>("/api/v1/runs");

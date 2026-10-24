@@ -62,6 +62,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import plugins as plugins_mod
     from testo_core.cli.commands import report as report_cmd
     from testo_core.cli.commands import run as run_cmd
+    from testo_core.cli.commands import users as users_cmd
     from testo_core.cli.commands import version as version_cmd
     from testo_core.cli.commands import watch as watch_mod
 
@@ -118,6 +119,12 @@ def _register_commands() -> None:
         help="Deprecated alias for `testo cycles`.",
         hidden=True,
         rich_help_panel="Diagnostics",
+    )
+    app.add_typer(
+        users_cmd.app,
+        name="users",
+        help="Team server accounts and roles (TESTO_AUTH=accounts).",
+        rich_help_panel="Config",
     )
     app.add_typer(
         config_cmd.app,

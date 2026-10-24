@@ -391,6 +391,40 @@
         "title": "AiSummaryResponse",
         "type": "object"
       },
+      "AuditEntryResponse": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "integer"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "username",
+          "method",
+          "path",
+          "status"
+        ],
+        "title": "AuditEntryResponse",
+        "type": "object"
+      },
       "Body_ingest_reports_api_v1_ingest_post": {
         "properties": {
           "ci_commit_sha": {
@@ -2656,6 +2690,46 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "WhoAmIResponse": {
+        "properties": {
+          "auth_mode": {
+            "title": "Auth Mode",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "signed_in": {
+            "title": "Signed In",
+            "type": "boolean"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "auth_mode",
+          "signed_in"
+        ],
+        "title": "WhoAmIResponse",
+        "type": "object"
       }
     }
   },
@@ -2924,6 +2998,78 @@
         "summary": "Get Flaky Tests",
         "tags": [
           "analytics"
+        ]
+      }
+    },
+    "/api/v1/audit": {
+      "get": {
+        "description": "Recent writes and sign-ins, newest first (admins, ``TESTO_AUTH=accounts`` only).",
+        "operationId": "audit_log_api_v1_audit_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AuditEntryResponse"
+                  },
+                  "title": "Response Audit Log Api V1 Audit Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Audit Log",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "description": "Who this browser or token is signed in as (``auth_mode`` is ``token`` or ``accounts``).",
+        "operationId": "who_am_i_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhoAmIResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Who Am I",
+        "tags": [
+          "auth"
         ]
       }
     },

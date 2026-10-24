@@ -124,6 +124,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Audit Log
+         * @description Recent writes and sign-ins, newest first (admins, ``TESTO_AUTH=accounts`` only).
+         */
+        get: operations["audit_log_api_v1_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who Am I
+         * @description Who this browser or token is signed in as (``auth_mode`` is ``token`` or ``accounts``).
+         */
+        get: operations["who_am_i_api_v1_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cycle-executions/{execution_id}": {
         parameters: {
             query?: never;
@@ -567,6 +607,22 @@ export interface components {
             status: "available" | "no_summary_generated";
             /** Summary Text */
             summary_text: string | null;
+        };
+        /** AuditEntryResponse */
+        AuditEntryResponse: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Method */
+            method: string;
+            /** Path */
+            path: string;
+            /** Status */
+            status: number;
+            /** Username */
+            username: string;
         };
         /** Body_ingest_reports_api_v1_ingest_post */
         Body_ingest_reports_api_v1_ingest_post: {
@@ -1226,6 +1282,17 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** WhoAmIResponse */
+        WhoAmIResponse: {
+            /** Auth Mode */
+            auth_mode: string;
+            /** Role */
+            role?: string | null;
+            /** Signed In */
+            signed_in: boolean;
+            /** Username */
+            username?: string | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -1413,6 +1480,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    audit_log_api_v1_audit_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEntryResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    who_am_i_api_v1_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhoAmIResponse"];
                 };
             };
         };

@@ -68,6 +68,7 @@ export function AppShell() {
           </Link>
           <div className="flex items-center gap-3">
             <DemoBadge />
+            <UserBadge />
             <HealthDot />
             <MobileMenu />
           </div>
@@ -82,6 +83,7 @@ export function AppShell() {
             </p>
             <div className="flex items-center gap-4">
               <DemoBadge />
+              <UserBadge />
               <HealthDot />
             </div>
           </div>
@@ -232,6 +234,28 @@ function MobileMenu() {
         </div>
       </nav>
     </div>
+  );
+}
+
+/** Who is signed in, when the server runs with per-user accounts (TESTO_AUTH=accounts). */
+function UserBadge() {
+  const query = useQuery({
+    queryKey: ["who-am-i"],
+    queryFn: () => apiClient.getWhoAmI(),
+    staleTime: 5 * 60_000,
+    retry: false
+  });
+  const me = query.data;
+  if (!me || me.auth_mode !== "accounts" || !me.signed_in) return null;
+  return (
+    <form method="post" action="/api/v1/auth/logout" className="flex items-center gap-2 text-xs text-ink-300" data-testid="user-badge">
+      <span>
+        <span className="font-semibold text-white">{me.username}</span> · {me.role}
+      </span>
+      <button type="submit" className="rounded-lg px-2 py-1 text-ink-300 hover:bg-ink-800/60 hover:text-white">
+        Sign out
+      </button>
+    </form>
   );
 }
 
