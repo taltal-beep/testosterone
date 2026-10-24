@@ -9,6 +9,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- Unit tests for the TestBeats and ReportPortal reporter payloads, the Anthropic provider, and the `testo config` and `testo report` commands (coverage 80% to 83%)
+
+### Added
 - `testo ingest`: record JUnit XML that any runner already wrote (Jest, Vitest, `go test`, JUnit5, ...) as a run of a cycle, with no `testosterone.yaml` needed. Ingested runs get the same history, Compare, `testo flaky`, reporters and PR comment as `testo run`. Backed by a new `equipment: junit` that runs no process and fails the stage when a test failed or no report matched
 - Team server: `POST /api/v1/ingest` records uploaded JUnit XML, and `testo ingest --server URL --token` uploads with the CI job's provenance (provider, pipeline, job, commit, branch, repository). The API serves the built web UI when `TESTO_UI_DIR` is set. New `testo-server` Docker image (`Dockerfile.testo-server`, published with `testo-runner`) and `deploy/server/docker-compose.yml` with Postgres. Guide: `docs/Processes & Guides/Team Server.md`
 - Playwright JSON reports: `testo ingest results.json` (and any `junit_xml` glob that matches a `.json` file) reads Playwright's `json` reporter output, keeping what JUnit loses: every retry as a step with its own error, flaky tests (passed on retry) flagged, and traces, screenshots, videos and `testInfo.attach()` files copied as Allure attachments. `testo ingest --server` uploads `.json` reports too. See `docs/Specs & ADRs/Playwright JSON Import - 2026-10-22.md`
