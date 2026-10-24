@@ -278,13 +278,36 @@ def _parse_cycle(
     quarantine = shared_quarantine + _parse_quarantine(
         cycle_raw.get("quarantine"), where=f"cycle {cycle_name!r}"
     )
+    max_parallel_stages = _parse_max_parallel_stages(
+        cycle_raw.get("max_parallel_stages", 1), cycle_name=cycle_name, stages=stages
+    )
     return Plan(
         name=cycle_name,
         description=description,
         stages=stages,
         trigger=trigger,
         quarantine=quarantine,
+        max_parallel_stages=max_parallel_stages,
     )
+
+
+def _parse_max_parallel_stages(raw: Any, *, cycle_name: str, stages: tuple[Stage, ...]) -> int:
+    # bool is an int subclass; `max_parallel_stages: true` is a typo, not 1.
+    if isinstance(raw, bool) or not isinstance(raw, int) or raw < 1:
+        raise ConfigValidationError(
+            f"cycle {cycle_name!r}: 'max_parallel_stages' must be a whole number of at least 1."
+        )
+    if raw > 1:
+        # Parallel stages write artifacts/<cycle>/<stage>/ at the same time, so two
+        # stages with one name would overwrite each other's logs and results.
+        names = [s.name for s in stages]
+        duplicates = sorted({n for n in names if names.count(n) > 1})
+        if duplicates:
+            raise ConfigValidationError(
+                f"cycle {cycle_name!r}: stage names must be unique when "
+                f"max_parallel_stages > 1 (repeated: {', '.join(duplicates)})."
+            )
+    return raw
 
 
 _QUARANTINE_KEYS: frozenset[str] = frozenset({"test", "reason", "owner"})

@@ -83,8 +83,8 @@ Strengths
 
 Risks to watch
 
-- **A1. Thread-per-run API.** *Still open.* `testo_api/cycle_execution_manager.py` starts a daemon thread per execution and keeps state in memory. One run per cycle is enforced, which is right, but there is no global cap on concurrent runs and a restart loses live state (orphans are cleaned up on startup). Fine for a local tool and a small team server; a queue would be the next step if the server grows.
-- **A2. Sequential stages.** *Still open.* Already tracked as item 3 in the [Technical Debt Tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md).
+- **A1. Thread-per-run API.** *Fixed: executions now queue for a pool of `TESTO_MAX_CONCURRENT_RUNS` workers (default 2); see [Scale Runs and Stages - 2026-10-24](Specs%20&%20ADRs/Scale%20Runs%20and%20Stages%20-%202026-10-24.md). State is still in memory.* Was: `testo_api/cycle_execution_manager.py` starts a daemon thread per execution and keeps state in memory. One run per cycle is enforced, which is right, but there is no global cap on concurrent runs and a restart loses live state (orphans are cleaned up on startup). Fine for a local tool and a small team server; a queue would be the next step if the server grows.
+- **A2. Sequential stages.** *Fixed: a cycle can opt in with `max_parallel_stages: N` (same note).*
 - **A3. Version hard-coded twice.** *Fixed (#141).* `testo_api/main.py` sets `version="1.1.1"` by hand next to `pyproject.toml`. Read it from `importlib.metadata` so a release can't leave the API reporting an old version.
 
 ### Security

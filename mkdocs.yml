@@ -110,6 +110,7 @@ nav:
       - Changelog Policy: changelog_automation_policy.md
   - Decisions:
       - Specs & ADRs: Specs & ADRs/README.md
+      - Scale Runs and Stages: Specs & ADRs/Scale Runs and Stages - 2026-10-24.md
       - Ingest and Team Server: Specs & ADRs/Ingest and Team Server - 2026-10-22.md
       - UI Restyle: Specs & ADRs/UI Restyle - 2026-10-19.md
       - Open Source Features: Specs & ADRs/Open Source Features - 2026-10-19.md

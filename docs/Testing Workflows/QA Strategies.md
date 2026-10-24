@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-06-25
-updated: 2026-10-22
+updated: 2026-10-24
 ---
 
 # QA Strategies
@@ -82,6 +82,16 @@ cycles:
 ```
 
 A stage that exits `1` passes when every failed test matches a rule; one unquarantined failure, or any other exit code (timeout, crash, collection error), still fails it. The same goes for `equipment: junit` stages, whose exit code comes from the recorded results. `testo flaky` marks quarantined tests and prints a snippet for the rest. See [Flaky Test Quarantine - 2026-10-22](../Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md).
+
+**Parallel stages** (per cycle): `max_parallel_stages: N` runs up to N independent stages at once (default `1`, one at a time). Stage names must be unique; output prints per stage as each finishes.
+
+```yaml
+cycles:
+  fake-api:
+    max_parallel_stages: 3        # unit, api and ui don't share state
+```
+
+See [Deep Dive § Orchestrator level](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md#orchestrator-level--opt-in-parallel-stages).
 
 **Results an earlier step wrote (`equipment: junit`):** no command runs; the stage records the JUnit XML its `junit_xml` globs match (files of any age) and fails when a test failed or nothing matched. `testo ingest` builds exactly this stage on the fly ([Command Reference § testo ingest](../CLI%20Commands/Command%20Reference.md#testo-ingest)).
 
