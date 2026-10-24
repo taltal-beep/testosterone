@@ -2,7 +2,7 @@
 type: roadmap
 status: current
 created: 2026-06-25
-updated: 2026-10-19
+updated: 2026-10-24
 ---
 
 # Product Roadmap
@@ -23,17 +23,15 @@ Where Testosterone (`testo-core`, CLI `testo`) stands today and what comes next.
 | AI | Bring-your-own-key failure summaries ([Phase 4 BYOK and Failure Analysis](../Specs%20&%20ADRs/Phase%204%20BYOK%20and%20Failure%20Analysis.md)) |
 | CI | GitHub Action and GitLab template wrapping `testo run --ci` ([CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md)) |
 | Demo | A Pages pipeline runs testosterone on itself and on the deliberately broken fake-api app, then publishes the React UI as a read-only snapshot ([GitLab Pages Demo](../Processes%20&%20Guides/GitLab%20Pages%20Demo.md)) |
-| Distribution | Version 1.1.0 is cut (`pyproject.toml`, `CHANGELOG.md`) but not yet tagged or published; a GitHub Release publishes to PyPI (`testo-core`), GHCR (`testo-runner`) and, when configured, JFrog Artifactory ([Publishing to PyPI § Current state](../Processes%20&%20Guides/Publishing%20to%20PyPI.md#current-state)) |
+| Distribution | 1.2.0 is released: PyPI (`testo-core`), GHCR images, and the `v1` Action tag; a GitHub Release publishes all of them ([Publishing to PyPI](../Processes%20&%20Guides/Publishing%20to%20PyPI.md)) |
 
 ## Next
 
-- **Release v1.1.0.** Tag `v1.0.0` and `v1.1.0`, move `v1`, and create the GitHub Release.
-- **Repo allow-list for the API.** `testo-api` binds `127.0.0.1` and can require `TESTO_API_TOKEN` on mutating requests; before it runs anywhere shared it also needs an allow-list of target repos.
-- **Parallel stages.** Stages run sequentially; only BehaveX parallelizes internally. Opt-in parallel stages need isolated per-stage artifact trees and aggregated exit classification.
-- **Concurrent run guard.** Today the only guard is the API's in-memory check that rejects a second run of the same cycle with 409 (`testo_api/cycle_execution_manager.py`). Two CLI runs of one cycle on one machine share `artifacts/<cycle>/` and overwrite each other, and nothing stops a CI run and a local run from hitting the same deployment at once. Every run enters through `CycleRunService.run()`, so a guard goes there, before `run_plan`, without a refactor. Three levels, smallest first:
-  1. A lock file per cycle under `artifacts/<cycle>/`: a second run on the same machine exits `3` with a clear message.
-  2. A per-environment lease in the database (an `environment:` key on the cycle, a row with an expiry): a second run against the same environment waits or fails. Only works across machines that share one database (e.g. Postgres), not per-machine SQLite.
-  3. A real run queue. That is a central service and not worth it yet.
+The product-side priorities are the Now / Next / Later roadmap in the [Product Review](../product-review.md) (2026-10-24): failing tests first on the run page, the UI shipped in the wheel (`testo ui`), a main-branch baseline for diffs and the PR comment, and a per-test page. Since this note was last updated, ingest, the team server, parallel stages (`max_parallel_stages`), the API run queue and the security switches all shipped; see the [Specs & ADRs](../Specs%20&%20ADRs/README.md).
+
+Still open from the earlier list:
+
+- **Concurrent run guard for the CLI.** The API queues runs, but two CLI runs of one cycle on one machine still share `artifacts/<cycle>/`. A lock file per cycle in `CycleRunService.run()` is the smallest fix.
 - **Smaller items** (signal-aware exit codes, reporter failure policy): see [Technical Debt Tracker](../Testing%20Workflows/Technical%20Debt%20Tracker.md).
 
 ## How it got here
