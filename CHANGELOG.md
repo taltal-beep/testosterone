@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 - Frontend lint: ESLint with `typescript-eslint` and the React hook rules (`frontend/eslint.config.js`, `npm --prefix frontend run lint`), blocking in CI's `frontend` job
+- Unit tests for the TestBeats and ReportPortal reporter payloads, the Anthropic provider, and the `testo config` and `testo report` commands (coverage 80% to 83%)
 - Frontend tests for the loading, error and empty states of the run detail and Compare pages
 
 ### Changed
