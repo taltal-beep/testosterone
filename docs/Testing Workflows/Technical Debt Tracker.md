@@ -2,7 +2,7 @@
 type: tracker
 status: current
 created: 2026-06-25
-updated: 2026-10-21
+updated: 2026-10-24
 ---
 
 # Technical Debt Tracker
@@ -25,11 +25,7 @@ Timeouts normalize to return code **124** (exit **3**) and engine exceptions to 
 
 `testo_core/reporting/reporters/factory.py` catches per-reporter exceptions, so a configured integration can be skipped silently after a green run. Fix: an opt-in `reporters_required: true` that maps a reporter failure to exit **3**, plus a `reporter_failed` NDJSON event.
 
-### 3. Sequential-only orchestrator
-
-Stages run one at a time (`engine/orchestrator.py`); parallelism today is framework-internal (e.g. BehaveX `--workers`). Opt-in parallel stages need isolated `artifacts/<cycle>/<stage>/` trees, aggregated exit classification and documented resource limits.
-
-### 4. Log reader join timeout
+### 3. Log reader join timeout
 
 `executor.py` calls `reader.join(timeout=2.0)` after the subprocess exits, so a very large final stdout burst could be cut short. Fix: drain until EOF; add an integration test with a large burst.
 
@@ -41,6 +37,8 @@ Stages run one at a time (`engine/orchestrator.py`); parallelism today is framew
 - **Orchestrator catch-all**: `run_plan()` turns an exception from `run_stage()` into an internal-failure stage result, which classifies the plan as exit **4** rather than crashing.
 
 ## Resolved
+
+- Sequential-only orchestrator: a cycle can set `max_parallel_stages` (see [Scale Runs and Stages - 2026-10-24](../Specs%20&%20ADRs/Scale%20Runs%20and%20Stages%20-%202026-10-24.md)); the API caps concurrent runs with `TESTO_MAX_CONCURRENT_RUNS`.
 
 - Exit-code contract single-sourced in `engine/exit_codes.py`; timeouts → 124 → exit 3, engine errors → exit 4.
 - The second, Docker-based execution stack (`HeadlessEngineService`, `runners.py`, pluggy plugins, `/api/v1/executions`, Streamlit UI) was removed in v1.1; every run goes through `CycleRunService` and the engine.

@@ -1,8 +1,10 @@
-"""Top-level orchestrator: iterate plan stages, emit events, aggregate results.
+"""Top-level orchestrator: run plan stages, emit events, aggregate results.
 
-Sequential by design — see [the refactor plan](../../.cursor/plans).  The
-loop here is the *only* place that would need to change to introduce
-concurrent stage execution in a future iteration.
+Stages run one at a time by default. A cycle with ``max_parallel_stages: N`` runs up
+to N stages at once on a thread pool (each stage is a subprocess, so threads only
+wait on it). Either way, events and the renderer are only touched from the calling
+thread, so the NDJSON stream and the terminal stay consistent. See
+``docs/Specs & ADRs/Scale Runs and Stages - 2026-10-24.md``.
 """
 
 from __future__ import annotations
@@ -12,11 +14,13 @@ import json
 import logging
 import os
 import time
-from collections.abc import Mapping
+from collections import deque
+from collections.abc import Callable, Mapping
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import Protocol
 
-from testo_core.config.schema import Plan
+from testo_core.config.schema import Plan, Stage
 from testo_core.engine.events import (
     EngineEvent,
     PlanFinished,
@@ -50,7 +54,7 @@ def run_plan(
     fail_fast: bool = False,
     run_metadata: Mapping[str, str | None] | None = None,
 ) -> PlanResult:
-    """Execute every stage in ``plan`` sequentially.
+    """Execute every stage in ``plan``: in order, or up to ``plan.max_parallel_stages`` at once.
 
     When *persist* is ``True``, the :mod:`testo_core.persistence` composite
     backend writes ``plan_result.json`` and (when the DB layer is available)
@@ -72,16 +76,20 @@ def run_plan(
 
     started_at = time.time()
     renderer.handle(PlanStarted(plan=plan))
-    stage_results: list[StageResult] = []
 
-    on_chunk = _make_on_chunk(renderer, stream=renderer.wants_streaming)
+    max_parallel = max(1, plan.max_parallel_stages)
+    # Live output from several stages at once would interleave into noise, so parallel
+    # stages are buffered: each stage's panel (with its output tail) prints when it ends.
+    on_chunk = _make_on_chunk(renderer, stream=renderer.wants_streaming and max_parallel == 1)
 
     with _NdjsonRecorder(events_path) as recorder:
         recorder.write(
             {"event": "plan_started", "plan": plan.name, "stage_count": len(plan.stages)}
         )
 
-        for idx, stage in enumerate(plan.stages, start=1):
+        # Events and the renderer are only touched from this thread; with parallel stages,
+        # worker threads only run `_execute_stage` and hand back its result.
+        def start(idx: int, stage: Stage) -> None:
             renderer.handle(
                 StageStarted(stage=stage, stage_index=idx, stage_count=len(plan.stages))
             )
@@ -95,49 +103,43 @@ def run_plan(
                 }
             )
 
-            try:
-                stage_result = run_stage(
-                    stage,
-                    plan_name=plan.name,
-                    artifacts_root=artifacts_root,
-                    parent_env=parent_env,
-                    on_chunk=on_chunk(stage.name),
-                    quarantine=plan.quarantine,
-                )
-            except Exception as exc:
-                # Broad on purpose: an engine bug becomes an internal-failure result (exit 4)
-                # so later stages, persistence and reporters still run.
-                logger.exception("stage %s crashed inside the engine", stage.name)
-                stage_result = _internal_failure_result(stage=stage, exc=exc)
+        def execute(stage: Stage) -> StageResult:
+            return _execute_stage(
+                stage,
+                plan=plan,
+                artifacts_root=artifacts_root,
+                parent_env=parent_env,
+                on_chunk=on_chunk(stage.name),
+            )
 
-            stage_results.append(stage_result)
+        def finish(stage_result: StageResult) -> None:
             renderer.handle(StageFinished(result=stage_result))
+            recorder.write(_stage_finished_payload(stage_result))
+
+        def abort(completed: int) -> None:
             recorder.write(
                 {
-                    "event": "stage_finished",
-                    "stage": stage_result.stage_name,
-                    "framework": stage_result.framework,
-                    "returncode": stage_result.returncode,
-                    "duration_s": stage_result.duration_s,
-                    "log_path": str(stage_result.log_path) if stage_result.log_path else None,
-                    "timed_out": stage_result.timed_out,
-                    "error": stage_result.error,
-                    "internal_failure": stage_result.internal_failure,
-                    "quarantined": list(stage_result.quarantined),
-                    "waived_returncode": stage_result.waived_returncode,
+                    "event": "plan_aborted",
+                    "plan": plan.name,
+                    "reason": "fail_fast",
+                    "completed_stages": completed,
                 }
             )
 
-            if fail_fast and stage_result.returncode != 0:
-                recorder.write(
-                    {
-                        "event": "plan_aborted",
-                        "plan": plan.name,
-                        "reason": "fail_fast",
-                        "completed_stages": idx,
-                    }
-                )
-                break
+        if max_parallel == 1:
+            stage_results = _run_sequential(
+                plan, start=start, execute=execute, finish=finish, abort=abort, fail_fast=fail_fast
+            )
+        else:
+            stage_results = _run_parallel(
+                plan,
+                max_parallel=max_parallel,
+                start=start,
+                execute=execute,
+                finish=finish,
+                abort=abort,
+                fail_fast=fail_fast,
+            )
 
         finished_at = time.time()
         rcs = [s.returncode for s in stage_results]
@@ -152,10 +154,9 @@ def run_plan(
             plan_name=plan.name,
             started_at=started_at,
             finished_at=finished_at,
-            # Stages run one after another, so their sum never exceeds the wall clock,
-            # except for ``junit`` stages, whose duration is the test time in the
-            # reports they record rather than the milliseconds the import took.
-            duration_s=max(finished_at - started_at, sum(s.duration_s for s in stage_results)),
+            duration_s=_plan_duration(
+                finished_at - started_at, stage_results, parallel=max_parallel > 1
+            ),
             stages=tuple(stage_results),
             aggregate_returncode=max(rcs, default=0),
             exit_code=exit_code,
@@ -186,6 +187,123 @@ def run_plan(
             )
 
     return plan_result
+
+
+def _run_sequential(
+    plan: Plan,
+    *,
+    start: Callable[[int, Stage], None],
+    execute: Callable[[Stage], StageResult],
+    finish: Callable[[StageResult], None],
+    abort: Callable[[int], None],
+    fail_fast: bool,
+) -> list[StageResult]:
+    """The default: one stage at a time, in config order, on the calling thread."""
+    results: list[StageResult] = []
+    for idx, stage in enumerate(plan.stages, start=1):
+        start(idx, stage)
+        result = execute(stage)
+        results.append(result)
+        finish(result)
+        if fail_fast and result.returncode != 0:
+            abort(idx)
+            break
+    return results
+
+
+def _run_parallel(
+    plan: Plan,
+    *,
+    max_parallel: int,
+    start: Callable[[int, Stage], None],
+    execute: Callable[[Stage], StageResult],
+    finish: Callable[[StageResult], None],
+    abort: Callable[[int], None],
+    fail_fast: bool,
+) -> list[StageResult]:
+    """Run up to ``max_parallel`` stages at once; results come back in config order.
+
+    Stages start in config order as slots free up, and finish in whatever order they
+    end. With ``fail_fast``, the first failure stops new stages from starting; the
+    ones already running finish (their subprocesses are not killed), then
+    ``plan_aborted`` is written.
+    """
+    pending = deque(enumerate(plan.stages, start=1))
+    running: dict[Future[StageResult], int] = {}
+    results: dict[int, StageResult] = {}
+    aborted = False
+    with ThreadPoolExecutor(max_workers=max_parallel, thread_name_prefix="testo-stage") as pool:
+        while pending or running:
+            while pending and not aborted and len(running) < max_parallel:
+                idx, stage = pending.popleft()
+                start(idx, stage)
+                running[pool.submit(execute, stage)] = idx
+            if not running:
+                break
+            done, _ = wait(running, return_when=FIRST_COMPLETED)
+            # Several can finish in one wake-up; report them in config order.
+            for future in sorted(done, key=running.__getitem__):
+                idx = running.pop(future)
+                result = future.result()  # `_execute_stage` never raises
+                results[idx] = result
+                finish(result)
+                if fail_fast and result.returncode != 0:
+                    aborted = True
+    if aborted:
+        abort(len(results))
+    return [results[idx] for idx in sorted(results)]
+
+
+def _execute_stage(
+    stage: Stage,
+    *,
+    plan: Plan,
+    artifacts_root: Path,
+    parent_env: Mapping[str, str],
+    on_chunk: Callable[[bytes], None] | None,
+) -> StageResult:
+    try:
+        return run_stage(
+            stage,
+            plan_name=plan.name,
+            artifacts_root=artifacts_root,
+            parent_env=parent_env,
+            on_chunk=on_chunk,
+            quarantine=plan.quarantine,
+        )
+    except Exception as exc:
+        # Broad on purpose: an engine bug becomes an internal-failure result (exit 4)
+        # so later stages, persistence and reporters still run.
+        logger.exception("stage %s crashed inside the engine", stage.name)
+        return _internal_failure_result(stage=stage, exc=exc)
+
+
+def _stage_finished_payload(stage_result: StageResult) -> dict[str, object]:
+    return {
+        "event": "stage_finished",
+        "stage": stage_result.stage_name,
+        "framework": stage_result.framework,
+        "returncode": stage_result.returncode,
+        "duration_s": stage_result.duration_s,
+        "log_path": str(stage_result.log_path) if stage_result.log_path else None,
+        "timed_out": stage_result.timed_out,
+        "error": stage_result.error,
+        "internal_failure": stage_result.internal_failure,
+        "quarantined": list(stage_result.quarantined),
+        "waived_returncode": stage_result.waived_returncode,
+    }
+
+
+def _plan_duration(wall_s: float, stage_results: list[StageResult], *, parallel: bool) -> float:
+    """Plan duration, never shorter than its stages say they took.
+
+    ``junit`` stages report the test time recorded in their reports rather than the
+    milliseconds the import took, so the wall clock alone can undercount. Sequential
+    stages add up; parallel ones overlap, so only the longest counts.
+    """
+    durations = [s.duration_s for s in stage_results]
+    stages_s = max(durations, default=0.0) if parallel else sum(durations)
+    return max(wall_s, stages_s)
 
 
 def _make_on_chunk(renderer: _EventSink, *, stream: bool):

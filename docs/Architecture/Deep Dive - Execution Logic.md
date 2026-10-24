@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-10-22
+updated: 2026-10-24
 ---
 
 # Deep Dive — Execution Logic
@@ -23,7 +23,7 @@ Every run uses **host subprocesses** — no Docker. The Docker-based execution s
 | Config | `testosterone.yaml` (or discovery chain) |
 | Execution unit | **Cycle** (plan) → ordered **stages** |
 | Stage runtime | One `subprocess.Popen` per stage |
-| Stage ordering | **Strictly sequential** in `run_plan()` |
+| Stage ordering | Sequential in `run_plan()` by default; up to `max_parallel_stages` at once when a cycle sets it |
 | Parallelism | Framework-internal only, via `workers` (BehaveX; pytest with pytest-xdist) — see [Framework level](#framework-level--optional) |
 | Durability | `artifacts/<cycle>/` — logs, NDJSON events, Allure JSON |
 | Exit codes | `EngineExitCode` 0–4 via `classify_exit_code()` |
@@ -68,7 +68,7 @@ sequenceDiagram
 | 3. Plan resolve | `testo_core/config/resolver.py` | `resolve_plan()` / `resolve_stages_for_plan()` |
 | 4. Trigger gate | `testo_core/services/cycle_run.py` → `config/triggers.py` | Optional skip (exit 0) unless `--force` |
 | 5. Renderer pick | `testo_core/cli/runner.py` | Buffered / Stream / CI (NDJSON) |
-| 6. Engine run | `testo_core/engine/orchestrator.py` | `run_plan()` — sequential stages |
+| 6. Engine run | `testo_core/engine/orchestrator.py` | `run_plan()` — sequential stages, or parallel with `max_parallel_stages` |
 | 7. Subprocess | `testo_core/engine/executor.py` | `run_stage()` per stage |
 | 8. Post-run | `testo_core/services/cycle_run.py` | Reporters, native report snapshot, DB archive, trigger snapshot |
 
@@ -277,9 +277,17 @@ Two consumers write the same logical events:
 
 ## Concurrency and parallelism
 
-### Orchestrator level — none
+### Orchestrator level — opt-in parallel stages
 
-`orchestrator.py` states explicitly that stages run **sequentially**; the loop is the single place to change for future concurrent stage execution.
+Stages run one at a time, in config order, unless the cycle sets `max_parallel_stages: N`. Then `run_plan()` runs up to N stages at once on a thread pool (`testo-stage-*` threads, each waiting on its stage's subprocess):
+
+- Stages start in config order as slots free up; `stage_finished` events are written as stages end, and `PlanResult.stages` stays in config order.
+- Only the calling thread writes `events.ndjson` and calls the renderer, so both stay consistent without locks.
+- Output is buffered: each stage's panel prints when it finishes (no live interleaving).
+- `fail_fast` starts no new stage after a failure; running ones finish, then `plan_aborted` is written.
+- Stage names must be unique (each writes `artifacts/<cycle>/<stage>/`). Stages sharing a `target_repo` share its caches, ports and databases, so only mark a cycle parallel when its stages are independent. N stages with `workers: 4` can start 4N test processes.
+
+See [Scale Runs and Stages - 2026-10-24](../Specs%20&%20ADRs/Scale%20Runs%20and%20Stages%20-%202026-10-24.md).
 
 ### Framework level — optional
 
@@ -301,6 +309,8 @@ The API's `GET /api/v1/cycles/{cycle}` returns `workers: null` for `behave` and 
 |--------|------|--------|
 | `testo-log-reader-<stage>` | Read subprocess pipe → `LogBuffer` | Yes |
 | `testo-report-archive` | `try_persist_cycle_report()` when `--async-report-db` (non-CI) | No (joined, 30s timeout) |
+| `testo-stage-<n>` | Runs one stage when `max_parallel_stages > 1` | No (the pool is joined before `plan_finished`) |
+| `testo-run-worker-<n>` | API only: `TESTO_MAX_CONCURRENT_RUNS` workers that take queued executions | Yes |
 
 The log reader is **joined** with `timeout=2.0` after the process exits. If the reader is still draining, some tail bytes may be lost before the next stage starts.
 

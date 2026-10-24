@@ -27,6 +27,7 @@ Open <http://localhost:8000> and sign in with the token on the `/login` page. Th
 |----------|---------|---------|
 | `TESTO_API_TOKEN` | required | Bearer token for every write. The image binds `0.0.0.0`, so without it `testo-api` refuses to start unless `TESTO_ALLOW_UNAUTHENTICATED=1` |
 | `TESTO_PROTECT_READS` | `1` (set in the image) | `1`: reads need the token or the `/login` cookie too. `0`: anyone who can reach the server can read runs, logs and reports |
+| `TESTO_MAX_CONCURRENT_RUNS` | `2` | Runs started from the UI or API that execute at once; the rest wait as `queued` |
 | `FORWARDED_ALLOW_IPS` | unset | Behind an HTTPS reverse proxy, the proxy's address, so the session cookie is marked `Secure` |
 | `POSTGRES_PASSWORD` | `testo` | Database password (internal to the compose network) |
 | `TESTO_SERVER_PORT` | `8000` | Port on the host |

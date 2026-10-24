@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from testo_api.cycle_execution_manager import (
+    DEFAULT_MAX_CONCURRENT_RUNS,
     DEFAULT_MAX_FINISHED_EXECUTIONS,
     CycleExecutionManager,
     CycleExecutionState,
@@ -194,6 +195,63 @@ def test_max_finished_comes_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert CycleExecutionManager().max_finished == DEFAULT_MAX_FINISHED_EXECUTIONS
     monkeypatch.delenv("TESTO_MAX_FINISHED_EXECUTIONS")
     assert CycleExecutionManager().max_finished == DEFAULT_MAX_FINISHED_EXECUTIONS
+
+
+# --- Worker pool ------------------------------------------------------------
+
+
+def _wait_status(state: CycleExecutionState, status: str, timeout_s: float = 10.0) -> None:
+    deadline = time.monotonic() + timeout_s
+    while state.status != status:
+        assert time.monotonic() < deadline, f"status stayed {state.status!r}"
+        time.sleep(0.01)
+
+
+def test_runs_over_the_concurrency_cap_wait_queued_in_order() -> None:
+    manager = CycleExecutionManager(max_concurrent=2)
+    releases = [threading.Event() for _ in range(4)]
+    states = [_start_blocked(manager, f"c{i}", releases[i]) for i in range(4)]
+
+    _wait_status(states[0], "running")
+    _wait_status(states[1], "running")
+    time.sleep(0.1)  # give a wrongly free worker time to pick up a third run
+    assert [s.status for s in states[2:]] == ["queued", "queued"]
+
+    releases[1].set()
+    _wait(states[1])
+    _wait_status(states[2], "running")  # FIFO: c2 before c3
+    assert states[3].status == "queued"
+
+    for release in releases:
+        release.set()
+    for state in states:
+        _wait(state)
+    assert len(manager._workers) == 2  # the pool never grows past the cap
+
+
+def test_a_queued_cycle_cannot_be_queued_twice() -> None:
+    manager = CycleExecutionManager(max_concurrent=1)
+    blocker, release_blocker = threading.Event(), threading.Event()
+    running = _start_blocked(manager, "busy", release_blocker)
+    queued = _start_blocked(manager, "waiting", blocker)
+    assert queued.status == "queued"
+    with pytest.raises(RuntimeError, match="already running"):
+        _start_blocked(manager, "waiting", blocker)
+    release_blocker.set()
+    blocker.set()
+    _wait(running)
+    _wait(queued)
+
+
+def test_max_concurrent_comes_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TESTO_MAX_CONCURRENT_RUNS", "5")
+    assert CycleExecutionManager().max_concurrent == 5
+    monkeypatch.setenv("TESTO_MAX_CONCURRENT_RUNS", "0")
+    assert CycleExecutionManager().max_concurrent == 1
+    monkeypatch.setenv("TESTO_MAX_CONCURRENT_RUNS", "many")
+    assert CycleExecutionManager().max_concurrent == DEFAULT_MAX_CONCURRENT_RUNS
+    monkeypatch.delenv("TESTO_MAX_CONCURRENT_RUNS")
+    assert CycleExecutionManager().max_concurrent == DEFAULT_MAX_CONCURRENT_RUNS
 
 
 # --- SSE tail ---------------------------------------------------------------

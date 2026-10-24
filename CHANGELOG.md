@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- Opt-in parallel stages: a cycle with `max_parallel_stages: N` runs up to N stages at once (default `1`, unchanged). Events and the renderer stay on one thread, results keep config order, `fail_fast` starts no new stages after a failure, and stage names must be unique in a parallel cycle
+- The API runs at most `TESTO_MAX_CONCURRENT_RUNS` executions at once (default `2`) on a fixed worker pool; further runs wait as `queued` instead of each starting its own thread
 - Team server sign-in: `TESTO_PROTECT_READS=1` makes every read (API, `/history` report files, the UI, the live run stream) need the API token, and a `/login` page trades the token for an HttpOnly session cookie that also authorizes writes. On in `deploy/server/docker-compose.yml`; the UI it serves redirects to `/login` when the session is missing. Off by default elsewhere, so local use is unchanged
 - Frontend lint: ESLint with `typescript-eslint` and the React hook rules (`frontend/eslint.config.js`, `npm --prefix frontend run lint`), blocking in CI's `frontend` job
 - Unit tests for the TestBeats and ReportPortal reporter payloads, the Anthropic provider, and the `testo config` and `testo report` commands (coverage 80% to 83%)

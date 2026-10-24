@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import os
+import queue
 import sys
 import threading
 import time
@@ -38,20 +39,29 @@ MAX_FINISHED_EXECUTIONS_ENV = "TESTO_MAX_FINISHED_EXECUTIONS"
 DEFAULT_MAX_FINISHED_EXECUTIONS = 200
 
 
-def _max_finished_from_env() -> int:
-    raw = os.environ.get(MAX_FINISHED_EXECUTIONS_ENV)
+# How many executions run at the same time. Each run starts test subprocesses, so the cap
+# protects the host; executions over it wait in a FIFO queue with status "queued".
+MAX_CONCURRENT_RUNS_ENV = "TESTO_MAX_CONCURRENT_RUNS"
+DEFAULT_MAX_CONCURRENT_RUNS = 2
+
+
+def _positive_int_from_env(name: str, default: int) -> int:
+    raw = os.environ.get(name)
     if raw is None or not raw.strip():
-        return DEFAULT_MAX_FINISHED_EXECUTIONS
+        return default
     try:
         return max(1, int(raw))
     except ValueError:
-        logger.warning(
-            "%s=%r is not an integer; using %d",
-            MAX_FINISHED_EXECUTIONS_ENV,
-            raw,
-            DEFAULT_MAX_FINISHED_EXECUTIONS,
-        )
-        return DEFAULT_MAX_FINISHED_EXECUTIONS
+        logger.warning("%s=%r is not an integer; using %d", name, raw, default)
+        return default
+
+
+def _max_finished_from_env() -> int:
+    return _positive_int_from_env(MAX_FINISHED_EXECUTIONS_ENV, DEFAULT_MAX_FINISHED_EXECUTIONS)
+
+
+def _max_concurrent_from_env() -> int:
+    return _positive_int_from_env(MAX_CONCURRENT_RUNS_ENV, DEFAULT_MAX_CONCURRENT_RUNS)
 
 
 # Resolves (config, plan) on the worker thread, so config errors surface as a failed execution.
@@ -137,20 +147,34 @@ class CycleExecutionManager:
 
     Streaming is done by tailing `events.ndjson` from a recorded byte offset.
 
+    Executions run on a fixed pool of `max_concurrent` worker threads (default from
+    `TESTO_MAX_CONCURRENT_RUNS`). A new execution is accepted at once with status
+    `queued` and waits in a FIFO queue until a worker is free; one cycle still can't
+    be queued or running twice. The queue lives in memory, like the registry: a
+    restart drops queued runs (they never started, so there is nothing to clean up).
+
     The registry is bounded: every running execution is kept, plus the last
     `max_finished` finished ones (default from `TESTO_MAX_FINISHED_EXECUTIONS`).
     Older finished executions are evicted and their status/events endpoints answer
     404; their results stay in the run history (`/api/v1/runs`).
     """
 
-    def __init__(self, *, max_finished: int | None = None) -> None:
+    def __init__(
+        self, *, max_finished: int | None = None, max_concurrent: int | None = None
+    ) -> None:
         self._states: dict[str, CycleExecutionState] = {}
         self._states_lock = threading.Lock()
+        # Queued or running execution per cycle: a cycle runs at most once at a time.
         self._active_by_cycle: dict[str, str] = {}
         configured = _max_finished_from_env() if max_finished is None else max_finished
         self.max_finished = max(1, configured)
         # Finished execution ids, oldest first: the eviction order.
         self._finished: deque[str] = deque()
+        concurrent = _max_concurrent_from_env() if max_concurrent is None else max_concurrent
+        self.max_concurrent = max(1, concurrent)
+        self._queue: queue.SimpleQueue[Callable[[], None]] = queue.SimpleQueue()
+        # Workers start on the first execution, so importing the API starts no threads.
+        self._workers: list[threading.Thread] = []
 
     def create_execution(
         self,
@@ -263,9 +287,9 @@ class CycleExecutionManager:
             self._states[execution_id] = state
             self._active_by_cycle[str(cycle)] = execution_id
 
-        threading.Thread(
-            target=self._run_execution,
-            args=(
+        self._ensure_workers()
+        self._queue.put(
+            lambda: self._run_execution(
                 state,
                 load_plan,
                 artifacts_root_override,
@@ -278,14 +302,32 @@ class CycleExecutionManager:
                 workers_override,
                 stream,
                 ci,
-            ),
-            daemon=True,
-        ).start()
+            )
+        )
         return state
 
     def get(self, execution_id: str) -> CycleExecutionState | None:
         with self._states_lock:
             return self._states.get(execution_id)
+
+    def _ensure_workers(self) -> None:
+        with self._states_lock:
+            while len(self._workers) < self.max_concurrent:
+                # Daemon: a run in progress must not keep the server process alive on exit.
+                worker = threading.Thread(
+                    target=self._worker_loop,
+                    name=f"testo-run-worker-{len(self._workers) + 1}",
+                    daemon=True,
+                )
+                worker.start()
+                self._workers.append(worker)
+
+    def _worker_loop(self) -> None:
+        while True:
+            job = self._queue.get()
+            # `_run_execution` catches everything and always marks the state done, so a
+            # failing run never takes its worker down with it.
+            job()
 
     def _run_execution(
         self,
