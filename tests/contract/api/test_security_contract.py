@@ -313,3 +313,35 @@ def test_login_from_a_foreign_origin_is_refused(protected: str) -> None:
         follow_redirects=False,
     )
     assert resp.status_code == 403
+
+
+def test_every_response_gets_nosniff_and_same_origin_framing() -> None:
+    resp = _client().get("/api/v1/health/live")
+    assert resp.headers["X-Content-Type-Options"] == "nosniff"
+    assert resp.headers["X-Frame-Options"] == "SAMEORIGIN"
+    assert resp.headers["Content-Security-Policy"] == "frame-ancestors 'self'"
+
+
+def test_refusals_get_the_headers_too(token: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TESTO_PROTECT_READS", "1")
+    resp = _client().get("/api/v1/cycles")
+    assert resp.status_code == 401
+    assert resp.headers["X-Content-Type-Options"] == "nosniff"
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/history/run-1/allure-results/0b7f-attachment.html",
+        "/history/run-1/allure/data/attachments/1a2b.html",
+    ],
+)
+def test_report_attachments_are_sandboxed(path: str) -> None:
+    resp = _client().get(path)
+    assert resp.headers["Content-Security-Policy"] == "sandbox; frame-ancestors 'self'"
+
+
+def test_report_pages_are_not_sandboxed() -> None:
+    # Allure's index.html needs script and its own origin to load data/*.json.
+    resp = _client().get("/history/run-1/allure/index.html")
+    assert resp.headers["Content-Security-Policy"] == "frame-ancestors 'self'"

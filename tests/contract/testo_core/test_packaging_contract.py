@@ -58,6 +58,10 @@ def test_console_script_testo_help_works() -> None:
 
 @pytest.mark.contract
 def test_python_build_module_available() -> None:
+    # The `dev` extra installs build; skip on a machine set up without it.
+    pytest.importorskip(
+        "build", reason="the `build` package is not installed (pip install -e '.[dev]')"
+    )
     proc = subprocess.run(  # noqa: S603
         [sys.executable, "-m", "build", "--help"],
         check=False,
