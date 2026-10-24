@@ -137,6 +137,7 @@ nav:
       - Product Roadmap: Roadmap & Strategy/Product Roadmap.md
       - Technical Debt Tracker: Testing Workflows/Technical Debt Tracker.md
       - Project Review: project-review.md
+      - Product Review: product-review.md
   - Contributing:
       - Agent Context Guide: Prompts & Snippets/Agent Context Guide.md
       - Vault Schema: CLAUDE.md

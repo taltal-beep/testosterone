@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- Docs: a product review ([docs/product-review.md](docs/product-review.md)) scoring positioning, onboarding, the red-build workflow, design, accessibility and copy against Allure, ReportPortal, Currents and Trunk, with a Now / Next / Later roadmap
 - Opt-in throwaway containers for runs started on a team server: with `TESTO_RUNNER=container` each stage runs in a fresh container started by a separate runner service (`testo-runner-service`, `Dockerfile.testo-runner-service`, `deploy/server/docker-compose.runner.yml`), with no Linux capabilities, a process limit, fixed mounts and only the stage's own variables. The API never gets the Docker socket. Default `host` (unchanged)
 - Sign-in throttling with `TESTO_AUTH=accounts`: after `TESTO_LOGIN_MAX_FAILURES` (default 5) wrong passwords for a name in 15 minutes, or four times that from one address, `/login` answers `429` until the window slides
 - `TESTO_REPORTS_ORIGIN` serves report pages from a second hostname, so script in a report can't act with the viewer's session on the API's origin. Off by default

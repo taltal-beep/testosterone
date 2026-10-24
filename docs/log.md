@@ -88,3 +88,7 @@ Added [Switchable Team Features - 2026-10-24](Specs%20&%20ADRs/Switchable%20Team
 ## 2026-10-24: throwaway stage containers
 
 Added [Throwaway Stage Containers - 2026-10-24](Specs%20&%20ADRs/Throwaway%20Stage%20Containers%20-%202026-10-24.md) to Specs & ADRs (the `TESTO_RUNNER` switch and the runner service).
+
+## 2026-10-24: product review
+
+Added [Product Review](product-review.md) next to the code-side Project Review, and pointed the [Product Roadmap](Roadmap%20&%20Strategy/Product%20Roadmap.md)'s next steps at its Now / Next / Later roadmap.
