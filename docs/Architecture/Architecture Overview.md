@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-10-22
+updated: 2026-10-24
 ---
 
 # Architecture Overview
@@ -22,7 +22,7 @@ flowchart TD
     TERM[Developer terminal] --> CLI["testo CLI (Typer)<br/>cli/runner.execute_plan_command"]
     CI[GitHub Action / GitLab template] -->|"testo run --ci"| CLI
     UI[React frontend] -->|HTTP + SSE| API["testo_api /api/v1"]
-    API --> MGR[CycleExecutionManager<br/>background thread per execution]
+    API --> MGR[CycleExecutionManager<br/>worker pool + run queue]
 
     CLI --> SVC
     MGR --> SVC
@@ -61,7 +61,8 @@ The CLI deliberately **defers imports** until a command runs so `testo --help` s
 
 ### `testo_core/config/`
 
-- **`loader.py`** — discovers `testosterone.yaml` (or `--config` path) and parses YAML.
+- **`loader.py`** — discovers `testosterone.yaml` (or `--config` path), reads it and picks its shape (`cycles:` or legacy `runs:`).
+- **`sections.py`** — parses each section (defaults, cycles, stages, triggers, quarantine, reporters) into the models below.
 - **`schema.py`** — `TestosteroneConfig`, `Plan` (cycle), `Stage`, `ReporterSpec`, triggers.
 - **`resolver.py`** — merges defaults, interpolates `${env:…}`, resolves stages per cycle.
 
