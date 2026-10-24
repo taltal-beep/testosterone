@@ -18,6 +18,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Unit tests for the Allure report wrapper, the local report server, the Behave adapter's argument building, the BehaveX-to-Allure export and `testo watch`'s debounced re-runs (each module now at 92% or more; total coverage 84% to 86%)
 ### Changed
+- Internal split of the three largest modules: run event streaming moved to `testo_api/execution_events.py`, config section parsing to `testo_core/config/sections.py`, and `testo report list` / `open` to `testo_core/cli/commands/report_archive.py`. No behaviour change
 - The release workflow's "Verify install from PyPI" step retries for up to five minutes instead of one 30-second wait, so a slow PyPI index no longer marks a published release as failed
 - The `testo-server` image sets `TESTO_PROTECT_READS=1`, so a plain `docker run` protects reads too, not only `deploy/server/docker-compose.yml`. Set it to `0` to open reads on a trusted network
 - Frontend on React 19 (`react`, `react-dom` and their types together), `@testing-library/jest-dom` 7 and the latest TanStack Query and PostCSS patches; replaces Dependabot #132, #133 and #135, which bumped `react` without `react-dom`
@@ -25,6 +26,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Frontend toolchain: Vite 8 (Rolldown) and Vitest 5, replacing Vite 5 and Vitest 2; clears the six dev-only `npm audit` advisories (esbuild dev server, Vitest mocker, tinypool). `vite.config.ts` takes `defineConfig` from `vitest/config`, and the `EventSource` test mocks are constructor functions, which Vitest 4+ requires
 
 ### Fixed
+- An API run that raised `SystemExit` (say, a reporter plugin calling `sys.exit()`) took its worker thread down for good, shrinking the pool until queued runs never started; the worker now survives it and dead workers are replaced
 - The API sends `X-Content-Type-Options: nosniff` and `frame-ancestors 'self'` on every response, and serves report attachments under `/history` with `Content-Security-Policy: sandbox`, so an uploaded HTML attachment can no longer run script on the team server's origin
 - `test_python_build_module_available` skips when `build` is not installed, and the pytest rootdir test runs `python -P -m pytest` with the suite's own interpreter, so a contributor's first local run is green
 - `testo config init` generates a `smoke-test` cycle that runs ordinary pytest tests in `tests/` without a marker filter. Marker-based pytest and BehaveX configurations remain as commented-out examples, so a new pytest project does not require smoke markers or BDD features (#100, thanks @evidentart)

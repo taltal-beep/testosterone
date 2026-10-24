@@ -19,26 +19,21 @@ from __future__ import annotations
 
 import logging
 import tomllib
-from collections.abc import Mapping
-from pathlib import Path, PureWindowsPath
+from pathlib import Path
 from typing import Any
 
 import yaml
 
 from testo_core import plugins
 from testo_core.config.errors import ConfigDiscoveryError, ConfigValidationError
-from testo_core.config.schema import (
-    DEFAULT_TIER_BY_FRAMEWORK,
-    PARALLEL_FRAMEWORKS,
-    SUPPORTED_FRAMEWORKS,
-    SUPPORTED_TIERS,
-    CycleTrigger,
-    Defaults,
-    Plan,
-    QuarantineRule,
-    ReporterSpec,
-    Stage,
-    TestosteroneConfig,
+from testo_core.config.schema import Defaults, Plan, Stage, TestosteroneConfig
+from testo_core.config.sections import (
+    parse_cycle,
+    parse_defaults,
+    parse_quarantine,
+    parse_reporters,
+    parse_stage,
+    validate_artifact_name,
 )
 
 logger = logging.getLogger(__name__)
@@ -155,14 +150,14 @@ def _build_cycle_config(
     raw: dict[str, Any], *, config_dir: Path, source: Path
 ) -> TestosteroneConfig:
     version = int(raw.get("version", 1))
-    defaults = _parse_defaults(raw.get("defaults", {}), config_dir=config_dir)
+    defaults = parse_defaults(raw.get("defaults", {}), config_dir=config_dir)
     # Canonical: cycles. Legacy: plans.
     cycles_raw = raw.get("cycles")
     if cycles_raw is None:
         cycles_raw = raw.get("plans")
     if not isinstance(cycles_raw, dict) or not cycles_raw:
         raise ConfigValidationError("'cycles:' must be a non-empty mapping.")
-    shared_quarantine = _parse_quarantine(raw.get("quarantine"), where="top-level")
+    shared_quarantine = parse_quarantine(raw.get("quarantine"), where="top-level")
     cycles: dict[str, Plan] = {}
     for cycle_name, cycle_raw in cycles_raw.items():
         name_key = str(cycle_name)
@@ -171,8 +166,8 @@ def _build_cycle_config(
                 "cycle name 'all' is reserved for `testo run --cycle all` (run every cycle). "
                 "Rename this cycle in your config."
             )
-        _validate_artifact_name(name_key, kind="cycle name")
-        cycle = _parse_cycle(
+        validate_artifact_name(name_key, kind="cycle name")
+        cycle = parse_cycle(
             cycle_name=name_key,
             cycle_raw=cycle_raw or {},
             defaults=defaults,
@@ -180,7 +175,7 @@ def _build_cycle_config(
             shared_quarantine=shared_quarantine,
         )
         cycles[cycle.name] = cycle
-    reporters = _parse_reporters(raw.get("reporters"), config_dir=config_dir)
+    reporters = parse_reporters(raw.get("reporters"), config_dir=config_dir)
     return TestosteroneConfig(
         version=version, defaults=defaults, cycles=cycles, reporters=reporters, source_path=source
     )
@@ -193,7 +188,7 @@ def _build_legacy_runs_config(
     runs_raw = raw.get("runs")
     if not isinstance(runs_raw, list) or not runs_raw:
         raise ConfigValidationError("'runs:' must be a non-empty list.")
-    defaults = _parse_defaults(raw.get("defaults", {}), config_dir=config_dir)
+    defaults = parse_defaults(raw.get("defaults", {}), config_dir=config_dir)
     stages: list[Stage] = []
     for idx, run in enumerate(runs_raw, start=1):
         if not isinstance(run, dict):
@@ -208,7 +203,7 @@ def _build_legacy_runs_config(
                 f"runs[{idx}] unsupported framework {framework!r}; "
                 f"supported: {sorted(plugins.framework_names())}"
             )
-        stage = _parse_stage(
+        stage = parse_stage(
             stage_raw={
                 "name": run.get("name", f"{framework}-{idx}"),
                 "framework": framework,
@@ -227,9 +222,9 @@ def _build_legacy_runs_config(
         description="Legacy 'runs:' shim.",
         stages=tuple(stages),
         trigger=None,
-        quarantine=_parse_quarantine(raw.get("quarantine"), where="top-level"),
+        quarantine=parse_quarantine(raw.get("quarantine"), where="top-level"),
     )
-    reporters = _parse_reporters(raw.get("reporters"), config_dir=config_dir)
+    reporters = parse_reporters(raw.get("reporters"), config_dir=config_dir)
     return TestosteroneConfig(
         version=int(raw.get("version", 1)),
         defaults=defaults,
@@ -237,324 +232,3 @@ def _build_legacy_runs_config(
         reporters=reporters,
         source_path=source,
     )
-
-
-def _parse_defaults(raw: Any, *, config_dir: Path) -> Defaults:
-    if not isinstance(raw, dict):
-        raise ConfigValidationError("'defaults:' must be a mapping.")
-    target_repo = _resolve_path(raw.get("target_repo", "."), config_dir=config_dir)
-    artifacts_root = _resolve_path(raw.get("artifacts_root", "artifacts"), config_dir=config_dir)
-    timeout_s = raw.get("timeout_s", 600.0)
-    workers = int(raw.get("workers", 4))
-    extra_env = _normalise_env(raw.get("extra_env"))
-    return Defaults(
-        target_repo=target_repo,
-        artifacts_root=artifacts_root,
-        timeout_s=float(timeout_s) if timeout_s is not None else None,
-        workers=workers,
-        extra_env=extra_env,
-    )
-
-
-def _parse_cycle(
-    *,
-    cycle_name: str,
-    cycle_raw: dict[str, Any],
-    defaults: Defaults,
-    config_dir: Path,
-    shared_quarantine: tuple[QuarantineRule, ...] = (),
-) -> Plan:
-    if not isinstance(cycle_raw, dict):
-        raise ConfigValidationError(f"cycle {cycle_name!r} must be a mapping.")
-    description = cycle_raw.get("description")
-    stages_raw = cycle_raw.get("stages")
-    if not isinstance(stages_raw, list) or not stages_raw:
-        raise ConfigValidationError(f"cycle {cycle_name!r} must define a non-empty 'stages:' list.")
-    stages = tuple(
-        _parse_stage(stage_raw=item, defaults=defaults, config_dir=config_dir)
-        for item in stages_raw
-    )
-    trigger = _parse_trigger(cycle_raw.get("trigger"), cycle_name=cycle_name)
-    quarantine = shared_quarantine + _parse_quarantine(
-        cycle_raw.get("quarantine"), where=f"cycle {cycle_name!r}"
-    )
-    max_parallel_stages = _parse_max_parallel_stages(
-        cycle_raw.get("max_parallel_stages", 1), cycle_name=cycle_name, stages=stages
-    )
-    return Plan(
-        name=cycle_name,
-        description=description,
-        stages=stages,
-        trigger=trigger,
-        quarantine=quarantine,
-        max_parallel_stages=max_parallel_stages,
-    )
-
-
-def _parse_max_parallel_stages(raw: Any, *, cycle_name: str, stages: tuple[Stage, ...]) -> int:
-    # bool is an int subclass; `max_parallel_stages: true` is a typo, not 1.
-    if isinstance(raw, bool) or not isinstance(raw, int) or raw < 1:
-        raise ConfigValidationError(
-            f"cycle {cycle_name!r}: 'max_parallel_stages' must be a whole number of at least 1."
-        )
-    if raw > 1:
-        # Parallel stages write artifacts/<cycle>/<stage>/ at the same time, so two
-        # stages with one name would overwrite each other's logs and results.
-        names = [s.name for s in stages]
-        duplicates = sorted({n for n in names if names.count(n) > 1})
-        if duplicates:
-            raise ConfigValidationError(
-                f"cycle {cycle_name!r}: stage names must be unique when "
-                f"max_parallel_stages > 1 (repeated: {', '.join(duplicates)})."
-            )
-    return raw
-
-
-_QUARANTINE_KEYS: frozenset[str] = frozenset({"test", "reason", "owner"})
-
-
-def _parse_quarantine(raw: Any, *, where: str) -> tuple[QuarantineRule, ...]:
-    """``quarantine:`` entries: a test name glob, or ``{test, reason?, owner?}``."""
-    if raw is None:
-        return ()
-    if not isinstance(raw, list):
-        raise ConfigValidationError(f"{where}: 'quarantine' must be a list.")
-    rules: list[QuarantineRule] = []
-    for i, item in enumerate(raw):
-        label = f"{where}: quarantine[{i}]"
-        if isinstance(item, str):
-            item = {"test": item}
-        if not isinstance(item, dict):
-            raise ConfigValidationError(f"{label} must be a test name or a mapping with 'test'.")
-        unknown = sorted(str(k) for k in item if k not in _QUARANTINE_KEYS)
-        if unknown:
-            raise ConfigValidationError(
-                f"{label} has unknown key(s) {unknown}; allowed: {sorted(_QUARANTINE_KEYS)}"
-            )
-        test = item.get("test")
-        if not isinstance(test, str) or not test.strip():
-            raise ConfigValidationError(f"{label}: 'test' must be a non-empty string.")
-        for key in ("reason", "owner"):
-            if item.get(key) is not None and not isinstance(item[key], str):
-                raise ConfigValidationError(f"{label}: '{key}' must be a string.")
-        rules.append(
-            QuarantineRule(
-                test=test.strip(),
-                reason=(item.get("reason") or "").strip() or None,
-                owner=(item.get("owner") or "").strip() or None,
-            )
-        )
-    return tuple(rules)
-
-
-def _parse_trigger(raw: Any, *, cycle_name: str) -> CycleTrigger | None:
-    if raw is None:
-        return None
-    if not isinstance(raw, dict):
-        raise ConfigValidationError(f"cycle {cycle_name!r}: 'trigger' must be a mapping.")
-    paths_raw = raw.get("paths")
-    if not isinstance(paths_raw, list) or not paths_raw:
-        raise ConfigValidationError(
-            f"cycle {cycle_name!r}: 'trigger.paths' must be a non-empty list."
-        )
-    paths_out: list[str] = []
-    for i, p in enumerate(paths_raw):
-        if not isinstance(p, str) or not p.strip():
-            raise ConfigValidationError(
-                f"cycle {cycle_name!r}: trigger.paths[{i}] must be a non-empty string."
-            )
-        paths_out.append(p.strip())
-    since_raw = raw.get("since_ref")
-    since_ref: str | None = None
-    if since_raw is not None:
-        if not isinstance(since_raw, str) or not since_raw.strip():
-            raise ConfigValidationError(
-                f"cycle {cycle_name!r}: 'trigger.since_ref' must be a non-empty string."
-            )
-        since_ref = since_raw.strip()
-    return CycleTrigger(paths=tuple(paths_out), since_ref=since_ref)
-
-
-_REPORTER_PATH_OPTION_KEYS: frozenset[str] = frozenset({"output_dir", "out_dir"})
-
-
-def _parse_reporters(raw: Any, *, config_dir: Path) -> tuple[ReporterSpec, ...]:
-    if raw is None:
-        return ()
-    if not isinstance(raw, list):
-        raise ConfigValidationError("'reporters:' must be a list.")
-    out: list[ReporterSpec] = []
-    for idx, item in enumerate(raw, start=1):
-        if not isinstance(item, dict):
-            raise ConfigValidationError(f"reporters[{idx}] must be a mapping.")
-        reporter_type = str(item.get("type") or item.get("name") or "").strip().lower()
-        if not reporter_type:
-            raise ConfigValidationError(f"reporters[{idx}] is missing 'type'.")
-        if reporter_type not in plugins.reporter_types():
-            raise ConfigValidationError(
-                f"reporters[{idx}] has unsupported type {reporter_type!r}; "
-                f"supported: {sorted(plugins.reporter_types())}"
-            )
-        options: list[tuple[str, str]] = []
-        for key, value in item.items():
-            if key in ("type", "name") or value is None:
-                continue
-            key_str = str(key)
-            if key_str in _REPORTER_PATH_OPTION_KEYS:
-                options.append((key_str, str(_resolve_path(value, config_dir=config_dir))))
-            else:
-                options.append((key_str, str(value)))
-        out.append(ReporterSpec(type=reporter_type, options=tuple(options)))
-    return tuple(out)
-
-
-def _parse_stage(*, stage_raw: Mapping[str, Any], defaults: Defaults, config_dir: Path) -> Stage:
-    if not isinstance(stage_raw, Mapping):
-        raise ConfigValidationError("stage entries must be mappings.")
-    name = str(stage_raw.get("name") or "").strip()
-    equipment_raw = stage_raw.get("equipment")
-    framework_raw = stage_raw.get("framework")
-    if equipment_raw is not None and framework_raw is not None:
-        if str(equipment_raw).strip() != str(framework_raw).strip():
-            raise ConfigValidationError(
-                f"stage {name or '<unnamed>'!r} defines both 'equipment' and 'framework' with different values."
-            )
-    framework = str((equipment_raw if equipment_raw is not None else framework_raw) or "").strip()
-    if not name:
-        raise ConfigValidationError("stage is missing 'name'.")
-    _validate_artifact_name(name, kind=f"stage {name!r} name")
-    if not framework:
-        raise ConfigValidationError(f"stage {name!r} is missing 'equipment' (legacy: 'framework').")
-    if framework == "behave_native":
-        framework = "behave"
-    if framework not in plugins.framework_names():
-        raise ConfigValidationError(
-            f"stage {name!r} has unsupported framework {framework!r}; "
-            f"supported: {sorted(plugins.framework_names())}"
-        )
-
-    target_repo_raw = stage_raw.get("target_repo")
-    target_repo = (
-        _resolve_path(target_repo_raw, config_dir=config_dir)
-        if target_repo_raw is not None
-        else defaults.target_repo
-    )
-
-    args_raw = stage_raw.get("args")
-    if args_raw is None:
-        args: tuple[str, ...] = ()
-    elif isinstance(args_raw, str):
-        import shlex
-
-        args = tuple(shlex.split(args_raw))
-    elif isinstance(args_raw, list):
-        if not all(isinstance(a, (str, int, float)) for a in args_raw):
-            raise ConfigValidationError(f"stage {name!r}: 'args' must be a list of scalars.")
-        args = tuple(str(a) for a in args_raw)
-    else:
-        raise ConfigValidationError(f"stage {name!r}: 'args' must be a string or list.")
-
-    workers = int(stage_raw.get("workers", defaults.workers))
-    # Plugin adapters get ``workers`` in build_argv and decide for themselves.
-    if (
-        "workers" in stage_raw
-        and framework in SUPPORTED_FRAMEWORKS
-        and framework not in PARALLEL_FRAMEWORKS
-    ):
-        logger.warning(
-            "stage %r: 'workers' has no effect on framework %r (it runs single-process).",
-            name,
-            framework,
-        )
-    timeout_raw = stage_raw.get("timeout_s", defaults.timeout_s)
-    timeout_s = float(timeout_raw) if timeout_raw is not None else None
-    if_expr = stage_raw.get("if")
-    if if_expr is not None and not isinstance(if_expr, str):
-        raise ConfigValidationError(f"stage {name!r}: 'if' must be a string.")
-
-    extra_env = _normalise_env(stage_raw.get("extra_env")) or defaults.extra_env
-
-    tier_raw = stage_raw.get("tier")
-    if tier_raw is None:
-        tier = DEFAULT_TIER_BY_FRAMEWORK.get(framework, "unit")
-    else:
-        tier = str(tier_raw).strip().lower()
-        if tier not in SUPPORTED_TIERS:
-            raise ConfigValidationError(
-                f"stage {name!r} has unsupported tier {tier!r}; supported: {sorted(SUPPORTED_TIERS)}"
-            )
-
-    junit_raw = stage_raw.get("junit_xml")
-    if junit_raw is None:
-        junit_xml: tuple[str, ...] = ()
-    elif isinstance(junit_raw, str) and junit_raw.strip():
-        junit_xml = (junit_raw.strip(),)
-    elif (
-        isinstance(junit_raw, list)
-        and junit_raw
-        and all(isinstance(p, str) and p.strip() for p in junit_raw)
-    ):
-        junit_xml = tuple(p.strip() for p in junit_raw)
-    else:
-        raise ConfigValidationError(
-            f"stage {name!r}: 'junit_xml' must be a non-empty string or list of glob patterns."
-        )
-    for pattern in junit_xml:
-        if Path(pattern).is_absolute() or ".." in Path(pattern).parts:
-            raise ConfigValidationError(
-                f"stage {name!r}: 'junit_xml' patterns must be relative to target_repo "
-                f"and stay inside it (got {pattern!r})."
-            )
-
-    if framework == "command" and not args:
-        raise ConfigValidationError(
-            f"stage {name!r}: framework 'command' needs 'args' (the full command to run)."
-        )
-    if framework == "junit" and not junit_xml:
-        raise ConfigValidationError(
-            f"stage {name!r}: framework 'junit' needs 'junit_xml' (the reports to record)."
-        )
-
-    return Stage(
-        name=name,
-        framework=framework,
-        target_repo=target_repo,
-        args=args,
-        workers=workers,
-        timeout_s=timeout_s,
-        if_expr=if_expr,
-        extra_env=extra_env,
-        tier=tier,
-        junit_xml=junit_xml,
-    )
-
-
-def _resolve_path(value: Any, *, config_dir: Path) -> Path:
-    if value is None:
-        return config_dir
-    p = Path(str(value)).expanduser()
-    return p if p.is_absolute() else (config_dir / p).resolve()
-
-
-def _validate_artifact_name(value: str, *, kind: str) -> None:
-    """Reject artifact path names that can escape their containing directory."""
-    text = str(value).strip()
-    posix_text = text.replace("\\", "/")
-    win = PureWindowsPath(text)
-    if posix_text.startswith("/") or win.is_absolute() or win.drive:
-        raise ConfigValidationError(f"{kind} must be relative: {value!r}")
-    if any(part == ".." for part in posix_text.split("/")) or any(
-        part == ".." for part in win.parts
-    ):
-        raise ConfigValidationError(f"{kind} must not contain '..': {value!r}")
-
-
-def _normalise_env(value: Any) -> tuple[tuple[str, str], ...]:
-    if value is None:
-        return ()
-    if not isinstance(value, Mapping):
-        raise ConfigValidationError("'extra_env' must be a mapping of strings.")
-    out: list[tuple[str, str]] = []
-    for k, v in value.items():
-        out.append((str(k), str(v)))
-    return tuple(out)

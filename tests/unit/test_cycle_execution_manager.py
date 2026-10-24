@@ -16,9 +16,8 @@ from testo_api.cycle_execution_manager import (
     DEFAULT_MAX_FINISHED_EXECUTIONS,
     CycleExecutionManager,
     CycleExecutionState,
-    iter_execution_sse,
-    iter_sse_from_ndjson_file,
 )
+from testo_api.execution_events import iter_execution_sse, iter_sse_from_ndjson_file
 from testo_core.config.triggers import TriggerResult
 from testo_core.services import cycle_run as cycle_run_mod
 from tests.fixtures.engine import (
@@ -241,6 +240,49 @@ def test_a_queued_cycle_cannot_be_queued_twice() -> None:
     blocker.set()
     _wait(running)
     _wait(queued)
+
+
+def test_a_run_raising_system_exit_does_not_kill_its_worker() -> None:
+    manager = CycleExecutionManager(max_concurrent=1)
+
+    def load_plan():  # noqa: ANN202
+        raise SystemExit(3)  # e.g. test code imported by the run calls sys.exit()
+
+    crashed = manager._start(
+        cycle="exits",
+        load_plan=load_plan,
+        artifacts_root_override=None,
+        persist=False,
+        force=False,
+        fail_fast=False,
+        reporter_override=None,
+        report_db=False,
+        async_report_db=False,
+        workers_override=None,
+        stream=False,
+        ci=True,
+    )
+    _wait(crashed)
+    assert crashed.status == "failed"
+
+    release = threading.Event()
+    release.set()
+    after = _start_blocked(manager, "next", release)
+    _wait(after)  # the single worker is still there to pick it up
+    assert manager._workers[0].is_alive()
+
+
+def test_a_dead_worker_is_replaced_on_the_next_run() -> None:
+    manager = CycleExecutionManager(max_concurrent=1)
+    dead = threading.Thread(target=lambda: None)
+    dead.start()
+    dead.join()
+    manager._workers = [dead]
+
+    release = threading.Event()
+    release.set()
+    _wait(_start_blocked(manager, "after-death", release))
+    assert len(manager._workers) == 1 and manager._workers[0] is not dead
 
 
 def test_max_concurrent_comes_from_env(monkeypatch: pytest.MonkeyPatch) -> None:

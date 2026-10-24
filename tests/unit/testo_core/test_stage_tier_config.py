@@ -94,7 +94,7 @@ def test_workers_on_single_process_framework_warns_but_loads(
         workers: 4
 """,
     )
-    with caplog.at_level("WARNING", logger="testo_core.config.loader"):
+    with caplog.at_level("WARNING", logger="testo_core.config.sections"):
         cfg = load_config(yml)
     assert cfg.cycles["my-cycle"].stages[0].workers == 4
     assert "'behave-stage': 'workers' has no effect on framework 'behave'" in caplog.text

@@ -6,8 +6,9 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from testo_api.cycle_execution_manager import CycleExecutionManager, iter_execution_sse
+from testo_api.cycle_execution_manager import CycleExecutionManager
 from testo_api.dependencies import get_cycle_execution_manager
+from testo_api.execution_events import iter_execution_sse
 from testo_api.models import (
     AdhocExecutionRequest,
     CycleDetailResponse,

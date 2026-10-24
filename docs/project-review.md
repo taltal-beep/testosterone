@@ -50,8 +50,8 @@ It is not higher because of what is left. One new Low finding is in the new work
 
 | # | Severity | Finding | Fix | Status |
 |---|----------|---------|-----|--------|
-| A4 | Low | **A worker that hits `SystemExit` is never replaced.** `_run_execution` catches `Exception`, so a `SystemExit` or `KeyboardInterrupt` raised during a run (a reporter plugin calling `sys.exit()`, say) ends `_worker_loop`'s thread. The run itself is marked failed, but `_ensure_workers` counts dead threads, so the pool shrinks for good; with the default of 2, two such runs leave every later run `queued` forever | Catch `BaseException` per job in `_worker_loop` (log it and keep looping), or drop dead threads in `_ensure_workers`, plus a test | Open |
-| D10 | Code | Three modules over 500 lines, and two grew this round: `cycle_execution_manager.py` (539 to 581) and `config/loader.py` (537 to 560) | Split the worker pool and the SSE helpers out of the manager, and the cycle parsing out of the loader, the next time each changes | Open |
+| A4 | Low | **A worker that hits `SystemExit` is never replaced.** `_run_execution` catches `Exception`, so a `SystemExit` or `KeyboardInterrupt` raised during a run (a reporter plugin calling `sys.exit()`, say) ends `_worker_loop`'s thread. The run itself is marked failed, but `_ensure_workers` counts dead threads, so the pool shrinks for good; with the default of 2, two such runs leave every later run `queued` forever | Catch `BaseException` per job in `_worker_loop` (log it and keep looping), or drop dead threads in `_ensure_workers`, plus a test | Fixed (#159) |
+| D10 | Code | Three modules over 500 lines, and two grew this round: `cycle_execution_manager.py` (539 to 581) and `config/loader.py` (537 to 560) | Split the worker pool and the SSE helpers out of the manager, and the cycle parsing out of the loader, the next time each changes | Fixed (#159) |
 
 ## What was checked (third pass, 63ca88f)
 
