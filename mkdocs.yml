@@ -135,6 +135,7 @@ nav:
       - Phase 5 UI Redesign: Specs & ADRs/Phase 5 UI Redesign - Cycles-First Navigation.md
       - Product Roadmap: Roadmap & Strategy/Product Roadmap.md
       - Technical Debt Tracker: Testing Workflows/Technical Debt Tracker.md
+      - Project Review: project-review.md
   - Contributing:
       - Agent Context Guide: Prompts & Snippets/Agent Context Guide.md
       - Vault Schema: CLAUDE.md

@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-10-22
+updated: 2026-10-24
 ---
 
 # Vault log
@@ -76,3 +76,7 @@ Added [Playwright JSON Import - 2026-10-22](Specs%20&%20ADRs/Playwright%20JSON%2
 ## 2026-10-22: config JSON Schema
 
 Added [Config JSON Schema - 2026-10-22](Specs%20&%20ADRs/Config%20JSON%20Schema%20-%202026-10-22.md) and an editor autocomplete section in [Command Reference](CLI%20Commands/Command%20Reference.md#editor-autocomplete).
+
+## 2026-10-24: project review
+
+Added [Project Review](project-review.md), a whole-repo scorecard and verdict, linked from [Index](Index.md).

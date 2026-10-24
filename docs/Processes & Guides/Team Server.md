@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-22
-updated: 2026-10-22
+updated: 2026-10-24
 ---
 
 # Team Server
@@ -25,7 +25,7 @@ Open <http://localhost:8000>. Reading needs no token. Every write (uploads, star
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `TESTO_API_TOKEN` | required | Bearer token for every write |
+| `TESTO_API_TOKEN` | required | Bearer token for every write. The image binds `0.0.0.0`, so without it `testo-api` refuses to start unless `TESTO_ALLOW_UNAUTHENTICATED=1` |
 | `POSTGRES_PASSWORD` | `testo` | Database password (internal to the compose network) |
 | `TESTO_SERVER_PORT` | `8000` | Port on the host |
 | `TESTO_SERVER_TAG` | `1` | Image tag to pull |

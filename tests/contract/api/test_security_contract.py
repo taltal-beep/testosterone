@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
-from testo_api.main import create_app
+from testo_api.main import create_app, run
 from testo_api.security import is_loopback_host
 
 _ADHOC = "/api/v1/adhoc-executions"
@@ -134,3 +136,53 @@ def test_cors_wildcard_never_allows_credentials(monkeypatch: pytest.MonkeyPatch)
 )
 def test_is_loopback_host(host: str, loopback: bool) -> None:
     assert is_loopback_host(host) is loopback
+
+
+def _run_without_uvicorn(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    import sys
+    import types
+
+    calls: list[str] = []
+    fake = types.SimpleNamespace(run=lambda *_a, **kw: calls.append(kw["host"]))
+    monkeypatch.setitem(sys.modules, "uvicorn", fake)
+    return calls
+
+
+def test_public_bind_without_token_refuses_to_start(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = _run_without_uvicorn(monkeypatch)
+    monkeypatch.setenv("TESTO_API_HOST", "0.0.0.0")
+    monkeypatch.delenv("TESTO_API_TOKEN", raising=False)
+    monkeypatch.delenv("TESTO_ALLOW_UNAUTHENTICATED", raising=False)
+    assert run() == 2
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    "env",
+    [
+        {"TESTO_API_TOKEN": "s3cret"},
+        {"TESTO_ALLOW_UNAUTHENTICATED": "1"},
+        {"TESTO_API_HOST": "127.0.0.1"},
+    ],
+)
+def test_bind_starts_with_token_opt_out_or_loopback(
+    monkeypatch: pytest.MonkeyPatch, env: dict[str, str]
+) -> None:
+    calls = _run_without_uvicorn(monkeypatch)
+    monkeypatch.setenv("TESTO_API_HOST", "0.0.0.0")
+    monkeypatch.delenv("TESTO_API_TOKEN", raising=False)
+    monkeypatch.delenv("TESTO_ALLOW_UNAUTHENTICATED", raising=False)
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    assert run() == 0
+    assert len(calls) == 1
+
+
+def test_read_config_path_only_loads_config_file_names(tmp_path: Path) -> None:
+    secret = tmp_path / "notes.txt"
+    secret.write_text("password: hunter2\n[ -z x ] && return\n", encoding="utf-8")
+    client = TestClient(create_app())
+    for route in ("/api/v1/cycles", "/api/v1/cycles/smoke"):
+        resp = client.get(route, params={"config_path": str(secret)})
+        assert resp.status_code == 400
+        assert "hunter2" not in resp.text and "notes.txt" not in resp.text

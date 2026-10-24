@@ -20,6 +20,8 @@ from testo_core.engine.executor import run_stage
 
 pytestmark = [pytest.mark.integration, pytest.mark.tier_fast]
 
+pytest.importorskip("behavex", reason="needs testo-core[bdd]")
+
 
 def _write_target(repo: Path) -> None:
     steps = repo / "features" / "steps"

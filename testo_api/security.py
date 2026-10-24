@@ -19,6 +19,7 @@ from __future__ import annotations
 import hmac
 import ipaddress
 import os
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import HTTPException, Request
@@ -30,6 +31,8 @@ DEFAULT_CORS_ORIGINS = (
     "http://127.0.0.1:4173",
 )
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+# File names config discovery accepts (``config/loader.py``); see ``read_config_path``.
+CONFIG_FILE_NAMES = frozenset({"testosterone.yaml", "testosterone.yml", "pyproject.toml"})
 
 
 def cors_settings() -> tuple[list[str], bool]:
@@ -73,6 +76,25 @@ def guard_mutating_request(request: Request) -> None:
             detail="Missing or invalid API token.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+def read_config_path(raw: str | None) -> Path | None:
+    """``?config_path=`` on a read route, limited to config file names.
+
+    Reads need no token, so an arbitrary path would let anyone who can reach the
+    API probe for files and see fragments of them in parse errors. Only a file
+    named like a config (``testosterone.yaml``, ``testosterone.yml``,
+    ``pyproject.toml``) is loaded; writes, which need the token, take any path.
+    """
+    if not raw:
+        return None
+    path = Path(raw).expanduser().resolve()
+    if path.name not in CONFIG_FILE_NAMES:
+        raise HTTPException(
+            status_code=400,
+            detail="config_path must name a testosterone.yaml, testosterone.yml or pyproject.toml file.",
+        )
+    return path
 
 
 def _is_same_origin(request: Request, origin: str) -> bool:
