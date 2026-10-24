@@ -27,7 +27,7 @@ updated: 2026-10-24
 ## Publishing flow
 
 1. Create a GitHub Release with a semver tag matching `pyproject.toml` (e.g. `v1.1.1` for `version = "1.1.1"`).
-2. The `publish.yml` workflow triggers automatically. Its one job waits for the `pypi` environment's reviewer, then checks out the tag, builds, checks the tag matches the package version, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`), publishes with `pypa/gh-action-pypi-publish` over OIDC (no API token), and verifies `pip install`.
+2. The `publish.yml` workflow triggers automatically. Its one job waits for the `pypi` environment's reviewer, then checks out the tag, builds, checks the tag matches the package version, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`), publishes with `pypa/gh-action-pypi-publish` over OIDC (no API token), and verifies `pip install`, retrying for up to five minutes while PyPI's index catches up with the upload.
 3. To publish an existing tag whose automatic run failed (for example after fixing the trusted publisher), run the workflow by hand from the Actions tab with that tag as input. PyPI refuses a version that was already uploaded.
 4. The same Release also triggers `docker-publish.yml` (runner image to GHCR; the first push creates a private package, so set its visibility to public once) and `artifactory-publish.yml` (skipped while `ARTIFACTORY_URL` is unset).
 
@@ -56,6 +56,7 @@ testo run --help
 - **OIDC auth failure**: Verify trusted publisher configuration matches the workflow filename and GitHub environment name exactly.
 - **Tag does not match**: the job stops when the tag (minus its `v`) differs from `[project] version`. Fix the version or the tag and create a new Release.
 - **`twine check` failure**: Check `pyproject.toml` for missing metadata fields (`description`, `readme`, `requires-python`).
+- **"Verify install from PyPI" red after a successful upload**: the package is published; the index was slower than the retry window. Check `pip install testo-core==X.Y.Z` by hand, and if it installs there is nothing to fix (v1.2.0 hit this before the retry was added).
 - **Version conflict**: PyPI does not allow re-uploading the same version. Bump the version and create a new release.
 
 ## Related

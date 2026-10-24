@@ -160,6 +160,28 @@ def guard_read_request(request: Request) -> Response | None:
     )
 
 
+_ATTACHMENT_MARKERS = ("-attachment", "/data/attachments/")
+
+
+def add_security_headers(request: Request, response: Response) -> None:
+    """Headers every response gets, plus a sandbox for report attachments.
+
+    Report files under ``/history`` share the API's origin, so an uploaded HTML
+    attachment would otherwise run script with the viewer's session. Allure names
+    attachments ``<uuid>-attachment.<ext>`` in results and copies them to
+    ``data/attachments/`` in a report; those get ``sandbox``, which blocks script
+    while still letting the report show the file. The report pages themselves keep
+    working, since they need script and their own origin to load their data.
+    """
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    path = request.url.path
+    if path.startswith("/history/") and any(m in path for m in _ATTACHMENT_MARKERS):
+        response.headers["Content-Security-Policy"] = "sandbox; frame-ancestors 'self'"
+    else:
+        response.headers.setdefault("Content-Security-Policy", "frame-ancestors 'self'")
+
+
 def read_config_path(raw: str | None) -> Path | None:
     """``?config_path=`` on a read route, limited to config file names.
 

@@ -17,8 +17,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Frontend tests for the loading, error and empty states of the run detail and Compare pages
 
 ### Changed
+- The release workflow's "Verify install from PyPI" step retries for up to five minutes instead of one 30-second wait, so a slow PyPI index no longer marks a published release as failed
+- The `testo-server` image sets `TESTO_PROTECT_READS=1`, so a plain `docker run` protects reads too, not only `deploy/server/docker-compose.yml`. Set it to `0` to open reads on a trusted network
+- Frontend on React 19 (`react`, `react-dom` and their types together), `@testing-library/jest-dom` 7 and the latest TanStack Query and PostCSS patches; replaces Dependabot #132, #133 and #135, which bumped `react` without `react-dom`
 - The pixel mascot's frame source moved from `testo_core/mascot/` to `scripts/mascot/`, so it no longer ships in the wheel; the UI animations are unchanged. Play it with `python -m scripts.mascot flex`, regenerate the frontend frames with `python -m scripts.mascot.export_ts`
 - Frontend toolchain: Vite 8 (Rolldown) and Vitest 5, replacing Vite 5 and Vitest 2; clears the six dev-only `npm audit` advisories (esbuild dev server, Vitest mocker, tinypool). `vite.config.ts` takes `defineConfig` from `vitest/config`, and the `EventSource` test mocks are constructor functions, which Vitest 4+ requires
+
+### Fixed
+- The API sends `X-Content-Type-Options: nosniff` and `frame-ancestors 'self'` on every response, and serves report attachments under `/history` with `Content-Security-Policy: sandbox`, so an uploaded HTML attachment can no longer run script on the team server's origin
+- `test_python_build_module_available` skips when `build` is not installed, and the pytest rootdir test runs `python -P -m pytest` with the suite's own interpreter, so a contributor's first local run is green
+- `testo config init` generates a `smoke-test` cycle that runs ordinary pytest tests in `tests/` without a marker filter. Marker-based pytest and BehaveX configurations remain as commented-out examples, so a new pytest project does not require smoke markers or BDD features (#100, thanks @evidentart)
 
 ## [1.2.0] - 2026-10-24
 

@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-19
-updated: 2026-10-22
+updated: 2026-10-24
 ---
 
 # Getting Started
@@ -45,7 +45,7 @@ testo doctor             # config, runners on PATH, database
 
 For autocomplete in VS Code and other editors, put the [`$schema` line](CLI%20Commands/Command%20Reference.md#editor-autocomplete) at the top of the file.
 
-`testo config init` writes a bigger starter file instead, but its `smoke-test` cycle selects `-m smoke` tests, so edit its `args` to match your suite.
+`testo config init` writes a starter file with a `smoke-test` cycle that runs `pytest -q tests`, plus commented-out marker-based pytest and BehaveX examples. Edit its `args` if your tests live outside `tests/`.
 
 ## 3. Run it
 

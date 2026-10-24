@@ -115,8 +115,8 @@ Or let Testosterone run the tests as a cycle:
 ```bash
 pip install testo-core            # the `testo` CLI; add [api] for the REST API, [db] for Postgres,
                                   # [bdd] for Behave and BehaveX
-testo config init                 # writes a starter testosterone.yaml; edit its stages
-testo run --cycle smoke-test      # run a cycle from it
+testo config init                 # writes a starter testosterone.yaml for pytest
+testo run --cycle smoke-test      # runs pytest -q tests; edit args for a different test directory
 ```
 
 An installed `testo` keeps per-run report copies in `./.testo/` (set `TESTO_HOME` to move them).

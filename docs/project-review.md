@@ -9,25 +9,44 @@ updated: 2026-10-24
 
 [Index](Index.md)
 
-Two passes over the whole repo with the tech-debt, code-review, security-review and architecture checklists (the first pass also used testing-strategy). The **second pass** is `main` at `3aeb3b3` (2026-10-24), after the fixes from the first; the first pass was `f1e3521` the same morning, and its findings are kept below with their status. Open items that should outlive this note move to the [Technical Debt Tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md).
+Three passes over the whole repo with the tech-debt, code-review, security-review and architecture checklists (the first pass also used testing-strategy). The **third pass** is `main` at `63ca88f` (2026-10-24), after the second pass's fixes (#150 to #153). The second pass was `3aeb3b3` and the first `f1e3521`, both the same day; their findings are kept below with their status. Open items that should outlive this note move to the [Technical Debt Tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md).
 
 ## Verdict
 
-**Overall: 8.5 / 10 (was 8).** Every Medium and Low finding from the first pass that needed code is fixed and merged: open reads no longer load arbitrary files, a public bind without a token refuses to start, the team server can protect reads behind a `/login` cookie, actions are pinned, CI tests Python 3.11 to 3.13, the frontend has ESLint and is on Vite 8 with zero `npm audit` advisories, dead code and the mascot are out of the wheel, and coverage went from 79% to 84%. v1.2.0 is released on GitHub. The architecture did not need to change, which is the best evidence for it: the security and auth work went in as one module and one middleware, with no second path.
+**Overall: 8.5 / 10 (unchanged from the second pass; the first was 8).** Everything the second pass asked for "now" and "soon" is done except more tests for the Allure and Behave paths. The server image protects reads by default. The security model now covers stateless sessions and the AI `base_url`. The Dependabot queue is empty apart from TypeScript 7, which is blocked upstream. The contributor fix in #124 is merged with its author's commits. testo-core 1.2.0 is on PyPI. No check found a regression, and the architecture took all of this without a new path.
 
-What keeps it from a 9 is no longer correctness or security but scale and housekeeping: the API runs each execution on its own thread with in-memory state (A1), stages run one at a time (A2), a few 500+ line modules, the Allure and Behave reporting paths are still under 50% covered, and a queue of nine Dependabot pull requests plus a contributor's PR (#124) wait for review. None of that blocks using or showing the project.
+The score holds because what keeps it from a 9 has not moved. The API runs each execution on its own thread with in-memory state (A1). Stages run one at a time (A2). Three modules are over 500 lines. The Allure, Behave and `testo watch` paths are still under 50% covered (T5). This pass adds one Low finding: report files are served from the API's own origin (S9). None of this blocks using or showing the project. A1 and A2 already have their own thread.
 
 ## Scorecard
 
 | Area | Score | Was | In one line |
 |------|:-----:|:---:|-------------|
-| Architecture | **8.5** | 8.5 | One engine, one service entry point, plugins, a read-side `history/`; auth added as a module and a middleware without a second path. Thread-per-run API and sequential stages are the limits |
-| Code quality | **8.5** | 8 | `ruff`, `ruff format` and `mypy` clean in CI, ESLint on the frontend, no dead Streamlit code, no `TODO`s; four modules over 500 lines |
-| Tests | **8** | 7 | 865 fast tests at 84% coverage on Python 3.11, 3.12 and 3.13, 58 frontend tests including the Compare and Run Detail states; Allure, Behave and `testo watch` paths are thin |
-| Security | **8.5** | 7 | Config file allow-list on reads, fail-closed public bind, optional protected reads with an HttpOnly `SameSite=Strict` cookie, pinned actions and least-privilege tokens; a few Low items left |
+| Architecture | **8.5** | 8.5 | One engine, one service entry point, plugins, a read-side `history/`; every fix since the first pass went in without a second path. Thread-per-run API and sequential stages are the limits |
+| Code quality | **8.5** | 8.5 | `ruff`, `ruff format`, `mypy` and ESLint clean, no dead code (`vulture` empty), no `TODO`s; three modules over 500 lines |
+| Tests | **8** | 8 | 867 fast tests at 84% coverage on Python 3.11 to 3.13, 58 frontend tests; Allure, Behave and `testo watch` paths still under 50% |
+| Security | **8.5** | 8.5 | The server image is safe by default, and the security model now names its limits (stateless sessions, the AI `base_url`); same-origin report files (S9) are the new Low |
 | Docs | **9** | 9 | Linted vault, ADRs, a security model that matches the code, guides updated in the same pull request as each change |
-| CI / DX | **9** | 8 | Python matrix, ESLint, OpenAPI and schema drift checks, image scan, team server smoke that exercises the login flow, 0 `npm audit` and `pip-audit` findings |
-| Tech debt | **8** | 7 | Release cut, dead code and mascot gone, frontend toolchain current; a Dependabot backlog and TypeScript 7 (blocked upstream) remain |
+| CI / DX | **9** | 9 | Python matrix, ESLint, OpenAPI and schema drift checks, image scan, team server smoke; the publish workflow no longer fails a release that did upload |
+| Tech debt | **8.5** | 8 | Dependabot queue cleared, React 19, contributor PR landed, 1.2.0 on PyPI; TypeScript 7 (blocked upstream) and the three 500+ line modules remain |
+
+## What was checked (third pass)
+
+| Check | Result |
+|-------|--------|
+| `ruff check .` and `ruff format --check .` | Clean (432 files) |
+| `mypy testo_core testo_api` | Clean in CI. Locally it reports the same 2 errors in `repository/models.py` as before, which come from stale packages on the review machine |
+| `pytest -m "tier_fast and not quarantined"` | 867 passed, 84% coverage. The 2 local failures are the review machine again (see T6) |
+| Frontend | `tsc`, ESLint, 58 Vitest tests and the build pass on React 19; `npm audit` 0 |
+| `pip-audit`, `vulture --min-confidence 80` | Nothing |
+| Diff since the second pass | `config init` starter, server image `ENV`, React 19 ref types, publish retry: no findings |
+| Open pull requests | Only #106 (TypeScript 7, blocked by `typescript-eslint`) |
+
+## Third-pass findings
+
+| # | Severity | Finding | Fix | Status |
+|---|----------|---------|-----|--------|
+| S9 | Low | **Report files share the API's origin.** `/history` serves run artifacts with `StaticFiles`, and Playwright attachments keep their type, so an uploaded `text/html` attachment opens as a page on the team server's own origin. A script in it runs with the viewer's session and passes the Origin check, so it can start runs. With one shared token, the uploader already has that power, so nothing is gained today. There are also no `X-Content-Type-Options` or `frame-ancestors` headers | Send `Content-Security-Policy: sandbox` and `X-Content-Type-Options: nosniff` on `/history` responses, and `frame-ancestors 'self'` everywhere. Serving reports from a separate origin only matters once there are per-user accounts | Fixed (#155) |
+| T6 | Test | Two tests still assume a contributor's machine: the packaging contract fails when `build` isn't installed, and the rootdir test picks a `pytest` on `PATH` that belongs to another interpreter (without `allure-pytest`). T3 fixed the case where no `pytest` is found, but not this one | Skip the `build` check when the module is missing, and run `sys.executable -m pytest` in the rootdir test | Fixed (#155) |
 
 ## What was checked (second pass)
 
@@ -42,19 +61,19 @@ What keeps it from a 9 is no longer correctness or security but scale and housek
 | Team server login | `TESTO_PROTECT_READS=1` checked end to end: 401 without a session, redirect to `/login`, bearer and cookie reads, health open; open-redirect attempts (`//host`, `/\host`, tab-prefixed) stay on the server |
 | Open pull requests | 9 from Dependabot (#132 to #140) and #106 (TypeScript 7, blocked by `typescript-eslint`), plus #124 from a contributor |
 
-## Second-pass findings
+## Second-pass findings (3aeb3b3)
 
-New since the first pass, all Low, most severe first. None is a blocker.
+All Low, most severe first. None was a blocker.
 
-| # | Severity | Finding | Fix |
-|---|----------|---------|-----|
-| S6 | Low | **Protected reads are only on in the compose file.** The `testo-server` image itself does not set `TESTO_PROTECT_READS`, so `docker run -e TESTO_API_TOKEN=... testo-server` serves runs, logs and reports to anyone who can reach it | Set `TESTO_PROTECT_READS=1` in `Dockerfile.testo-server` so the image is safe by default, as the compose file already is |
-| S7 | Low | **Sessions are stateless.** The cookie is an HMAC of the token, so sign-out only clears the browser's copy; a copied cookie works until the token changes, for up to 30 days | Acceptable with one shared token; document "rotate the token to sign everyone out", or add a server-side session list if per-user accounts arrive |
-| S8 | Info | **No rate limit on `/login`.** A guessed token is the only way in, and the guides tell people to use `openssl rand -hex 32`, so online guessing is not practical | Nothing now; a reverse proxy can rate-limit if needed |
-| S5 | Low | **AI `base_url` is free-form** (open from the first pass). A write token can point the provider at any URL, and the key goes there | One sentence in the security model |
-| T5 | Test | Lowest-covered modules: `reporting/allure.py` 32%, `reporting/server.py` 37%, `frameworks/behave_adapter.py` 45%, `reporting/behavex_allure.py` 48%, `cli/commands/watch.py` 48% | Tests for the Allure CLI fallbacks and the Behave adapter's argument building |
-| D8 | Dependency | Nine Dependabot pull requests (#132 to #140) are open, including `actions/setup-python` 7 and `@testing-library/jest-dom` 7 (a major bump), and #105 is superseded by the merged Vite 8 upgrade | Review and merge the green ones; close #105 |
-| D9 | Process | Contributor PR #124 has waited since 2026-10-21 for a merge from `main` | Nudge or take it over with credit |
+| # | Severity | Finding | Fix | Status |
+|---|----------|---------|-----|--------|
+| S6 | Low | **Protected reads are only on in the compose file.** The `testo-server` image itself does not set `TESTO_PROTECT_READS`, so `docker run -e TESTO_API_TOKEN=... testo-server` serves runs, logs and reports to anyone who can reach it | Set `TESTO_PROTECT_READS=1` in `Dockerfile.testo-server` so the image is safe by default, as the compose file already is | Fixed (#150) |
+| S7 | Low | **Sessions are stateless.** The cookie is an HMAC of the token, so sign-out only clears the browser's copy; a copied cookie works until the token changes, for up to 30 days | Acceptable with one shared token; document "rotate the token to sign everyone out", or add a server-side session list if per-user accounts arrive | Documented (#150) |
+| S8 | Info | **No rate limit on `/login`.** A guessed token is the only way in, and the guides tell people to use `openssl rand -hex 32`, so online guessing is not practical | Nothing now; a reverse proxy can rate-limit if needed | Accepted |
+| S5 | Low | **AI `base_url` is free-form** (open from the first pass). A write token can point the provider at any URL, and the key goes there | One sentence in the security model | Documented (#150) |
+| T5 | Test | Lowest-covered modules: `reporting/allure.py` 32%, `reporting/server.py` 37%, `frameworks/behave_adapter.py` 45%, `reporting/behavex_allure.py` 48%, `cli/commands/watch.py` 48% | Tests for the Allure CLI fallbacks and the Behave adapter's argument building | Open |
+| D8 | Dependency | Nine Dependabot pull requests (#132 to #140) are open, including `actions/setup-python` 7 and `@testing-library/jest-dom` 7 (a major bump), and #105 is superseded by the merged Vite 8 upgrade | Review and merge the green ones; close #105 | Done (#151 and the merged Dependabot PRs; #106 blocked upstream) |
+| D9 | Process | Contributor PR #124 has waited since 2026-10-21 for a merge from `main` | Nudge or take it over with credit | Done (#152; #124 shows merged) |
 
 ## First pass (f1e3521): findings and status
 
@@ -99,7 +118,7 @@ Findings, most severe first
 | S2 | Medium | **Public bind without a token only warns.** `testo-api` on a non-loopback host with no `TESTO_API_TOKEN` logs a warning and starts, and the `testo-server` image binds `0.0.0.0`. A plain `docker run -p 8000:8000 testo-server` exposes "start a run", which runs commands, to the network | Refuse to start in that case unless an explicit `TESTO_ALLOW_UNAUTHENTICATED=1` is set | Fixed (#141) |
 | S3 | Low | **Reads and `/history` are open on the team server.** Run logs and report files can carry secrets printed by tests. Documented in the [Team Server](Processes%20&%20Guides/Team%20Server.md) guide, but there is no switch to protect them | Add an opt-in `TESTO_API_READ_TOKEN` (or require the token for reads when set) | Fixed (#147) |
 | S4 | Low | **Floating action refs and default token scope.** `aquasecurity/trivy-action@master` and `anthropics/claude-code-base-action@beta` run in the Docker publish and changelog-on-main workflows, and `commitlint.yml`, `pr-heavy.yml` and `release-gate.yml` have no `permissions:` block, so they get the repository's default token scope. A compromised upstream branch would run with those jobs' secrets | Pin the two actions to a release tag or commit SHA (Dependabot already watches `github-actions`) and add `permissions: contents: read` to the three workflows | Fixed (#141) |
-| S5 | Low | **AI `base_url` is free-form.** With a write token, the AI settings page can point the provider at any URL and the server will send the key there. Acceptable for a self-hosted tool; worth a sentence in the security model | Document it, optionally allow-list schemes and hosts | Open |
+| S5 | Low | **AI `base_url` is free-form.** With a write token, the AI settings page can point the provider at any URL and the server will send the key there. Acceptable for a self-hosted tool; worth a sentence in the security model | Document it, optionally allow-list schemes and hosts | Documented (#150) |
 
 XML from uploads is parsed with the standard library's `ElementTree`, which on Python 3.11+ does not resolve external entities and has expat's entity-expansion limits, and uploads are size-capped, so XXE and billion-laughs are not a concern.
 
@@ -111,7 +130,7 @@ Prioritised with the tech-debt formula, priority = (impact + risk) × (6 − eff
 |---|------|------|:------:|:----:|:------:|:--------:|--------|
 | S1 | `config_path` on open GET routes | Security | 2 | 4 | 1 | **30** | Fixed (#141) |
 | S2 | Public bind without token is fail-open | Security | 2 | 4 | 1 | **30** | Fixed (#141) |
-| D2 | Large unreleased backlog: `CHANGELOG.md [Unreleased]` holds ingest, the team server, Playwright JSON, quarantine, alerts, the config schema, the plugin API and a breaking extras change. PyPI users are on 1.1.1 | Release | 4 | 3 | 2 | **28** | Released as v1.2.0 (PyPI upload awaiting approval) |
+| D2 | Large unreleased backlog: `CHANGELOG.md [Unreleased]` holds ingest, the team server, Playwright JSON, quarantine, alerts, the config schema, the plugin API and a breaking extras change. PyPI users are on 1.1.1 | Release | 4 | 3 | 2 | **28** | Released as v1.2.0, on PyPI |
 | D1 | Streamlit-era dead code in `reporting/report_generator.py`: `sync_all_reports_to_static`, `start_report_server`, `start_static_server`, `collect_behavex_native_report` and `url_for` have no caller in `testo_core/` or `testo_api/`, and six comments still mention Streamlit, which was removed in v1.1 | Code | 3 | 2 | 1 | **25** | Fixed (#141) |
 | D3 | No Python version matrix: classifiers claim 3.12 and 3.13, CI runs only 3.11 | Infrastructure | 2 | 3 | 1 | **25** | Fixed (#141) |
 | T1 | Thin coverage where users plug in: TestBeats reporter 18%, `cli/commands/config.py` 19%, ReportPortal reporter 26%, Anthropic provider 30%, `cli/commands/report.py` 39% | Test | 3 | 3 | 3 | **18** | Fixed (#143) |
@@ -141,11 +160,10 @@ Small gaps: `actionlint_py-1.7.12.25.tar.gz` was committed (*removed in #141*) a
 
 ## What's left
 
-1. **Now (an hour).** S6 (`TESTO_PROTECT_READS=1` in the server image), S5 and S7 (two sentences in the security model), close Dependabot #105, approve the v1.2.0 PyPI upload.
-2. **Soon.** D8 (merge the green Dependabot pull requests), D9 (contributor PR #124), T5 (Allure and Behave coverage).
-3. **When the team server grows.** A1 (a run queue with a concurrency cap and persistent state), A2 (opt-in parallel stages, tracker item 3), TypeScript 7 once `typescript-eslint` supports it.
+1. **Soon.** T5 (Allure and Behave coverage).
+2. **When the team server grows.** A1 (a run queue with a concurrency cap and persistent state) and A2 (opt-in parallel stages, tracker item 3), both being planned in their own thread. Also TypeScript 7 once `typescript-eslint` supports it, and splitting `config/loader.py`, `cli/commands/report.py` and `cycle_execution_manager.py` the next time each one changes.
 
-The first pass's three-phase plan is done; its steps are in the Progress log below.
+The first and second passes' fix plans are done; their steps are in the Progress log below.
 
 ## Progress
 
@@ -154,3 +172,7 @@ The first pass's three-phase plan is done; its steps are in the Progress log bel
 - 2026-10-24, step 3 as separate pull requests: T1 reporter, provider and CLI tests (#143), D7 frontend ESLint (#144), T2 frontend state tests (#145), D5 Vite 8 and Vitest 5 (#146; TypeScript 7 waits on `typescript-eslint`). S3: Taltal chose a cookie login over a read token, so `TESTO_PROTECT_READS=1` makes every read need the token or the `/login` session cookie (the team server compose file turns it on); see the [Team Server](Processes%20&%20Guides/Team%20Server.md) guide.
 - 2026-10-24: D6 done, the mascot moved to `scripts/mascot/` and out of the wheel.
 - 2026-10-24, second pass at `3aeb3b3`: overall 8 → 8.5; new findings S6 to S8, T5, D8 and D9.
+- 2026-10-24: S6 fixed (the server image sets `TESTO_PROTECT_READS=1`), S5 and S7 documented in the ARCHITECTURE security model.
+- 2026-10-24: D8 and D9 done (#151, #152), and 1.2.0 is on PyPI. The publish workflow now retries its post-upload install check (#153).
+- 2026-10-24, third pass at `63ca88f`: overall stays 8.5, and tech debt goes from 8 to 8.5. New findings: S9 and T6.
+- 2026-10-24: S9 fixed (`nosniff` and `frame-ancestors 'self'` on every response, `sandbox` on report attachments) and T6 fixed (the fast suite is green on a machine without `build`).
