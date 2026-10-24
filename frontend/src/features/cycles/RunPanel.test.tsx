@@ -35,7 +35,8 @@ function renderPanel(props: Parameters<typeof RunPanel>[0] = {}) {
 }
 
 function stubApis(source: FakeEventSource) {
-  vi.stubGlobal("EventSource", vi.fn(() => source));
+  // A constructor mock: vitest 4+ refuses `new` on an arrow implementation.
+  vi.stubGlobal("EventSource", vi.fn(function () { return source; }));
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url.endsWith("/api/v1/cycles") && (!init || !init.method || init.method === "GET")) {
