@@ -20,6 +20,7 @@ from testo_api.routes.health import router as health_router
 from testo_api.routes.history import router as history_router
 from testo_api.routes.ingest import router as ingest_router
 from testo_api.security import (
+    add_security_headers,
     cors_settings,
     guard_mutating_request,
     guard_read_request,
@@ -87,6 +88,13 @@ def create_app() -> FastAPI:
         # A middleware, not a dependency, so the static mounts are covered too.
         refusal = guard_read_request(request)
         return refusal if refusal is not None else await call_next(request)
+
+    # Outside protect_reads, so its 401s and redirects get the headers too.
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):  # type: ignore[no-redef]
+        response = await call_next(request)
+        add_security_headers(request, response)
+        return response
 
     # Added last so it runs first: protect_reads' 401 carries the request id.
     @app.middleware("http")

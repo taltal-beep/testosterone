@@ -43,10 +43,10 @@ The score holds because what keeps it from a 9 has not moved. The API runs each 
 
 ## Third-pass findings
 
-| # | Severity | Finding | Fix |
-|---|----------|---------|-----|
-| S9 | Low | **Report files share the API's origin.** `/history` serves run artifacts with `StaticFiles`, and Playwright attachments keep their type, so an uploaded `text/html` attachment opens as a page on the team server's own origin. A script in it runs with the viewer's session and passes the Origin check, so it can start runs. With one shared token, the uploader already has that power, so nothing is gained today. There are also no `X-Content-Type-Options` or `frame-ancestors` headers | Send `Content-Security-Policy: sandbox` and `X-Content-Type-Options: nosniff` on `/history` responses, and `frame-ancestors 'self'` everywhere. Serving reports from a separate origin only matters once there are per-user accounts |
-| T6 | Test | Two tests still assume a contributor's machine: the packaging contract fails when `build` isn't installed, and the rootdir test picks a `pytest` on `PATH` that belongs to another interpreter (without `allure-pytest`). T3 fixed the case where no `pytest` is found, but not this one | Skip the `build` check when the module is missing, and run `sys.executable -m pytest` in the rootdir test |
+| # | Severity | Finding | Fix | Status |
+|---|----------|---------|-----|--------|
+| S9 | Low | **Report files share the API's origin.** `/history` serves run artifacts with `StaticFiles`, and Playwright attachments keep their type, so an uploaded `text/html` attachment opens as a page on the team server's own origin. A script in it runs with the viewer's session and passes the Origin check, so it can start runs. With one shared token, the uploader already has that power, so nothing is gained today. There are also no `X-Content-Type-Options` or `frame-ancestors` headers | Send `Content-Security-Policy: sandbox` and `X-Content-Type-Options: nosniff` on `/history` responses, and `frame-ancestors 'self'` everywhere. Serving reports from a separate origin only matters once there are per-user accounts | Fixed (#155) |
+| T6 | Test | Two tests still assume a contributor's machine: the packaging contract fails when `build` isn't installed, and the rootdir test picks a `pytest` on `PATH` that belongs to another interpreter (without `allure-pytest`). T3 fixed the case where no `pytest` is found, but not this one | Skip the `build` check when the module is missing, and run `sys.executable -m pytest` in the rootdir test | Fixed (#155) |
 
 ## What was checked (second pass)
 
@@ -160,7 +160,7 @@ Small gaps: `actionlint_py-1.7.12.25.tar.gz` was committed (*removed in #141*) a
 
 ## What's left
 
-1. **Soon.** S9 (two response headers on `/history` and one everywhere), T6 (two test fixes), T5 (Allure and Behave coverage).
+1. **Soon.** T5 (Allure and Behave coverage).
 2. **When the team server grows.** A1 (a run queue with a concurrency cap and persistent state) and A2 (opt-in parallel stages, tracker item 3), both being planned in their own thread. Also TypeScript 7 once `typescript-eslint` supports it, and splitting `config/loader.py`, `cli/commands/report.py` and `cycle_execution_manager.py` the next time each one changes.
 
 The first and second passes' fix plans are done; their steps are in the Progress log below.
@@ -175,3 +175,4 @@ The first and second passes' fix plans are done; their steps are in the Progress
 - 2026-10-24: S6 fixed (the server image sets `TESTO_PROTECT_READS=1`), S5 and S7 documented in the ARCHITECTURE security model.
 - 2026-10-24: D8 and D9 done (#151, #152), and 1.2.0 is on PyPI. The publish workflow now retries its post-upload install check (#153).
 - 2026-10-24, third pass at `63ca88f`: overall stays 8.5, and tech debt goes from 8 to 8.5. New findings: S9 and T6.
+- 2026-10-24: S9 fixed (`nosniff` and `frame-ancestors 'self'` on every response, `sandbox` on report attachments) and T6 fixed (the fast suite is green on a machine without `build`).

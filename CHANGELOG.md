@@ -22,6 +22,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Frontend toolchain: Vite 8 (Rolldown) and Vitest 5, replacing Vite 5 and Vitest 2; clears the six dev-only `npm audit` advisories (esbuild dev server, Vitest mocker, tinypool). `vite.config.ts` takes `defineConfig` from `vitest/config`, and the `EventSource` test mocks are constructor functions, which Vitest 4+ requires
 
 ### Fixed
+- The API sends `X-Content-Type-Options: nosniff` and `frame-ancestors 'self'` on every response, and serves report attachments under `/history` with `Content-Security-Policy: sandbox`, so an uploaded HTML attachment can no longer run script on the team server's origin
+- `test_python_build_module_available` skips when `build` is not installed, and the pytest rootdir test runs `python -P -m pytest` with the suite's own interpreter, so a contributor's first local run is green
 - `testo config init` generates a `smoke-test` cycle that runs ordinary pytest tests in `tests/` without a marker filter. Marker-based pytest and BehaveX configurations remain as commented-out examples, so a new pytest project does not require smoke markers or BDD features (#100, thanks @evidentart)
 
 ## [1.2.0] - 2026-10-24
