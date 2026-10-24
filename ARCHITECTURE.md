@@ -221,14 +221,22 @@ The defaults assume one trusted user on one machine:
   check until the window slides (`testo_api/login_throttle.py`, per process).
   See [Switchable Team Features](docs/Specs%20&%20ADRs/Switchable%20Team%20Features%20-%202026-10-24.md).
 
-Accounts give a team per-user access and an audit trail, but a `runner` can still run any
-command (`framework: command`, free-form `args`/`extra_env`) as the API's own user. Exposing
-the server beyond people you trust would also need an allow-list of repos and commands, and
-runs in sandboxed, disposable runners (containers with no host credentials).
+Accounts give a team per-user access and an audit trail, but by default a `runner` can still
+run any command (`framework: command`, free-form `args`/`extra_env`) as the API's own user.
+`TESTO_RUNNER=container` (off by default) closes that: the executor hands each stage to the
+runner service (`testo_core/engine/backends/`), a separate container that alone holds the
+Docker socket and starts the stage with `docker run --rm` in a fresh container. The service,
+not the request, decides the image, the mounts (the stage's directory must be inside one), the
+commands allowed and the limits: no Linux capabilities, `no-new-privileges`, a process limit,
+optional memory, CPU and network limits. Only the stage's own variables travel with it, never
+the server's environment, so a test can't read `TESTO_API_TOKEN` or `DATABASE_URL`. A timeout,
+or the API going away, stops the container. See
+[Throwaway Stage Containers](docs/Specs%20&%20ADRs/Throwaway%20Stage%20Containers%20-%202026-10-24.md).
 
 ## Trade-offs and known limits
 
-- **Stages run sequentially.** A cycle is an ordered list; parallelism lives inside a stage
+- **Stages run one at a time by default.** A cycle is an ordered list (`max_parallel_stages`
+  opts in to running several at once); parallelism otherwise lives inside a stage
   and is per framework: `workers` becomes BehaveX `--parallel-processes`, while pytest
   stages pass xdist's `-n` in `args` and native Behave and `command` stages ignore it.
 - **One execution per cycle at a time.** A second request for a running cycle gets `409`

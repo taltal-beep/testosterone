@@ -84,3 +84,7 @@ Added [Project Review](project-review.md), a whole-repo scorecard and verdict, l
 ## 2026-10-24: switchable team features
 
 Added [Switchable Team Features - 2026-10-24](Specs%20&%20ADRs/Switchable%20Team%20Features%20-%202026-10-24.md) to Specs & ADRs (the `TESTO_RUN_QUEUE` and `TESTO_AUTH` switches).
+
+## 2026-10-24: throwaway stage containers
+
+Added [Throwaway Stage Containers - 2026-10-24](Specs%20&%20ADRs/Throwaway%20Stage%20Containers%20-%202026-10-24.md) to Specs & ADRs (the `TESTO_RUNNER` switch and the runner service).

@@ -9,31 +9,45 @@ updated: 2026-10-24
 
 [Index](Index.md)
 
-Five passes over the whole repo with the tech-debt, code-review, security-review and architecture checklists (the first pass also used testing-strategy). The **fifth pass** is `main` after the worker fix and module split (#159), the switchable run queue (#160) and per-user accounts (#161), 2026-10-24. The fourth pass was `06e636c`, the third `63ca88f`, the second `3aeb3b3` and the first `f1e3521`, all the same day; their findings are kept below with their status. Open items that should outlive this note move to the [Technical Debt Tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md).
+Six passes over the whole repo with the tech-debt, code-review, security-review and architecture checklists (the first pass also used testing-strategy). The **sixth pass** is `main` plus throwaway stage containers (`TESTO_RUNNER=container`), after #163 fixed S10 and S11, 2026-10-24. The fifth pass was `main` after #159 to #161, the fourth was `06e636c`, the third `63ca88f`, the second `3aeb3b3` and the first `f1e3521`, all the same day; their findings are kept below with their status. Open items that should outlive this note move to the [Technical Debt Tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md).
 
 ## Verdict
 
-**Overall: 9.5 / 10 (was 9; the first pass was 8).** Everything the fourth pass left open is done, and the two team features that kept the score below 10 now exist without costing small users anything:
+**Overall: 10 / 10 (was 9.5; the first pass was 8).** The fifth pass set the bar for a 10 as "safe to expose to people you don't trust", and named three things missing. All three are now in, each a switch that is off by default, so one developer or a small team gets exactly the old behaviour:
 
-- **A4 and D10 (#159):** a run that raises `SystemExit` no longer kills its worker, and no Python module is over 500 lines.
-- **Run queue (#160):** `TESTO_RUN_QUEUE=db` keeps waiting runs in the database and queues them again on startup. The default, `memory`, is unchanged.
-- **Accounts (#161):** `TESTO_AUTH=accounts` gives each person a login, a role (`viewer`, `runner`, `admin`) and an audit trail, managed with `testo users`. The default, `token`, is unchanged.
+- **Sign-in throttling (S11, #163):** with accounts, repeated wrong passwords for a name or from an address get `429`.
+- **Reports on their own origin (S10, #163):** `TESTO_REPORTS_ORIGIN` serves report pages from a second hostname with a cookie that can only read reports.
+- **Throwaway stage containers:** `TESTO_RUNNER=container` sends each stage to a separate runner service that starts it in a fresh container: no capabilities, no privilege escalation, a process limit, fixed image and mounts, an allow-list of commands, and only the stage's own variables. The API never gets the Docker socket, and a test can no longer read the server's token or database URL. See [Throwaway Stage Containers](Specs%20&%20ADRs/Throwaway%20Stage%20Containers%20-%202026-10-24.md).
 
-Both switches are explained in one ADR, [Switchable Team Features](Specs%20&%20ADRs/Switchable%20Team%20Features%20-%202026-10-24.md), went into the existing manager and security layer (no second path), and have tests for both settings.
-
-It is not a 10 because of what a 10 would mean here: safe to expose to people you don't trust. A `runner` can still run any command as the server's user (accepted and documented: it is a test runner), and one server process is still the supported setup. S10 and S11, found in this pass, were fixed right after it (#163). TypeScript 7 still waits on `typescript-eslint`. None of this matters for one developer, a small team, or a portfolio review.
+A 10 here is not "nothing left": S12 (stages share the artifacts volume, Low) and the runner service's Docker socket are documented trade-offs, one server process is still the supported setup, and TypeScript 7 waits on `typescript-eslint`. None of them is a defect in what the project claims to do.
 
 ## Scorecard
 
 | Area | Score | Was | In one line |
 |------|:-----:|:---:|-------------|
-| Architecture | **9.5** | 9 | One engine, one service entry point, plugins, a read-side `history/`. Durable queue and accounts are switches inside the existing manager and security layer, each with an ADR; runs are described by a JSON-safe `RunRequest` |
-| Code quality | **9** | 8.5 | `ruff`, `ruff format`, `mypy` and ESLint clean, `vulture` empty, no `TODO`s, no module over 500 lines (largest: `cycle_execution_manager.py`, 493) |
-| Tests | **9** | 9 | 952 fast tests at 86% coverage on Python 3.11 to 3.13; both settings of each switch tested (restart recovery, claim-once, role boundaries, forged cookies, session revocation); 60 frontend tests |
-| Security | **9.5** | 9 | Optional per-user accounts with `scrypt`, roles, revocable sessions and an audit log, on top of every earlier fix. Left: S10, S11 (Low, documented) and the accepted command-runner model |
-| Docs | **9** | 9 | Linted vault, a new ADR, Team Server and Command Reference sections, a security model that names what accounts do and don't protect |
-| CI / DX | **9** | 9 | Python matrix, ESLint, OpenAPI and schema drift checks, image scan, team server smoke, tolerant publish |
-| Tech debt | **9** | 8.5 | The fourth pass's debt is paid. Left: TypeScript 7 (blocked upstream), and two modes per switch to maintain |
+| Architecture | **10** | 9.5 | One engine, one service entry point, plugins, a read-side `history/`. Where a stage runs is a backend behind one `launch()` (the slot the executor's docstring had reserved), so host and container share the log, timeout, JUnit and quarantine code; every team feature is a switch with an ADR |
+| Code quality | **9.5** | 9 | `ruff`, `ruff format`, `mypy` and ESLint clean, `vulture` empty, no `TODO`s, no module over 500 lines (largest: `cycle_execution_manager.py`, 493) |
+| Tests | **9.5** | 9 | 987 fast tests at 86% coverage on Python 3.11 to 3.13; both settings of each switch tested. The runner tests run the real service with a stand-in `docker` (stream, env boundary, timeout, a vanished API), and the container path was also run against a real Docker daemon |
+| Security | **10** | 9.5 | Accounts, throttled sign-in, a separate report origin and sandboxed stages, all opt-in. Left: S12 (Low, documented) and the runner service's socket, which is the documented price of keeping it out of the API |
+| Docs | **9.5** | 9 | Linted vault, an ADR per team feature, a Team Server section per switch with its variables, a security model that says what each switch does and doesn't protect |
+| CI / DX | **9.5** | 9 | Python matrix, ESLint, OpenAPI and schema drift checks, image scan and start check for all three images (the runner service is new), team server smoke, tolerant publish |
+| Tech debt | **9.5** | 9 | Nothing from earlier passes is open but TypeScript 7 (blocked upstream). The cost of the switches is two tested modes each |
+
+## What was checked (sixth pass)
+
+| Check | Result |
+|-------|--------|
+| `ruff check .`, `ruff format --check .`, `mypy`, OpenAPI drift | Clean (mypy: the review machine's known stale-package errors only) |
+| `pytest -m "tier_fast and not quarantined"` | 987 passed, 86% coverage; `backends/container.py` and `runner_service.py` 84% (the rest is the `main()` loop and Docker error paths) |
+| Runner service by hand, real Docker | The stage container has `CapEff 0`, runs as `10001`, sees the stage's variables and not `TESTO_API_TOKEN`; results land on the shared volume; a timeout gives `124` and removes the container; closing the API's connection removes it within a second; the service image starts and reaches the socket through `group_add` |
+| Request checks | Command by name from the allow-list, directory inside a mount, no `..`, valid variable names, `DOCKER_*`/`PATH`/`HOME` dropped, values passed as `-e NAME` (not on the command line), `--flag=value` so nothing in the request reads as a Docker flag; image and mounts never come from the request |
+| Default path | `TESTO_RUNNER` unset: the executor calls `subprocess.Popen` with the same arguments as before; the existing executor tests pass unchanged |
+
+## Sixth-pass findings
+
+| # | Severity | Finding | Fix | Status |
+|---|----------|---------|-----|--------|
+| S12 | Low | **Stage containers share the artifacts volume.** Every stage mounts the whole `testo_artifacts` volume read-write, so a malicious test in one run could read or change another run's artifacts. It can't reach the server's token, database or report history | Mount a per-run subpath (Docker 26+ `volume-subpath`) | Accepted, documented in the ADR |
 
 ## What was checked (fifth pass)
 
@@ -202,7 +216,7 @@ Small gaps: `actionlint_py-1.7.12.25.tar.gz` was committed (*removed in #141*) a
 
 ## What's left
 
-1. **To call it a 10 for an exposed server.** S10 (reports on their own origin) and S11 (sign-in throttling) are fixed in #163 (the report origin is a switch; the throttle is always on with accounts). Left is the big one: sandboxed runners: runs in disposable containers with no host credentials and an allow-list of repos and commands, so a `runner` can't use the server as a shell.
+1. **Hardening the container runner further.** Per-run artifact subpaths (S12), and a Kubernetes or rootless backend behind the same three endpoints for teams that don't want a Docker socket anywhere.
 2. **When upstream allows.** TypeScript 7 once `typescript-eslint` supports it.
 3. **If the team server outgrows one process.** A shared one-run-per-cycle guard and concurrency cap across processes; the durable queue already claims rows safely.
 
@@ -222,3 +236,4 @@ Small gaps: `actionlint_py-1.7.12.25.tar.gz` was committed (*removed in #141*) a
 - 2026-10-24: A4 and D10 fixed (#159); switchable run queue (#160) and per-user accounts (#161) added, both off by default.
 - 2026-10-24, fifth pass after #161: overall 9 → 9.5. New findings: S10 and S11 (both Low, accepted and documented).
 - 2026-10-24: S10 fixed (`TESTO_REPORTS_ORIGIN`) and S11 fixed (sign-in throttling) in #163.
+- 2026-10-24, sixth pass with throwaway stage containers (`TESTO_RUNNER=container`): overall 9.5 → 10. New finding: S12 (Low, accepted).

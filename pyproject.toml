@@ -59,6 +59,7 @@ dependencies = [
 [project.scripts]
 testo = "testo_core.cli.app:main"
 testo-api = "testo_api.main:run"
+testo-runner-service = "testo_core.engine.backends.runner_service:main"
 
 [project.optional-dependencies]
 # Behave and BehaveX stages (`equipment: behave` / `behavex`) and their Allure formatter.

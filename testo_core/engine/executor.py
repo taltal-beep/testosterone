@@ -12,8 +12,9 @@ Responsibilities:
 An adapter with ``runs_process = False`` (the ``junit`` equipment behind
 ``testo ingest``) skips the subprocess: the stage only records JUnit XML.
 
-No Docker, no SSH, no DB.  Future backends (Docker, remote runner) will live
-under ``testo_core/engine/backends/`` and adapt to the same return type.
+Where the process runs is :mod:`testo_core.engine.backends`: on this machine by
+default, or in a throwaway container through the runner service
+(``TESTO_RUNNER=container``). Either way the result is the same type.
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from testo_core.config.schema import QuarantineRule, Stage
+from testo_core.engine.backends import RunnerError, StageProcess, launch
 from testo_core.engine.log_buffer import LogBuffer, drain_stream_into_buffer, merged_env
 from testo_core.engine.quarantine import WAIVABLE_RETURNCODE, QuarantineVerdict
 from testo_core.engine.quarantine import evaluate as evaluate_quarantine
@@ -229,18 +231,28 @@ def _run_resolved_stage(
     )
 
     env = merged_env(parent_env if parent_env is not None else os.environ, stage.extra_env)
+    # The variables this stage adds on top of its parent's environment. A stage that
+    # runs in a container (TESTO_RUNNER=container) gets only these.
+    stage_keys = {str(key) for key, _ in stage.extra_env or ()}
     env.setdefault("TESTO_LAST_TEST_TYPE", stage.framework)
     env.setdefault("TESTO_ARTIFACTS_ROOT", str(artifacts_root.expanduser().resolve()))
     env["TESTO_SHARED_ALLURE_RESULTS_DIR"] = str(results_dir)
+    stage_keys |= {
+        "TESTO_LAST_TEST_TYPE",
+        "TESTO_ARTIFACTS_ROOT",
+        "TESTO_SHARED_ALLURE_RESULTS_DIR",
+    }
     adapter_env = getattr(adapter, "extra_env", None)
     if adapter_env is not None:
         for key, value in adapter_env().items():
             env.setdefault(key, value)
+            stage_keys.add(key)
     # Env that depends on the stage's paths (e.g. where Playwright writes its reports).
     stage_env = getattr(adapter, "stage_env", None)
     if stage_env is not None:
         for key, value in stage_env(target_repo=target_repo, results_dir=results_dir).items():
             env.setdefault(key, value)
+            stage_keys.add(key)
 
     started_at = time.time()
     returncode: int
@@ -249,19 +261,19 @@ def _run_resolved_stage(
 
     with LogBuffer(log_path=log_path, on_chunk=on_chunk) as buffer:
         try:
-            proc = subprocess.Popen(  # noqa: S603 - argv is built by trusted adapters
+            proc = launch(
                 argv,
-                cwd=str(target_repo),
+                cwd=target_repo,
                 env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                bufsize=0,
-                close_fds=True,
+                stage_env={key: env[key] for key in stage_keys},
             )
-        except FileNotFoundError as exc:
-            error = f"executable not found: {exc.filename or argv[0]}"
-            if argv and argv[0] in _BDD_EXECUTABLES:
-                error += " (Behave and BehaveX are optional: pip install 'testo-core[bdd]')"
+        except (FileNotFoundError, RunnerError) as exc:
+            if isinstance(exc, RunnerError):
+                error = str(exc)
+            else:
+                error = f"executable not found: {exc.filename or argv[0]}"
+                if argv and argv[0] in _BDD_EXECUTABLES:
+                    error += " (Behave and BehaveX are optional: pip install 'testo-core[bdd]')"
             finished_at = time.time()
             return _failure_result(
                 stage=stage,
@@ -273,7 +285,8 @@ def _run_resolved_stage(
                 argv=argv,
                 buffer=buffer,
                 tail_lines=tail_lines,
-                returncode=127,
+                # 125: like `docker run` when it can't start the container.
+                returncode=125 if isinstance(exc, RunnerError) else 127,
                 target_repo=target_repo,
             )
 
@@ -427,7 +440,7 @@ def _record_junit_stage(
     )
 
 
-def _terminate(proc: subprocess.Popen[bytes]) -> int:
+def _terminate(proc: StageProcess) -> int:
     """Try SIGTERM, then SIGKILL.  Returns the final returncode."""
     try:
         if sys.platform == "win32":

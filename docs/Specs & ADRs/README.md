@@ -35,6 +35,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Record results from any CI (`testo ingest`) and a shared team server | [Ingest and Team Server - 2026-10-22](Ingest%20and%20Team%20Server%20-%202026-10-22.md) |
 | Capped concurrent API runs and opt-in parallel stages | [Scale Runs and Stages - 2026-10-24](Scale%20Runs%20and%20Stages%20-%202026-10-24.md) |
 | Optional persistent run queue and per-user accounts, off by default | [Switchable Team Features - 2026-10-24](Switchable%20Team%20Features%20-%202026-10-24.md) |
+| Running each server-started stage in a throwaway container, off by default | [Throwaway Stage Containers - 2026-10-24](Throwaway%20Stage%20Containers%20-%202026-10-24.md) |
 | Changelog enforcement | [changelog_automation_policy.md](../changelog_automation_policy.md) |
 
 Older plans and incident write-ups (Allure 3 migration plan, reporters port, report-links fix, CLI–UI parity, the `doctor`/`clean`/`watch`/`init` restore) are in the [Archive](../Archive/README.md).

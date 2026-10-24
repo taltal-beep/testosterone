@@ -35,6 +35,13 @@ jobs:
             verify: >-
               --entrypoint python testo-server:scan -c
               "import testo_api.main, pathlib; assert pathlib.Path('/app/ui/index.html').is_file()"
+          # Starts each stage in a throwaway container (deploy/server/docker-compose.runner.yml).
+          - image: testo-runner-service
+            dockerfile: Dockerfile.testo-runner-service
+            # The service file loads and the docker client is in place.
+            verify: >-
+              --entrypoint python testo-runner-service:scan -c
+              "import runpy, shutil; runpy.run_path('/app/runner_service.py'); assert shutil.which('docker')"
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
       IMAGE_NAME: ${{ github.repository_owner }}/${{ matrix.image }}

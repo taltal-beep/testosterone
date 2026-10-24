@@ -232,6 +232,17 @@ def run(argv: list[str] | None = None) -> int:
             "stays the admin credential for CI.\n"
         )
         return 2
+    from testo_core.engine.backends import runner_kind
+
+    if runner_kind() == "container" and not (
+        os.environ.get("TESTO_RUNNER_URL", "").strip()
+        and os.environ.get("TESTO_RUNNER_TOKEN", "").strip()
+    ):
+        sys.stderr.write(
+            "TESTO_RUNNER=container needs TESTO_RUNNER_URL and TESTO_RUNNER_TOKEN: "
+            "the runner service that starts each stage in its own container.\n"
+        )
+        return 2
     if (
         os.environ.get("TESTO_PROTECT_READS", "0") in ("1", "true", "True")
         and not os.environ.get("TESTO_API_TOKEN", "").strip()
