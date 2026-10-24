@@ -120,3 +120,4 @@ Each phase fits next to feature work.
 
 - 2026-10-24, step 1 done in the same pull request as this note: S1 (read routes only load config file names), S2 (public bind without a token refuses to start), S4 (actions pinned to SHAs, read-only `permissions:`), A3 (API version from package metadata), D1 (dead report helpers and the stray tarball removed).
 - 2026-10-24, step 2 in the same pull request: D3 (a `test (python 3.12/3.13)` CI job, suite green on both in clean venvs) and T3 (the rootdir test finds `pytest` on `PATH` when it is not next to the interpreter; BehaveX tests skip without the `bdd` extra). D4 re-scored after a clean-venv check. The release (D2) waits on Taltal.
+- 2026-10-24: D6 done, the mascot moved to `scripts/mascot/` and out of the wheel.
