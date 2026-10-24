@@ -13,12 +13,18 @@ from fastapi.staticfiles import StaticFiles
 
 from testo_api.routes.ai import router as ai_router
 from testo_api.routes.analytics import router as analytics_router
+from testo_api.routes.auth import router as auth_router
 from testo_api.routes.cycles import router as cycles_router
 from testo_api.routes.dashboard import router as dashboard_router
 from testo_api.routes.health import router as health_router
 from testo_api.routes.history import router as history_router
 from testo_api.routes.ingest import router as ingest_router
-from testo_api.security import cors_settings, guard_mutating_request, is_loopback_host
+from testo_api.security import (
+    cors_settings,
+    guard_mutating_request,
+    guard_read_request,
+    is_loopback_host,
+)
 from testo_api.ui import SpaStaticFiles, ui_dir
 from testo_core import __version__
 from testo_core.paths import STATIC_HISTORY_ROOT
@@ -60,6 +66,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(ai_router)
+    app.include_router(auth_router)
     app.include_router(cycles_router)
     app.include_router(history_router)
     app.include_router(analytics_router)
@@ -75,6 +82,13 @@ def create_app() -> FastAPI:
         # Last, so every API route and /history wins over the UI's catch-all.
         app.mount("/", SpaStaticFiles(directory=built_ui, html=True), name="ui")
 
+    @app.middleware("http")
+    async def protect_reads(request: Request, call_next):  # type: ignore[no-redef]
+        # A middleware, not a dependency, so the static mounts are covered too.
+        refusal = guard_read_request(request)
+        return refusal if refusal is not None else await call_next(request)
+
+    # Added last so it runs first: protect_reads' 401 carries the request id.
     @app.middleware("http")
     async def attach_request_id(request: Request, call_next):  # type: ignore[no-redef]
         request.state.request_id = str(uuid4())
@@ -173,6 +187,13 @@ def run(argv: list[str] | None = None) -> int:
             "testo-api is binding %s without TESTO_API_TOKEN (TESTO_ALLOW_UNAUTHENTICATED=1): "
             "anyone who can reach this port can start runs.",
             host,
+        )
+    if (
+        os.environ.get("TESTO_PROTECT_READS", "0") in ("1", "true", "True")
+        and not os.environ.get("TESTO_API_TOKEN", "").strip()
+    ):
+        logger.warning(
+            "TESTO_PROTECT_READS has no effect without TESTO_API_TOKEN; reads stay open."
         )
     uvicorn.run("testo_api.main:app", host=host, port=port, reload=reload)
     return 0
