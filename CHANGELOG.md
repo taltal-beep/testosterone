@@ -18,6 +18,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - The pixel mascot's frame source moved from `testo_core/mascot/` to `scripts/mascot/`, so it no longer ships in the wheel; the UI animations are unchanged. Play it with `python -m scripts.mascot flex`, regenerate the frontend frames with `python -m scripts.mascot.export_ts`
 - Frontend toolchain: Vite 8 (Rolldown) and Vitest 5, replacing Vite 5 and Vitest 2; clears the six dev-only `npm audit` advisories (esbuild dev server, Vitest mocker, tinypool). `vite.config.ts` takes `defineConfig` from `vitest/config`, and the `EventSource` test mocks are constructor functions, which Vitest 4+ requires
 
+### Fixed
+- `testo config init` generates a `smoke-test` cycle that runs ordinary pytest tests in `tests/` without a marker filter. Marker-based pytest and BehaveX configurations remain as commented-out examples, so a new pytest project does not require smoke markers or BDD features (#100, thanks @evidentart)
+
 ## [1.2.0] - 2026-10-24
 
 ### Added
@@ -56,7 +59,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - README: a "What's new" section for the changes since 1.1.1, new screenshots and UI walkthrough of the restyled UI on real self-test and fake-api runs (including the flaky tests card), a terminal recording of `testo flaky`, `testo report markdown` and `testo plugins`, and the Playwright equipment, plugins, `testo report markdown`, `testo summary` and PR comments in the reference sections
 
 ### Fixed
-- `testo config init` generates a `smoke-test` cycle that runs ordinary pytest tests in `tests/` without a marker filter. Marker-based pytest and BehaveX configurations remain as commented-out examples, so a new pytest project does not require smoke markers or BDD features (#100)
 - BehaveX stages get BehaveX's own HTML report again. The adapter passed BehaveX's Allure `--formatter`, and BehaveX skips `report.html` whenever a formatter is set, so the report Testo showed was re-rendered afterwards without scenario logs. BehaveX now runs plain and the executor converts its `report.json` to Allure results after the stage (`testo_core/reporting/behavex_allure.py`). A `--formatter` in a stage's `args` is still passed through
 - New run-history records include the repository used by a run when its attempted stages have one resolved target; runs using multiple repositories leave it unknown.
 

@@ -69,7 +69,7 @@ def test_init_writes_a_starter_that_validates(runner: CliRunner, tmp_path: Path)
     assert result.exit_code == 0, result.output
     text = out.read_text(encoding="utf-8")
     assert text.startswith(f"# yaml-language-server: $schema={SCHEMA_ID}")
-    assert set(yaml.safe_load(text)["cycles"]) == {"smoke-test", "nightly-build"}
+    assert set(yaml.safe_load(text)["cycles"]) == {"smoke-test"}  # nightly-build is commented out
     validated = runner.invoke(app, ["config", "validate", "-c", str(out), "--no-check-executables"])
     assert validated.exit_code == 0, validated.output
 
