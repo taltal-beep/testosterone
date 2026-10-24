@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
+from testo_api.report_origin import route_report_request
 from testo_api.routes.ai import router as ai_router
 from testo_api.routes.analytics import router as analytics_router
 from testo_api.routes.auth import router as auth_router
@@ -110,7 +111,9 @@ def create_app() -> FastAPI:
     async def protect_reads(request: Request, call_next):  # type: ignore[no-redef]
         # A middleware, not a dependency, so the static mounts are covered too. In a
         # thread: with accounts on, checking the session reads the database.
-        refusal = await run_in_threadpool(guard_read_request, request)
+        refusal = await run_in_threadpool(route_report_request, request)
+        if refusal is None:
+            refusal = await run_in_threadpool(guard_read_request, request)
         return refusal if refusal is not None else await call_next(request)
 
     # Outside protect_reads, so its 401s and redirects get the headers too.

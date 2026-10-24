@@ -21,7 +21,7 @@ Five passes over the whole repo with the tech-debt, code-review, security-review
 
 Both switches are explained in one ADR, [Switchable Team Features](Specs%20&%20ADRs/Switchable%20Team%20Features%20-%202026-10-24.md), went into the existing manager and security layer (no second path), and have tests for both settings.
 
-It is not a 10 because of what a 10 would mean here: safe to expose to people you don't trust. A `runner` can still run any command as the server's user (accepted and documented: it is a test runner), sign-in has no lockout (S11), report pages share the API's origin (S10), and one server process is still the supported setup. TypeScript 7 still waits on `typescript-eslint`. None of these matter for one developer, a small team, or a portfolio review.
+It is not a 10 because of what a 10 would mean here: safe to expose to people you don't trust. A `runner` can still run any command as the server's user (accepted and documented: it is a test runner), and one server process is still the supported setup. S10 and S11, found in this pass, were fixed right after it (#163). TypeScript 7 still waits on `typescript-eslint`. None of this matters for one developer, a small team, or a portfolio review.
 
 ## Scorecard
 
@@ -50,8 +50,8 @@ It is not a 10 because of what a 10 would mean here: safe to expose to people yo
 
 | # | Severity | Finding | Fix | Status |
 |---|----------|---------|-----|--------|
-| S10 | Low | **Report pages share the API's origin.** S9 sandboxed attachments, but the Allure report pages under `/history` run script on the server's origin. With accounts, a viewer opening a report that an XSS in the report generator let through would act with the viewer's role. Needs a bug in Allure's own escaping, and a viewer can't write anyway | Serve `/history` from a separate origin (`TESTO_REPORTS_ORIGIN`) if the server is exposed to people you don't trust | Accepted (documented) |
-| S11 | Low | **No sign-in lockout.** Each failed attempt costs an `scrypt` hash and is audited, but nothing slows a password guesser down | Rate-limit `/api/v1/auth/login` at the reverse proxy (documented in the security model), or add a per-name backoff | Accepted (documented) |
+| S10 | Low | **Report pages share the API's origin.** S9 sandboxed attachments, but the Allure report pages under `/history` run script on the server's origin. With accounts, a viewer opening a report that an XSS in the report generator let through would act with the viewer's role. Needs a bug in Allure's own escaping, and a viewer can't write anyway | Serve `/history` from a separate origin (`TESTO_REPORTS_ORIGIN`) if the server is exposed to people you don't trust | Fixed (#163) |
+| S11 | Low | **No sign-in lockout.** Each failed attempt costs an `scrypt` hash and is audited, but nothing slows a password guesser down | Rate-limit `/api/v1/auth/login` at the reverse proxy (documented in the security model), or add a per-name backoff | Fixed (#163) |
 
 ## What was checked (fourth pass, 06e636c)
 
@@ -202,7 +202,7 @@ Small gaps: `actionlint_py-1.7.12.25.tar.gz` was committed (*removed in #141*) a
 
 ## What's left
 
-1. **To call it a 10 for an exposed server.** Reports on a separate origin (S10), a sign-in backoff (S11), and, the big one, sandboxed runners: runs in disposable containers with no host credentials and an allow-list of repos and commands, so a `runner` can't use the server as a shell.
+1. **To call it a 10 for an exposed server.** S10 (reports on their own origin) and S11 (sign-in throttling) are fixed in #163 (the report origin is a switch; the throttle is always on with accounts). Left is the big one: sandboxed runners: runs in disposable containers with no host credentials and an allow-list of repos and commands, so a `runner` can't use the server as a shell.
 2. **When upstream allows.** TypeScript 7 once `typescript-eslint` supports it.
 3. **If the team server outgrows one process.** A shared one-run-per-cycle guard and concurrency cap across processes; the durable queue already claims rows safely.
 
@@ -221,3 +221,4 @@ Small gaps: `actionlint_py-1.7.12.25.tar.gz` was committed (*removed in #141*) a
 - 2026-10-24, fourth pass after #156 and #157: overall 8.5 → 9. A1 and A2 fixed by #156, T5 by #157. New findings: A4 and D10.
 - 2026-10-24: A4 and D10 fixed (#159); switchable run queue (#160) and per-user accounts (#161) added, both off by default.
 - 2026-10-24, fifth pass after #161: overall 9 → 9.5. New findings: S10 and S11 (both Low, accepted and documented).
+- 2026-10-24: S10 fixed (`TESTO_REPORTS_ORIGIN`) and S11 fixed (sign-in throttling) in #163.

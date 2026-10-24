@@ -277,6 +277,8 @@ def guard_read_request(request: Request) -> Response | None:
     """
     if not reads_protected() or request.method == "OPTIONS":
         return None
+    if request.scope.get("state", {}).get("report_reader"):
+        return None  # the reports host checked its own cookie (`report_origin`)
     path = request.url.path
     if path in _OPEN_PATHS or path.startswith(_OPEN_PREFIXES) or is_authenticated(request):
         return None

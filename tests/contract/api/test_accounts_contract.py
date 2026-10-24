@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from testo_api.login_throttle import LoginThrottle, login_throttle
 from testo_api.main import create_app, run
 from testo_api.security import account_store
 from testo_core.accounts import AccountError, AccountStore, hash_password, verify_password
@@ -28,6 +29,7 @@ def accounts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Accoun
     monkeypatch.delenv("TESTO_CORS_ORIGINS", raising=False)
     reset_engine_cache()
     account_store.cache_clear()
+    login_throttle.reset()
     store = account_store()
     for name, role in (("vera", "viewer"), ("rui", "runner"), ("ada", "admin")):
         store.add(name, _PASSWORD, role)
@@ -183,3 +185,51 @@ def test_accounts_mode_without_a_token_refuses_to_start(
     monkeypatch.setenv("TESTO_API_HOST", "127.0.0.1")
     assert run([]) == 2
     assert "TESTO_AUTH=accounts needs TESTO_API_TOKEN" in capsys.readouterr().err
+
+
+def _attempt(client: TestClient, username: str, password: str):  # noqa: ANN202
+    return client.post(
+        "/api/v1/auth/login",
+        data={"username": username, "token": password, "next": "/"},
+        follow_redirects=False,
+    )
+
+
+def test_repeated_wrong_passwords_lock_the_name_for_a_while(
+    accounts: AccountStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = TestClient(create_app())
+    for _ in range(5):
+        assert _attempt(client, "vera", "wrong password").status_code == 401
+    locked = _attempt(client, "vera", _PASSWORD)  # even the right password waits
+    assert locked.status_code == 429
+    assert int(locked.headers["Retry-After"]) > 0
+    assert accounts.recent(1)[0].status == 429
+    # Other names are not affected.
+    assert _attempt(client, "rui", _PASSWORD).status_code == 303
+
+
+def test_a_successful_sign_in_clears_the_count(accounts: AccountStore) -> None:
+    client = TestClient(create_app())
+    for _ in range(4):
+        _attempt(client, "vera", "wrong password")
+    assert _attempt(client, "vera", _PASSWORD).status_code == 303
+    for _ in range(4):
+        _attempt(client, "vera", "wrong password")
+    assert _attempt(client, "vera", _PASSWORD).status_code == 303
+
+
+def test_throttle_window_and_address_limit() -> None:
+    now = [1000.0]
+    throttle = LoginThrottle(max_failures=2, window_s=60, clock=lambda: now[0])
+    throttle.failed("a", "1.2.3.4")
+    assert throttle.retry_after("a", "1.2.3.4") == 0
+    throttle.failed("A ", "1.2.3.4")  # names compare case- and space-insensitively
+    assert throttle.retry_after("a", "1.2.3.4") == 61
+    now[0] += 60
+    assert throttle.retry_after("a", "1.2.3.4") == 0  # the window slid past both
+    # One address spraying many names hits the address limit (4x the name limit).
+    for i in range(8):
+        throttle.failed(f"user{i}", "5.6.7.8")
+    assert throttle.retry_after("someone-new", "5.6.7.8") > 0
+    assert throttle.retry_after("someone-new", "9.9.9.9") == 0

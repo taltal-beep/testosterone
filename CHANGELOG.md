@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- Sign-in throttling with `TESTO_AUTH=accounts`: after `TESTO_LOGIN_MAX_FAILURES` (default 5) wrong passwords for a name in 15 minutes, or four times that from one address, `/login` answers `429` until the window slides
+- `TESTO_REPORTS_ORIGIN` serves report pages from a second hostname, so script in a report can't act with the viewer's session on the API's origin. Off by default
 - Per-user accounts for the team server, off by default: with `TESTO_AUTH=accounts` people sign in with their own username and password, roles `viewer` / `runner` / `admin` decide who can start runs or change settings, every write and sign-in is in an audit log (`GET /api/v1/audit`), and `testo users` manages accounts. The UI shows who is signed in. The API token keeps working as an admin for CI
 - `TESTO_RUN_QUEUE=db` keeps API runs that are waiting for a worker in the database, and the server queues them again on startup, so a restart or upgrade no longer drops them. Default `memory` (unchanged)
 - Opt-in parallel stages: a cycle with `max_parallel_stages: N` runs up to N stages at once (default `1`, unchanged). Events and the renderer stay on one thread, results keep config order, `fail_fast` starts no new stages after a failure, and stage names must be unique in a parallel cycle
