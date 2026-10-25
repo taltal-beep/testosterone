@@ -385,6 +385,21 @@ testo -v
 
 ---
 
+## `pytest --testo`
+
+testo-core installs a pytest plugin (entry point `pytest11`, `testo_core/pytest_plugin.py`). It does nothing unless asked:
+
+| Option | Effect |
+|--------|--------|
+| `--testo` | Record this session as a run (also `TESTO_RECORD=1`) |
+| `--testo-cycle NAME` | Cycle to record under; implies `--testo`. Default: the rootdir's name |
+| `--testo-tier unit\|integration\|e2e` | Pyramid tier of the tests (default `unit`) |
+| `--testo-server URL` | Upload to a [team server](../Processes%20&%20Guides/Team%20Server.md) instead (default `$TESTO_SERVER_URL`, token from `$TESTO_API_TOKEN`) |
+
+The session's JUnit XML (yours if `--junitxml` is set, else a temporary file in a `.testo-*` folder of the rootdir, removed afterwards) is recorded through the same path as `testo ingest`, into a `pytest` stage, and the run writes `artifacts/` like `testo ingest` does. One line in pytest's summary says where it went. Recording never changes pytest's exit code: a problem is reported on that line instead. Nothing is recorded when no tests ran, or on a pytest-xdist worker (the controller records).
+
+---
+
 ## Other entry points (not `testo` Typer tree)
 
 | Command | Package | Role |

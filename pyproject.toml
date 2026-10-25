@@ -61,6 +61,10 @@ testo = "testo_core.cli.app:main"
 testo-api = "testo_api.main:run"
 testo-runner-service = "testo_core.engine.backends.runner_service:main"
 
+# `pytest --testo` records the session as a run; inert without the flag.
+[project.entry-points.pytest11]
+testo = "testo_core.pytest_plugin"
+
 [project.optional-dependencies]
 # Behave and BehaveX stages (`equipment: behave` / `behavex`) and their Allure formatter.
 # Optional since 1.2: pytest, Playwright, `command` and `testo ingest` don't need them.
