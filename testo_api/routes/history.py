@@ -28,8 +28,9 @@ router = APIRouter(prefix="/api/v1", tags=["history"])
 
 
 @router.get("/runs", response_model=RunListResponse)
-def list_runs(limit: int = 30) -> RunListResponse:
-    sessions = list_run_sessions(limit=limit)
+def list_runs(limit: int = 30, cycle: str | None = None) -> RunListResponse:
+    """Recent runs, newest first; ``cycle`` keeps only that cycle's."""
+    sessions = list_run_sessions(limit=limit, cycle=cycle or None)
     items = [
         RunListItem(
             run_id=s.run_id,

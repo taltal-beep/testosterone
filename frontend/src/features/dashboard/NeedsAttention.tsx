@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 import { apiClient, type DashboardAttentionResponse } from "../../lib/api-client";
 import { Badge, Card } from "../../components/ui";
-import { countLabel, formatDuration, testPath } from "../../lib/format";
+import { countLabel, formatDuration, formatPercent, testPath } from "../../lib/format";
 
 function FailingCycles({ failing }: { failing: DashboardAttentionResponse["failing"] }) {
   return (
@@ -57,7 +57,7 @@ function TestList({
 
 function slowdown(test: DashboardAttentionResponse["slower"][number]): string {
   if (test.slowdown_ms == null) return "";
-  const pct = test.slowdown_pct != null ? ` (+${Math.round(test.slowdown_pct)}%)` : "";
+  const pct = test.slowdown_pct != null ? ` (+${formatPercent(test.slowdown_pct)})` : "";
   return `+${formatDuration(test.slowdown_ms)}${pct}`;
 }
 
@@ -79,7 +79,9 @@ export function NeedsAttention() {
       <p className={`text-sm ${failing.length ? "text-ink-200" : "text-success-300"}`}>
         {failing.length === 0
           ? `All ${countLabel(cycles, "cycle")} passed their latest run.`
-          : `${passing} of ${countLabel(cycles, "cycle")} passed their latest run; ${countLabel(failing.length, "cycle")} ${failing.length === 1 ? "is" : "are"} red.`}
+          : passing === 0
+            ? `${cycles === 1 ? "The only cycle is" : `All ${countLabel(cycles, "cycle")} are`} red.`
+            : `${passing} of ${countLabel(cycles, "cycle")} passed their latest run; ${countLabel(failing.length, "cycle")} ${failing.length === 1 ? "is" : "are"} red.`}
         {quiet ? " Nothing needs you." : ""}
       </p>
       {failing.length > 0 ? (

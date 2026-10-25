@@ -4524,6 +4524,7 @@
     },
     "/api/v1/runs": {
       "get": {
+        "description": "Recent runs, newest first; ``cycle`` keeps only that cycle's.",
         "operationId": "list_runs_api_v1_runs_get",
         "parameters": [
           {
@@ -4534,6 +4535,22 @@
               "default": 30,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cycle"
             }
           }
         ],

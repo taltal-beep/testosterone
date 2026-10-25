@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 import { apiClient, type TestSummaryItem } from "../../lib/api-client";
 import { Badge, Card, Spinner } from "../../components/ui";
-import { formatDuration, testPath } from "../../lib/format";
+import { formatDuration, formatPercent, testPath } from "../../lib/format";
 
 const LIST_LIMIT = 5;
 const SEARCH_LIMIT = 25;
@@ -113,7 +113,7 @@ export function CycleTestsCard({ cycle }: { cycle: string }) {
                   <TestLink cycle={cycle} test={test} />
                   <span className="shrink-0 text-xs text-warn-300">
                     +{formatDuration(test.slowdown_ms)}
-                    {test.slowdown_pct != null ? ` (+${test.slowdown_pct}%)` : ""}
+                    {test.slowdown_pct != null ? ` (+${formatPercent(test.slowdown_pct)})` : ""}
                   </span>
                 </li>
               ))}

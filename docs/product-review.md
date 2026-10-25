@@ -64,7 +64,7 @@ Every area except trust, in the order that moves the score most. "Realistic" say
 | C12 | Low | "0 of 3 cycles passed their latest run; 3 cycles are red." | "All 3 cycles are red." when none passed |
 | C13 | Low | Runs says "Every archived cycle run, newest first." "Archived" is an internal word, and ingested runs aren't cycle runs to the reader | "Every recorded run, newest first." |
 
-Second-pass findings P10 to P14, D7, A8, A9, C8 and C10 are fixed (#176 to #181).
+Second-pass findings P10 to P14, D7, A8, A9, C8 and C10 are fixed (#176 to #181). Third-pass findings P15, D8 and C11 to C13 are fixed since (see [Product to Ten](Specs%20%26%20ADRs/Product%20to%20Ten%20-%202026-10-25.md#third-pass-fixes-a-cycles-run-history-a-chart-scale-copy-p15-d8-c11-to-c13)).
 
 ## Second pass findings
 

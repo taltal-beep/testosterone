@@ -137,8 +137,11 @@ export const apiClient = {
   getWhoAmI(): Promise<WhoAmI> {
     return api<WhoAmI>("/api/v1/auth/me");
   },
-  listRuns(): Promise<RunListResponse> {
-    return api<RunListResponse>("/api/v1/runs");
+  async listRuns(cycle?: string): Promise<RunListResponse> {
+    if (!cycle) return api<RunListResponse>("/api/v1/runs");
+    const data = await api<RunListResponse>(`/api/v1/runs?${new URLSearchParams({ cycle })}`);
+    // The static build answers every /runs request with the full list; keep only this cycle's.
+    return { ...data, items: data.items.filter((run) => run.cycle === cycle) };
   },
   getRun(runId: string): Promise<RunDetailResponse> {
     return api<RunDetailResponse>(`/api/v1/runs/${runId}`);

@@ -414,7 +414,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Runs */
+        /**
+         * List Runs
+         * @description Recent runs, newest first; ``cycle`` keeps only that cycle's.
+         */
         get: operations["list_runs_api_v1_runs_get"];
         put?: never;
         post?: never;
@@ -2322,6 +2325,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                cycle?: string | null;
             };
             header?: never;
             path?: never;

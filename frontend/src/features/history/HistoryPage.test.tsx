@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
@@ -9,11 +9,21 @@ function run(run_id: string, cycle: string, created_at: number) {
   return { run_id, cycle, created_at, status: "COMPLETED", returncode: 0, health_pct: 100 };
 }
 
-function renderWithRuns(items: ReturnType<typeof run>[]) {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ items }) }));
+function renderWithRuns(items: ReturnType<typeof run>[], path = "/runs") {
+  const fetchMock = vi.fn((input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes("/api/v1/cycles")) {
+      const names = [...new Set(items.map((item) => item.cycle))];
+      return Promise.resolve({ ok: true, json: async () => ({ items: names.map((name) => ({ name, stage_count: 1 })) }) });
+    }
+    const cycle = new URL(url, "http://x").searchParams.get("cycle");
+    // Like the API: ?cycle= keeps that cycle's runs.
+    return Promise.resolve({ ok: true, json: async () => ({ items: items.filter((i) => !cycle || i.cycle === cycle) }) });
+  });
+  vi.stubGlobal("fetch", fetchMock);
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
         <HistoryPage />
       </MemoryRouter>
     </QueryClientProvider>
@@ -36,5 +46,18 @@ describe("HistoryPage", () => {
 
     await waitFor(() => expect(screen.getByText("Runs")).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Compare latest two" })).not.toBeInTheDocument();
+  });
+
+  it("filters to one cycle and says how often it passed", async () => {
+    const failed = { ...run("a-2", "a", 3), returncode: 1, status: "FAILED" };
+    renderWithRuns([failed, run("b-1", "b", 2), run("a-1", "a", 1)], "/runs?cycle=a");
+
+    await waitFor(() => expect(screen.getByTestId("pass-rate")).toHaveTextContent("Passed 1 of the last 2 runs (50%)."));
+    expect(screen.getByText("Runs of a, newest first.")).toBeInTheDocument();
+    expect(screen.queryByText(/^b ·/)).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Cycle"), { target: { value: "" } });
+    await waitFor(() => expect(screen.getByText("Every recorded run, newest first.")).toBeInTheDocument());
+    expect(screen.queryByTestId("pass-rate")).not.toBeInTheDocument();
   });
 });
