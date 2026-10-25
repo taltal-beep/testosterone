@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- A try-it page (`/try`, "Try a file" under Tools, also on the static demo): drop JUnit XML files, or use the sample, and see the run the way Testosterone shows one (verdict, failing tests with shared causes grouped, slowest tests), read in the browser with nothing uploaded
+
 ## [1.3.0] - 2026-10-25
 
 ### Added

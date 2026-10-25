@@ -10,6 +10,7 @@ import { QuickRunPage } from "../features/execution/QuickRunPage";
 import { HistoryPage } from "../features/history/HistoryPage";
 import { RunDetailPage } from "../features/run-detail/RunDetailPage";
 import { TestPage } from "../features/tests/TestPage";
+import { TryPage } from "../features/try/TryPage";
 import { AIIntegrationSettingsPage } from "../features/settings/AIIntegrationSettingsPage";
 
 export const routes = [
@@ -48,6 +49,10 @@ export const routes = [
       {
         path: "quick-run",
         element: <QuickRunPage />
+      },
+      {
+        path: "try",
+        element: <TryPage />
       },
       {
         path: "settings/ai",
