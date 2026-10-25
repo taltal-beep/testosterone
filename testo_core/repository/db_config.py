@@ -109,6 +109,7 @@ def create_db_and_tables() -> None:
     # Import registers ``RunRecord`` on ``SQLModel.metadata``.
     from testo_core.repository.models import (  # noqa: F401
         AuditEvent,
+        FailureTriage,
         QueuedRun,
         ReportArchive,
         RunRecord,

@@ -26,6 +26,9 @@ export type RunReportsResponse = Schemas["RunReportsResponse"];
 export type RunPyramidResponse = Schemas["RunPyramidResponse"];
 export type RunFailuresResponse = Schemas["RunFailuresResponse"];
 export type FailingTestItem = Schemas["FailingTestItem"];
+export type TriageItem = Schemas["TriageItem"];
+export type TriageRequest = Schemas["TriageRequest"];
+export type TriageCause = TriageItem["cause"];
 export type PyramidShape = RunPyramidResponse["shape"];
 
 export type DeltaMetricNode = Schemas["DeltaMetricNode"];
@@ -91,6 +94,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const body = (await resp.json().catch(() => null)) as { error?: { message?: string } } | null;
     throw new Error(body?.error?.message ?? `API error ${resp.status}`);
   }
+  if (resp.status === 204) return undefined as T;
   return (await resp.json()) as T;
 }
 
@@ -100,6 +104,13 @@ export const apiClient = {
       method: "POST",
       body: JSON.stringify(payload)
     });
+  },
+  markTriage(payload: TriageRequest): Promise<TriageItem> {
+    return api<TriageItem>("/api/v1/triage", { method: "PUT", body: JSON.stringify(payload) });
+  },
+  clearTriage(cycle: string, signature: string): Promise<void> {
+    const query = new URLSearchParams({ cycle, signature });
+    return api<void>(`/api/v1/triage?${query}`, { method: "DELETE" });
   },
   createAdhocExecution(payload: AdhocExecutionRequest): Promise<CycleExecutionAccepted> {
     return api<CycleExecutionAccepted>("/api/v1/adhoc-executions", {

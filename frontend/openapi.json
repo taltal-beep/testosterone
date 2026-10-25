@@ -2065,6 +2065,16 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "triage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TriageItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -2079,7 +2089,8 @@
           "failing_runs",
           "failing_since_run_id",
           "flaky",
-          "new"
+          "new",
+          "triage"
         ],
         "title": "FailingTestItem",
         "type": "object"
@@ -3374,6 +3385,145 @@
           "slowdown_pct"
         ],
         "title": "TestSummaryItem",
+        "type": "object"
+      },
+      "TriageItem": {
+        "properties": {
+          "cause": {
+            "enum": [
+              "product_bug",
+              "test_bug",
+              "environment",
+              "flaky",
+              "other"
+            ],
+            "title": "Cause",
+            "type": "string"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "example_message": {
+            "default": "",
+            "title": "Example Message",
+            "type": "string"
+          },
+          "marked_at": {
+            "title": "Marked At",
+            "type": "number"
+          },
+          "marked_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marked By"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "run_id": {
+            "default": "",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "signature": {
+            "title": "Signature",
+            "type": "string"
+          },
+          "test_key": {
+            "default": "",
+            "title": "Test Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "signature",
+          "cause",
+          "note",
+          "example_message",
+          "run_id",
+          "test_key",
+          "marked_by",
+          "marked_at"
+        ],
+        "title": "TriageItem",
+        "type": "object"
+      },
+      "TriageListResponse": {
+        "properties": {
+          "causes": {
+            "items": {
+              "$ref": "#/components/schemas/TriageItem"
+            },
+            "title": "Causes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "causes"
+        ],
+        "title": "TriageListResponse",
+        "type": "object"
+      },
+      "TriageRequest": {
+        "properties": {
+          "cause": {
+            "enum": [
+              "product_bug",
+              "test_bug",
+              "environment",
+              "flaky",
+              "other"
+            ],
+            "title": "Cause",
+            "type": "string"
+          },
+          "cycle": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Cycle",
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Note",
+            "type": "string"
+          },
+          "run_id": {
+            "default": "",
+            "maxLength": 64,
+            "title": "Run Id",
+            "type": "string"
+          },
+          "test_key": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Test Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "message",
+          "cause"
+        ],
+        "title": "TriageRequest",
         "type": "object"
       },
       "ValidationError": {
@@ -4692,6 +4842,139 @@
         "summary": "Get Run Reports",
         "tags": [
           "history"
+        ]
+      }
+    },
+    "/api/v1/triage": {
+      "delete": {
+        "description": "Forget a cause; failures with that message show no cause again.",
+        "operationId": "clear_triage_api_v1_triage_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": true,
+            "schema": {
+              "title": "Cycle",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signature",
+            "required": true,
+            "schema": {
+              "title": "Signature",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Clear Triage",
+        "tags": [
+          "triage"
+        ]
+      },
+      "get": {
+        "description": "Every marked cause, newest first, optionally only one cycle's.",
+        "operationId": "list_triage_api_v1_triage_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriageListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Triage",
+        "tags": [
+          "triage"
+        ]
+      },
+      "put": {
+        "description": "Set the cause of a failure message in a cycle; replaces an earlier one for the same message.",
+        "operationId": "mark_triage_api_v1_triage_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TriageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriageItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Triage",
+        "tags": [
+          "triage"
         ]
       }
     }

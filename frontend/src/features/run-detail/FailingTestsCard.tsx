@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { apiClient, type FailingTestItem } from "../../lib/api-client";
 import { Badge, Button, Card } from "../../components/ui";
 import { countLabel, formatDuration, shortRunId, testPath } from "../../lib/format";
+import { CAUSE_LABELS, TriageControl } from "./TriageControl";
 
 // Enough to read at a glance; the rest are one click away.
 const INITIAL_ROWS = 15;
@@ -30,10 +31,12 @@ function Streak({ test, baselineBranch }: { test: FailingTestItem; baselineBranc
 
 function FailingTestRow({
   test,
+  runId,
   cycle,
   baselineBranch
 }: {
   test: FailingTestItem;
+  runId: string;
   cycle?: string | null;
   baselineBranch?: string | null;
 }) {
@@ -61,6 +64,7 @@ function FailingTestRow({
           .filter(Boolean)
           .join(" · ")}
       </p>
+      <TriageControl test={test} runId={runId} cycle={cycle} />
     </li>
   );
 }
@@ -143,6 +147,8 @@ export function FailingTestsCard({ runId, cycle }: { runId: string; cycle?: stri
 
   const visible = showAll ? tests : tests.slice(0, INITIAL_ROWS);
   const longStanding = tests.length - newFailures;
+  const known = tests.filter((test) => test.triage).length;
+  const causeOf = new Map(tests.map((test) => [test.key, test.triage?.cause]));
 
   return (
     <Card title="Failing tests" data-testid="failing-tests">
@@ -152,6 +158,7 @@ export function FailingTestsCard({ runId, cycle }: { runId: string; cycle?: stri
         {longStanding > 0 && (baselineRunId || runsConsidered > 1) ? (
           <>, {longStanding} already failing {baselineBranch ? `on ${baselineBranch}` : "before"}</>
         ) : null}
+        {known > 0 ? <>, {known === tests.length ? "all" : known} with a known cause</> : null}
         .
       </p>
 
@@ -161,19 +168,23 @@ export function FailingTestsCard({ runId, cycle }: { runId: string; cycle?: stri
         <div className="mb-4 rounded-xl border border-white/10 bg-ink-900/60 p-3">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">Same cause</p>
           <ul className="space-y-1">
-            {groups.map((group) => (
-              <li key={group.message} className="flex gap-2 text-sm">
-                <span className="shrink-0 font-semibold text-ink-100">{countLabel(group.count, "test")}:</span>
-                <span className="break-words font-mono text-xs leading-5 text-danger-300">{group.message}</span>
-              </li>
-            ))}
+            {groups.map((group) => {
+              const cause = group.keys.map((key) => causeOf.get(key)).find(Boolean);
+              return (
+                <li key={group.message} className="flex flex-wrap items-baseline gap-2 text-sm">
+                  <span className="shrink-0 font-semibold text-ink-100">{countLabel(group.count, "test")}:</span>
+                  <span className="min-w-0 break-words font-mono text-xs leading-5 text-danger-300">{group.message}</span>
+                  {cause ? <Badge tone="brand">Cause: {CAUSE_LABELS[cause]}</Badge> : null}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}
 
       <ul className="divide-y divide-white/5">
         {visible.map((test) => (
-          <FailingTestRow key={test.key} test={test} cycle={cycle} baselineBranch={baselineBranch} />
+          <FailingTestRow key={test.key} test={test} runId={runId} cycle={cycle} baselineBranch={baselineBranch} />
         ))}
       </ul>
 
