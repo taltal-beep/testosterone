@@ -84,10 +84,10 @@ export function ComparePage() {
   );
 
   if (runsQuery.isLoading) {
-    return <p className="text-sm text-ink-300">Loading runs for comparison...</p>;
+    return <p className="text-sm text-ink-300">Loading runs…</p>;
   }
   if (runsQuery.isError) {
-    return <p className="text-sm text-danger-400">Failed to load runs for comparison.</p>;
+    return <p className="text-sm text-danger-400">Couldn't load runs to compare. Check that the API is running, then reload.</p>;
   }
   if (options.length < 2) {
     return <p className="text-sm text-ink-300">At least two completed runs are required for comparison.</p>;
@@ -114,7 +114,7 @@ export function ComparePage() {
 
   return (
     <section className="space-y-4">
-      <PageHeader title="Run Comparison" subtitle="Pick a baseline and a current run to see what regressed and what improved." />
+      <PageHeader title="Compare runs" subtitle="Pick a baseline and a current run to see what regressed and what improved." />
 
       <div className="grid gap-4 glass-card p-4 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_minmax(0,1fr)]">
         <label className={labelClass}>
@@ -146,8 +146,8 @@ export function ComparePage() {
       )}
 
       {!comparisonReady && <p className="text-sm text-ink-400">Select two different runs to start comparison.</p>}
-      {comparisonReady && compareQuery.isLoading && <p className="text-sm text-ink-300">Loading delta comparison...</p>}
-      {comparisonReady && compareQuery.isError && <p className="text-sm text-danger-400">Failed to load delta comparison.</p>}
+      {comparisonReady && compareQuery.isLoading && <p className="text-sm text-ink-300">Comparing runs…</p>}
+      {comparisonReady && compareQuery.isError && <p className="text-sm text-danger-400">Couldn't compare these runs. One of them may have been cleaned up.</p>}
       {comparisonReady && payload && (
         <>
           <Card>
@@ -173,7 +173,7 @@ export function ComparePage() {
             </div>
           </Card>
 
-          <Card title="Outcome Mix">
+          <Card title="Outcome mix">
             <div className="space-y-3">
               <div>
                 <p className="mb-1 text-xs font-medium text-ink-400">Baseline · {runText(payload.comparison.baseline_run_id, baselineRun)}</p>
@@ -192,7 +192,7 @@ export function ComparePage() {
           </div>
 
           {(payload.stage_deltas ?? []).length > 0 && (
-            <Card title="Per-Stage Health">
+            <Card title="Per-stage health">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-ink-300">
                   <thead>
@@ -470,7 +470,7 @@ function TestLevelChanges({ currentRunId, baselineRunId }: { currentRunId: strin
           </div>
 
           {casesQuery.isLoading && <p className="text-sm text-ink-300">Loading test-level changes...</p>}
-          {casesQuery.isError && <p className="text-sm text-danger-400">Failed to load test-level changes.</p>}
+          {casesQuery.isError && <p className="text-sm text-danger-400">Couldn't load the test-level changes.</p>}
           {casesQuery.data && filtered.length === 0 && (
             <p className="text-sm text-ink-400">No matching test changes.</p>
           )}

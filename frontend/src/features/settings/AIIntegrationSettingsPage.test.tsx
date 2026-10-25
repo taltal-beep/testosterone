@@ -56,7 +56,7 @@ describe("AIIntegrationSettingsPage", () => {
       </QueryClientProvider>
     );
 
-    await waitFor(() => expect(screen.getByText("AI Integration Settings")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "AI settings" })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.change(screen.getByPlaceholderText("Enter token (not persisted to disk)"), { target: { value: "sk-temp" } });
     fireEvent.click(screen.getByRole("button", { name: "Save settings" }));

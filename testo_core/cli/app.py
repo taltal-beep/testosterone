@@ -13,7 +13,7 @@ import typer
 
 app = typer.Typer(
     name="testo",
-    help="Testosterone — unified quality orchestration CLI.",
+    help="Testosterone: see what broke, what's flaky and what got slower on every run.",
     no_args_is_help=True,
     add_completion=True,
     pretty_exceptions_show_locals=False,
@@ -40,7 +40,7 @@ def _main(
         help="Show the testo-core version and exit.",
     ),
 ) -> None:
-    """Testosterone — unified quality orchestration CLI."""
+    """Testosterone: see what broke, what's flaky and what got slower on every run."""
 
 
 def _register_commands() -> None:
@@ -89,27 +89,27 @@ def _register_commands() -> None:
     )(notify_mod.notify)
     app.command(
         name="config-db",
-        help="Set database.url in testosterone.yaml (or pyproject [tool.testosterone]).",
+        help="Set database.url in testosterone.yaml (or [tool.testosterone] in pyproject.toml).",
         rich_help_panel="Config",
     )(config_db_cmd.config_db)
     app.command(
         name="diff",
-        help="Compare two archived report runs (UUIDs from ``testo report list``).",
+        help="Compare two archived report runs (UUIDs from testo report list).",
         rich_help_panel="Diagnostics",
     )(diff_cli_mod.diff_reports)
     app.command(
         name="summary",
-        help="Rich diff of the two most recent archived runs (optional ``--cycle``).",
+        help="Rich diff of the two most recent archived runs (optional --cycle).",
         rich_help_panel="Diagnostics",
     )(diff_cli_mod.summary_reports)
     app.command(
         name="flaky",
-        help="Tests whose outcome keeps flipping across a cycle's recent runs (``--cycle``).",
+        help="Tests whose outcome keeps flipping across a cycle's recent runs (--cycle).",
         rich_help_panel="Diagnostics",
     )(flaky_mod.flaky)
     app.command(
         name="plugins",
-        help="List built-in and installed framework and reporter plugins (``--check`` imports them).",
+        help="List built-in and installed framework and reporter plugins (--check imports them).",
         rich_help_panel="Diagnostics",
     )(plugins_mod.plugins_cmd)
     app.add_typer(
@@ -143,7 +143,7 @@ def _register_commands() -> None:
         name="report",
         help=(
             "Unified Allure reports from the latest cycle, or raw framework-native reports "
-            "(e.g. BehaveX HTML) via ``testo report native``."
+            "(e.g. BehaveX HTML) via testo report native."
         ),
         rich_help_panel="Run and report",
     )
@@ -159,17 +159,17 @@ def _register_commands() -> None:
     )(doctor_mod.doctor)
     app.command(
         name="clean",
-        help="Remove artifacts/temp; optional Docker prune (``--yes``, ``--docker``).",
+        help="Remove artifacts/temp; optional Docker prune (--yes, --docker).",
         rich_help_panel="Maintenance",
     )(clean_mod.clean)
     app.command(
         name="watch",
-        help="Watch files and re-run a cycle (``--cycle`` required).",
+        help="Watch files and re-run a cycle (--cycle required).",
         rich_help_panel="Maintenance",
     )(watch_mod.watch)
     app.command(
         name="init",
-        help="Interactive wizard for testosterone.yaml (non-interactive: ``testo config init``).",
+        help="Interactive wizard for testosterone.yaml (non-interactive: testo config init).",
         rich_help_panel="Maintenance",
     )(init_cmd_mod.wizard)
 

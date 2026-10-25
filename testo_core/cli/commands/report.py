@@ -85,7 +85,7 @@ def report_callback(
     no_history: bool = typer.Option(
         False,
         "--no-history",
-        help="Do not inject Allure history/ from a prior DB-archived run before ``allure generate``.",
+        help="Do not inject Allure history/ from a prior DB-archived run before allure generate.",
     ),
 ) -> None:
     """Build a unified Allure report from the latest (or selected) cycle, then open it locally."""

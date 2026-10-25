@@ -19,7 +19,7 @@ export function HistoryPage() {
     );
   }
   if (runsQuery.isError) {
-    return <p className="text-sm text-danger-400">Failed to load runs.</p>;
+    return <p className="text-sm text-danger-400">Couldn't load runs. Check that the API is running, then reload.</p>;
   }
 
   const items = runsQuery.data?.items ?? [];

@@ -40,7 +40,7 @@ export function QuickRunPage() {
   return (
     <section className="space-y-4">
       <PageHeader
-        title="Quick Run"
+        title="Quick run"
         subtitle={
           <>
             Run one framework directly, without a cycle. For repeatable runs define a cycle in{" "}

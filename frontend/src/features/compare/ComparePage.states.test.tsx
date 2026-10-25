@@ -106,7 +106,7 @@ describe("ComparePage states", () => {
   it("shows an error when runs cannot be loaded", async () => {
     stubApi([["/api/v1/runs", new Response("{}", { status: 500 })]]);
     renderAt();
-    expect(await screen.findByText("Failed to load runs for comparison.")).toBeInTheDocument();
+    expect(await screen.findByText("Couldn't load runs to compare. Check that the API is running, then reload.")).toBeInTheDocument();
   });
 
   it("needs at least two runs", async () => {
@@ -130,7 +130,7 @@ describe("ComparePage states", () => {
       ["/api/v1/runs", RUNS]
     ]);
     renderAt(PAIR);
-    expect(await screen.findByText("Failed to load delta comparison.")).toBeInTheDocument();
+    expect(await screen.findByText("Couldn't compare these runs. One of them may have been cleaned up.")).toBeInTheDocument();
     expect(screen.getByLabelText("Current run")).toHaveValue("run-2");
     expect(screen.getByLabelText("Baseline run")).toHaveValue("run-1");
   });

@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { DashboardOverviewResponse, DashboardTrendIndicator, apiClient } from "../../lib/api-client";
 import { Badge, Card, HealthBar, Icons, PageHeader, RunLabel, Spinner, StatusPill } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
-import { countLabel } from "../../lib/format";
+import { countLabel, formatDuration } from "../../lib/format";
 
 const RECENT_RUNS_REFRESH_MS = 15_000;
 
@@ -30,7 +30,7 @@ export function DashboardPage() {
     );
   }
   if (overviewQuery.isError) {
-    return <p className="text-sm text-danger-400">Failed to load dashboard overview.</p>;
+    return <p className="text-sm text-danger-400">Couldn't load the dashboard. Check that the API is running, then reload.</p>;
   }
 
   const data = overviewQuery.data;
@@ -69,7 +69,7 @@ export function DashboardPage() {
           lowerIsBetter
         />
         <KpiCard
-          label="Pass Count"
+          label="Passed tests"
           icon={Icons.CheckIcon}
           value={formatInt(data.headline_kpis.pass_count)}
           trend={{ direction: "unknown", delta_abs: null, delta_pct: null }}
@@ -77,7 +77,7 @@ export function DashboardPage() {
         <KpiCard
           label="Duration"
           icon={Icons.ClockIcon}
-          value={formatMs(data.headline_kpis.duration_ms)}
+          value={formatDuration(data.headline_kpis.duration_ms)}
           trend={data.trend_indicators.duration}
           lowerIsBetter
         />
@@ -97,7 +97,7 @@ export function DashboardPage() {
           </ul>
         </Card>
 
-        <Card title="Quick Links">
+        <Card title="Quick links">
           <ul className="space-y-1.5 text-sm">
             {latestRunId ? (
               <li>
@@ -117,13 +117,13 @@ export function DashboardPage() {
             ) : (
               <li className="text-ink-400">Compare view unavailable</li>
             )}
-            <li className="text-ink-300">{reportLink("Allure report", data.report_links?.allure ?? { url: null, state: "unknown" })}</li>
-            <li className="text-ink-300">{reportLink("Behave report", data.report_links?.behave ?? { url: null, state: "unknown" })}</li>
+            {reportLink("Allure report", data.report_links?.allure)}
+            {reportLink("Behave report", data.report_links?.behave)}
           </ul>
         </Card>
       </div>
 
-      <Card title="Recent Runs">
+      <Card title="Recent runs">
         {recentRuns.length === 0 ? (
           <p className="text-sm text-ink-400">No recent runs available.</p>
         ) : (
@@ -272,9 +272,11 @@ function KpiCard({
       <div className="min-w-0">
         <strong className="text-xs font-medium text-ink-300">{label}</strong>
         <p className="my-0.5 text-lg font-bold text-white">{value}</p>
-        <p data-testid={`${label.toLowerCase().replace(/\s+/g, "-")}-trend`} className={`text-xs font-semibold ${trendColor}`}>
-          Trend: {semantic.label}
-        </p>
+        {semantic.label === "unknown" ? null : (
+          <p data-testid={`${label.toLowerCase().replace(/\s+/g, "-")}-trend`} className={`text-xs font-semibold ${trendColor}`}>
+            Trend: {semantic.label}
+          </p>
+        )}
       </div>
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-lg shadow-brand-500/30">
         <Icon />
@@ -299,21 +301,16 @@ export function trendSemantic(
   return { label: trend.direction === "up" ? "improved" : "regressed" };
 }
 
-function reportLink(
-  label: string,
-  report: { url: string | null; state: "available" | "missing" | "unknown" }
-) {
-  if (report.state === "available" && report.url) {
-    return (
+/** A report link, or nothing: a report that isn't there is not worth a line. */
+function reportLink(label: string, report: { url: string | null; state: "available" | "missing" | "unknown" } | undefined) {
+  if (report?.state !== "available" || !report.url) return null;
+  return (
+    <li>
       <a href={report.url} target="_blank" rel="noreferrer" className="text-brand-300 hover:text-brand-400 hover:underline">
         {label}
       </a>
-    );
-  }
-  if (report.state === "unknown") {
-    return `${label} (state unknown)`;
-  }
-  return `${label} (not available)`;
+    </li>
+  );
 }
 
 function formatPct(value: number | null): string {
@@ -321,13 +318,6 @@ function formatPct(value: number | null): string {
     return "n/a";
   }
   return `${value.toFixed(2)}%`;
-}
-
-function formatMs(value: number | null): string {
-  if (value == null) {
-    return "n/a";
-  }
-  return `${value.toFixed(0)} ms`;
 }
 
 function formatInt(value: number | null): string {

@@ -2,8 +2,9 @@ import { FormEvent, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { AiConfigStatus, apiClient, UpdateAiConfigRequest } from "../../lib/api-client";
+import { PageHeader } from "../../components/ui";
 
-const inputClass = "rounded-xl border border-ink-600 bg-ink-950/80 px-3 py-2 focus:border-brand-500 focus:outline-none text-sm text-ink-100";
+const inputClass = "w-full min-w-0 rounded-xl border border-ink-600 bg-ink-950/80 px-3 py-2 focus:border-brand-500 focus:outline-none text-sm text-ink-100";
 const labelClass = "grid gap-1 text-xs font-medium text-ink-300";
 
 type Provider = UpdateAiConfigRequest["provider"] & string;
@@ -108,10 +109,10 @@ export function AIIntegrationSettingsPage() {
   }, [status]);
 
   if (statusQuery.isLoading) {
-    return <p className="text-sm text-ink-300">Loading AI settings...</p>;
+    return <p className="text-sm text-ink-300">Loading AI settings…</p>;
   }
   if (statusQuery.isError || !status) {
-    return <p className="text-sm text-danger-400">Failed to load AI settings.</p>;
+    return <p className="text-sm text-danger-400">Couldn't load AI settings. Check that the API is running, then reload.</p>;
   }
 
   const effectiveForm = formState;
@@ -136,12 +137,9 @@ export function AIIntegrationSettingsPage() {
 
   return (
     <section className="space-y-4">
-      <header className="space-y-1">
-        <h2 className="text-xl font-semibold">AI Integration Settings</h2>
-        <p className="text-sm text-ink-300">Bring your own key. Tokens are masked and never returned by the API.</p>
-      </header>
+      <PageHeader title="AI settings" subtitle="Bring your own key. Keys are masked and never returned by the API." />
 
-      <form onSubmit={onSubmit} className="grid max-w-lg gap-3 glass-card p-4">
+      <form onSubmit={onSubmit} className="grid w-full min-w-0 max-w-lg gap-3 glass-card p-4">
         <label className="flex items-center gap-2 text-sm text-ink-300">
           <input
             type="checkbox"
@@ -253,9 +251,9 @@ export function AIIntegrationSettingsPage() {
           <button
             type="submit"
             disabled={saveState === "saving"}
-            className="rounded bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-400 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {saveState === "saving" ? "Saving..." : "Save settings"}
+            {saveState === "saving" ? "Saving…" : "Save settings"}
           </button>
         </div>
       </form>

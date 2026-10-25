@@ -73,7 +73,7 @@ describe("ComparePage", () => {
       </QueryClientProvider>
     );
 
-    await waitFor(() => expect(screen.getByText("Run Comparison")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Compare runs")).toBeInTheDocument());
 
     // Pickers name runs by cycle and time, grouped by cycle, with the short id secondary.
     const currentPicker = screen.getByLabelText("Current run");

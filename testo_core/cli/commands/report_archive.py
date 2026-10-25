@@ -62,7 +62,7 @@ def report_open_archived(
     report_id: str = typer.Option(
         ...,
         "--id",
-        help="Report archive UUID (primary key; use ``testo report list`` id column—not headless RunRecord id).",
+        help="Report archive UUID (primary key; use testo report list id column—not headless RunRecord id).",
     ),
     generate_only: bool = typer.Option(
         False,

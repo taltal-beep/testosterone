@@ -46,7 +46,7 @@ def diff_reports(
     baseline_id: str = typer.Argument(
         ...,
         metavar="BASELINE_ID",
-        help="Older archived run UUID (``testo report list`` id column).",
+        help="Older archived run UUID (testo report list id column).",
     ),
     current_id: str = typer.Argument(
         ...,
@@ -102,7 +102,7 @@ def summary_reports(
         else repo.list_recent(limit=2)
     )
     if len(rows) < 2:
-        console.print("[fail]Need at least two archived runs in the database for ``summary``.[/]")
+        console.print("[fail]Need at least two archived runs in the database for summary.[/]")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
     current, baseline = rows[0], rows[1]
     console.print(

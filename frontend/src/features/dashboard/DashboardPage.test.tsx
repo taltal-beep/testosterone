@@ -156,8 +156,9 @@ describe("DashboardPage", () => {
     renderDashboard();
 
     await waitFor(() => expect(screen.getByText(/Some metrics are degraded:/)).toBeInTheDocument());
-    expect(screen.getByText("Allure report (state unknown)")).toBeInTheDocument();
-    expect(screen.getByText("Behave report (not available)")).toBeInTheDocument();
+    // Reports that aren't there get no line at all.
+    expect(screen.queryByText(/Allure report/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Behave report/)).not.toBeInTheDocument();
   });
 
   it("maps trend semantics correctly", () => {
