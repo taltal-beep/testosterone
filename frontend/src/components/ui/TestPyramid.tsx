@@ -1,7 +1,7 @@
 import type { PyramidShape } from "../../lib/api-client";
 
 const SHAPE_LABEL: Record<PyramidShape, string> = {
-  healthy: "Healthy pyramid",
+  healthy: "Pyramid-shaped: mostly unit tests",
   top_heavy: "Top-heavy (E2E > Unit)",
   mid_bulge: "Integration-heavy (diamond risk)",
   irregular: "Irregular tier mix"

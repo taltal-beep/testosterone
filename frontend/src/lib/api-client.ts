@@ -24,6 +24,8 @@ export type StageHealth = Schemas["StageHealth"];
 export type RunDetailResponse = Schemas["RunDetailResponse"];
 export type RunReportsResponse = Schemas["RunReportsResponse"];
 export type RunPyramidResponse = Schemas["RunPyramidResponse"];
+export type RunFailuresResponse = Schemas["RunFailuresResponse"];
+export type FailingTestItem = Schemas["FailingTestItem"];
 export type PyramidShape = RunPyramidResponse["shape"];
 
 export type DeltaMetricNode = Schemas["DeltaMetricNode"];
@@ -126,6 +128,9 @@ export const apiClient = {
   },
   getRunReports(runId: string): Promise<RunReportsResponse> {
     return api<RunReportsResponse>(`/api/v1/runs/${runId}/reports`);
+  },
+  getRunFailures(runId: string): Promise<RunFailuresResponse> {
+    return api<RunFailuresResponse>(`/api/v1/runs/${runId}/failures`);
   },
   getRunPyramid(runId: string): Promise<RunPyramidResponse> {
     return api<RunPyramidResponse>(`/api/v1/runs/${runId}/pyramid`);

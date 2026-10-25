@@ -66,7 +66,7 @@ describe("RunDetailPage", () => {
       </QueryClientProvider>
     );
 
-    await waitFor(() => expect(screen.getByText("AI Failure Summary")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("AI failure summary")).toBeInTheDocument());
     expect(screen.getByText("Likely root cause is a flaky fixture setup.")).toBeInTheDocument();
   });
 });

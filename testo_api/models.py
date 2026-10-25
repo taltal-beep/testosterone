@@ -192,6 +192,34 @@ class RunPyramidResponse(ApiModel):
     message: str
 
 
+class FailingTestItem(ApiModel):
+    key: str
+    name: str
+    full_name: str
+    group: str
+    stage: str
+    status: str
+    message: str
+    duration_ms: int | None = None
+    failing_runs: int
+    failing_since_run_id: str
+    flaky: bool
+
+
+class FailureGroupItem(ApiModel):
+    message: str
+    count: int
+    keys: list[str]
+
+
+class RunFailuresResponse(ApiModel):
+    run_id: str
+    runs_considered: int
+    new_failures: int
+    tests: list[FailingTestItem]
+    groups: list[FailureGroupItem]
+
+
 class DeltaMetricNode(ApiModel):
     current_value: float | None = None
     baseline_value: float | None = None

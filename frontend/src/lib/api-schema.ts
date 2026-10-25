@@ -415,6 +415,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{run_id}/failures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Failures
+         * @description The run's failing tests: message, stage, how long each has been failing, flaky or not.
+         */
+        get: operations["get_run_failures_api_v1_runs__run_id__failures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{run_id}/pyramid": {
         parameters: {
             query?: never;
@@ -1014,6 +1034,40 @@ export interface components {
             /** Unknown */
             unknown: string[];
         };
+        /** FailingTestItem */
+        FailingTestItem: {
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Failing Runs */
+            failing_runs: number;
+            /** Failing Since Run Id */
+            failing_since_run_id: string;
+            /** Flaky */
+            flaky: boolean;
+            /** Full Name */
+            full_name: string;
+            /** Group */
+            group: string;
+            /** Key */
+            key: string;
+            /** Message */
+            message: string;
+            /** Name */
+            name: string;
+            /** Stage */
+            stage: string;
+            /** Status */
+            status: string;
+        };
+        /** FailureGroupItem */
+        FailureGroupItem: {
+            /** Count */
+            count: number;
+            /** Keys */
+            keys: string[];
+            /** Message */
+            message: string;
+        };
         /** FlakyTestItem */
         FlakyTestItem: {
             /** Failed */
@@ -1171,6 +1225,19 @@ export interface components {
             sync: {
                 [key: string]: unknown;
             } | null;
+        };
+        /** RunFailuresResponse */
+        RunFailuresResponse: {
+            /** Groups */
+            groups: components["schemas"]["FailureGroupItem"][];
+            /** New Failures */
+            new_failures: number;
+            /** Run Id */
+            run_id: string;
+            /** Runs Considered */
+            runs_considered: number;
+            /** Tests */
+            tests: components["schemas"]["FailingTestItem"][];
         };
         /** RunListItem */
         RunListItem: {
@@ -1946,6 +2013,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AiSummaryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_failures_api_v1_runs__run_id__failures_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunFailuresResponse"];
                 };
             };
             /** @description Validation Error */

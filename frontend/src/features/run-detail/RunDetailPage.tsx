@@ -4,8 +4,9 @@ import { Link, useParams } from "react-router-dom";
 
 import { API_BASE, apiClient } from "../../lib/api-client";
 import { Badge, Button, Card, KeyValue, PageHeader, Spinner, StatusPill, TestPyramid } from "../../components/ui";
-import { formatRunLabel } from "../../lib/format";
+import { countLabel, describeExitCode, formatDuration, formatRunLabel } from "../../lib/format";
 import { AI_SUMMARY_SNAPSHOT_MESSAGE, IS_STATIC_BUILD } from "../../lib/static-backend";
+import { FailingTestsCard } from "./FailingTestsCard";
 
 // Error codes that the user fixes on the AI settings page.
 const AI_SETTINGS_ERROR_CODES = new Set(["ai_feature_disabled", "provider_misconfigured", "unsupported_provider_model"]);
@@ -53,6 +54,17 @@ function AiSummaryText({ text }: { text: string }) {
   );
 }
 
+/** One line under the title that answers "how did it go?" before anything else. */
+function runVerdict(run: { returncode: number | null; total_tests?: number | null; failed?: number | null; broken?: number | null; wall_duration_ms: number }): string {
+  const total = run.total_tests ?? 0;
+  const failing = (run.failed ?? 0) + (run.broken ?? 0);
+  const took = `in ${formatDuration(run.wall_duration_ms)}`;
+  if (total === 0) return run.returncode === 0 ? `Passed ${took}` : `Failed ${took}`;
+  if (failing > 0) return `${countLabel(failing, "test")} of ${total} failed ${took}`;
+  if (run.returncode === 0) return `All ${countLabel(total, "test")} passed ${took}`;
+  return `No test failed, but the run exited ${describeExitCode(run.returncode)}, ${took}`;
+}
+
 export function RunDetailPage() {
   const params = useParams();
   const runId = params.runId ?? "";
@@ -85,16 +97,17 @@ export function RunDetailPage() {
   if (runQuery.isLoading || reportsQuery.isLoading) {
     return (
       <div className="flex items-center gap-2 text-sm text-ink-300">
-        <Spinner /> Loading run details...
+        <Spinner /> Loading run…
       </div>
     );
   }
   if (runQuery.isError || reportsQuery.isError || !runQuery.data || !reportsQuery.data) {
-    return <p className="text-sm text-danger-400">Failed to load run details.</p>;
+    return <p className="text-sm text-danger-400">Couldn't load this run. It may have been cleaned up, or the API is unreachable.</p>;
   }
 
   const run = runQuery.data.run;
   const reports = reportsQuery.data;
+  const failed = run.returncode !== 0 && run.returncode != null;
 
   return (
     <section className="space-y-4">
@@ -105,7 +118,7 @@ export function RunDetailPage() {
             <StatusPill status={run.status} returncode={run.returncode} />
           </span>
         }
-        subtitle="Run Details"
+        subtitle={runVerdict(run)}
         actions={
           <Link to="/runs">
             <Button variant="secondary" size="sm">
@@ -115,45 +128,63 @@ export function RunDetailPage() {
         }
       />
 
-      <Card title="Summary">
-        <KeyValue
-          items={[
-            { label: "Run ID", value: <span className="font-mono text-xs">{run.run_id}</span> },
-            { label: "Type", value: run.test_kind },
-            { label: "Return code", value: <span className="font-mono">{run.returncode}</span> },
-            { label: "Health", value: run.health_pct != null ? `${run.health_pct.toFixed(2)}%` : "n/a" },
-            { label: "Wall duration", value: `${run.wall_duration_ms.toFixed(0)} ms` }
-          ]}
-        />
-      </Card>
+      {failed || (run.failed ?? 0) + (run.broken ?? 0) > 0 ? <FailingTestsCard runId={runId} cycle={run.cycle} /> : null}
 
-      <Card title="Report Links">
-        {Object.keys(reports.static_links).length === 0 ? (
-          <p className="text-sm text-ink-400">No reports for this run.</p>
-        ) : (
-          <ul className="space-y-1 text-sm">
-            {Object.entries(reports.static_links).map(([name, url]) => (
-              <li key={name}>
-                <a href={`${API_BASE}/${url}`} target="_blank" rel="noreferrer" className="text-brand-300 hover:text-brand-400 hover:underline">
-                  {name}
-                </a>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      {failed ? (
+        <Card title="AI failure summary">
+          {aiSummaryQuery.isLoading ? (
+            <p className="text-sm text-ink-300">Loading AI summary…</p>
+          ) : aiSummaryQuery.isError || !aiSummaryQuery.data ? (
+            <p className="text-sm text-danger-400">Couldn't load the AI summary.</p>
+          ) : aiSummaryQuery.data.status === "available" ? (
+            <article className="space-y-1">
+              <AiSummaryText text={aiSummaryQuery.data.summary_text ?? ""} />
+              <p className="text-xs text-ink-400">
+                Confidence: {aiSummaryQuery.data.confidence ?? "unknown"} | Model: {aiSummaryQuery.data.model ?? "unknown"}
+                {IS_STATIC_BUILD ? " | Generated when this snapshot was built" : ""}
+              </p>
+            </article>
+          ) : IS_STATIC_BUILD ? (
+            <p className="text-sm text-ink-300">
+              {aiSummaryQuery.data.limitations.includes("summary_not_generated")
+                ? AI_SUMMARY_SNAPSHOT_MESSAGE
+                : `The AI summary could not be generated when this snapshot was built (${aiSummaryQuery.data.error_code ?? "not_available"}).`}
+            </p>
+          ) : (
+            <p className="text-sm text-ink-400">
+              {describeAiSummaryError(aiSummaryQuery.data.error_code, aiSummaryQuery.data.limitations)}
+              {AI_SETTINGS_ERROR_CODES.has(aiSummaryQuery.data.error_code ?? "") ? (
+                <>
+                  {" "}
+                  <Link className="text-brand-300 underline" to="/settings/ai">
+                    Open AI settings
+                  </Link>
+                </>
+              ) : null}
+            </p>
+          )}
+          <Button
+            className="mt-3"
+            // A snapshot has nothing to generate with; the export already did it, or explains why not above.
+            disabled={IS_STATIC_BUILD}
+            title={IS_STATIC_BUILD ? "Read-only demo: summaries are generated when the snapshot is built." : undefined}
+            onClick={async () => {
+              setAiError(null);
+              try {
+                await apiClient.generateRunAiSummary(runId, true);
+                await aiSummaryQuery.refetch();
+              } catch (err) {
+                setAiError(err instanceof Error ? err.message : String(err));
+              }
+            }}
+          >
+            Generate AI Summary
+          </Button>
+          {aiError ? <p className="mt-2 text-sm text-danger-400">{aiError}</p> : null}
+        </Card>
+      ) : null}
 
-      <Card title="Test Pyramid">
-        {pyramidQuery.isLoading ? (
-          <p className="text-sm text-ink-300">Loading test pyramid...</p>
-        ) : pyramidQuery.isError || !pyramidQuery.data ? (
-          <p className="text-sm text-danger-400">Failed to load test pyramid.</p>
-        ) : (
-          <TestPyramid {...pyramidQuery.data} />
-        )}
-      </Card>
-
-      <Card title="Stage Health">
+      <Card title="Stages">
         {(run.stage_health ?? []).length === 0 ? (
           <p className="text-sm text-ink-400">Per-stage breakdown not available for this run.</p>
         ) : (
@@ -180,10 +211,48 @@ export function RunDetailPage() {
         )}
       </Card>
 
+      <Card title="Reports">
+        {Object.keys(reports.static_links).length === 0 ? (
+          <p className="text-sm text-ink-400">No reports for this run.</p>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {Object.entries(reports.static_links).map(([name, url]) => (
+              <li key={name}>
+                <a href={`${API_BASE}/${url}`} target="_blank" rel="noreferrer" className="text-brand-300 hover:text-brand-400 hover:underline">
+                  {name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card title="Test mix">
+        {pyramidQuery.isLoading ? (
+          <p className="text-sm text-ink-300">Loading test mix…</p>
+        ) : pyramidQuery.isError || !pyramidQuery.data ? (
+          <p className="text-sm text-danger-400">Couldn't load the test mix.</p>
+        ) : (
+          <TestPyramid {...pyramidQuery.data} />
+        )}
+      </Card>
+
+      <Card title="Details">
+        <KeyValue
+          items={[
+            { label: "Run ID", value: <span className="font-mono text-xs">{run.run_id}</span> },
+            { label: "Exit code", value: describeExitCode(run.returncode) },
+            { label: "Health", value: run.health_pct != null ? `${run.health_pct.toFixed(2)}%` : "n/a" },
+            { label: "Duration", value: formatDuration(run.wall_duration_ms) }
+          ]}
+        />
+      </Card>
+
       <Card
         title={
           <button
             type="button"
+            aria-expanded={artifactsExpanded}
             onClick={() => setArtifactsExpanded((expanded) => !expanded)}
             className="flex items-center gap-2 text-sm font-semibold text-ink-100"
           >
@@ -208,59 +277,6 @@ export function RunDetailPage() {
           ))}
       </Card>
 
-      <Card title="AI Failure Summary">
-        {run.returncode === 0 ? (
-          <p className="text-sm text-ink-400">Summary only applies to failed runs.</p>
-        ) : aiSummaryQuery.isLoading ? (
-          <p className="text-sm text-ink-300">Loading AI summary...</p>
-        ) : aiSummaryQuery.isError || !aiSummaryQuery.data ? (
-          <p className="text-sm text-danger-400">Failed to load AI summary.</p>
-        ) : aiSummaryQuery.data.status === "available" ? (
-          <article className="space-y-1">
-            <AiSummaryText text={aiSummaryQuery.data.summary_text ?? ""} />
-            <p className="text-xs text-ink-400">
-              Confidence: {aiSummaryQuery.data.confidence ?? "unknown"} | Model: {aiSummaryQuery.data.model ?? "unknown"}
-              {IS_STATIC_BUILD ? " | Generated when this snapshot was built" : ""}
-            </p>
-          </article>
-        ) : IS_STATIC_BUILD ? (
-          <p className="text-sm text-ink-300">
-            {aiSummaryQuery.data.limitations.includes("summary_not_generated")
-              ? AI_SUMMARY_SNAPSHOT_MESSAGE
-              : `The AI summary could not be generated when this snapshot was built (${aiSummaryQuery.data.error_code ?? "not_available"}).`}
-          </p>
-        ) : (
-          <p className="text-sm text-ink-400">
-            {describeAiSummaryError(aiSummaryQuery.data.error_code, aiSummaryQuery.data.limitations)}
-            {AI_SETTINGS_ERROR_CODES.has(aiSummaryQuery.data.error_code ?? "") ? (
-              <>
-                {" "}
-                <Link className="text-brand-300 underline" to="/settings/ai">
-                  Open AI settings
-                </Link>
-              </>
-            ) : null}
-          </p>
-        )}
-        <Button
-          className="mt-3"
-          // A snapshot has nothing to generate with; the export already did it, or explains why not above.
-          disabled={IS_STATIC_BUILD}
-          title={IS_STATIC_BUILD ? "Read-only demo: summaries are generated when the snapshot is built." : undefined}
-          onClick={async () => {
-            setAiError(null);
-            try {
-              await apiClient.generateRunAiSummary(runId, true);
-              await aiSummaryQuery.refetch();
-            } catch (err) {
-              setAiError(err instanceof Error ? err.message : String(err));
-            }
-          }}
-        >
-          Generate AI Summary
-        </Button>
-        {aiError ? <p className="mt-2 text-sm text-danger-400">{aiError}</p> : null}
-      </Card>
     </section>
   );
 }

@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 # Specs & ADRs
@@ -37,5 +37,6 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Optional persistent run queue and per-user accounts, off by default | [Switchable Team Features - 2026-10-24](Switchable%20Team%20Features%20-%202026-10-24.md) |
 | Running each server-started stage in a throwaway container, off by default | [Throwaway Stage Containers - 2026-10-24](Throwaway%20Stage%20Containers%20-%202026-10-24.md) |
 | Changelog enforcement | [changelog_automation_policy.md](../changelog_automation_policy.md) |
+| Product roadmap from the product review (failing tests first, and what follows) | [Product Roadmap Work - 2026-10-25](Product%20Roadmap%20Work%20-%202026-10-25.md) |
 
 Older plans and incident write-ups (Allure 3 migration plan, reporters port, report-links fix, CLI–UI parity, the `doctor`/`clean`/`watch`/`init` restore) are in the [Archive](../Archive/README.md).

@@ -5,8 +5,11 @@ import os
 from fastapi import APIRouter, HTTPException
 
 from testo_api.models import (
+    FailingTestItem,
+    FailureGroupItem,
     RunDetail,
     RunDetailResponse,
+    RunFailuresResponse,
     RunListItem,
     RunListResponse,
     RunPyramidResponse,
@@ -18,6 +21,7 @@ from testo_core.config.errors import ConfigError
 from testo_core.config.loader import discover_and_load
 from testo_core.history.read_model import get_run, list_run_sessions
 from testo_core.history.snapshots import snapshot_files_for_download
+from testo_core.services.run_failures import load_run_failures
 
 router = APIRouter(prefix="/api/v1", tags=["history"])
 
@@ -111,6 +115,24 @@ def get_run_reports(run_id: str) -> RunReportsResponse:
         allure_server_url=allure_url,
         static_links=session.links_under_static,
         artifact_links=artifact_links,
+    )
+
+
+@router.get("/runs/{run_id}/failures", response_model=RunFailuresResponse)
+def get_run_failures(run_id: str) -> RunFailuresResponse:
+    """The run's failing tests: message, stage, how long each has been failing, flaky or not."""
+    failures = load_run_failures(run_id)
+    if failures is None:
+        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+    return RunFailuresResponse(
+        run_id=failures.run_id,
+        runs_considered=failures.runs_considered,
+        new_failures=failures.new_failures,
+        tests=[FailingTestItem(**vars(t)) for t in failures.tests],
+        groups=[
+            FailureGroupItem(message=g.message, count=g.count, keys=list(g.keys))
+            for g in failures.groups
+        ],
     )
 
 
