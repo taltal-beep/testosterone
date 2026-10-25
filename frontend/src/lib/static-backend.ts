@@ -61,6 +61,7 @@ export function resolveStaticPath(pathname: string, search: URLSearchParams): st
   if (path === "/runs") return "runs.json";
   if (path === "/dashboard/overview") return "dashboard/overview.json";
   if (path === "/dashboard/runs/recent") return "dashboard/recent-runs.json";
+  if (path === "/dashboard/attention") return "dashboard/attention.json";
 
   const cycle = /^\/cycles\/([^/]+)$/.exec(path);
   if (cycle) return `cycles/${decodeURIComponent(cycle[1])}.json`;

@@ -49,6 +49,7 @@ export type AiSummaryResponse = Schemas["AiSummaryResponse"];
 export type DashboardTrendIndicator = Schemas["DashboardTrendIndicator"];
 export type DashboardOverviewResponse = Schemas["DashboardOverviewResponse"];
 export type DashboardRecentRunsResponse = Schemas["DashboardRecentRunsResponse"];
+export type DashboardAttentionResponse = Schemas["DashboardAttentionResponse"];
 
 export type HealthReadyResponse = Schemas["HealthReadyResponse"];
 export type WhoAmI = Schemas["WhoAmIResponse"];
@@ -170,6 +171,9 @@ export const apiClient = {
   },
   getDashboardRecentRuns(limit = 10): Promise<DashboardRecentRunsResponse> {
     return api<DashboardRecentRunsResponse>(`/api/v1/dashboard/runs/recent?limit=${limit}`);
+  },
+  getDashboardAttention(): Promise<DashboardAttentionResponse> {
+    return api<DashboardAttentionResponse>("/api/v1/dashboard/attention");
   },
   getAiConfigStatus(): Promise<AiConfigStatus> {
     return api<AiConfigStatus>("/api/v1/ai/config/status");
