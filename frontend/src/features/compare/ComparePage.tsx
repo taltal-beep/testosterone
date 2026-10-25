@@ -334,9 +334,15 @@ function MetricTable<K extends string>({
                     <MetricChange metric={metric} />
                   </td>
                   <td className="hidden py-1.5 sm:table-cell">
-                    <Badge tone={badge.tone} title={metric.reason ?? undefined}>
-                      {badge.label}
-                    </Badge>
+                    {metric.reason === "within_noise" ? (
+                      <Badge tone="neutral" title="Under 5% (and under the metric's minimum in ms): normal timing jitter">
+                        Within noise
+                      </Badge>
+                    ) : (
+                      <Badge tone={badge.tone} title={metric.reason ?? undefined}>
+                        {badge.label}
+                      </Badge>
+                    )}
                   </td>
                 </tr>
               );

@@ -9,7 +9,11 @@ from typing import Literal
 from testo_core.history.read_model import get_run, list_run_sessions
 from testo_core.history.views import CompletedRunView, RunSessionView
 from testo_core.services.delta_models import DeltaComparisonResult, MetricDelta
-from testo_core.services.delta_service import DeltaComparisonError, DeltaComparisonService
+from testo_core.services.delta_service import (
+    DeltaComparisonError,
+    DeltaComparisonService,
+    within_noise,
+)
 
 TrendDirection = Literal["up", "down", "flat", "unknown"]
 LinkState = Literal["available", "missing", "unknown"]
@@ -199,6 +203,7 @@ class DashboardService:
             trend_duration=self._build_trend(
                 current=latest_run.wall_duration_ms if latest_run else None,
                 baseline=baseline_run.wall_duration_ms if baseline_run else None,
+                noise_floor_ms=100.0,
             ),
             reliability_rollup=self._build_rollup(delta_result=delta_result, group="reliability"),
             performance_rollup=self._build_rollup(delta_result=delta_result, group="performance"),
@@ -279,13 +284,20 @@ class DashboardService:
         ]
 
     @staticmethod
-    def _build_trend(*, current: float | None, baseline: float | None) -> DashboardTrendIndicator:
+    def _build_trend(
+        *, current: float | None, baseline: float | None, noise_floor_ms: float | None = None
+    ) -> DashboardTrendIndicator:
+        """Up, down or flat; a duration (``noise_floor_ms`` set) within timing noise is flat."""
         if current is None or baseline is None:
             return DashboardTrendIndicator(direction="unknown", delta_abs=None, delta_pct=None)
         delta_abs = current - baseline
         delta_pct = None if baseline == 0 else (delta_abs / baseline) * 100.0
         direction: TrendDirection
-        if delta_abs > 0:
+        if noise_floor_ms is not None and within_noise(
+            absolute_delta=delta_abs, baseline=baseline, floor_ms=noise_floor_ms
+        ):
+            direction = "flat"
+        elif delta_abs > 0:
             direction = "up"
         elif delta_abs < 0:
             direction = "down"

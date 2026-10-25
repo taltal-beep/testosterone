@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-05-02
-updated: 2026-10-07
+updated: 2026-10-25
 ---
 
 # Delta Comparison Policy
@@ -21,7 +21,7 @@ This document defines deterministic semantics for Phase 3 delta analytics.
 
 - `improvement`: metric moved in a favorable direction.
 - `regression`: metric moved in an unfavorable direction.
-- `neutral`: no change (`absolute_delta == 0`).
+- `neutral`: no change (`absolute_delta == 0`), or a duration change within timing noise (see below).
 - `unknown`: metric cannot be compared due to missing or incompatible data.
 
 ## Direction policy table
@@ -38,12 +38,17 @@ This document defines deterministic semantics for Phase 3 delta analytics.
 | `metrics_duration_ms` | performance | lower | Lower aggregate metrics duration is better. |
 | `avg_case_ms` | performance | lower | Lower average case duration is better. |
 
+## Timing noise (added 2026-10-25)
+
+Two identical runs never take exactly the same time, so a duration metric (`unit: ms`) is only a regression or an improvement when the change is at least **5 %** of the baseline **and** at least the metric's floor: **100 ms** for `wall_duration_ms` and `metrics_duration_ms`, **5 ms** for `avg_case_ms`. A smaller change is `neutral` with reason `within_noise`; its `absolute_delta` and `relative_delta_pct` are still reported, and Compare shows it as "Within noise". The dashboard's duration trend uses the same rule (`delta_service.within_noise`, 100 ms floor) and reads "flat". Test counts and health have no noise floor: one more failed test is always a regression. The constants are `NOISE_RELATIVE_PCT` and `_MetricPolicy.noise_floor_ms` in `testo_core/services/delta_service.py`.
+
 ## Unknown/null reason codes
 
 - `missing_current_metric`: current run has no value.
 - `missing_baseline_metric`: baseline run has no value.
 - `zero_baseline_for_relative`: absolute delta can be computed, relative percent cannot.
 - `incompatible_test_kind`: run pair has different `test_kind`.
+- `within_noise`: not unknown, but the reason a `neutral` duration is neutral despite a non-zero delta.
 
 ## Stage-level deltas (added 2026-07-23)
 

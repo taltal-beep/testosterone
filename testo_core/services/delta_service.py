@@ -15,6 +15,18 @@ from testo_core.services.delta_models import (
     StageDelta,
 )
 
+# Timing jitters between identical runs. A duration change counts only when it is
+# both this large relative to the baseline and at least the metric's
+# ``noise_floor_ms``; smaller ones are "neutral" with reason ``within_noise``.
+NOISE_RELATIVE_PCT = 5.0
+
+
+def within_noise(*, absolute_delta: float, baseline: float, floor_ms: float) -> bool:
+    """True when a duration change is too small to mean anything (see ``NOISE_RELATIVE_PCT``)."""
+    if abs(absolute_delta) < floor_ms:
+        return True
+    return baseline != 0 and abs(absolute_delta / baseline) * 100.0 < NOISE_RELATIVE_PCT
+
 
 class DeltaComparisonError(ValueError):
     """Base domain exception for delta comparison failures."""
@@ -43,6 +55,8 @@ class _MetricPolicy:
     group: Literal["reliability", "performance"]
     direction: DeltaDirection
     unit: Literal["ms", "pct", "tests"]
+    # Smallest change in ms that counts as a regression or improvement (ms metrics only).
+    noise_floor_ms: float = 0.0
 
 
 class DeltaComparisonService:
@@ -53,12 +67,14 @@ class DeltaComparisonService:
         _MetricPolicy("broken", "Broken tests", "reliability", "lower_is_better", "tests"),
         _MetricPolicy("skipped", "Skipped tests", "reliability", "lower_is_better", "tests"),
         _MetricPolicy("health_pct", "Health percentage", "reliability", "higher_is_better", "pct"),
-        _MetricPolicy("wall_duration_ms", "Wall duration", "performance", "lower_is_better", "ms"),
         _MetricPolicy(
-            "metrics_duration_ms", "Metrics duration", "performance", "lower_is_better", "ms"
+            "wall_duration_ms", "Wall duration", "performance", "lower_is_better", "ms", 100.0
         ),
         _MetricPolicy(
-            "avg_case_ms", "Average case duration", "performance", "lower_is_better", "ms"
+            "metrics_duration_ms", "Metrics duration", "performance", "lower_is_better", "ms", 100.0
+        ),
+        _MetricPolicy(
+            "avg_case_ms", "Average case duration", "performance", "lower_is_better", "ms", 5.0
         ),
     )
 
@@ -144,6 +160,16 @@ class DeltaComparisonService:
             relative_delta_pct = (absolute_delta / baseline_value) * 100.0
 
         classification = self._classify(absolute_delta=absolute_delta, direction=policy.direction)
+        if (
+            policy.unit == "ms"
+            and classification != "neutral"
+            and within_noise(
+                absolute_delta=absolute_delta,
+                baseline=baseline_value,
+                floor_ms=policy.noise_floor_ms,
+            )
+        ):
+            classification, reason = "neutral", "within_noise"
         return MetricDelta(
             metric_key=policy.key,
             label=policy.label,
