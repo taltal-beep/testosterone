@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 # Product review: scorecard and roadmap
@@ -11,7 +11,7 @@ updated: 2026-10-24
 
 The [Project Review](project-review.md) asked "is the code good?" and ended at 10. This note asks a different question: **would a team pick Testosterone over what they already use, and would they keep using it?** It looks at the product, not the code: positioning against the tools people actually adopt, the first ten minutes, the daily "why is CI red" workflow, the UI's design, accessibility and copy.
 
-How it was checked (2026-10-24, `main` at `9104054`):
+How the first pass was checked (2026-10-24, `main` at `9104054`):
 
 - **Competitors:** Allure Report and Allure TestOps, ReportPortal, Currents, Trunk Flaky Tests, Datadog Test Optimization, Testmo and TestDino, from their own docs and comparison pages. Prices change often and some comparison pages are written by a competitor, so treat the figures as rough.
 - **The demo UI:** the same static site that the [Pages demo](Processes%20&%20Guides/GitLab%20Pages%20Demo.md) publishes, built locally from `self-test` and `sample-all-frameworks` runs, plus the README screenshots of the failing fake-api runs. Every page was opened at 1280 px and 390 px.
@@ -21,6 +21,59 @@ How it was checked (2026-10-24, `main` at `9104054`):
 
 ## Verdict
 
+**Overall: 7.5 / 10 as a product (was 6.5).** Second pass, 2026-10-25, `main` at `ad4dc9f`, after the roadmap work in #166 to #174 ([Product Roadmap Work](Specs%20&%20ADRs/Product%20Roadmap%20Work%20-%202026-10-25.md)). The red build now lands: the run page leads with its failing tests, groups shared causes, says how long each has failed and links to a page per test, and PR comments compare with the target branch. The first look is three commands (`pip install`, `testo ingest`, `testo ui`) or no install at all on the try-it page.
+
+It is 7.5 rather than the 8 the first pass predicted because of one new finding: **a cycle that only exists through `testo ingest` has no cycle page** (P10). `GET /api/v1/cycles/{name}` reads `testosterone.yaml`, so the cycle every ingest user creates is missing from Cycles and its page answers "not found", which hides the test search, the slowest tests and the flaky card from exactly the users the first look was rebuilt for. Fixing it is the single biggest step to 8.
+
+How it was checked: the static demo rebuilt from `self-test`, `sample-all-frameworks` and three ingested JUnit runs of a `web` cycle; every page opened at 1280 px and 390 px; `axe-core` (WCAG 2 A/AA and best practice) on every page; keyboard tabbing through the shell; touch targets and overflow at 390 px; the API called directly for the ingest-only cycle. No screen reader, no users.
+
+## Scorecard
+
+| Area | Score | Was | In one line |
+|------|:-----:|:---:|-------------|
+| Positioning and value proposition | **8** | 7.5 | README, PyPI and `testo --help` say the same thing, and the demo has a try-it page. The name is still undecided and the Action isn't on the Marketplace |
+| Time to first value | **7.5** | 6 | `testo ui` from the wheel and a no-install try-it page. But an ingest-only cycle has no page (P10), and the first `testo ui` with no runs doesn't show the one command to run |
+| Core workflow: "why is CI red?" | **8** | 5.5 | Failing tests first, grouped causes, a page per test, PR comments against the target branch. The run page's "New" still means "since the previous run on any branch" (P11), shows no branch or commit (P12), Compare opens empty (P13) and there's no command to rerun what failed (P14) |
+| Feature depth against competitors | **8** | 7.5 | Owners from CODEOWNERS, prefilled issues, per-test history, slowest and slowing tests. Still behind on triage memory (ReportPortal), traces and attachments (Currents, Allure) and flake-rate trends (Trunk) |
+| Visual design and UX | **7.5** | 7 | The run page now reads in the user's order. The dashboard still doesn't: rollup chips with "0 unknown", blue icon tiles that carry nothing, a "Quick links" card, and health to two decimals (D7) |
+| Accessibility | **8.5** | 7 | Skip link, focus ring, contrast, headings and reflow fixed; `axe` finds one moderate issue, the same on every page (A8). Left: the demo notice's 26 px close button and 16 px-high inline links (A9), and no screen reader or 200 % zoom pass |
+| UX copy | **8** | 6.5 | Errors say what to check, sentence case, one ellipsis. Left: "Generate AI Summary", "Trend: regressed", "Irregular tier mix", "Non-ideal tier ordering", `20.00%` (C10), and the `gpt-4o-mini` default (C8) |
+| Trust and adoption signals | **5** | 5 | Unchanged: one maintainer, no "used by", nothing launched. Only a launch and real users move it; out of scope for the code |
+
+## What a 10 needs
+
+Every area except trust, in the order that moves the score most. "Realistic" says where a 10 depends on something other than code.
+
+| Area | To reach 10 | Realistic |
+|------|-------------|-----------|
+| Time to first value | P10 (ingest cycles get pages), a first-run empty state in `testo ui` with the `testo ingest` command, and a pytest plugin (`pytest -p testo` or `pytest --testo`) that records every local run with no CI step | Yes |
+| Core workflow | P11 to P14: "new since `main`" on the run page, branch and commit in its header, Compare prefilled with the run and its baseline, and a copyable "rerun these" command per runner (`pytest` node ids, `--grep` for Playwright) | Yes |
+| Visual design | D7: a dashboard that answers "what needs me?" (failing cycles, new failures, new flaky tests, what got slower) above the numbers, and D3 run labels that differ | Yes |
+| Accessibility | A8 and A9, a 200 % zoom pass, text alternatives for the bars, and one screen-reader pass (VoiceOver or NVDA, which needs a person) | Mostly; the screen-reader pass needs Taltal |
+| UX copy | C8 and C10 | Yes |
+| Feature depth | Triage memory (mark a failure's cause once, similar failures inherit it), Playwright traces, screenshots and videos on the test page, flake rate over time per test | 9 is realistic: Datadog's test impact analysis and Currents' CI load balancing are products in themselves |
+| Positioning | The name decision, the Action on the GitHub Marketplace, and a "compared with" docs page | Needs Taltal's name call |
+
+## Second pass findings
+
+| # | Severity | Finding | Fix |
+|---|----------|---------|-----|
+| P10 | High | **Ingest-only cycles have no page.** `GET /api/v1/cycles/web` answers 404 ("Unknown cycle") for a cycle created by `testo ingest`, while `/analytics/tests?cycle=web` has its tests. Cycles doesn't list it and the static export skips it | List cycles from run history as well as config; a history-only cycle gets a read-only page (no Run panel) with its tests, flaky card and runs |
+| P11 | Medium | **"New" on the run page is relative to the previous run on any branch.** `load_run_failures` walks the cycle's earlier runs regardless of branch, so on a busy repo "New" and "Failing for N runs" mix branches. #170 fixed this for the PR comment only | Use the same baseline as the PR comment (`pick_baseline`): earlier runs on the run's target or default branch, falling back to all runs; say which in the card |
+| P12 | Low | The run page doesn't show the branch, commit or PR it ran for, though the run records them | A line under the title: branch, short commit (linked when `repository` is set) |
+| P13 | Low | Compare opens with nothing selected, and same-minute runs read the same ("web · Oct 25 03:37" twice; D3 from the first pass) | Prefill the latest run and its baseline; label runs with seconds or a run number and branch |
+| P14 | Low | No "rerun what failed" | A copy button on the failing-tests card with the runner's command for those tests |
+| D7 | Medium | The dashboard is still data-model first (see Design and UX above); D6's icon tiles are unchanged | Lead with what needs attention; status-coloured or no icons |
+| A8 | Minor | `axe` "region" on every page: the skip link sits before the sidebar, outside every landmark (it is the only content that does) | Put it inside a landmark (the `header`, or a `nav` labelled "Skip links") |
+| A9 | Minor | Under the 24 px minimum target (WCAG 2.2 2.5.8): the demo notice's close button (26 × 26 px), inline "compare" and run links 15–18 px high in lists | 44 px close button; give list rows a taller hit area |
+| C10 | Low | "Generate AI Summary", "Trend: regressed" / "Trend: flat", "Irregular tier mix", "Non-ideal tier ordering", health as `20.00%` | "Generate AI summary", "Down from 40%" / "No change", "Mostly unit tests", whole-number percentages |
+
+First-pass findings P1 to P9, D1, D2, D4, D5, A1 to A7, C1 to C7 and C9 are fixed (#166 to #174). D3 and D6 are carried into P13 and D7, and C8 is still open.
+
+## First pass (2026-10-24)
+
+### First pass verdict (2026-10-24)
+
 **Overall: 6.5 / 10 as a product** (the code scores 10). The engineering is ahead of the product. Every capability a team needs is there: ingest from any runner, a shared server, flaky detection and quarantine, PR comments and annotations, Slack and Teams alerts, run-to-run diffs, AI summaries. But the two moments that decide adoption are weaker than the features behind them:
 
 1. **The first look.** A `pip install` user has no UI. `testo-api` serves one only when `TESTO_UI_DIR` points at a `frontend/dist` you built yourself from a checkout with npm, and [Getting Started](Getting%20Started.md) says the web UI "runs from a checkout of the repository". So the laptop story ends in the terminal, and the screenshots in the README show something a new user can't get without cloning the repo or running the Docker team server.
@@ -28,7 +81,7 @@ How it was checked (2026-10-24, `main` at `9104054`):
 
 Fix those two and the product score moves to about 8 without a new feature. After that, the gap to the paid tools is the per-test view (history, flake rate, duration trend, owner) and grouping failures by cause.
 
-## Scorecard
+### First pass scorecard
 
 | Area | Score | In one line |
 |------|:-----:|-------------|
@@ -54,7 +107,7 @@ Fix those two and the product score moves to about 8 without a new feature. Afte
 
 **The position to own:** *the free, self-hosted Trunk-and-Currents for teams that can't or won't send test data to a SaaS.* History, diffs, flaky quarantine and PR feedback for any runner, in one `pip install` or one container. It is already true on paper. The roadmap below makes it true in the first ten minutes and on the red-build page.
 
-## Findings
+## First pass findings
 
 Severity is product impact: **High** decides whether someone adopts or keeps the tool, **Medium** costs trust or time every day, **Low** is polish.
 
@@ -115,7 +168,7 @@ Not tested: screen reader output (VoiceOver, NVDA), 200 % zoom, and the charts' 
 
 ## Roadmap: Now / Next / Later
 
-Ordered by what moves adoption most for the least work. Sizes: S is a day or less, M a few days, L a week or more. Nothing here has been started; each item waits on Taltal's go-ahead.
+Ordered by what moves adoption most for the least work. Sizes: S is a day or less, M a few days, L a week or more. All of Now and Next, and owners, tickets and the try-it page from Later, shipped in #166 to #174 (1.3.0, the try-it page after it). Left: the launch, triage memory, traces and the name; [What a 10 needs](#what-a-10-needs) is the current plan.
 
 ### Now: make the first look and the red build land (about a week)
 
