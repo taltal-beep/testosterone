@@ -51,7 +51,8 @@ export function TestPyramid({ unit, integration, e2e, shape, message }: TestPyra
           return (
             <div key={key} className="flex items-center gap-3">
               <span className="w-20 shrink-0 text-xs text-ink-400">{label}</span>
-              <div className="h-4 flex-1 rounded bg-ink-800">
+              {/* Decorative: the count is the text beside it. */}
+              <div className="h-4 flex-1 rounded bg-ink-800" aria-hidden>
                 <div
                   className={`h-full rounded ${tone}`}
                   style={{ width: `${widthPct}%` }}

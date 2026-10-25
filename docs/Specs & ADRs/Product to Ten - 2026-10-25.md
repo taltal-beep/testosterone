@@ -40,6 +40,10 @@ A bare `/compare` opened with two empty pickers. It now shows the latest run aga
 - The OpenAI default model is `gpt-4.1-mini` instead of `gpt-4o-mini`. A reasoning model (the `gpt-5` family) would need `max_completion_tokens` and no `temperature`, which the OpenAI provider doesn't send, so the default stays a non-reasoning model.
 - `testo config init --help` and `testo config-db --help` no longer show an RST-style double-backticked path, or lose `[tool.testosterone]` to Rich markup.
 
+### Text alternatives for charts, and a 200 % zoom pass
+
+The per-test duration chart's label now reads its values ("Duration per run, oldest first: 100 ms passed, …"), the flaky card's outcome strip is an image with a label (a label on a plain `span` is not announced), and the pyramid's bars are hidden from screen readers since the count beside each is text. At 200 % zoom (a 640 × 450 CSS viewport for 1280 × 900) the dashboard, cycles, a cycle, runs, a run, Compare, the try-it page and AI settings have no horizontal scroll.
+
 ### The dashboard answers "what needs me?" first (D7), and the first-run page fits `pip` users
 
 The dashboard opened on four KPI tiles for the latest run, whatever its cycle, then rollup chips ("0 unknown") and a "Quick links" card. It now leads with a "Needs attention" card from `GET /api/v1/dashboard/attention` (`services/attention.py`): for the latest run of each of the ten most recently run cycles, which are red, with their failing and new-failure counts and how many runs in a row they have been red (on the run's branch); tests the latest run made flaky (`flaky_service.newly_flaky_tests`); and the tests that got slower most (`test_history`'s "Got slower"). Each line links to the run or test page that explains it, and a quiet day reads "All 3 cycles passed their latest run. Nothing needs you." The KPI tiles stay, below it, without their decorative icons; the rollup and quick-links cards are gone (report links moved to the Recent runs card's header). The overview endpoint is unchanged.

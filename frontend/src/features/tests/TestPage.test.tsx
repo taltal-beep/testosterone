@@ -75,6 +75,8 @@ describe("TestPage", () => {
     expect(screen.getByRole("link", { name: "Run run-4abc" })).toHaveAttribute("href", "/runs/run-4abcdef0");
     expect(screen.getByText(/Median 120 ms, and 280 ms slower over the last runs \(\+233.3%\)/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Runs (4)" })).toBeInTheDocument();
+    // The duration chart reads as text, too.
+    expect(screen.getByRole("img", { name: /^Duration per run, oldest first: 100 ms passed, .*, 100 ms failed$/ })).toBeInTheDocument();
     expect(screen.getByText("@org/api")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open an issue" })).toHaveAttribute(
       "href",
