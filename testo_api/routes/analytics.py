@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query
 
 from testo_api.models import (
+    AttachmentItem,
     CycleTestsResponse,
     DeltaCaseChange,
     DeltaCaseChangesResponse,
@@ -30,6 +31,7 @@ from testo_core.services.delta_service import (
 )
 from testo_core.services.flaky_service import DEFAULT_WINDOW, find_flaky_tests
 from testo_core.services.run_snapshot_diff import diff_run_snapshots
+from testo_core.services.test_attachments import attachments_for
 from testo_core.services.test_history import cycle_source, list_cycle_tests, load_test_history
 from testo_core.services.test_ownership import issue_url, owners_for
 
@@ -221,11 +223,14 @@ def get_test_history(
     summary = history.summary
     checkout, repository = cycle_source(cycle)
     owners = owners_for(checkout, summary.full_name, summary.group)
+    failed_run = get_run(run_id=last.run_id) if last else None
+    attachments = attachments_for(failed_run, key) if failed_run else ()
     return TestHistoryResponse(
         cycle=history.cycle,
         test=TestSummaryItem(**vars(history.summary)),
         points=[TestPointItem(**vars(p)) for p in history.points],
         last_failure=TestPointItem(**vars(last)) if last else None,
+        last_failure_attachments=[AttachmentItem(**vars(a)) for a in attachments],
         owners=list(owners),
         issue_url=issue_url(
             repository,

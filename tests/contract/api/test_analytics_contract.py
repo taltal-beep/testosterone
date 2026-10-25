@@ -418,6 +418,20 @@ def test_cycle_tests_and_test_history_contract(monkeypatch, tmp_path) -> None:  
     monkeypatch.setattr(
         "testo_api.routes.analytics.cycle_source", lambda cycle: (tmp_path, "acme/shop")
     )
+    from testo_core.services.test_attachments import Attachment
+
+    screenshot = Attachment(
+        name="screenshot",
+        content_type="image/png",
+        kind="image",
+        url="history/run-4/artifacts/a-attachment.png",
+        size_bytes=70,
+    )
+    monkeypatch.setattr("testo_api.routes.analytics.get_run", lambda *, run_id: run_id)
+    monkeypatch.setattr(
+        "testo_api.routes.analytics.attachments_for",
+        lambda run, key: (screenshot,) if (run, key) == ("run-4", "k1") else (),
+    )
 
     client = TestClient(create_app())
     listing = client.get("/api/v1/analytics/tests", params={"cycle": "smoke", "q": "login"})
@@ -436,6 +450,15 @@ def test_cycle_tests_and_test_history_contract(monkeypatch, tmp_path) -> None:  
     assert body["test"]["key"] == "k1"
     assert body["points"][0]["branch"] == "main"
     assert body["last_failure"]["message"] == "AssertionError"
+    assert body["last_failure_attachments"] == [
+        {
+            "name": "screenshot",
+            "content_type": "image/png",
+            "kind": "image",
+            "url": "history/run-4/artifacts/a-attachment.png",
+            "size_bytes": 70,
+        }
+    ]
     assert body["owners"] == ["@org/api"]
     assert body["issue_url"].startswith("https://github.com/acme/shop/issues/new?title=Flaky+test")
     missing = client.get("/api/v1/analytics/test-history", params={"cycle": "smoke", "key": "nope"})

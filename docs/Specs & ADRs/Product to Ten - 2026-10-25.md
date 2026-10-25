@@ -56,6 +56,10 @@ The fastest way to a first run was `pytest --junitxml` plus `testo ingest`, two 
 
 The plugin is registered for every pytest run on a machine with testo-core installed, so it is inert without the flag, imports nothing from testo-core until it records, skips xdist workers, and turns any recording failure into one summary line instead of a different exit code.
 
+### Screenshots, videos and traces on the test page (feature depth)
+
+Playwright JSON imports already copied each attempt's attachments next to the test's Allure result, but only the Allure report showed them. `GET /api/v1/analytics/test-history` now adds `last_failure_attachments` (`services/test_attachments.py`): the files the last failing run kept for the test, the last attempt's first, each with its kind (`image`, `video`, `trace`, `text`, `file`) and a URL under `/history`, like report links. The test page shows screenshots and videos in its "Last failure" card and offers the trace as a download with the `npx playwright show-trace` command. Only files inside the run's own `static/history/<run_id>/` snapshot are listed, and `/history` already serves attachments with a `sandbox` Content-Security-Policy.
+
 ## Consequences
 
 - A team that only ingests JUnit gets the same cycle page as one that runs cycles through `testo run`, apart from starting runs.

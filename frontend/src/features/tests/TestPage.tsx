@@ -4,6 +4,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { apiClient, type TestPointItem } from "../../lib/api-client";
 import { Badge, Card, KeyValue, PageHeader, Spinner } from "../../components/ui";
 import { countLabel, formatDuration, formatRunTime, shortRunId } from "../../lib/format";
+import { Attachments } from "./Attachments";
 
 const FAILED = new Set(["failed", "broken"]);
 
@@ -69,7 +70,14 @@ export function TestPage() {
     );
   }
 
-  const { test, points, last_failure: lastFailure, owners, issue_url: issueUrl } = query.data;
+  const {
+    test,
+    points,
+    last_failure: lastFailure,
+    last_failure_attachments: attachments = [],
+    owners,
+    issue_url: issueUrl
+  } = query.data;
   const passRate = test.runs > 0 ? Math.round((100 * test.passed) / test.runs) : null;
 
   return (
@@ -109,6 +117,7 @@ export function TestPage() {
             · {formatRunTime(lastFailure.created_at)}
             {lastFailure.branch ? ` · ${lastFailure.branch}` : ""}
           </p>
+          <Attachments items={attachments} />
         </Card>
       ) : null}
 

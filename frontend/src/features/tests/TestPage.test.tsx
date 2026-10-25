@@ -57,6 +57,10 @@ describe("TestPage", () => {
             test: TEST,
             points: [failure, point("run-3", "passed", 3), point("run-2", "passed", 2), point("run-1", "passed", 1)],
             last_failure: failure,
+            last_failure_attachments: [
+              { name: "screenshot", content_type: "image/png", kind: "image", url: "history/run-4/a-attachment.png", size_bytes: 70 },
+              { name: "trace", content_type: "application/zip", kind: "trace", url: "history/run-4/b-attachment.zip", size_bytes: 2048 }
+            ],
             owners: ["@org/api"],
             issue_url: "https://github.com/acme/shop/issues/new?title=Flaky+test"
           }),
@@ -78,6 +82,16 @@ describe("TestPage", () => {
     // The duration chart reads as text, too.
     expect(screen.getByRole("img", { name: /^Duration per run, oldest first: 100 ms passed, .*, 100 ms failed$/ })).toBeInTheDocument();
     expect(screen.getByText("@org/api")).toBeInTheDocument();
+    // What the failing run kept: the screenshot in place, the trace to download.
+    expect(screen.getByRole("img", { name: "screenshot from the failing run" })).toHaveAttribute(
+      "src",
+      expect.stringMatching(/\/history\/run-4\/a-attachment\.png$/)
+    );
+    expect(screen.getByRole("link", { name: "Download trace" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/\/history\/run-4\/b-attachment\.zip$/)
+    );
+    expect(screen.getByText("2 KB")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open an issue" })).toHaveAttribute(
       "href",
       "https://github.com/acme/shop/issues/new?title=Flaky+test"

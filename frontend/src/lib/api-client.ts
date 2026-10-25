@@ -41,6 +41,7 @@ export type TestSummaryItem = Schemas["TestSummaryItem"];
 export type CycleTestsResponse = Schemas["CycleTestsResponse"];
 export type TestPointItem = Schemas["TestPointItem"];
 export type TestHistoryResponse = Schemas["TestHistoryResponse"];
+export type AttachmentItem = Schemas["AttachmentItem"];
 
 export type AiConfigStatus = Schemas["AiConfigStatusResponse"];
 export type UpdateAiConfigRequest = Schemas["AiConfigUpdateRequest"];
