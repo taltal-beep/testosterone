@@ -18,6 +18,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - A try-it page (`/try`, "Try a file" under Tools, also on the static demo): drop JUnit XML files, or use the sample, and see the run the way Testosterone shows one (verdict, failing tests with shared causes grouped, slowest tests), read in the browser with nothing uploaded
 
 ### Changed
+- Charts have text alternatives: the test page's duration chart reads its values, and the flaky card's outcome strip is announced
 - UI accessibility and copy: the skip link is inside a landmark; the demo notice's close button, the demo badge and list links meet the 24 px target size; "Generate AI summary"; trends read "Better than last run" / "Worse than last run" / "No change"; the test pyramid uses plain labels and sentences (also in the API's pyramid `message`); health shows whole-number percentages. The default OpenAI model is `gpt-4.1-mini`. `testo config init --help` and `testo config-db --help` no longer show broken markup
 - A failing test is "New" on the run page when it isn't failing on the run's baseline: the latest run on a pull request's target branch, else the run before on the same branch, as in the PR comment. The card says "new since main" and marks tests that also fail on main; streaks follow the run's own branch. `GET /api/v1/runs/{run_id}/failures` adds `new`, `baseline_run_id` and `baseline_branch`
 

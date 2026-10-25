@@ -13,7 +13,7 @@ const DOT: Record<string, string> = {
 
 function History({ item }: { item: FlakyTestItem }) {
   return (
-    <span className="flex flex-wrap gap-0.5" aria-label={`History, oldest first: ${item.history.join(", ")}`}>
+    <span className="flex flex-wrap gap-0.5" role="img" aria-label={`History, oldest first: ${item.history.join(", ")}`}>
       {item.history.map((status, idx) => (
         <span
           // History is positional; the index is the identity.

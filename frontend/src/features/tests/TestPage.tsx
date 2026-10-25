@@ -17,7 +17,11 @@ function DurationBars({ points }: { points: TestPointItem[] }) {
   const oldestFirst = [...points].reverse();
   const longest = Math.max(1, ...oldestFirst.map((p) => p.duration_ms ?? 0));
   return (
-    <div className="flex h-24 items-end gap-1" role="img" aria-label="Duration per run, oldest first">
+    <div
+      className="flex h-24 items-end gap-1"
+      role="img"
+      aria-label={`Duration per run, oldest first: ${oldestFirst.map((p) => `${formatDuration(p.duration_ms)} ${p.status}`).join(", ")}`}
+    >
       {oldestFirst.map((p) => (
         <span
           key={p.run_id}
