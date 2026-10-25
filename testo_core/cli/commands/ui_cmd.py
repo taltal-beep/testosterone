@@ -1,0 +1,75 @@
+"""``testo ui`` — open the web UI on this machine's run history.
+
+Starts the API (``testo_api``) on 127.0.0.1 with the UI that ships in the
+wheel and opens a browser on it. Same history as the CLI: whatever
+``DATABASE_URL`` / ``testosterone.yaml`` point at, by default the SQLite file
+next to the project.
+
+The UI's writes (starting a run, saving AI settings) come from the server's
+own origin, so that origin is added to ``TESTO_CORS_ORIGINS`` for this
+process. That is the exact ``http://127.0.0.1:<port>`` and
+``http://localhost:<port>``, nothing wider: a page on any other site, or one
+that DNS-rebinds to 127.0.0.1, still has a foreign ``Origin`` and is refused.
+"""
+
+from __future__ import annotations
+
+import os
+import threading
+import webbrowser
+
+import typer
+
+from testo_core.engine.exit_codes import EngineExitCode
+
+_BUILD_HINT = (
+    "No built UI found. A `pip install testo-core[api]` from PyPI includes one; from a "
+    "source checkout run `scripts/build_ui_bundle.sh` (needs Node 22), or point "
+    'TESTO_UI_DIR at a `npm run build` output made with VITE_API_BASE_URL="".'
+)
+
+
+def _own_origins(port: int) -> list[str]:
+    return [f"http://127.0.0.1:{port}", f"http://localhost:{port}"]
+
+
+def _merged_cors(port: int) -> str:
+    from testo_api.security import DEFAULT_CORS_ORIGINS
+
+    current = [o.strip() for o in os.environ.get("TESTO_CORS_ORIGINS", "").split(",") if o.strip()]
+    base = current or list(DEFAULT_CORS_ORIGINS)
+    return ",".join(dict.fromkeys([*base, *_own_origins(port)]))
+
+
+def ui(
+    port: int = typer.Option(8000, "--port", "-p", min=1, max=65535, help="Port to serve on."),
+    open_browser: bool = typer.Option(
+        True, "--open/--no-open", help="Open the UI in the default browser."
+    ),
+) -> None:
+    """Serve the web UI and the API on http://127.0.0.1:PORT for this machine's run history."""
+    try:
+        import uvicorn  # type: ignore[import-not-found]  # noqa: F401
+
+        from testo_api.ui import ui_dir
+    except ModuleNotFoundError:
+        typer.echo("The web UI needs the API extra: pip install 'testo-core[api]'", err=True)
+        raise typer.Exit(int(EngineExitCode.INVALID_INPUT)) from None
+
+    if ui_dir() is None:
+        typer.echo(_BUILD_HINT, err=True)
+        raise typer.Exit(int(EngineExitCode.INVALID_INPUT))
+
+    # Local only: binding anything wider is `testo-api`'s job, with a token.
+    os.environ["TESTO_API_HOST"] = "127.0.0.1"
+    os.environ["TESTO_API_PORT"] = str(port)
+    os.environ["TESTO_CORS_ORIGINS"] = _merged_cors(port)
+
+    url = f"http://127.0.0.1:{port}/"
+    typer.echo(f"Testosterone UI on {url}  (Ctrl+C to stop)")
+    if open_browser:
+        threading.Timer(1.0, webbrowser.open, args=(url,)).start()
+
+    from testo_api.main import run
+
+    raise typer.Exit(run([]))

@@ -22,8 +22,16 @@ The [Product Review](../product-review.md) scored Testosterone 6.5 / 10 as a pro
 - **Grouping by message.** The first line of `statusDetails.message` (or the trace) with numbers, hex ids and quoted values blanked is the group key; only groups of two or more are shown. Plain matching, no ML: it's predictable and good enough for "ten tests, one connection error".
 - **Page order follows the question.** A one-line verdict under the title, then failing tests, the AI summary (failed runs only), stages, reports, test mix, details and artifacts. The run id, exit code and duration moved to Details. "Healthy pyramid" became "Pyramid-shaped: mostly unit tests" and the card is "Test mix", so a failed run no longer shows a green health word; the header dot says "API connected" instead of "All systems go".
 
+### The UI in the wheel: `testo ui` (P2)
+
+- **Built at release time, not at install time.** `scripts/build_ui_bundle.sh` builds the frontend with `VITE_API_BASE_URL=""` into `testo_api/ui_dist/` (gitignored), and hatch's `artifacts` setting puts it in the sdist and the wheel. The publish workflow and CI's `package` job run it before `python -m build`; `scripts/package_smoke.sh` fails when the wheel has no `ui_dist/index.html`. Building with npm in a hatch hook would make every source install need Node.
+- **`TESTO_UI_DIR` still wins**; without it `testo_api/ui.py::ui_dir()` falls back to the bundled build, so `testo-api` serves the UI too when it has one. The team server image keeps its own build.
+- **`testo ui` is local only.** It binds `127.0.0.1` and adds exactly its own two origins to `TESTO_CORS_ORIGINS`, so the UI it serves can start runs without a token while a foreign or DNS-rebinding page is still refused. Anything wider is `testo-api` with a token.
+- **`testo-api` starts uvicorn with the `create_app` factory**, so the app reads the environment at serve time rather than when `testo_api` was first imported.
+
 ## Consequences
 
 - The run page answers "what broke?" without opening Allure or Compare.
 - Reading a run's failures loads up to 20 earlier snapshots of its cycle, like `testo flaky` does. Fine for the run page; a per-test index would be the next step if it becomes slow.
+- `pip install 'testo-core[api]'` gets the UI from the next release; until then it needs a checkout.
 - The PR comment still lists failing tests without grouping; it can reuse `load_run_failures` later.

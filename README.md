@@ -152,6 +152,14 @@ Runs are stored in SQLite by default (`database.url` in `testosterone.yaml`, or
 ### UI
 
 ```bash
+pip install 'testo-core[api]'
+testo ui                               # API + web UI on http://127.0.0.1:8000, opens the browser
+```
+
+The wheel carries a built UI (releases after 1.2.0), so this needs no checkout and no Node.
+Working on the frontend itself:
+
+```bash
 testo-api                              # FastAPI on http://127.0.0.1:8000
 npm --prefix frontend install
 npm --prefix frontend run dev          # React on http://localhost:5173

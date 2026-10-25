@@ -149,9 +149,13 @@ include = [
     "/LICENSE",
     "/pytest.ini",
 ]
+# The built UI is gitignored, so it has to be named to reach the sdist (and the
+# wheel built from it). Present only after scripts/build_ui_bundle.sh.
+artifacts = ["/testo_api/ui_dist"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["testo_core", "testo_api"]
+artifacts = ["testo_api/ui_dist"]
 
 [tool.ruff]
 target-version = "py311"
