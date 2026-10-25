@@ -22,6 +22,8 @@ DEFAULT_WINDOW = 20
 RECENT_RUNS = 3
 # A single test's noise floor: below this a change is jitter, whatever its percentage.
 SLOWDOWN_FLOOR_MS = 20.0
+# Runs in the rolling window a point's flip rate is measured over.
+FLIP_WINDOW = 5
 
 _FAIL = frozenset({"failed", "broken"})
 
@@ -38,6 +40,9 @@ class TestPoint:
     duration_ms: int | None
     message: str
     branch: str | None
+    # Share of outcome changes (pass <-> fail) over the FLIP_WINDOW runs ending here;
+    # None until two of them passed or failed.
+    flip_rate: float | None = None
 
 
 @dataclass(frozen=True)
@@ -153,6 +158,19 @@ def _summarise(key: str, observed: list[tuple[CompletedRunView, dict[str, Any]]]
     )
 
 
+def _flip_rates(statuses: list[str]) -> list[float | None]:
+    """Rolling flip rate per run (oldest first): how flaky the test was up to that run."""
+    rates: list[float | None] = []
+    for i in range(len(statuses)):
+        outcomes = flaky_service._outcomes(statuses[max(0, i - FLIP_WINDOW + 1) : i + 1])
+        if len(outcomes) < 2:
+            rates.append(None)
+            continue
+        flips = sum(1 for a, b in zip(outcomes, outcomes[1:], strict=False) if a != b)
+        rates.append(round(flips / (len(outcomes) - 1), 3))
+    return rates
+
+
 def _matches(summary: TestSummary, query: str) -> bool:
     needle = query.casefold()
     return any(
@@ -178,6 +196,7 @@ def load_test_history(cycle: str, key: str, *, window: int = DEFAULT_WINDOW) -> 
     observed = per_test.get(key)
     if not observed:
         return None
+    rates = _flip_rates([str(case["status"]) for _, case in observed])
     points = tuple(
         TestPoint(
             run_id=run.run_id,
@@ -188,8 +207,9 @@ def load_test_history(cycle: str, key: str, *, window: int = DEFAULT_WINDOW) -> 
             else None,
             message=str(case.get("message") or ""),
             branch=run.branch,
+            flip_rate=rate,
         )
-        for run, case in reversed(observed)
+        for (run, case), rate in reversed(list(zip(observed, rates, strict=True)))
     )
     return TestHistory(cycle=cycle, summary=_summarise(key, observed), points=points)
 

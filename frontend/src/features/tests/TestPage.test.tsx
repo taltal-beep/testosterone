@@ -22,8 +22,8 @@ const TEST = {
   slowdown_pct: 233.3
 };
 
-function point(runId: string, status: string, createdAt: number, message = "") {
-  return { run_id: runId, created_at: createdAt, status, duration_ms: 100, message, branch: "main" };
+function point(runId: string, status: string, createdAt: number, message = "", flipRate: number | null = null) {
+  return { run_id: runId, created_at: createdAt, status, duration_ms: 100, message, branch: "main", flip_rate: flipRate };
 }
 
 function renderAt(url: string) {
@@ -57,6 +57,10 @@ describe("TestPage", () => {
             test: TEST,
             points: [failure, point("run-3", "passed", 3), point("run-2", "passed", 2), point("run-1", "passed", 1)],
             last_failure: failure,
+            last_failure_attachments: [
+              { name: "screenshot", content_type: "image/png", kind: "image", url: "history/run-4/a-attachment.png", size_bytes: 70 },
+              { name: "trace", content_type: "application/zip", kind: "trace", url: "history/run-4/b-attachment.zip", size_bytes: 2048 }
+            ],
             owners: ["@org/api"],
             issue_url: "https://github.com/acme/shop/issues/new?title=Flaky+test"
           }),
@@ -78,10 +82,43 @@ describe("TestPage", () => {
     // The duration chart reads as text, too.
     expect(screen.getByRole("img", { name: /^Duration per run, oldest first: 100 ms passed, .*, 100 ms failed$/ })).toBeInTheDocument();
     expect(screen.getByText("@org/api")).toBeInTheDocument();
+    // What the failing run kept: the screenshot in place, the trace to download.
+    expect(screen.getByRole("img", { name: "screenshot from the failing run" })).toHaveAttribute(
+      "src",
+      expect.stringMatching(/\/history\/run-4\/a-attachment\.png$/)
+    );
+    expect(screen.getByRole("link", { name: "Download trace" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/\/history\/run-4\/b-attachment\.zip$/)
+    );
+    expect(screen.getByText("2 KB")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open an issue" })).toHaveAttribute(
       "href",
       "https://github.com/acme/shop/issues/new?title=Flaky+test"
     );
+  });
+
+  it("shows how flaky the test has been over time", async () => {
+    // Newest first, as the API sends them: rates 0.25 five runs ago, 0.75 now.
+    const rates = [0.75, 0.5, 0.5, 0.25, 0.25, 0.25, 0, null];
+    const points = rates.map((rate, i) => point(`run-${8 - i}`, i % 2 ? "failed" : "passed", 8 - i, "", rate));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ cycle: "smoke", test: TEST, points, last_failure: null, owners: [], issue_url: null }), {
+            status: 200
+          })
+        )
+      )
+    );
+    renderAt(`/cycles/smoke/test?${new URLSearchParams({ key: TEST.key }).toString()}`);
+
+    expect(await screen.findByRole("heading", { name: "Flakiness over time" })).toBeInTheDocument();
+    expect(screen.getByTestId("flip-rate-summary")).toHaveTextContent(
+      "Outcome changed in 75% of the last 5 runs, up from 25% five runs before."
+    );
+    expect(screen.getByRole("img", { name: /^Flip rate per run, oldest first: n\/a, 0%, 25%/ })).toBeInTheDocument();
   });
 
   it("explains a test that isn't in the recent runs", async () => {

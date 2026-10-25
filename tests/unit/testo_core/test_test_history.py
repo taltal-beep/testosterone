@@ -132,3 +132,20 @@ def test_stable_id_is_fnv1a() -> None:
     # Known FNV-1a 32-bit values; static-backend.ts must agree.
     assert test_history.stable_id("") == "811c9dc5"
     assert test_history.stable_id("a") == "e40c292c"
+
+
+def test_flip_rate_rolls_over_the_last_runs() -> None:
+    from testo_core.services.test_history import FLIP_WINDOW, _flip_rates
+
+    assert FLIP_WINDOW == 5
+    statuses = ["passed", "passed", "failed", "passed", "skipped", "failed", "passed", "passed"]
+    assert _flip_rates(statuses) == [
+        None,  # one outcome so far
+        0.0,
+        0.5,  # pass pass fail
+        0.667,  # pass pass fail pass
+        0.667,  # skipped neither passes nor fails
+        1.0,  # window: pass fail pass skip fail -> 3 flips in 3 changes
+        1.0,  # fail pass skip fail pass
+        0.667,  # pass skip fail pass pass
+    ]

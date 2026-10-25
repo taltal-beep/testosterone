@@ -688,6 +688,22 @@ export interface components {
             /** Summary Text */
             summary_text: string | null;
         };
+        /** AttachmentItem */
+        AttachmentItem: {
+            /** Content Type */
+            content_type: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "video" | "trace" | "text" | "file";
+            /** Name */
+            name: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Url */
+            url: string;
+        };
         /** AttentionFailingCycle */
         AttentionFailingCycle: {
             /** Branch */
@@ -1494,6 +1510,8 @@ export interface components {
             /** Issue Url */
             issue_url: string | null;
             last_failure: components["schemas"]["TestPointItem"] | null;
+            /** Last Failure Attachments */
+            last_failure_attachments: components["schemas"]["AttachmentItem"][];
             /** Owners */
             owners: string[];
             /** Points */
@@ -1508,6 +1526,8 @@ export interface components {
             created_at: number;
             /** Duration Ms */
             duration_ms: number | null;
+            /** Flip Rate */
+            flip_rate: number | null;
             /**
              * Message
              * @default

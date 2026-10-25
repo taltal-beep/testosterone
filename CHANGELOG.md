@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- "Flakiness over time" on the test page: the share of outcome changes over the five runs ending at each run, and how it compares with five runs before. Test-history points add `flip_rate`
+- The test page shows what the last failing run kept: screenshots and videos in place, the Playwright trace as a download with the command that opens it. `GET /api/v1/analytics/test-history` adds `last_failure_attachments`
 - `pytest --testo` (or `--testo-cycle NAME`): a pytest plugin, installed with testo-core and inert without the flag, that records each session as a run the way `testo ingest` does, with the checkout's branch and commit. `--testo-server` uploads to a team server instead
 - The dashboard leads with "Needs attention": red cycles (failing and new-failure counts, red for how many runs), tests that just started flaking and tests that got slower, each linking to its page. New endpoint `GET /api/v1/dashboard/attention`. The rollup and quick-links cards and the KPI icons are gone, and the no-runs page explains `testo ingest`, `testo config init` / `testo run` and the try-it page
 - The run page has a "Rerun these tests" command per runner (pytest node ids, `npx playwright test --grep`, `behave --name`) with a Copy button, from the new `rerun_commands` field of `GET /api/v1/runs/{run_id}/failures`

@@ -391,6 +391,46 @@
         "title": "AiSummaryResponse",
         "type": "object"
       },
+      "AttachmentItem": {
+        "properties": {
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "image",
+              "video",
+              "trace",
+              "text",
+              "file"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "content_type",
+          "kind",
+          "url",
+          "size_bytes"
+        ],
+        "title": "AttachmentItem",
+        "type": "object"
+      },
       "AttentionFailingCycle": {
         "properties": {
           "branch": {
@@ -3127,6 +3167,13 @@
               }
             ]
           },
+          "last_failure_attachments": {
+            "items": {
+              "$ref": "#/components/schemas/AttachmentItem"
+            },
+            "title": "Last Failure Attachments",
+            "type": "array"
+          },
           "owners": {
             "items": {
               "type": "string"
@@ -3150,6 +3197,7 @@
           "test",
           "points",
           "last_failure",
+          "last_failure_attachments",
           "owners",
           "issue_url"
         ],
@@ -3184,6 +3232,17 @@
             ],
             "title": "Duration Ms"
           },
+          "flip_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flip Rate"
+          },
           "message": {
             "default": "",
             "title": "Message",
@@ -3204,7 +3263,8 @@
           "status",
           "duration_ms",
           "message",
-          "branch"
+          "branch",
+          "flip_rate"
         ],
         "title": "TestPointItem",
         "type": "object"

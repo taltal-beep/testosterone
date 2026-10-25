@@ -56,6 +56,14 @@ The fastest way to a first run was `pytest --junitxml` plus `testo ingest`, two 
 
 The plugin is registered for every pytest run on a machine with testo-core installed, so it is inert without the flag, imports nothing from testo-core until it records, skips xdist workers, and turns any recording failure into one summary line instead of a different exit code.
 
+### Screenshots, videos and traces on the test page (feature depth)
+
+Playwright JSON imports already copied each attempt's attachments next to the test's Allure result, but only the Allure report showed them. `GET /api/v1/analytics/test-history` now adds `last_failure_attachments` (`services/test_attachments.py`): the files the last failing run kept for the test, the last attempt's first, each with its kind (`image`, `video`, `trace`, `text`, `file`) and a URL under `/history`, like report links. The test page shows screenshots and videos in its "Last failure" card and offers the trace as a download with the `npx playwright show-trace` command. Only files inside the run's own `static/history/<run_id>/` snapshot are listed, and `/history` already serves attachments with a `sandbox` Content-Security-Policy.
+
+### Flakiness over time per test (feature depth)
+
+A test was flaky or not, over the whole window. Each point of `GET /api/v1/analytics/test-history` now carries `flip_rate`: the share of outcome changes (pass to fail or back, skips ignored) over the five runs ending there (`test_history.FLIP_WINDOW`), the same rule `flaky_service` uses for the whole window. The test page draws it as a "Flakiness over time" chart once the test has flipped at all, with "Outcome changed in 60% of the last 5 runs, up from 20% five runs before", so a fix that worked, or a test that is getting worse, shows.
+
 ## Consequences
 
 - A team that only ingests JUnit gets the same cycle page as one that runs cycles through `testo run`, apart from starting runs.

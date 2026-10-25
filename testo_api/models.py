@@ -378,6 +378,17 @@ class TestPointItem(ApiModel):
     duration_ms: int | None = None
     message: str = ""
     branch: str | None = None
+    # Rolling flip rate (0-1) over the runs ending here; null until two passed or failed.
+    flip_rate: float | None = None
+
+
+class AttachmentItem(ApiModel):
+    name: str
+    content_type: str
+    kind: Literal["image", "video", "trace", "text", "file"]
+    # Relative to the API root (``history/<run_id>/...``), like report links.
+    url: str
+    size_bytes: int
 
 
 class TestHistoryResponse(ApiModel):
@@ -386,6 +397,8 @@ class TestHistoryResponse(ApiModel):
     # Newest first.
     points: list[TestPointItem] = Field(default_factory=list)
     last_failure: TestPointItem | None = None
+    # Screenshots, videos, traces the last failing run kept for this test.
+    last_failure_attachments: list[AttachmentItem] = Field(default_factory=list)
     owners: list[str] = Field(default_factory=list)
     issue_url: str | None = None
 
