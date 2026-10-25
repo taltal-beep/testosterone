@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
@@ -53,13 +53,16 @@ function overviewPayload(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function stubOverviewFetch(payload: Record<string, unknown>) {
+function stubOverviewFetch(payload: Record<string, unknown>, attention?: Record<string, unknown>) {
   vi.stubGlobal(
     "fetch",
     vi.fn((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("/api/v1/dashboard/overview")) {
         return Promise.resolve({ ok: true, json: async () => payload });
+      }
+      if (attention && url.includes("/api/v1/dashboard/attention")) {
+        return Promise.resolve({ ok: true, json: async () => attention });
       }
       return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
     })
@@ -91,11 +94,9 @@ describe("DashboardPage", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument());
     expect(screen.getByTestId("health-trend")).toHaveTextContent("Better than last run");
-    expect(screen.getByRole("link", { name: "Latest run details" })).toHaveAttribute("href", "/runs/run-1");
-    expect(screen.getByRole("link", { name: "Compare latest two runs" })).toHaveAttribute(
-      "href",
-      "/compare?current_run_id=run-1&baseline_run_id=run-0"
-    );
+    expect(screen.getByRole("link", { name: "Allure report" })).toHaveAttribute("href", "http://allure/run-1");
+    // Without attention data the card steps aside rather than showing an error.
+    expect(screen.queryByTestId("needs-attention")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^fake-api · / })).toHaveAttribute("href", "/runs/run-1");
   });
 
@@ -140,7 +141,43 @@ describe("DashboardPage", () => {
 
     await waitFor(() => expect(screen.getByTestId("first-run-guide")).toBeInTheDocument());
     expect(screen.getByText("Welcome to Testo")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "see what you have" })).toHaveAttribute("href", "/cycles");
+    expect(screen.getByText(/testo ingest/)).toBeInTheDocument();
+    expect(within(screen.getByTestId("first-run-guide")).getByRole("link", { name: "Try a file" })).toHaveAttribute(
+      "href",
+      "/try"
+    );
+  });
+
+  it("leads with what needs attention: red cycles, new flaky tests, slower tests", async () => {
+    stubOverviewFetch(overviewPayload(), {
+      cycles: 3,
+      passing_cycles: 2,
+      failing: [
+        { cycle: "web", run_id: "run-9", created_at: 1, branch: "main", failed_tests: 4, new_failures: 1, failing_runs: 3 }
+      ],
+      newly_flaky: [{ cycle: "web", key: "k1", name: "test_checkout", slowdown_ms: null, slowdown_pct: null }],
+      slower: [{ cycle: "api", key: "k2", name: "test_search", slowdown_ms: 1500, slowdown_pct: 50 }]
+    });
+    renderDashboard();
+
+    const card = await screen.findByTestId("needs-attention");
+    expect(card).toHaveTextContent("2 of 3 cycles passed their latest run; 1 cycle is red.");
+    expect(screen.getByRole("link", { name: "web" })).toHaveAttribute("href", "/runs/run-9");
+    expect(card).toHaveTextContent("4 tests failing, 1 new");
+    expect(screen.getByText("Red for 3 runs")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "test_checkout" })).toHaveAttribute("href", "/cycles/web/test?key=k1");
+    expect(card).toHaveTextContent("api · +1.5 s (+50%)");
+    // The card comes before the latest run's numbers.
+    const headings = screen.getAllByRole("heading").map((h) => h.textContent);
+    expect(headings.indexOf("Needs attention")).toBeLessThan(headings.indexOf("Recent runs"));
+  });
+
+  it("says when nothing needs you", async () => {
+    stubOverviewFetch(overviewPayload(), { cycles: 2, passing_cycles: 2, failing: [], newly_flaky: [], slower: [] });
+    renderDashboard();
+    expect(await screen.findByTestId("needs-attention")).toHaveTextContent(
+      "All 2 cycles passed their latest run. Nothing needs you."
+    );
   });
 
   it("renders degraded notice and unavailable report links when data exists", async () => {

@@ -465,6 +465,34 @@ class DashboardRecentRunsResponse(ApiModel):
     generated_at: float
 
 
+class AttentionFailingCycle(ApiModel):
+    cycle: str
+    run_id: str
+    created_at: float
+    branch: str | None = None
+    failed_tests: int
+    new_failures: int
+    failing_runs: int
+
+
+class AttentionTestItem(ApiModel):
+    cycle: str
+    key: str
+    name: str
+    slowdown_ms: int | None = None
+    slowdown_pct: float | None = None
+
+
+class DashboardAttentionResponse(ApiModel):
+    """What needs someone now: red cycles, tests that just turned flaky, tests that got slower."""
+
+    cycles: int
+    passing_cycles: int
+    failing: list[AttentionFailingCycle] = Field(default_factory=list)
+    newly_flaky: list[AttentionTestItem] = Field(default_factory=list)
+    slower: list[AttentionTestItem] = Field(default_factory=list)
+
+
 class HealthLiveResponse(ApiModel):
     status: Literal["ok"]
 

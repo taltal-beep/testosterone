@@ -295,6 +295,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Attention
+         * @description Red cycles (most new failures first), newly flaky tests and tests that got slower.
+         */
+        get: operations["get_dashboard_attention_api_v1_dashboard_attention_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard/overview": {
         parameters: {
             query?: never;
@@ -668,6 +688,36 @@ export interface components {
             /** Summary Text */
             summary_text: string | null;
         };
+        /** AttentionFailingCycle */
+        AttentionFailingCycle: {
+            /** Branch */
+            branch: string | null;
+            /** Created At */
+            created_at: number;
+            /** Cycle */
+            cycle: string;
+            /** Failed Tests */
+            failed_tests: number;
+            /** Failing Runs */
+            failing_runs: number;
+            /** New Failures */
+            new_failures: number;
+            /** Run Id */
+            run_id: string;
+        };
+        /** AttentionTestItem */
+        AttentionTestItem: {
+            /** Cycle */
+            cycle: string;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Slowdown Ms */
+            slowdown_ms: number | null;
+            /** Slowdown Pct */
+            slowdown_pct: number | null;
+        };
         /** AuditEntryResponse */
         AuditEntryResponse: {
             /**
@@ -845,6 +895,22 @@ export interface components {
             paths: string[];
             /** Since Ref */
             since_ref: string | null;
+        };
+        /**
+         * DashboardAttentionResponse
+         * @description What needs someone now: red cycles, tests that just turned flaky, tests that got slower.
+         */
+        DashboardAttentionResponse: {
+            /** Cycles */
+            cycles: number;
+            /** Failing */
+            failing: components["schemas"]["AttentionFailingCycle"][];
+            /** Newly Flaky */
+            newly_flaky: components["schemas"]["AttentionTestItem"][];
+            /** Passing Cycles */
+            passing_cycles: number;
+            /** Slower */
+            slower: components["schemas"]["AttentionTestItem"][];
         };
         /** DashboardDataFreshnessResponse */
         DashboardDataFreshnessResponse: {
@@ -1976,6 +2042,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dashboard_attention_api_v1_dashboard_attention_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardAttentionResponse"];
                 };
             };
         };

@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- The dashboard leads with "Needs attention": red cycles (failing and new-failure counts, red for how many runs), tests that just started flaking and tests that got slower, each linking to its page. New endpoint `GET /api/v1/dashboard/attention`. The rollup and quick-links cards and the KPI icons are gone, and the no-runs page explains `testo ingest`, `testo config init` / `testo run` and the try-it page
 - The run page has a "Rerun these tests" command per runner (pytest node ids, `npx playwright test --grep`, `behave --name`) with a Copy button, from the new `rerun_commands` field of `GET /api/v1/runs/{run_id}/failures`
 - Compare opens on the latest run against the one before it in its cycle, and each run in the pickers shows its branch (`GET /api/v1/runs` adds `branch`)
 - The run page shows the branch, pull request target and commit the run tested (linked on GitHub), and `GET /api/v1/runs/{run_id}` returns them

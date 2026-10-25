@@ -49,6 +49,7 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/runs/<run_id>/ai-summary.json     GET /api/v1/runs/{id}/ai-summary
     data/dashboard/overview.json           GET /api/v1/dashboard/overview
     data/dashboard/recent-runs.json        GET /api/v1/dashboard/runs/recent
+    data/dashboard/attention.json          GET /api/v1/dashboard/attention
     data/delta/<current>__<baseline>/comparison.json
     data/delta/<current>__<baseline>/cases.json
 """
@@ -262,6 +263,7 @@ class Exporter:
         if overview is not None:
             self._write("dashboard/overview.json", self._absolutize_report_links(overview))
         self._dump("/api/v1/dashboard/runs/recent?limit=8", "dashboard/recent-runs.json")
+        self._dump("/api/v1/dashboard/attention", "dashboard/attention.json")
 
     def export_deltas(self, runs: list[dict[str, Any]]) -> list[list[str]]:
         """Export the run pairs the UI can ask for.

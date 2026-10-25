@@ -391,6 +391,103 @@
         "title": "AiSummaryResponse",
         "type": "object"
       },
+      "AttentionFailingCycle": {
+        "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "failed_tests": {
+            "title": "Failed Tests",
+            "type": "integer"
+          },
+          "failing_runs": {
+            "title": "Failing Runs",
+            "type": "integer"
+          },
+          "new_failures": {
+            "title": "New Failures",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "run_id",
+          "created_at",
+          "branch",
+          "failed_tests",
+          "new_failures",
+          "failing_runs"
+        ],
+        "title": "AttentionFailingCycle",
+        "type": "object"
+      },
+      "AttentionTestItem": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slowdown_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slowdown Ms"
+          },
+          "slowdown_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slowdown Pct"
+          }
+        },
+        "required": [
+          "cycle",
+          "key",
+          "name",
+          "slowdown_ms",
+          "slowdown_pct"
+        ],
+        "title": "AttentionTestItem",
+        "type": "object"
+      },
       "AuditEntryResponse": {
         "properties": {
           "at": {
@@ -908,6 +1005,49 @@
           "since_ref"
         ],
         "title": "CycleTriggerSummary",
+        "type": "object"
+      },
+      "DashboardAttentionResponse": {
+        "description": "What needs someone now: red cycles, tests that just turned flaky, tests that got slower.",
+        "properties": {
+          "cycles": {
+            "title": "Cycles",
+            "type": "integer"
+          },
+          "failing": {
+            "items": {
+              "$ref": "#/components/schemas/AttentionFailingCycle"
+            },
+            "title": "Failing",
+            "type": "array"
+          },
+          "newly_flaky": {
+            "items": {
+              "$ref": "#/components/schemas/AttentionTestItem"
+            },
+            "title": "Newly Flaky",
+            "type": "array"
+          },
+          "passing_cycles": {
+            "title": "Passing Cycles",
+            "type": "integer"
+          },
+          "slower": {
+            "items": {
+              "$ref": "#/components/schemas/AttentionTestItem"
+            },
+            "title": "Slower",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cycles",
+          "passing_cycles",
+          "failing",
+          "newly_flaky",
+          "slower"
+        ],
+        "title": "DashboardAttentionResponse",
         "type": "object"
       },
       "DashboardDataFreshnessResponse": {
@@ -3977,6 +4117,28 @@
         "summary": "Create Cycle Execution",
         "tags": [
           "cycles"
+        ]
+      }
+    },
+    "/api/v1/dashboard/attention": {
+      "get": {
+        "description": "Red cycles (most new failures first), newly flaky tests and tests that got slower.",
+        "operationId": "get_dashboard_attention_api_v1_dashboard_attention_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardAttentionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Dashboard Attention",
+        "tags": [
+          "dashboard"
         ]
       }
     },

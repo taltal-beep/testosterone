@@ -40,8 +40,15 @@ A bare `/compare` opened with two empty pickers. It now shows the latest run aga
 - The OpenAI default model is `gpt-4.1-mini` instead of `gpt-4o-mini`. A reasoning model (the `gpt-5` family) would need `max_completion_tokens` and no `temperature`, which the OpenAI provider doesn't send, so the default stays a non-reasoning model.
 - `testo config init --help` and `testo config-db --help` no longer show an RST-style double-backticked path, or lose `[tool.testosterone]` to Rich markup.
 
+### The dashboard answers "what needs me?" first (D7), and the first-run page fits `pip` users
+
+The dashboard opened on four KPI tiles for the latest run, whatever its cycle, then rollup chips ("0 unknown") and a "Quick links" card. It now leads with a "Needs attention" card from `GET /api/v1/dashboard/attention` (`services/attention.py`): for the latest run of each of the ten most recently run cycles, which are red, with their failing and new-failure counts and how many runs in a row they have been red (on the run's branch); tests the latest run made flaky (`flaky_service.newly_flaky_tests`); and the tests that got slower most (`test_history`'s "Got slower"). Each line links to the run or test page that explains it, and a quiet day reads "All 3 cycles passed their latest run. Nothing needs you." The KPI tiles stay, below it, without their decorative icons; the rollup and quick-links cards are gone (report links moved to the Recent runs card's header). The overview endpoint is unchanged.
+
+The no-runs page told people to press Run on a cycle, which a `pip install` user with no `testosterone.yaml` can't. It now offers the three ways in: `testo ingest` for existing JUnit output, `testo config init` and `testo run`, or the try-it page.
+
 ## Consequences
 
 - A team that only ingests JUnit gets the same cycle page as one that runs cycles through `testo run`, apart from starting runs.
+- The attention card reads per-test history for up to ten cycles on each dashboard load. At this scale that's fine; caching it per latest run id is the next step if it gets slow.
 - A rerun command is a best guess from recorded names: it can miss a parametrized pytest id or a test whose module path the runner didn't record. It is shown only when every test in the group maps to a name.
 - `GET /api/v1/cycles` reads up to 500 recent runs on each call. Fine at this scale; a distinct-cycles query in the repository is the next step if it shows up.

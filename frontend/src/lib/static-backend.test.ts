@@ -16,6 +16,7 @@ describe("resolveStaticPath", () => {
     expect(resolve("/api/v1/ai/config/status")).toBe("ai-config.json");
     expect(resolve("/api/v1/dashboard/overview?recent_limit=6")).toBe("dashboard/overview.json");
     expect(resolve("/api/v1/dashboard/runs/recent?limit=8")).toBe("dashboard/recent-runs.json");
+    expect(resolve("/api/v1/dashboard/attention")).toBe("dashboard/attention.json");
   });
 
   it("maps per-run endpoints", () => {
