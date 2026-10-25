@@ -89,6 +89,7 @@ extra:
 nav:
   - Home: Index.md
   - Getting Started: Getting Started.md
+  - Compared With Other Tools: Compared With Other Tools.md
   - Using Testosterone:
       - Command Reference: CLI Commands/Command Reference.md
       - Troubleshooting and Error Codes: CLI Commands/Troubleshooting and Error Codes.md

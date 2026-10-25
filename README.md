@@ -78,7 +78,7 @@ same way from the CLI, CI or the web UI. Point either at a shared
 **How it compares.** Allure renders one run; ReportPortal is a large server to operate.
 Testosterone is a `pip install` that keeps the history and diffs runs against each other, works
 with whatever runner you have, and can still hand results to Allure, ReportPortal, Extent or
-TestBeats as reporters.
+TestBeats as reporters. The [comparison page](docs/Compared%20With%20Other%20Tools.md) has the details, including when another tool is the better pick.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/testosterone-architecture-detailed-dark.png">
