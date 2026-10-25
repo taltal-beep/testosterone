@@ -16,6 +16,7 @@ from testo_api.models import (
     RunReportsResponse,
     StageHealth,
 )
+from testo_api.routes.triage import triage_item
 from testo_api.security import read_config_path
 from testo_core.config.errors import ConfigError
 from testo_core.config.loader import discover_and_load
@@ -136,7 +137,10 @@ def get_run_failures(run_id: str) -> RunFailuresResponse:
         baseline_run_id=failures.baseline_run_id,
         baseline_branch=failures.baseline_branch,
         rerun_commands=list(failures.rerun_commands),
-        tests=[FailingTestItem(**vars(t)) for t in failures.tests],
+        tests=[
+            FailingTestItem(**{**vars(t), "triage": triage_item(t.triage) if t.triage else None})
+            for t in failures.tests
+        ],
         groups=[
             FailureGroupItem(message=g.message, count=g.count, keys=list(g.keys))
             for g in failures.groups

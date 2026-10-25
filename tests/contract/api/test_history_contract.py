@@ -209,7 +209,10 @@ def test_run_pyramid_contract_missing_run(monkeypatch) -> None:  # noqa: ANN001
 
 
 def test_run_failures_contract(monkeypatch) -> None:  # noqa: ANN001
+    from datetime import UTC, datetime
+
     from testo_core.services.run_failures import FailingTest, FailureGroup, RunFailures
+    from testo_core.services.triage import Triage
 
     failing = FailingTest(
         key="k1",
@@ -224,6 +227,17 @@ def test_run_failures_contract(monkeypatch) -> None:  # noqa: ANN001
         failing_since_run_id="run-1",
         flaky=False,
         new=True,
+        triage=Triage(
+            cycle="api",
+            signature="connectionrefusederror",
+            cause="environment",
+            note="DB starts late",
+            example_message="ConnectionRefusedError",
+            run_id="run-0",
+            test_key="k0",
+            marked_by="ada",
+            marked_at=datetime(2026, 10, 25, tzinfo=UTC),
+        ),
     )
     monkeypatch.setattr(
         "testo_api.routes.history.load_run_failures",
@@ -255,6 +269,13 @@ def test_run_failures_contract(monkeypatch) -> None:  # noqa: ANN001
     assert payload["rerun_commands"] == ["pytest tests/api/test_login.py::test_login"]
     assert payload["tests"][0]["name"] == "test_login"
     assert payload["tests"][0]["failing_since_run_id"] == "run-1"
+    triage = payload["tests"][0]["triage"]
+    assert (triage["cause"], triage["run_id"], triage["marked_by"]) == (
+        "environment",
+        "run-0",
+        "ada",
+    )
+    assert triage["marked_at"] == datetime(2026, 10, 25, tzinfo=UTC).timestamp()
     assert payload["groups"] == [
         {"message": "ConnectionRefusedError", "count": 2, "keys": ["k1", "k2"]}
     ]

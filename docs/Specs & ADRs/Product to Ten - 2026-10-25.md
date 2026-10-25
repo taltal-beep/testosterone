@@ -64,6 +64,10 @@ Playwright JSON imports already copied each attempt's attachments next to the te
 
 A test was flaky or not, over the whole window. Each point of `GET /api/v1/analytics/test-history` now carries `flip_rate`: the share of outcome changes (pass to fail or back, skips ignored) over the five runs ending there (`test_history.FLIP_WINDOW`), the same rule `flaky_service` uses for the whole window. The test page draws it as a "Flakiness over time" chart once the test has flipped at all, with "Outcome changed in 60% of the last 5 runs, up from 20% five runs before", so a fix that worked, or a test that is getting worse, shows.
 
+### Triage memory: mark a failure's cause once (feature depth)
+
+Every red run asked the same question again: is this ours, the test's, or the CI box's? Someone can now answer it once. On a failed run's page each failing test has "Mark the cause" (bug in the product, bug in the test, environment or infrastructure, flaky, other, and a free-text note such as an issue link). The answer is stored per cycle and failure message in a new `failure_triage` table (`services/triage.py`, `TriageStore`), keyed on `run_failures.message_signature`, the rule that already groups a run's failures under "Same cause". So every later failure in that cycle whose message differs only in numbers, hex ids or quoted values shows the cause, says it came "from an earlier failure with the same message in run …", and can be changed or cleared there. `GET /api/v1/runs/{run_id}/failures` adds `triage` per test; `PUT /api/v1/triage` marks and `DELETE /api/v1/triage?cycle=&signature=` clears, as writes guarded like starting a run (API token or a `runner` account, whose name is recorded); `GET /api/v1/triage` lists them. A cause belongs to one cycle, so a message shared by two unrelated suites isn't labelled for both. The static demo shows causes read-only.
+
 ## Consequences
 
 - A team that only ingests JUnit gets the same cycle page as one that runs cycles through `testo run`, apart from starting runs.

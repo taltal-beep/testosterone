@@ -202,6 +202,33 @@ class RunPyramidResponse(ApiModel):
     message: str
 
 
+class TriageItem(ApiModel):
+    cycle: str
+    # The failure message with numbers, ids and quoted values blanked: what later failures match on.
+    signature: str
+    cause: Literal["product_bug", "test_bug", "environment", "flaky", "other"]
+    note: str = ""
+    # The failure it was marked on.
+    example_message: str = ""
+    run_id: str = ""
+    test_key: str = ""
+    marked_by: str | None = None
+    marked_at: float
+
+
+class TriageRequest(ApiModel):
+    cycle: str = Field(min_length=1, max_length=512)
+    message: str = Field(min_length=1, max_length=4000)
+    cause: Literal["product_bug", "test_bug", "environment", "flaky", "other"]
+    note: str = Field(default="", max_length=500)
+    run_id: str = Field(default="", max_length=64)
+    test_key: str = Field(default="", max_length=200)
+
+
+class TriageListResponse(ApiModel):
+    causes: list[TriageItem]
+
+
 class FailingTestItem(ApiModel):
     key: str
     name: str
@@ -216,6 +243,8 @@ class FailingTestItem(ApiModel):
     flaky: bool
     # Broke in this run: passing (or absent) on the baseline run, or, with none, in the run before.
     new: bool
+    # The cause marked for this message in this cycle, on this failure or an earlier one like it.
+    triage: TriageItem | None = None
 
 
 class FailureGroupItem(ApiModel):

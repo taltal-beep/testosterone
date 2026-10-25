@@ -135,3 +135,28 @@ class AuditEvent(SQLModel, table=True):
     method: str = Field(max_length=8)
     path: str = Field(max_length=1024)
     status: int = Field(default=0)
+
+
+class FailureTriage(SQLModel, table=True):
+    """Why a failure happens, marked once per cycle and failure message.
+
+    ``signature`` is :func:`testo_core.services.run_failures.message_signature`
+    of the message, so later failures with the same message (numbers, ids and
+    quoted values aside) inherit the cause. See :mod:`testo_core.services.triage`.
+    """
+
+    __tablename__ = "failure_triage"
+    __table_args__ = {"extend_existing": True}
+
+    # sha256 of "<cycle>\n<signature>", so a cycle has one cause per message.
+    id: str = Field(primary_key=True, max_length=64)
+    cycle: str = Field(index=True, max_length=512)
+    signature: str = Field(max_length=1024)
+    cause: str = Field(max_length=32)
+    note: str = Field(default="", max_length=500)
+    # The failure it was marked on, so the UI can say where the cause came from.
+    example_message: str = Field(default="", max_length=1000)
+    run_id: str = Field(default="", max_length=64)
+    test_key: str = Field(default="", max_length=200)
+    marked_by: str | None = Field(default=None, max_length=64)
+    marked_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))

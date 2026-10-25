@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- Triage memory: on a failed run's page, "Mark the cause" of a failing test (bug in the product, bug in the test, environment, flaky, other, plus a note). Later failures in the same cycle with the same message (numbers, ids and quoted values aside) show that cause too, with where it was marked. New table `failure_triage`, endpoints `GET`/`PUT`/`DELETE /api/v1/triage`, and a `triage` field on each test of `GET /api/v1/runs/{run_id}/failures`
 - "Flakiness over time" on the test page: the share of outcome changes over the five runs ending at each run, and how it compares with five runs before. Test-history points add `flip_rate`
 - The test page shows what the last failing run kept: screenshots and videos in place, the Playwright trace as a download with the command that opens it. `GET /api/v1/analytics/test-history` adds `last_failure_attachments`
 - `pytest --testo` (or `--testo-cycle NAME`): a pytest plugin, installed with testo-core and inert without the flag, that records each session as a run the way `testo ingest` does, with the checkout's branch and commit. `--testo-server` uploads to a team server instead

@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from testo_core.history.views import CompletedRunView
+from testo_core.repository.db_config import reset_engine_cache
 from testo_core.repository.models import RunStatus
 from testo_core.services import run_failures
 
@@ -61,6 +62,9 @@ def history(monkeypatch, tmp_path: Path):  # noqa: ANN001, ANN201
         _run("r1", created_at=1),
     ]
     by_id = {r.run_id: r for r in runs}
+    # Failure causes are read from the run-history DB; keep it in the test's folder.
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'history.db'}")
+    reset_engine_cache()
     monkeypatch.setattr(run_failures.paths, "ORCHESTRATOR_ROOT", tmp_path)
     monkeypatch.setattr(run_failures, "list_recent_runs", lambda *, limit: runs)
     monkeypatch.setattr(run_failures, "get_run", lambda *, run_id: by_id.get(run_id))
@@ -153,6 +157,8 @@ def test_a_pull_request_is_judged_against_its_target_branch(monkeypatch, tmp_pat
     main = replace(_run("m1", created_at=2), branch="main")
     pr_before = replace(_run("pr1", created_at=1), branch="feat", base_branch="main")
     runs = [pr, other_pr, main, pr_before]
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'history.db'}")
+    reset_engine_cache()
     monkeypatch.setattr(run_failures.paths, "ORCHESTRATOR_ROOT", tmp_path)
     monkeypatch.setattr(run_failures, "list_recent_runs", lambda *, limit: runs)
     monkeypatch.setattr(run_failures, "get_run", lambda *, run_id: pr if run_id == "pr2" else None)
@@ -190,6 +196,43 @@ def test_without_branches_new_means_not_failing_in_the_run_before(history) -> No
     assert found is not None
     assert found.baseline_run_id == "r3" and found.baseline_branch is None
     assert {t.name: t.new for t in found.tests} == {"test_a": False, "test_b": True}
+
+
+def test_a_marked_cause_rides_along_on_later_failures_like_it(history) -> None:  # noqa: ANN001
+    from testo_core.services.triage import TriageStore
+
+    root, runs = history
+    _write(root, runs["r3"], {"test_db": ("failed", "ConnectionRefusedError: port 5432")})
+    _write(
+        root,
+        runs["r4"],
+        {
+            "test_db": ("failed", "ConnectionRefusedError: port 5433"),
+            "test_api": ("failed", "ConnectionRefusedError: port 6000"),
+            "test_math": ("failed", "AssertionError"),
+        },
+    )
+    TriageStore().mark(
+        cycle="unit",
+        message="ConnectionRefusedError: port 5432",
+        cause="environment",
+        note="CI database not up yet",
+        run_id="r3",
+        test_key="test_db",
+    )
+
+    found = run_failures.load_run_failures("r4")
+
+    assert found is not None
+    causes = {t.name: t.triage.cause if t.triage else None for t in found.tests}
+    assert causes == {"test_db": "environment", "test_api": "environment", "test_math": None}
+    triage = next(t.triage for t in found.tests if t.name == "test_api")
+    assert triage is not None
+    assert (triage.run_id, triage.test_key, triage.note) == (
+        "r3",
+        "test_db",
+        "CI database not up yet",
+    )
 
 
 def test_message_signature_ignores_numbers_and_quoted_values() -> None:

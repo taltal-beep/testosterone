@@ -70,7 +70,16 @@ Every area except trust, in the order that moves the score most. "Realistic" say
 
 First-pass findings P1 to P9, D1, D2, D4, D5, A1 to A7, C1 to C7 and C9 are fixed (#166 to #174). D3 and D6 are carried into P13 and D7, and C8 is still open.
 
-Since this pass: P10 to P14 are fixed (#176 to #178), and A8, A9, C8 and C10 in the wave-2 polish pull request (see [Product to Ten](Specs%20%26%20ADRs/Product%20to%20Ten%20-%202026-10-25.md)). The scores above are this pass's and are not re-scored until the next pass.
+Since this pass, everything in [What a 10 needs](#what-a-10-needs) that doesn't wait on Taltal has shipped (see [Product to Ten](Specs%20%26%20ADRs/Product%20to%20Ten%20-%202026-10-25.md)):
+
+- **Time to first value:** recorded cycles get a page (P10, #176), a first-run guide on the empty dashboard (#180), and `pytest --testo` (#182).
+- **Core workflow:** P11 to P14 (#177, #178).
+- **Visual design:** the "Needs attention" dashboard (D7, #180).
+- **Accessibility:** A8 and A9 (#179), text alternatives for the charts and a 200 % zoom pass (#181).
+- **UX copy:** C8 and C10 (#179).
+- **Feature depth:** screenshots, videos and traces on the test page, flakiness over time (#183), and triage memory (#184).
+
+Still open: the screen-reader pass and the name decision, which need Taltal, plus the Marketplace listing and a "compared with" page. The scores above are this pass's and are not re-scored until the next pass.
 
 ## First pass (2026-10-24)
 
@@ -170,7 +179,7 @@ Not tested: screen reader output (VoiceOver, NVDA), 200 % zoom, and the charts' 
 
 ## Roadmap: Now / Next / Later
 
-Ordered by what moves adoption most for the least work. Sizes: S is a day or less, M a few days, L a week or more. All of Now and Next, and owners, tickets and the try-it page from Later, shipped in #166 to #174 (1.3.0, the try-it page after it). Left: the launch, triage memory, traces and the name; [What a 10 needs](#what-a-10-needs) is the current plan.
+Ordered by what moves adoption most for the least work. Sizes: S is a day or less, M a few days, L a week or more. All of Now and Next, and owners, tickets and the try-it page from Later, shipped in #166 to #174 (1.3.0, the try-it page after it). Triage memory and traces shipped since, in #183 and #184. Left: the launch and the name; [What a 10 needs](#what-a-10-needs) is the current plan.
 
 ### Now: make the first look and the red build land (about a week)
 
