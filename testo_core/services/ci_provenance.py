@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import subprocess
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -126,6 +127,38 @@ def detect_git_checkout(repo: Path | None) -> dict[str, str]:
         if out.returncode == 0 and value and value != "HEAD":
             found[key] = value
     return found
+
+
+_GITHUB_REMOTE = re.compile(r"github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?$")
+
+
+def ci_repository(env: Mapping[str, str]) -> str | None:
+    """``owner/name`` of the repository this CI job built, from the provider's variables."""
+    return (
+        env.get("GITHUB_REPOSITORY")
+        or env.get("CI_PROJECT_PATH")
+        or env.get("BUILDKITE_REPO")
+        or env.get("CIRCLE_PROJECT_REPONAME")
+        or None
+    )
+
+
+def github_repository_of(repo: Path | None) -> str | None:
+    """``owner/name`` from the checkout's ``origin`` remote, when it is on github.com."""
+    if repo is None:
+        return None
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(repo), "remote", "get-url", "origin"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    match = _GITHUB_REMOTE.search(out.stdout.strip()) if out.returncode == 0 else None
+    return match.group(1) if match else None
 
 
 def detect_ci_environment(env: Mapping[str, str] | None = None) -> bool:

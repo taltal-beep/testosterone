@@ -56,7 +56,9 @@ describe("TestPage", () => {
             cycle: "smoke",
             test: TEST,
             points: [failure, point("run-3", "passed", 3), point("run-2", "passed", 2), point("run-1", "passed", 1)],
-            last_failure: failure
+            last_failure: failure,
+            owners: ["@org/api"],
+            issue_url: "https://github.com/acme/shop/issues/new?title=Flaky+test"
           }),
           { status: 200 }
         )
@@ -73,6 +75,11 @@ describe("TestPage", () => {
     expect(screen.getByRole("link", { name: "Run run-4abc" })).toHaveAttribute("href", "/runs/run-4abcdef0");
     expect(screen.getByText(/Median 120 ms, and 280 ms slower over the last runs \(\+233.3%\)/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Runs (4)" })).toBeInTheDocument();
+    expect(screen.getByText("@org/api")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open an issue" })).toHaveAttribute(
+      "href",
+      "https://github.com/acme/shop/issues/new?title=Flaky+test"
+    );
   });
 
   it("explains a test that isn't in the recent runs", async () => {

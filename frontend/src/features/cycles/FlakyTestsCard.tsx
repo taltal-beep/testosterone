@@ -69,9 +69,17 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
                 </Badge>
                 <Badge tone={item.last_status === "passed" ? "success" : "danger"}>last: {item.last_status}</Badge>
               </div>
-              <div className="mt-1 text-xs text-ink-400">{item.group}</div>
-              <div className="mt-2">
+              <div className="mt-1 text-xs text-ink-400">
+                {item.group}
+                {item.owners.length > 0 ? ` · owned by ${item.owners.join(", ")}` : ""}
+              </div>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                 <History item={item} />
+                {item.issue_url ? (
+                  <a href={item.issue_url} target="_blank" rel="noreferrer" className="text-xs text-brand-300 hover:underline">
+                    Open an issue
+                  </a>
+                ) : null}
               </div>
             </li>
           ))}

@@ -1930,6 +1930,17 @@
             "title": "History",
             "type": "array"
           },
+          "issue_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Url"
+          },
           "key": {
             "title": "Key",
             "type": "string"
@@ -1941,6 +1952,13 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "owners": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Owners",
+            "type": "array"
           },
           "passed": {
             "title": "Passed",
@@ -1961,7 +1979,9 @@
           "flips",
           "flip_rate",
           "last_status",
-          "history"
+          "history",
+          "owners",
+          "issue_url"
         ],
         "title": "FlakyTestItem",
         "type": "object"
@@ -2829,6 +2849,17 @@
             "title": "Cycle",
             "type": "string"
           },
+          "issue_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Url"
+          },
           "last_failure": {
             "anyOf": [
               {
@@ -2838,6 +2869,13 @@
                 "type": "null"
               }
             ]
+          },
+          "owners": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Owners",
+            "type": "array"
           },
           "points": {
             "items": {
@@ -2854,7 +2892,9 @@
           "cycle",
           "test",
           "points",
-          "last_failure"
+          "last_failure",
+          "owners",
+          "issue_url"
         ],
         "title": "TestHistoryResponse",
         "type": "object"

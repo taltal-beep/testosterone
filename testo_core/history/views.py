@@ -43,6 +43,8 @@ class CompletedRunView:
     commit: str | None = None
     # A pull/merge request's target branch: the baseline its changes are judged against.
     base_branch: str | None = None
+    # ``owner/name`` on the code host (CI variables, an upload, or a github.com ``origin``).
+    repository: str | None = None
 
 
 @dataclass(frozen=True)
@@ -127,4 +129,5 @@ def view_from_record(record: RunRecord) -> CompletedRunView | None:
         branch=_optional_str(md, "ci_ref_name") or _optional_str(md, "git_branch"),
         commit=_optional_str(md, "ci_commit_sha") or _optional_str(md, "git_commit"),
         base_branch=_optional_str(md, "ci_base_ref"),
+        repository=_optional_str(md, "repository"),
     )

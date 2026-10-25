@@ -30,7 +30,14 @@ from testo_core.repository.models import RunRecord, RunStatus
 # Read for runs from before v1.0's engine; nothing writes it today, so it reads as None.
 LEGACY_KEYS = {"audit_json"}
 # Written only in CI (CI provenance) or from a git checkout outside CI; see the provenance tests below.
-CONDITIONAL_KEYS = {"ci_ref_name", "ci_commit_sha", "ci_base_ref", "git_branch", "git_commit"}
+CONDITIONAL_KEYS = {
+    "ci_ref_name",
+    "ci_commit_sha",
+    "ci_base_ref",
+    "git_branch",
+    "git_commit",
+    "repository",
+}
 
 
 def _keys_read_by_views() -> set[str]:
@@ -178,11 +185,13 @@ def test_pull_request_run_has_its_branch_and_target_in_its_view(
         "GITHUB_REF_NAME": "7/merge",
         "GITHUB_HEAD_REF": "feature",
         "GITHUB_BASE_REF": "main",
+        "GITHUB_REPOSITORY": "acme/shop",
     }.items():
         monkeypatch.setenv(name, value)
     view = view_from_record(_persisted_record(tmp_path / "artifacts"))
     assert view is not None
     assert (view.branch, view.commit, view.base_branch) == ("feature", "abc123", "main")
+    assert view.repository == "acme/shop"
 
 
 @pytest.mark.contract

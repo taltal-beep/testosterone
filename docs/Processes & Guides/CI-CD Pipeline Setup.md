@@ -32,7 +32,7 @@ Run records written in CI include (when the provider exposes them):
 - `ci_ref_name`: the branch. On a GitHub `pull_request` event that is `GITHUB_HEAD_REF` (the PR's branch), not `GITHUB_REF_NAME` (`<number>/merge`)
 - `ci_base_ref`: a pull or merge request's target branch (`GITHUB_BASE_REF`, `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`, `BUILDKITE_PULL_REQUEST_BASE_BRANCH`, Jenkins `CHANGE_TARGET`, Azure `SYSTEM_PULLREQUEST_TARGETBRANCH`); unset on branch builds
 
-Runs outside CI record `git_branch` and `git_commit` from the target repository's checkout instead. `testo ingest` sends the same fields with the upload.
+Runs also record `repository` (`owner/name`, from `GITHUB_REPOSITORY`, `CI_PROJECT_PATH`, `BUILDKITE_REPO` or `CIRCLE_PROJECT_REPONAME`). Runs outside CI record `git_branch` and `git_commit` from the target repository's checkout instead, and `repository` when its `origin` remote is on github.com. `testo ingest` sends the same fields with the upload.
 
 The PR comment and `testo report markdown` compare a pull request's run with the latest run of the same cycle on its `ci_base_ref` branch, so a parallel PR's run is never the baseline. With no run on that branch yet they fall back to the previous run, and say which one they used ("Since the last run on `main`" or "Since the previous run"). This needs history shared between jobs (a `database.url` or a team server); on a fresh runner there is nothing to compare with.
 

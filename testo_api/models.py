@@ -313,6 +313,9 @@ class FlakyTestItem(ApiModel):
     flip_rate: float
     last_status: str
     history: list[str] = Field(default_factory=list)
+    # CODEOWNERS owners of the test's file, and GitHub's new-issue form prefilled for it.
+    owners: list[str] = Field(default_factory=list)
+    issue_url: str | None = None
 
 
 class FlakyTestsResponse(ApiModel):
@@ -364,6 +367,8 @@ class TestHistoryResponse(ApiModel):
     # Newest first.
     points: list[TestPointItem] = Field(default_factory=list)
     last_failure: TestPointItem | None = None
+    owners: list[str] = Field(default_factory=list)
+    issue_url: str | None = None
 
 
 class DashboardHeadlineKpis(ApiModel):

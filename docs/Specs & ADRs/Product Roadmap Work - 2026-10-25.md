@@ -59,6 +59,10 @@ Compare keeps its explicit baseline picker; the dashboard trend still compares t
 - The cycle page gains a Tests card: a search box (name, full name, group), "Slowest tests" by median time and "Got slower", where the median of the last three runs beats the median before by more than timing noise (the 5 % rule from P6, with a 20 ms floor for one test).
 - The static demo exports the list and one history file per test, named by a 32-bit FNV-1a of the key that `static-backend.ts` computes the same way.
 
+### Owners and an issue link for flaky tests (P8)
+
+`services/test_ownership.py` finds the test's owners in the cycle's checkout (`CODEOWNERS`, `.github/CODEOWNERS` or `docs/CODEOWNERS`, last matching rule wins, as on GitHub), matched against the test's file as far as its Allure names tell: a path in `fullName` (`tests/test_a.py::test_x`, `features/login.feature`) or a dotted module (`tests.api.test_orders.test_x` → `tests/api/test_orders.py`). A wrong guess just means no owner, never a wrong failure. The flaky card and the per-test page show the owners and an "Open an issue" link: GitHub's new-issue form prefilled with the test, cycle, last failure and owners. Nothing is created until the person submits that form, so no token is needed. The repository comes from the run (`repository`: CI variables, an upload, or a github.com `origin` remote). Jira and Linear stay for the plugin API.
+
 ## Consequences
 
 - The run page answers "what broke?" without opening Allure or Compare.
