@@ -3232,6 +3232,17 @@
             ],
             "title": "Duration Ms"
           },
+          "flip_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flip Rate"
+          },
           "message": {
             "default": "",
             "title": "Message",
@@ -3252,7 +3263,8 @@
           "status",
           "duration_ms",
           "message",
-          "branch"
+          "branch",
+          "flip_rate"
         ],
         "title": "TestPointItem",
         "type": "object"

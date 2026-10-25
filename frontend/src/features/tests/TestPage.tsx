@@ -35,6 +35,56 @@ function DurationBars({ points }: { points: TestPointItem[] }) {
   );
 }
 
+// Runs the API measures each point's flip rate over (test_history.FLIP_WINDOW).
+const FLIP_WINDOW = 5;
+
+function pct(rate: number): string {
+  return `${Math.round(rate * 100)}%`;
+}
+
+/**
+ * How flaky the test has been over time: one bar per run, the share of
+ * outcome changes over the five runs ending there. Shown only once the test
+ * has flipped at all, with a sentence comparing now with five runs before.
+ */
+function FlipRate({ points }: { points: TestPointItem[] }) {
+  const oldestFirst = [...points].reverse();
+  const rated = oldestFirst.filter((p) => p.flip_rate != null);
+  if (!rated.some((p) => (p.flip_rate ?? 0) > 0)) return null;
+  const now = rated[rated.length - 1].flip_rate ?? 0;
+  const before = rated.length > FLIP_WINDOW ? rated[rated.length - 1 - FLIP_WINDOW].flip_rate : null;
+  const trend =
+    before == null
+      ? ""
+      : now > before
+        ? `, up from ${pct(before)} five runs before`
+        : now < before
+          ? `, down from ${pct(before)} five runs before`
+          : ", the same as five runs before";
+
+  return (
+    <Card title="Flakiness over time">
+      <div
+        className="flex h-16 items-end gap-1"
+        role="img"
+        aria-label={`Flip rate per run, oldest first: ${oldestFirst.map((p) => (p.flip_rate == null ? "n/a" : pct(p.flip_rate))).join(", ")}`}
+      >
+        {oldestFirst.map((p) => (
+          <span
+            key={p.run_id}
+            title={`${formatRunTime(p.created_at)} · flip rate ${p.flip_rate == null ? "n/a" : pct(p.flip_rate)}`}
+            className="min-w-1.5 max-w-8 flex-1 rounded-t bg-brand-400/80"
+            style={{ height: `${Math.max(4, (p.flip_rate ?? 0) * 100)}%` }}
+          />
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-ink-400" data-testid="flip-rate-summary">
+        Outcome changed in {pct(now)} of the last {FLIP_WINDOW} runs{trend}.
+      </p>
+    </Card>
+  );
+}
+
 /** One test across its cycle's recent runs: outcome per run, duration trend and its last failure. */
 export function TestPage() {
   const { name: cycle = "" } = useParams();
@@ -131,6 +181,8 @@ export function TestPage() {
           .
         </p>
       </Card>
+
+      <FlipRate points={points} />
 
       <Card title={`Runs (${points.length})`}>
         <ul className="divide-y divide-white/5 text-sm">

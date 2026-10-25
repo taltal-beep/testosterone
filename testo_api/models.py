@@ -378,6 +378,8 @@ class TestPointItem(ApiModel):
     duration_ms: int | None = None
     message: str = ""
     branch: str | None = None
+    # Rolling flip rate (0-1) over the runs ending here; null until two passed or failed.
+    flip_rate: float | None = None
 
 
 class AttachmentItem(ApiModel):

@@ -449,6 +449,7 @@ def test_cycle_tests_and_test_history_contract(monkeypatch, tmp_path) -> None:  
     body = history.json()
     assert body["test"]["key"] == "k1"
     assert body["points"][0]["branch"] == "main"
+    assert body["points"][0]["flip_rate"] is None
     assert body["last_failure"]["message"] == "AssertionError"
     assert body["last_failure_attachments"] == [
         {

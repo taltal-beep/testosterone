@@ -1526,6 +1526,8 @@ export interface components {
             created_at: number;
             /** Duration Ms */
             duration_ms: number | null;
+            /** Flip Rate */
+            flip_rate: number | null;
             /**
              * Message
              * @default
