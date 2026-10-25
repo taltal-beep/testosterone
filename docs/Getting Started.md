@@ -141,7 +141,7 @@ pip install testo-core
 pytest --testo                       # or --testo-cycle api-unit to name the cycle
 ```
 
-Every run is recorded like `testo ingest` would record it (the cycle defaults to the project folder's name), with the checkout's branch and commit, so `testo ui` shows what broke since the last run on your branch. Without the flag the plugin does nothing. Details: [Command Reference § pytest --testo](CLI%20Commands/Command%20Reference.md#pytest-testo).
+Every run is recorded like `testo ingest` would record it (the cycle defaults to the project folder's name), with the checkout's branch and commit, so `testo ui` shows what broke since the last run on your branch. Without the flag the plugin does nothing. Details: [Command Reference § pytest --testo](CLI%20Commands/Command%20Reference.md#pytest---testo).
 
 ## Next
 
