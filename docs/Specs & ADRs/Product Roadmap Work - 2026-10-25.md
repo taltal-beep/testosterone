@@ -32,6 +32,18 @@ The [Product Review](../product-review.md) scored Testosterone 6.5 / 10 as a pro
 ### Timing noise is not a regression (P6)
 
 Compare flagged a 3 ms slower run as a regression, so every pair of runs had red in it. A duration change now counts only when it is at least 5 % of the baseline and at least a floor (100 ms for run durations, 5 ms for the per-test average); smaller changes are neutral with reason `within_noise`, shown as "Within noise", and the dashboard trend reads "flat". The rule and constants live in [Delta Comparison Policy](Delta%20Comparison%20Policy.md#timing-noise-added-2026-10-25). Counts and health keep no floor. A fixed rule beats a statistical one (per-test variance across runs) for now: it needs no history and is easy to explain; variance-based thresholds can come with the slowest-tests work (P7).
+### Accessibility and copy pass (A1–A7, C1–C3, C5–C7, C9, D4–D6)
+
+One pull request for the review's small UI and copy findings, since each is a line or two:
+
+- Primary buttons use `brand-600` (white text at about 5.6:1, was 4.2:1), and a global `:focus-visible` ring makes keyboard focus visible on every control.
+- A "Skip to content" link jumps to `<main id="main">`; the desktop crumb bar is a `<header>` landmark; the mobile menu button is 44×44.
+- Card titles are `h2`, so pages go h1 → h2. AI settings uses `PageHeader` (its h1) and its form no longer overflows a 390px phone (`w-full min-w-0` on the form and inputs).
+- Load errors say what to check ("Couldn't load runs. Check that the API is running, then reload.") instead of "Failed to load X."; loading text uses "…"; titles and nav labels are in sentence case.
+- The sidebar's "Advanced" heading is "Tools" and the help card is a plain "Docs" link. The dashboard hides "Trend: unknown", lists only reports that exist, and formats its duration with `formatDuration`.
+- `testo --help` leads with the README's tagline, and CLI help text no longer shows reStructuredText double-backtick quotes.
+
+C8 (the default AI model) is left as it is: picking a new model name is a product call, not copy.
 
 ## Consequences
 

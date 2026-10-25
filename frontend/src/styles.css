@@ -33,3 +33,9 @@ body {
   background-image: linear-gradient(112deg, rgb(6 11 38 / 0.94) 60%, rgb(26 31 55 / 0.6) 100%);
   backdrop-filter: blur(42px);
 }
+
+/* A visible keyboard focus ring everywhere (WCAG 2.4.7); mouse clicks don't show it. */
+:focus-visible {
+  outline: 2px solid theme(colors.brand.400);
+  outline-offset: 2px;
+}

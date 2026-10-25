@@ -18,8 +18,8 @@ const PRIMARY_LINKS: NavLinkSpec[] = [
 ];
 
 const ADVANCED_LINKS: NavLinkSpec[] = [
-  { to: "/quick-run", label: "Quick Run", icon: Icons.BoltIcon },
-  { to: "/settings/ai", label: "AI Settings", icon: Icons.SparkIcon }
+  { to: "/quick-run", label: "Quick run", icon: Icons.BoltIcon },
+  { to: "/settings/ai", label: "AI settings", icon: Icons.SparkIcon }
 ];
 
 const DOCS_URL = "https://taltal-beep.github.io/testosterone/docs/";
@@ -33,7 +33,7 @@ function sectionLabel(pathname: string): string {
 }
 
 /**
- * Desktop: a floating glass sidebar (nav, Advanced section, docs card) beside
+ * Desktop: a floating glass sidebar (nav, Tools section, docs link) beside
  * the page. Below `lg` the sidebar is hidden and a top bar with a disclosure
  * menu takes its place.
  */
@@ -41,6 +41,12 @@ export function AppShell() {
   const { pathname } = useLocation();
   return (
     <div className="min-h-full">
+      <a
+        href="#main"
+        className="sr-only z-50 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      >
+        Skip to content
+      </a>
       <BackgroundArt />
       <aside className="glass-panel fixed inset-y-4 left-4 z-20 hidden w-64 flex-col overflow-y-auto px-4 py-6 lg:flex">
         <Link to="/" className="flex items-center justify-center gap-2.5 pb-6" aria-label="Testo home">
@@ -52,12 +58,12 @@ export function AppShell() {
           {PRIMARY_LINKS.map((link) => (
             <NavItem key={link.to} link={link} />
           ))}
-          <p className="mb-1 mt-5 px-4 text-[11px] font-bold uppercase tracking-wider text-white">Advanced</p>
+          <p className="mb-1 mt-5 px-4 text-[11px] font-bold uppercase tracking-wider text-white">Tools</p>
           {ADVANCED_LINKS.map((link) => (
             <NavItem key={link.to} link={link} />
           ))}
         </nav>
-        <HelpCard />
+        <DocsLink />
       </aside>
 
       <header className="sticky top-0 z-30 border-b border-white/5 bg-ink-950/80 backdrop-blur-xl lg:hidden">
@@ -77,7 +83,7 @@ export function AppShell() {
 
       <div className="lg:pl-[18rem]">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:pt-5">
-          <div className="mb-5 hidden items-center justify-between gap-4 lg:flex">
+          <header className="mb-5 hidden items-center justify-between gap-4 lg:flex">
             <p className="text-xs text-ink-300">
               Testo <span className="text-ink-500">/</span> <span className="font-semibold text-white">{sectionLabel(pathname)}</span>
             </p>
@@ -86,8 +92,8 @@ export function AppShell() {
               <UserBadge />
               <HealthDot />
             </div>
-          </div>
-          <main>
+          </header>
+          <main id="main" tabIndex={-1} className="outline-none">
             <Outlet />
           </main>
         </div>
@@ -127,23 +133,19 @@ function NavItem({ link, size = "compact" }: { link: NavLinkSpec; size?: "compac
   );
 }
 
-function HelpCard() {
+function DocsLink() {
   return (
-    <div className="relative mt-auto overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_85%_15%,#7b61ff_0%,#2a2f9e_35%,#0075ff_70%,#061049_100%)] p-4">
-      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-brand-500">
+    <a
+      href={DOCS_URL}
+      target="_blank"
+      rel="noreferrer"
+      className="mt-auto flex items-center gap-3 rounded-2xl px-4 py-2 text-sm font-medium text-ink-300 transition-colors hover:bg-ink-800/40 hover:text-white"
+    >
+      <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-xl bg-ink-800 text-brand-400">
         <Icons.HelpIcon />
       </span>
-      <p className="mt-3 text-sm font-bold text-white">Need help?</p>
-      <p className="text-xs text-white/80">Please check our docs</p>
-      <a
-        href={DOCS_URL}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-3 block rounded-xl bg-ink-950/60 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur transition-colors hover:bg-ink-950/80"
-      >
-        Documentation
-      </a>
-    </div>
+      Docs
+    </a>
   );
 }
 
@@ -174,7 +176,7 @@ function useDismiss(
 }
 
 /**
- * Below the `sm` breakpoint the inline nav and the Advanced dropdown don't fit
+ * Below the `lg` breakpoint the sidebar nav and its Tools section don't fit
  * next to the logo, so both collapse into one disclosure panel under the header.
  */
 function MobileMenu() {
@@ -202,7 +204,7 @@ function MobileMenu() {
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="rounded-xl p-2 text-ink-300 transition-colors hover:bg-ink-800 hover:text-white"
+        className="flex h-11 w-11 items-center justify-center rounded-xl text-ink-300 transition-colors hover:bg-ink-800 hover:text-white"
         aria-label="Menu"
         aria-expanded={open}
         aria-controls="mobile-nav"
@@ -226,7 +228,7 @@ function MobileMenu() {
             <NavItem key={link.to} link={link} size="touch" />
           ))}
         </div>
-        <p className="mt-3 px-4 text-[11px] font-bold uppercase tracking-wider text-white">Advanced</p>
+        <p className="mt-3 px-4 text-[11px] font-bold uppercase tracking-wider text-white">Tools</p>
         <div className="mt-1 flex flex-col gap-1">
           {ADVANCED_LINKS.map((link) => (
             <NavItem key={link.to} link={link} size="touch" />

@@ -49,7 +49,7 @@ describe("AppShell mobile menu", () => {
     const labels = within(panel)
       .getAllByRole("link")
       .map((link) => link.textContent);
-    expect(labels).toEqual(["Dashboard", "Cycles", "Runs", "Compare", "Quick Run", "AI Settings"]);
+    expect(labels).toEqual(["Dashboard", "Cycles", "Runs", "Compare", "Quick run", "AI settings"]);
 
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -61,7 +61,7 @@ describe("AppShell mobile menu", () => {
     fireEvent.click(toggle);
     const panel = screen.getByRole("navigation", { name: "Main" });
 
-    fireEvent.click(within(panel).getByRole("link", { name: "Quick Run" }));
+    fireEvent.click(within(panel).getByRole("link", { name: "Quick run" }));
 
     expect(await screen.findByRole("heading", { name: "Quick Run page" })).toBeInTheDocument();
     expect(toggle).toHaveAttribute("aria-expanded", "false");
