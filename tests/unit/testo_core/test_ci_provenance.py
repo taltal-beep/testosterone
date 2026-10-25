@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import subprocess
+from pathlib import Path
+
 from testo_core.services.ci_provenance import (
     CIProvenance,
     detect_ci_environment,
     detect_ci_provenance,
+    detect_git_checkout,
 )
 
 
@@ -79,3 +83,71 @@ def test_detect_ci_environment_true_for_known_provider() -> None:
 
 def test_detect_ci_environment_false_for_local() -> None:
     assert detect_ci_environment({"SHELL": "/bin/zsh"}) is False
+
+
+def test_github_pull_request_records_the_branch_and_its_target() -> None:
+    pv = detect_ci_provenance(
+        {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REF_NAME": "167/merge",
+            "GITHUB_HEAD_REF": "feature/login",
+            "GITHUB_BASE_REF": "main",
+        }
+    )
+    assert pv is not None
+    assert pv.ci_ref_name == "feature/login"
+    assert pv.to_metadata()["ci_base_ref"] == "main"
+
+
+def test_push_builds_have_no_base_ref() -> None:
+    pv = detect_ci_provenance(
+        {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REF_NAME": "main",
+            "GITHUB_HEAD_REF": "",
+            "GITHUB_BASE_REF": "",
+        }
+    )
+    assert pv is not None
+    assert pv.ci_ref_name == "main"
+    assert "ci_base_ref" not in pv.to_metadata()
+
+
+def test_azure_and_jenkins_branch_refs_are_short_names() -> None:
+    azure = detect_ci_provenance(
+        {"TF_BUILD": "True", "SYSTEM_PULLREQUEST_TARGETBRANCH": "refs/heads/main"}
+    )
+    jenkins = detect_ci_provenance(
+        {"JENKINS_URL": "http://ci", "GIT_BRANCH": "origin/feature", "CHANGE_TARGET": "main"}
+    )
+    assert azure is not None and azure.ci_base_ref == "main"
+    assert jenkins is not None and (jenkins.ci_ref_name, jenkins.ci_base_ref) == ("feature", "main")
+
+
+def test_detect_git_checkout_reads_branch_and_commit(tmp_path: Path) -> None:
+    subprocess.run(["git", "init", "-q", "-b", "trunk", str(tmp_path)], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.com",
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "init",
+        ],
+        check=True,
+    )
+    found = detect_git_checkout(tmp_path)
+    assert found["git_branch"] == "trunk"
+    assert len(found["git_commit"]) == 40
+
+
+def test_detect_git_checkout_outside_a_repo(tmp_path: Path) -> None:
+    assert detect_git_checkout(tmp_path) == {}
+    assert detect_git_checkout(None) == {}

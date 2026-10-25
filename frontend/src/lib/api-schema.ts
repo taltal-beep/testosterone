@@ -646,6 +646,8 @@ export interface components {
         };
         /** Body_ingest_reports_api_v1_ingest_post */
         Body_ingest_reports_api_v1_ingest_post: {
+            /** Ci Base Ref */
+            ci_base_ref?: string | null;
             /** Ci Commit Sha */
             ci_commit_sha?: string | null;
             /** Ci Job Id */

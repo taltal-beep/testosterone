@@ -71,7 +71,7 @@ class DbBackend:
     def persist(self, result: PlanResult) -> str | None:
         try:
             from testo_core.repository.db import get_repository
-            from testo_core.services.ci_provenance import detect_ci_provenance
+            from testo_core.services.ci_provenance import detect_ci_provenance, detect_git_checkout
 
             repo = get_repository()
             status = RunStatus.COMPLETED if result.exit_code == 0 else RunStatus.FAILED
@@ -82,6 +82,7 @@ class DbBackend:
                 health_pct = 100.0 * passed_stages / len(result.stages)
             stage_health_by_name = {h["name"]: h for h in stage_health}
             provenance = detect_ci_provenance(os.environ)
+            checkout = {} if provenance else detect_git_checkout(result.target_repo)
             extra_metadata = result.extra.get("run_metadata")
 
             record = repo.create_run(
@@ -123,6 +124,7 @@ class DbBackend:
                     "source": "engine",
                     **failure_metadata(result),
                     **(provenance.to_metadata() if provenance else {}),
+                    **checkout,
                     **(extra_metadata if isinstance(extra_metadata, dict) else {}),
                 },
             )

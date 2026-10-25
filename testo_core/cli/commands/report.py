@@ -317,10 +317,20 @@ def report_markdown(
     run_url: str | None = typer.Option(
         None, "--run-url", help="Link added to the footer, e.g. the CI run that produced it."
     ),
+    baseline_branch: str | None = typer.Option(
+        None,
+        "--baseline-branch",
+        help="Compare with this branch's latest run (default: a pull request's target "
+        "branch, else the previous run).",
+    ),
 ) -> None:
     from testo_core.services.run_summary_markdown import load_run_summary, render_markdown
 
-    summary = load_run_summary(cycle=cycle.strip() if cycle else None, run_id=run_id)
+    summary = load_run_summary(
+        cycle=cycle.strip() if cycle else None,
+        run_id=run_id,
+        baseline_branch=baseline_branch.strip() if baseline_branch else None,
+    )
     if summary is None:
         typer.echo("no recorded run found", err=True)
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))

@@ -45,6 +45,12 @@ One pull request for the review's small UI and copy findings, since each is a li
 
 C8 (the default AI model) is left as it is: picking a new model name is a product call, not copy.
 
+### Judge a pull request against its target branch (P3)
+
+The PR comment compared each run with the cycle's previous run, which on a team with parallel PRs is usually someone else's branch. Runs now record their branch and commit everywhere: CI provenance gains `ci_base_ref` (the PR's target branch) and uses the PR's own branch for `ci_ref_name` on GitHub, and runs outside CI record `git_branch` / `git_commit` from the checkout. `run_summary_markdown.pick_baseline` takes the latest run of the cycle on `--baseline-branch`, else on the run's `ci_base_ref`, else the previous run, and the text names which ("Since the last run on `main`"). Alerts use the same summary, so their "what changed" follows. Field list: [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md#canonical-ci-provenance-fields).
+
+Compare keeps its explicit baseline picker; the dashboard trend still compares the last two runs of a cycle, which is the right question there ("is this cycle getting better?").
+
 ## Consequences
 
 - The run page answers "what broke?" without opening Allure or Compare.

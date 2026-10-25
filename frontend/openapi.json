@@ -427,6 +427,17 @@
       },
       "Body_ingest_reports_api_v1_ingest_post": {
         "properties": {
+          "ci_base_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci Base Ref"
+          },
           "ci_commit_sha": {
             "anyOf": [
               {
