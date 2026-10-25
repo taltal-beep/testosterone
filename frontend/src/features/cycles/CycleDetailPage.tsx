@@ -52,7 +52,9 @@ export function CycleDetailPage() {
         subtitle={cycle.description ?? "No description."}
       />
 
-      <RunPanel initialCycle={cycle.name} lockCycle autoFocusRun={searchParams.get("run") === "1"} />
+      {cycle.source === "config" ? (
+        <RunPanel initialCycle={cycle.name} lockCycle autoFocusRun={searchParams.get("run") === "1"} />
+      ) : null}
 
       <FlakyTestsCard cycle={cycle.name} />
 
@@ -67,31 +69,34 @@ export function CycleDetailPage() {
                 <span className="font-mono text-sm font-semibold text-ink-100">{stage.name}</span>
                 <Badge tone="brand">{stage.equipment}</Badge>
               </div>
-              <KeyValue
-                className="mt-2"
-                items={[
-                  { label: "Target repo", value: <span className="font-mono text-xs">{stage.target_repo}</span> },
-                  {
-                    label: "Args",
-                    value: (
-                      <span className="font-mono text-xs">
-                        {stage.args.length > 0 ? stage.args.join(" ") : "—"}
-                      </span>
-                    )
-                  },
-                  { label: "Timeout", value: stage.timeout_s !== null ? `${stage.timeout_s}s` : "none" },
-                  // The API leaves workers null for single-process frameworks (behave, command).
-                  ...(stage.workers !== null
-                    ? [
-                        {
-                          label: "Workers",
-                          value:
-                            stage.equipment === "pytest" ? `${stage.workers} (with pytest-xdist)` : stage.workers
-                        }
-                      ]
-                    : [])
-                ]}
-              />
+              {/* A recorded-only stage has no config: no args, timeout or workers to show. */}
+              {cycle.source === "config" ? (
+                <KeyValue
+                  className="mt-2"
+                  items={[
+                    { label: "Target repo", value: <span className="font-mono text-xs">{stage.target_repo}</span> },
+                    {
+                      label: "Args",
+                      value: (
+                        <span className="font-mono text-xs">
+                          {stage.args.length > 0 ? stage.args.join(" ") : "—"}
+                        </span>
+                      )
+                    },
+                    { label: "Timeout", value: stage.timeout_s !== null ? `${stage.timeout_s}s` : "none" },
+                    // The API leaves workers null for single-process frameworks (behave, command).
+                    ...(stage.workers !== null
+                      ? [
+                          {
+                            label: "Workers",
+                            value:
+                              stage.equipment === "pytest" ? `${stage.workers} (with pytest-xdist)` : stage.workers
+                          }
+                        ]
+                      : [])
+                  ]}
+                />
+              ) : null}
             </li>
           ))}
         </ol>

@@ -247,7 +247,7 @@ export interface paths {
         };
         /**
          * List Cycles
-         * @description List every cycle defined in the resolved configuration (UI parity with ``testo cycles list``).
+         * @description Every cycle in the config (as ``testo cycles list``), then cycles that only have recorded runs.
          */
         get: operations["list_cycles_api_v1_cycles_get"];
         put?: never;
@@ -267,7 +267,7 @@ export interface paths {
         };
         /**
          * Get Cycle
-         * @description Resolved view of one cycle (UI parity with ``testo cycles show <name>``).
+         * @description Resolved view of one cycle (as ``testo cycles show <name>``), or a recorded-only cycle.
          */
         get: operations["get_cycle_api_v1_cycles__cycle__get"];
         put?: never;
@@ -721,6 +721,12 @@ export interface components {
             description: string | null;
             /** Name */
             name: string;
+            /**
+             * Source
+             * @default config
+             * @enum {string}
+             */
+            source: "config" | "history";
             /** Stages */
             stages: components["schemas"]["StageSummary"][];
             trigger: components["schemas"]["CycleTriggerSummary"] | null;
@@ -815,6 +821,12 @@ export interface components {
             equipment: string[];
             /** Name */
             name: string;
+            /**
+             * Source
+             * @default config
+             * @enum {string}
+             */
+            source: "config" | "history";
             /** Stage Count */
             stage_count: number;
         };

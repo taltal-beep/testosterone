@@ -24,6 +24,8 @@ export function RunPanel({ initialCycle, lockCycle = false }: RunPanelProps) {
     queryFn: () => apiClient.listCycles(),
     enabled: !lockCycle
   });
+  // Recorded-only cycles (testo ingest) have no config to run.
+  const runnable = (cyclesQuery.data?.items ?? []).filter((item) => item.source === "config");
 
   const [cycle, setCycle] = useState(initialCycle ?? "");
   const [stream, setStream] = useState(true);
@@ -44,10 +46,10 @@ export function RunPanel({ initialCycle, lockCycle = false }: RunPanelProps) {
 
   // Default the dropdown to the first cycle once loaded.
   useEffect(() => {
-    if (!cycle && cyclesQuery.data?.items.length) {
-      setCycle(initialCycle ?? cyclesQuery.data.items[0].name);
+    if (!cycle && runnable.length) {
+      setCycle(initialCycle ?? runnable[0].name);
     }
-  }, [cycle, cyclesQuery.data, initialCycle]);
+  }, [cycle, runnable, initialCycle]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -84,7 +86,7 @@ export function RunPanel({ initialCycle, lockCycle = false }: RunPanelProps) {
                 disabled={cyclesQuery.isLoading || busy}
               >
                 {cyclesQuery.isLoading ? <option value="">Loading cycles…</option> : null}
-                {(cyclesQuery.data?.items ?? []).map((item) => (
+                {runnable.map((item) => (
                   <option key={item.name} value={item.name}>
                     {item.name} — {item.stage_count} stage{item.stage_count === 1 ? "" : "s"}
                   </option>

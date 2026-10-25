@@ -38,5 +38,6 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Running each server-started stage in a throwaway container, off by default | [Throwaway Stage Containers - 2026-10-24](Throwaway%20Stage%20Containers%20-%202026-10-24.md) |
 | Changelog enforcement | [changelog_automation_policy.md](../changelog_automation_policy.md) |
 | Product roadmap from the product review (failing tests first, and what follows) | [Product Roadmap Work - 2026-10-25](Product%20Roadmap%20Work%20-%202026-10-25.md) |
+| Product review second pass: every area except trust toward 10 | [Product to Ten - 2026-10-25](Product%20to%20Ten%20-%202026-10-25.md) |
 
 Older plans and incident write-ups (Allure 3 migration plan, reporters port, report-links fix, CLI–UI parity, the `doctor`/`clean`/`watch`/`init` restore) are in the [Archive](../Archive/README.md).

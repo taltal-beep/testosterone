@@ -31,6 +31,9 @@ class CycleSummary(ApiModel):
     description: str | None = None
     stage_count: int
     equipment: list[str] = Field(default_factory=list)
+    # "config": defined in testosterone.yaml, so it can be run from here.
+    # "history": only recorded (``testo ingest``, CI, another machine); read-only.
+    source: Literal["config", "history"] = "config"
 
 
 class CycleListResponse(ApiModel):
@@ -48,6 +51,7 @@ class CycleDetailResponse(ApiModel):
     description: str | None = None
     stages: list[StageSummary]
     trigger: CycleTriggerSummary | None = None
+    source: Literal["config", "history"] = "config"
 
 
 class CycleExecutionRequest(ApiModel):

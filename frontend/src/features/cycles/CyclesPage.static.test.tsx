@@ -17,7 +17,7 @@ describe("CyclesPage in the read-only demo", () => {
       vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          items: [{ name: "fake-api", description: "Demo app.", stage_count: 4, equipment: ["pytest"] }],
+          items: [{ name: "fake-api", description: "Demo app.", stage_count: 4, equipment: ["pytest"], source: "config" }],
           config_path: "testosterone.yaml"
         })
       })
