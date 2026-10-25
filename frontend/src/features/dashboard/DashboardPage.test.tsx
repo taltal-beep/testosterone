@@ -90,7 +90,7 @@ describe("DashboardPage", () => {
     renderDashboard();
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument());
-    expect(screen.getByTestId("health-trend")).toHaveTextContent("Trend: improved");
+    expect(screen.getByTestId("health-trend")).toHaveTextContent("Better than last run");
     expect(screen.getByRole("link", { name: "Latest run details" })).toHaveAttribute("href", "/runs/run-1");
     expect(screen.getByRole("link", { name: "Compare latest two runs" })).toHaveAttribute(
       "href",

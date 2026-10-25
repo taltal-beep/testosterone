@@ -482,7 +482,7 @@ class HealthReadyResponse(ApiModel):
 class AiConfigUpdateRequest(ApiModel):
     enabled: bool = False
     provider: Literal["openai", "anthropic", "openai_compatible"] = "openai"
-    model: str = "gpt-4o-mini"
+    model: str = "gpt-4.1-mini"
     api_key_source: Literal["env", "runtime_input"] = "env"
     api_key_env_var: str | None = None
     api_key_input: str | None = None

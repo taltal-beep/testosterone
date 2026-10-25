@@ -123,7 +123,7 @@ def test_run_pyramid_contract(monkeypatch) -> None:  # noqa: ANN001
         "integration": 0,
         "e2e": 0,
         "shape": "irregular",
-        "message": "Non-ideal tier ordering",
+        "message": "Not a clean pyramid: each tier should be smaller than the one below it.",
     }
 
 

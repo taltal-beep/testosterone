@@ -69,3 +69,15 @@ export function describeExitCode(code: number | null | undefined): string {
 export function testPath(cycle: string, key: string): string {
   return `/cycles/${encodeURIComponent(cycle)}/test?${new URLSearchParams({ key }).toString()}`;
 }
+
+/**
+ * A percentage as a whole number ("80%"), except that a value just under 100
+ * or just over 0 keeps one decimal, so a run with one failure never reads 100%.
+ */
+export function formatPercent(value: number | null | undefined): string {
+  if (value == null) return "n/a";
+  const whole = Math.round(value);
+  if (whole === 100 && value < 100) return `${Math.floor(value * 10) / 10}%`;
+  if (whole === 0 && value > 0) return `${Math.ceil(value * 10) / 10}%`;
+  return `${whole}%`;
+}

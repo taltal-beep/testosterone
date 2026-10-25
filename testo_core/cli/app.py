@@ -89,7 +89,7 @@ def _register_commands() -> None:
     )(notify_mod.notify)
     app.command(
         name="config-db",
-        help="Set database.url in testosterone.yaml (or [tool.testosterone] in pyproject.toml).",
+        help="Set database.url in testosterone.yaml (or \\[tool.testosterone] in pyproject.toml).",
         rich_help_panel="Config",
     )(config_db_cmd.config_db)
     app.command(

@@ -27,7 +27,7 @@ _UNPERSISTED_FIELDS = frozenset({"runtime_api_key"})
 class AiIntegrationSettings:
     enabled: bool = False
     provider: AiProviderName = "openai"
-    model: str = "gpt-4o-mini"
+    model: str = "gpt-4.1-mini"
     api_key_source: ApiKeySource = "env"
     api_key_env_var: str | None = None
     timeout_s: float = 8.0

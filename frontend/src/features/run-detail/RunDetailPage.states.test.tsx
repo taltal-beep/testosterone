@@ -268,7 +268,7 @@ describe("RunDetailPage states", () => {
       })
     );
     renderAt();
-    fireEvent.click(await screen.findByRole("button", { name: "Generate AI Summary" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Generate AI summary" }));
     await waitFor(() => expect(screen.getByText("AI provider timed out.")).toBeInTheDocument());
   });
 });

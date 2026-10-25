@@ -11,7 +11,7 @@ type Provider = UpdateAiConfigRequest["provider"] & string;
 
 // Mirrors the API's defaults (testo_core/services/ai/config.py).
 const PROVIDER_DEFAULTS: Record<Provider, { model: string; envVar: string; timeoutS: number; maxOutputTokens: number }> = {
-  openai: { model: "gpt-4o-mini", envVar: "OPENAI_API_KEY", timeoutS: 8, maxOutputTokens: 300 },
+  openai: { model: "gpt-4.1-mini", envVar: "OPENAI_API_KEY", timeoutS: 8, maxOutputTokens: 300 },
   anthropic: { model: "claude-haiku-4-5", envVar: "ANTHROPIC_API_KEY", timeoutS: 8, maxOutputTokens: 300 },
   // Free tiers and local models answer more slowly than the paid APIs, and reasoning models
   // (Gemini) spend output tokens on thinking, which cuts a 300-token summary short.
@@ -80,7 +80,7 @@ export function AIIntegrationSettingsPage() {
   const [formState, setFormState] = useState<UpdateAiConfigRequest>({
     enabled: false,
     provider: "openai",
-    model: "gpt-4o-mini",
+    model: "gpt-4.1-mini",
     api_key_source: "env",
     api_key_env_var: null,
     timeout_s: 8,

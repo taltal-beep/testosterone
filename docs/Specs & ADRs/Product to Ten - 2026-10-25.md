@@ -32,6 +32,14 @@ A bare `/compare` opened with two empty pickers. It now shows the latest run aga
 
 `GET /api/v1/runs/{run_id}/failures` adds `rerun_commands`: one command per runner that reruns just the failing tests, built by `services/rerun_commands.py` from each test's stage, that stage's recorded framework and the test's names. pytest gets node ids (`pytest tests/api/test_orders.py::test_cancel`), Playwright `npx playwright test --grep`, and Behave `--name '^scenario$'`. JUnit or command stages count as pytest only when the names point at a Python test module; anything else is left out rather than guessed, and over 30 tests gives no command (rerun the stage). The run page shows the commands above the failing tests with a Copy button.
 
+### Accessibility and copy polish (A8, A9, C8, C10)
+
+- The skip link sits in a `nav` labelled "Skip links", so every piece of content is inside a landmark (axe "region").
+- Targets reach 24 px (WCAG 2.2, 2.5.8): the demo notice's close button is 44 px, the "Read-only demo" badge is taller, and run links and "compare" links in lists get a padded hit area that doesn't change the row's layout.
+- Copy: "Generate AI summary"; dashboard trends read "Better than last run", "Worse than last run" or "No change"; the test pyramid says "Healthy pyramid", "Top-heavy", "Integration-heavy" or "Mixed tiers" with a plain sentence under it (the API's `message` changed with it); health percentages are whole numbers (`formatPercent`), keeping one decimal only when rounding would show 100% for a run with a failure or 0% for one with a pass.
+- The OpenAI default model is `gpt-4.1-mini` instead of `gpt-4o-mini`. A reasoning model (the `gpt-5` family) would need `max_completion_tokens` and no `temperature`, which the OpenAI provider doesn't send, so the default stays a non-reasoning model.
+- `testo config init --help` and `testo config-db --help` no longer show an RST-style double-backticked path, or lose `[tool.testosterone]` to Rich markup.
+
 ## Consequences
 
 - A team that only ingests JUnit gets the same cycle page as one that runs cycles through `testo run`, apart from starting runs.

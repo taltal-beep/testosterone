@@ -249,7 +249,7 @@
             "type": "integer"
           },
           "model": {
-            "default": "gpt-4o-mini",
+            "default": "gpt-4.1-mini",
             "title": "Model",
             "type": "string"
           },

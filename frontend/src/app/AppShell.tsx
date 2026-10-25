@@ -42,12 +42,15 @@ export function AppShell() {
   const { pathname } = useLocation();
   return (
     <div className="min-h-full">
-      <a
-        href="#main"
-        className="sr-only z-50 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
-      >
-        Skip to content
-      </a>
+      {/* Inside a landmark, like all content, so screen-reader region navigation finds it. */}
+      <nav aria-label="Skip links">
+        <a
+          href="#main"
+          className="sr-only z-50 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        >
+          Skip to content
+        </a>
+      </nav>
       <BackgroundArt />
       <aside className="glass-panel fixed inset-y-4 left-4 z-20 hidden w-64 flex-col overflow-y-auto px-4 py-6 lg:flex">
         <Link to="/" className="flex items-center justify-center gap-2.5 pb-6" aria-label="Testo home">

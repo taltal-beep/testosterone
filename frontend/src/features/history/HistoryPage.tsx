@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { apiClient } from "../../lib/api-client";
+import { formatPercent } from "../../lib/format";
 import { Button, EmptyState, PageHeader, RunLabel, Spinner, StatusPill } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
 
@@ -62,7 +63,7 @@ export function HistoryPage() {
                 <RunLabel run={run} linked />
               </div>
               <span className="text-xs text-ink-400">
-                {run.health_pct != null ? `health ${run.health_pct.toFixed(2)}%` : ""}
+                {run.health_pct != null ? `health ${formatPercent(run.health_pct)}` : ""}
               </span>
             </li>
           ))}

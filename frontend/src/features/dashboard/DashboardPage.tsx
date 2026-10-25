@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { DashboardOverviewResponse, DashboardTrendIndicator, apiClient } from "../../lib/api-client";
 import { Badge, Card, HealthBar, Icons, PageHeader, RunLabel, Spinner, StatusPill } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
-import { countLabel, formatDuration } from "../../lib/format";
+import { countLabel, formatDuration, formatPercent } from "../../lib/format";
 
 const RECENT_RUNS_REFRESH_MS = 15_000;
 
@@ -60,7 +60,7 @@ export function DashboardPage() {
       <TrendBaseline kpis={data.headline_kpis} />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Health" icon={Icons.HeartIcon} value={formatPct(data.headline_kpis.health_pct)} trend={data.trend_indicators.health} />
+        <KpiCard label="Health" icon={Icons.HeartIcon} value={formatPercent(data.headline_kpis.health_pct)} trend={data.trend_indicators.health} />
         <KpiCard
           label="Failed"
           icon={Icons.CrossIcon}
@@ -136,9 +136,9 @@ export function DashboardPage() {
                     <RunLabel run={run} linked href={run.run_detail_url} />
                   </div>
                   <div className="flex items-center gap-3 text-xs text-ink-400">
-                    <span>health {formatPct(run.health_pct)}</span>
+                    <span>health {formatPercent(run.health_pct)}</span>
                     {run.compare_url ? (
-                      <Link to={run.compare_url} className="text-brand-300 hover:underline">
+                      <Link to={run.compare_url} className="-my-1 inline-block py-1 text-brand-300 hover:underline">
                         compare
                       </Link>
                     ) : null}
@@ -274,7 +274,7 @@ function KpiCard({
         <p className="my-0.5 text-lg font-bold text-white">{value}</p>
         {semantic.label === "unknown" ? null : (
           <p data-testid={`${label.toLowerCase().replace(/\s+/g, "-")}-trend`} className={`text-xs font-semibold ${trendColor}`}>
-            Trend: {semantic.label}
+            {TREND_COPY[semantic.label]}
           </p>
         )}
       </div>
@@ -284,6 +284,8 @@ function KpiCard({
     </article>
   );
 }
+
+const TREND_COPY = { improved: "Better than last run", regressed: "Worse than last run", flat: "No change", unknown: "" };
 
 export function trendSemantic(
   trend: DashboardTrendIndicator,
@@ -313,12 +315,6 @@ function reportLink(label: string, report: { url: string | null; state: "availab
   );
 }
 
-function formatPct(value: number | null): string {
-  if (value == null) {
-    return "n/a";
-  }
-  return `${value.toFixed(2)}%`;
-}
 
 function formatInt(value: number | null): string {
   if (value == null) {
