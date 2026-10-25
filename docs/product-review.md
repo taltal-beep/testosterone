@@ -21,13 +21,62 @@ How the first pass was checked (2026-10-24, `main` at `9104054`):
 
 ## Verdict
 
+**Overall: 8.5 / 10 as a product (was 7.5), and 9 or more in every area except trust.** Third pass, 2026-10-25, `main` at `ed57b9d`, after the [Product to Ten](Specs%20%26%20ADRs/Product%20to%20Ten%20-%202026-10-25.md) work in #176 to #184. Every item in [What a 10 needs](#what-a-10-needs) that didn't wait on Taltal has shipped: recorded cycles have pages, "new" means new since the target branch, the dashboard leads with what needs attention, `pytest --testo` records a local run with no CI step, and the test page has attachments, traces, flakiness over time and a remembered cause.
+
+What keeps the areas from 10 is small and listed under [Third pass findings](#third-pass-findings): a cycle's own run history is hard to see (P15), the duration chart has no scale (D8), and three copy nits. What keeps the product from 10 overall is trust (one maintainer, nothing launched), which no pull request fixes.
+
+How it was checked: a live API and UI built from `main`, with six ingested JUnit runs of a `web` cycle (a flaky test, a shared `ConnectionRefusedError`, a test that keeps getting slower), a Playwright JSON import with a screenshot, a video and a trace, and a `pytest --testo` session on a branch. Every page opened at 1280 px, 390 px and 640 × 450 (200 % zoom); `axe-core` (WCAG 2 A/AA and best practice) on every page; triage marked and inherited in the browser. No screen reader, no users.
+
+## Scorecard
+
+| Area | Score | Was | In one line |
+|------|:-----:|:---:|-------------|
+| Positioning and value proposition | **9** | 8 | README, PyPI, `--help` and a [comparison page](Compared%20With%20Other%20Tools.md) that says when to pick something else. Left: the name and a Marketplace listing, both Taltal's |
+| Time to first value | **9.5** | 7.5 | `pytest --testo`, `testo ingest` then `testo ui`, a first-run guide on the empty dashboard, and a no-install try-it page. Every recorded cycle has a page |
+| Core workflow: "why is CI red?" | **9** | 8 | New since the target branch, branch and commit on the run, rerun commands, Compare prefilled, causes remembered. Left: no way to see one cycle's runs over time (P15) |
+| Feature depth against competitors | **9** | 8 | Triage memory, Playwright attachments and traces, flakiness over time. The rest of the gap (ML auto-analysis, CI load balancing, test impact analysis) is a product of its own, and 9 is where this plan said it would stop |
+| Visual design and UX | **9** | 7.5 | The dashboard answers "what needs me?", the run and test pages read in the user's order. Left: the duration chart has no scale (D8), and the Runs list looks the same for every cycle (P15) |
+| Accessibility | **9.5** | 8.5 | `axe` finds nothing on any page; no overflow at phone width or 200 % zoom; charts have text alternatives. Left: one screen-reader pass, which needs a person |
+| UX copy | **9** | 8 | Plain sentences throughout. Left: C11 to C13 |
+| Trust and adoption signals | **5** | 5 | Unchanged: one maintainer, no "used by", nothing launched. Only a launch and real users move it |
+
+## What a 10 needs
+
+Every area except trust, in the order that moves the score most. "Realistic" says where a 10 depends on something other than code. After the third pass, everything here has shipped except the screen-reader pass, the name and the Marketplace listing; what each area still lacks is in [Third pass findings](#third-pass-findings).
+
+| Area | To reach 10 | Realistic |
+|------|-------------|-----------|
+| Time to first value | P10 (ingest cycles get pages), a first-run empty state in `testo ui` with the `testo ingest` command, and a pytest plugin (`pytest -p testo` or `pytest --testo`) that records every local run with no CI step | Yes |
+| Core workflow | P11 to P14: "new since `main`" on the run page, branch and commit in its header, Compare prefilled with the run and its baseline, and a copyable "rerun these" command per runner (`pytest` node ids, `--grep` for Playwright) | Yes |
+| Visual design | D7: a dashboard that answers "what needs me?" (failing cycles, new failures, new flaky tests, what got slower) above the numbers, and D3 run labels that differ | Yes |
+| Accessibility | A8 and A9, a 200 % zoom pass, text alternatives for the bars, and one screen-reader pass (VoiceOver or NVDA, which needs a person) | Mostly; the screen-reader pass needs Taltal |
+| UX copy | C8 and C10 | Yes |
+| Feature depth | Triage memory (mark a failure's cause once, similar failures inherit it), Playwright traces, screenshots and videos on the test page, flake rate over time per test | 9 is realistic: Datadog's test impact analysis and Currents' CI load balancing are products in themselves |
+| Positioning | The name decision, the Action on the GitHub Marketplace, and a "compared with" docs page | Needs Taltal's name call |
+
+## Third pass findings
+
+| # | Severity | Finding | Fix |
+|---|----------|---------|-----|
+| P15 | Medium | **A cycle's own run history is hard to see.** Runs lists every cycle together with no filter, and a cycle's page shows its tests, flaky card and stages but not its runs or how often it has passed lately | A cycle filter on Runs (`/runs?cycle=web`) and a "Recent runs" card on the cycle page with the pass rate over those runs, linking to the filtered list |
+| D8 | Low | The test page's duration chart has no scale: equal durations draw full-height bars, so a steady 300 ms test looks as busy as one swinging from 1 to 9 s | Label the chart's top value and draw bars from zero against it |
+| C11 | Low | Slowdowns read "+1.1 s (+95.5%)" on the cycle page and "+1.1 s (+96%)" on the dashboard | One formatter for both (`formatPercent`) |
+| C12 | Low | "0 of 3 cycles passed their latest run; 3 cycles are red." | "All 3 cycles are red." when none passed |
+| C13 | Low | Runs says "Every archived cycle run, newest first." "Archived" is an internal word, and ingested runs aren't cycle runs to the reader | "Every recorded run, newest first." |
+
+Second-pass findings P10 to P14, D7, A8, A9, C8 and C10 are fixed (#176 to #181).
+
+## Second pass findings
+
+### Second pass verdict (2026-10-25)
+
 **Overall: 7.5 / 10 as a product (was 6.5).** Second pass, 2026-10-25, `main` at `ad4dc9f`, after the roadmap work in #166 to #174 ([Product Roadmap Work](Specs%20&%20ADRs/Product%20Roadmap%20Work%20-%202026-10-25.md)). The red build now lands: the run page leads with its failing tests, groups shared causes, says how long each has failed and links to a page per test, and PR comments compare with the target branch. The first look is three commands (`pip install`, `testo ingest`, `testo ui`) or no install at all on the try-it page.
 
 It is 7.5 rather than the 8 the first pass predicted because of one new finding: **a cycle that only exists through `testo ingest` has no cycle page** (P10). `GET /api/v1/cycles/{name}` reads `testosterone.yaml`, so the cycle every ingest user creates is missing from Cycles and its page answers "not found", which hides the test search, the slowest tests and the flaky card from exactly the users the first look was rebuilt for. Fixing it is the single biggest step to 8.
 
 How it was checked: the static demo rebuilt from `self-test`, `sample-all-frameworks` and three ingested JUnit runs of a `web` cycle; every page opened at 1280 px and 390 px; `axe-core` (WCAG 2 A/AA and best practice) on every page; keyboard tabbing through the shell; touch targets and overflow at 390 px; the API called directly for the ingest-only cycle. No screen reader, no users.
 
-## Scorecard
+### Second pass scorecard
 
 | Area | Score | Was | In one line |
 |------|:-----:|:---:|-------------|
@@ -40,21 +89,7 @@ How it was checked: the static demo rebuilt from `self-test`, `sample-all-framew
 | UX copy | **8** | 6.5 | Errors say what to check, sentence case, one ellipsis. Left: "Generate AI Summary", "Trend: regressed", "Irregular tier mix", "Non-ideal tier ordering", `20.00%` (C10), and the `gpt-4o-mini` default (C8) |
 | Trust and adoption signals | **5** | 5 | Unchanged: one maintainer, no "used by", nothing launched. Only a launch and real users move it; out of scope for the code |
 
-## What a 10 needs
-
-Every area except trust, in the order that moves the score most. "Realistic" says where a 10 depends on something other than code.
-
-| Area | To reach 10 | Realistic |
-|------|-------------|-----------|
-| Time to first value | P10 (ingest cycles get pages), a first-run empty state in `testo ui` with the `testo ingest` command, and a pytest plugin (`pytest -p testo` or `pytest --testo`) that records every local run with no CI step | Yes |
-| Core workflow | P11 to P14: "new since `main`" on the run page, branch and commit in its header, Compare prefilled with the run and its baseline, and a copyable "rerun these" command per runner (`pytest` node ids, `--grep` for Playwright) | Yes |
-| Visual design | D7: a dashboard that answers "what needs me?" (failing cycles, new failures, new flaky tests, what got slower) above the numbers, and D3 run labels that differ | Yes |
-| Accessibility | A8 and A9, a 200 % zoom pass, text alternatives for the bars, and one screen-reader pass (VoiceOver or NVDA, which needs a person) | Mostly; the screen-reader pass needs Taltal |
-| UX copy | C8 and C10 | Yes |
-| Feature depth | Triage memory (mark a failure's cause once, similar failures inherit it), Playwright traces, screenshots and videos on the test page, flake rate over time per test | 9 is realistic: Datadog's test impact analysis and Currents' CI load balancing are products in themselves |
-| Positioning | The name decision, the Action on the GitHub Marketplace, and a "compared with" docs page | Needs Taltal's name call |
-
-## Second pass findings
+### Second pass table
 
 | # | Severity | Finding | Fix |
 |---|----------|---------|-----|
@@ -70,16 +105,7 @@ Every area except trust, in the order that moves the score most. "Realistic" say
 
 First-pass findings P1 to P9, D1, D2, D4, D5, A1 to A7, C1 to C7 and C9 are fixed (#166 to #174). D3 and D6 are carried into P13 and D7, and C8 is still open.
 
-Since this pass, everything in [What a 10 needs](#what-a-10-needs) that doesn't wait on Taltal has shipped (see [Product to Ten](Specs%20%26%20ADRs/Product%20to%20Ten%20-%202026-10-25.md)):
-
-- **Time to first value:** recorded cycles get a page (P10, #176), a first-run guide on the empty dashboard (#180), and `pytest --testo` (#182).
-- **Core workflow:** P11 to P14 (#177, #178).
-- **Visual design:** the "Needs attention" dashboard (D7, #180).
-- **Accessibility:** A8 and A9 (#179), text alternatives for the charts and a 200 % zoom pass (#181).
-- **UX copy:** C8 and C10 (#179).
-- **Feature depth:** screenshots, videos and traces on the test page, flakiness over time (#183), and triage memory (#184).
-
-Still open: the screen-reader pass and the name decision, which need Taltal, plus the Marketplace listing and a "compared with" page. The scores above are this pass's and are not re-scored until the next pass.
+Since the second pass, everything in [What a 10 needs](#what-a-10-needs) that doesn't wait on Taltal has shipped: #176 to #184, plus the [comparison page](Compared%20With%20Other%20Tools.md) (#185).
 
 ## First pass (2026-10-24)
 
