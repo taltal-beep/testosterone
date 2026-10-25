@@ -64,3 +64,8 @@ export function describeExitCode(code: number | null | undefined): string {
       return String(code);
   }
 }
+
+/** The per-test page: `/cycles/<cycle>/test?key=<key>` (keys can hold any character). */
+export function testPath(cycle: string, key: string): string {
+  return `/cycles/${encodeURIComponent(cycle)}/test?${new URLSearchParams({ key }).toString()}`;
+}

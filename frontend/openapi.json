@@ -836,6 +836,32 @@
         "title": "CycleSummary",
         "type": "object"
       },
+      "CycleTestsResponse": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TestSummaryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "runs_considered": {
+            "title": "Runs Considered",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cycle",
+          "runs_considered",
+          "items"
+        ],
+        "title": "CycleTestsResponse",
+        "type": "object"
+      },
       "CycleTriggerSummary": {
         "properties": {
           "paths": {
@@ -2797,6 +2823,202 @@
         "title": "StageSummary",
         "type": "object"
       },
+      "TestHistoryResponse": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "last_failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TestPointItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/TestPointItem"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "test": {
+            "$ref": "#/components/schemas/TestSummaryItem"
+          }
+        },
+        "required": [
+          "cycle",
+          "test",
+          "points",
+          "last_failure"
+        ],
+        "title": "TestHistoryResponse",
+        "type": "object"
+      },
+      "TestPointItem": {
+        "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "created_at",
+          "status",
+          "duration_ms",
+          "message",
+          "branch"
+        ],
+        "title": "TestPointItem",
+        "type": "object"
+      },
+      "TestSummaryItem": {
+        "description": "One test across a cycle's recent runs (``testo_core/services/test_history.py``).",
+        "properties": {
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "flaky": {
+            "title": "Flaky",
+            "type": "boolean"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "last_duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Duration Ms"
+          },
+          "last_status": {
+            "title": "Last Status",
+            "type": "string"
+          },
+          "median_duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Duration Ms"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "integer"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "slowdown_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slowdown Ms"
+          },
+          "slowdown_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slowdown Pct"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "full_name",
+          "group",
+          "stage",
+          "runs",
+          "passed",
+          "failed",
+          "last_status",
+          "flaky",
+          "last_duration_ms",
+          "median_duration_ms",
+          "slowdown_ms",
+          "slowdown_pct"
+        ],
+        "title": "TestSummaryItem",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -3142,6 +3364,145 @@
           }
         },
         "summary": "Get Flaky Tests",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/test-history": {
+      "get": {
+        "description": "One test in each of a cycle's last runs, newest first, with its last failure.",
+        "operationId": "get_test_history_api_v1_analytics_test_history_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": true,
+            "schema": {
+              "title": "Cycle",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "maxLength": 500,
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Window",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestHistoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Test History",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/tests": {
+      "get": {
+        "description": "Every test in a cycle's last runs: outcomes, flaky or not, durations and slowdowns.",
+        "operationId": "get_cycle_tests_api_v1_analytics_tests_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": true,
+            "schema": {
+              "title": "Cycle",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Match in name, full name or group.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Match in name, full name or group.",
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Window",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleTestsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cycle Tests",
         "tags": [
           "analytics"
         ]

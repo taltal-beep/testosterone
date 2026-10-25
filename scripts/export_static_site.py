@@ -38,6 +38,9 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/cycles.json                       GET /api/v1/cycles (cycles that ran)
     data/cycles/<name>.json                GET /api/v1/cycles/{name}
     data/flaky/<name>.json                 GET /api/v1/analytics/flaky?cycle={name}
+    data/tests/<name>.json                 GET /api/v1/analytics/tests?cycle={name}
+    data/test-history/<name>/<id>.json     GET /api/v1/analytics/test-history?cycle={name}&key={key}
+                                           (<id> is test_history.stable_id(key))
     data/runs.json                         GET /api/v1/runs
     data/runs/<run_id>/detail.json         GET /api/v1/runs/{id}
     data/runs/<run_id>/reports.json        GET /api/v1/runs/{id}/reports
@@ -236,6 +239,22 @@ class Exporter:
             self._dump(f"/api/v1/cycles/{quote(name, safe='')}", f"cycles/{name}.json")
             self._dump(
                 f"/api/v1/analytics/flaky?cycle={quote(name, safe='')}", f"flaky/{name}.json"
+            )
+            self.export_tests(name)
+
+    def export_tests(self, cycle: str) -> None:
+        """The cycle's test list, and one history file per test for the per-test page."""
+        from testo_core.services.test_history import stable_id
+
+        listing = self._dump(
+            f"/api/v1/analytics/tests?cycle={quote(cycle, safe='')}", f"tests/{cycle}.json"
+        )
+        for item in (listing or {}).get("items", []):
+            key = str(item["key"])
+            self._dump(
+                f"/api/v1/analytics/test-history?cycle={quote(cycle, safe='')}"
+                f"&key={quote(key, safe='')}",
+                f"test-history/{cycle}/{stable_id(key)}.json",
             )
 
     def export_dashboard(self) -> None:

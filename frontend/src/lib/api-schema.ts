@@ -124,6 +124,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/test-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Test History
+         * @description One test in each of a cycle's last runs, newest first, with its last failure.
+         */
+        get: operations["get_test_history_api_v1_analytics_test_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Cycle Tests
+         * @description Every test in a cycle's last runs: outcomes, flaky or not, durations and slowdowns.
+         */
+        get: operations["get_cycle_tests_api_v1_analytics_tests_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit": {
         parameters: {
             query?: never;
@@ -778,6 +818,15 @@ export interface components {
             /** Stage Count */
             stage_count: number;
         };
+        /** CycleTestsResponse */
+        CycleTestsResponse: {
+            /** Cycle */
+            cycle: string;
+            /** Items */
+            items: components["schemas"]["TestSummaryItem"][];
+            /** Runs Considered */
+            runs_considered: number;
+        };
         /** CycleTriggerSummary */
         CycleTriggerSummary: {
             /** Paths */
@@ -1338,6 +1387,67 @@ export interface components {
             /** Workers */
             workers: number | null;
         };
+        /** TestHistoryResponse */
+        TestHistoryResponse: {
+            /** Cycle */
+            cycle: string;
+            last_failure: components["schemas"]["TestPointItem"] | null;
+            /** Points */
+            points: components["schemas"]["TestPointItem"][];
+            test: components["schemas"]["TestSummaryItem"];
+        };
+        /** TestPointItem */
+        TestPointItem: {
+            /** Branch */
+            branch: string | null;
+            /** Created At */
+            created_at: number;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string;
+        };
+        /**
+         * TestSummaryItem
+         * @description One test across a cycle's recent runs (``testo_core/services/test_history.py``).
+         */
+        TestSummaryItem: {
+            /** Failed */
+            failed: number;
+            /** Flaky */
+            flaky: boolean;
+            /** Full Name */
+            full_name: string;
+            /** Group */
+            group: string;
+            /** Key */
+            key: string;
+            /** Last Duration Ms */
+            last_duration_ms: number | null;
+            /** Last Status */
+            last_status: string;
+            /** Median Duration Ms */
+            median_duration_ms: number | null;
+            /** Name */
+            name: string;
+            /** Passed */
+            passed: number;
+            /** Runs */
+            runs: number;
+            /** Slowdown Ms */
+            slowdown_ms: number | null;
+            /** Slowdown Pct */
+            slowdown_pct: number | null;
+            /** Stage */
+            stage: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -1540,6 +1650,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FlakyTestsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_test_history_api_v1_analytics_test_history_get: {
+        parameters: {
+            query: {
+                cycle: string;
+                key: string;
+                window?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestHistoryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cycle_tests_api_v1_analytics_tests_get: {
+        parameters: {
+            query: {
+                cycle: string;
+                /** @description Match in name, full name or group. */
+                q?: string | null;
+                window?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleTestsResponse"];
                 };
             };
             /** @description Validation Error */

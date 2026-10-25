@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../lib/api-client";
 import { Badge, Card, EmptyState, KeyValue, PageHeader, Spinner } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
+import { CycleTestsCard } from "./CycleTestsCard";
 import { FlakyTestsCard } from "./FlakyTestsCard";
 import { RunPanel } from "./RunPanel";
 
@@ -54,6 +55,8 @@ export function CycleDetailPage() {
       <RunPanel initialCycle={cycle.name} lockCycle autoFocusRun={searchParams.get("run") === "1"} />
 
       <FlakyTestsCard cycle={cycle.name} />
+
+      <CycleTestsCard cycle={cycle.name} />
 
       <Card title={`Stages (${cycle.stages.length})`}>
         <ol className="space-y-3">
