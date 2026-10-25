@@ -44,8 +44,8 @@ function stubApis(source: FakeEventSource) {
         ok: true,
         json: async () => ({
           items: [
-            { name: "sample-pytests", description: null, stage_count: 1, equipment: ["pytest"] },
-            { name: "sample-behave", description: null, stage_count: 1, equipment: ["behave"] }
+            { name: "sample-pytests", description: null, stage_count: 1, equipment: ["pytest"], source: "config" },
+            { name: "sample-behave", description: null, stage_count: 1, equipment: ["behave"], source: "config" }
           ],
           config_path: "/repo/testosterone.yaml"
         })

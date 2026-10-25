@@ -26,7 +26,8 @@ describe("happy path", () => {
                   name: "sample-pytests",
                   description: "Pytest suite for the sample target repo.",
                   stage_count: 1,
-                  equipment: ["pytest"]
+                  equipment: ["pytest"],
+                  source: "config"
                 }
               ],
               config_path: "/repo/testosterone.yaml"
@@ -49,7 +50,8 @@ describe("happy path", () => {
                   workers: 4
                 }
               ],
-              trigger: null
+              trigger: null,
+              source: "config"
             })
           });
         }

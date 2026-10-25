@@ -551,6 +551,15 @@
             "title": "Name",
             "type": "string"
           },
+          "source": {
+            "default": "config",
+            "enum": [
+              "config",
+              "history"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
           "stages": {
             "items": {
               "$ref": "#/components/schemas/StageSummary"
@@ -573,7 +582,8 @@
           "name",
           "description",
           "stages",
-          "trigger"
+          "trigger",
+          "source"
         ],
         "title": "CycleDetailResponse",
         "type": "object"
@@ -822,6 +832,15 @@
             "title": "Name",
             "type": "string"
           },
+          "source": {
+            "default": "config",
+            "enum": [
+              "config",
+              "history"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
           "stage_count": {
             "title": "Stage Count",
             "type": "integer"
@@ -831,7 +850,8 @@
           "name",
           "description",
           "stage_count",
-          "equipment"
+          "equipment",
+          "source"
         ],
         "title": "CycleSummary",
         "type": "object"
@@ -3704,7 +3724,7 @@
     },
     "/api/v1/cycles": {
       "get": {
-        "description": "List every cycle defined in the resolved configuration (UI parity with ``testo cycles list``).",
+        "description": "Every cycle in the config (as ``testo cycles list``), then cycles that only have recorded runs.",
         "operationId": "list_cycles_api_v1_cycles_get",
         "parameters": [
           {
@@ -3754,7 +3774,7 @@
     },
     "/api/v1/cycles/{cycle}": {
       "get": {
-        "description": "Resolved view of one cycle (UI parity with ``testo cycles show <name>``).",
+        "description": "Resolved view of one cycle (as ``testo cycles show <name>``), or a recorded-only cycle.",
         "operationId": "get_cycle_api_v1_cycles__cycle__get",
         "parameters": [
           {

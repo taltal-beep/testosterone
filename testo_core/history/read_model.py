@@ -19,6 +19,19 @@ def list_recent_runs(*, limit: int = 30) -> list[CompletedRunView]:
     return [v for v in views if v is not None]
 
 
+def latest_run_per_cycle(*, limit: int = 500) -> dict[str, CompletedRunView]:
+    """The newest run of every cycle among the last ``limit`` runs, newest cycle first.
+
+    Cycles recorded by ``testo ingest`` or another server exist only here, not in
+    ``testosterone.yaml``.
+    """
+    latest: dict[str, CompletedRunView] = {}
+    for run in list_recent_runs(limit=limit):
+        if run.cycle and run.cycle not in latest:
+            latest[run.cycle] = run
+    return latest
+
+
 def get_run(*, run_id: str) -> CompletedRunView | None:
     """One run by its id, or ``None``."""
     record = get_repository().get_run(run_id)
