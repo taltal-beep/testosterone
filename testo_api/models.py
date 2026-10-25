@@ -134,6 +134,7 @@ class RunListItem(ApiModel):
     skipped: int | None = None
     broken: int | None = None
     links_under_static: dict[str, str] = Field(default_factory=dict)
+    branch: str | None = None
 
 
 class RunListResponse(ApiModel):
@@ -232,6 +233,8 @@ class RunFailuresResponse(ApiModel):
     # the first case (the target branch's name).
     baseline_run_id: str | None = None
     baseline_branch: str | None = None
+    # Commands that rerun just these tests (pytest node ids, Playwright --grep, Behave --name).
+    rerun_commands: list[str] = Field(default_factory=list)
     tests: list[FailingTestItem]
     groups: list[FailureGroupItem]
 

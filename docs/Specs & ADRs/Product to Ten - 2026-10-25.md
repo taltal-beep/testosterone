@@ -26,7 +26,14 @@ The run page's failing-tests card counted a test as new when the cycle's previou
 
 `GET /api/v1/runs/{run_id}` now returns the `branch`, `commit`, `base_branch` and `repository` the run recorded, and the run page shows them under its title, with the commit linked on GitHub.
 
+### Compare opens on something, and a run says how to rerun its failures (P13, P14)
+
+A bare `/compare` opened with two empty pickers. It now shows the latest run against the run before it in the same cycle, until the user picks, and each run option names its branch (`GET /api/v1/runs` adds `branch`), so two runs from the same minute can be told apart.
+
+`GET /api/v1/runs/{run_id}/failures` adds `rerun_commands`: one command per runner that reruns just the failing tests, built by `services/rerun_commands.py` from each test's stage, that stage's recorded framework and the test's names. pytest gets node ids (`pytest tests/api/test_orders.py::test_cancel`), Playwright `npx playwright test --grep`, and Behave `--name '^scenario$'`. JUnit or command stages count as pytest only when the names point at a Python test module; anything else is left out rather than guessed, and over 30 tests gives no command (rerun the stage). The run page shows the commands above the failing tests with a Copy button.
+
 ## Consequences
 
 - A team that only ingests JUnit gets the same cycle page as one that runs cycles through `testo run`, apart from starting runs.
+- A rerun command is a best guess from recorded names: it can miss a parametrized pytest id or a test whose module path the runner didn't record. It is shown only when every test in the group maps to a name.
 - `GET /api/v1/cycles` reads up to 500 recent runs on each call. Fine at this scale; a distinct-cycles query in the repository is the next step if it shows up.

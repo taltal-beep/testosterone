@@ -237,6 +237,7 @@ def test_run_failures_contract(monkeypatch) -> None:  # noqa: ANN001
                 ),
                 baseline_run_id="run-0",
                 baseline_branch="main",
+                rerun_commands=("pytest tests/api/test_login.py::test_login",),
             )
             if run_id == "run-1"
             else None
@@ -251,6 +252,7 @@ def test_run_failures_contract(monkeypatch) -> None:  # noqa: ANN001
     assert payload["runs_considered"] == 3
     assert (payload["baseline_run_id"], payload["baseline_branch"]) == ("run-0", "main")
     assert payload["tests"][0]["new"] is True
+    assert payload["rerun_commands"] == ["pytest tests/api/test_login.py::test_login"]
     assert payload["tests"][0]["name"] == "test_login"
     assert payload["tests"][0]["failing_since_run_id"] == "run-1"
     assert payload["groups"] == [

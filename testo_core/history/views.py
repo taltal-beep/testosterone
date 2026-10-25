@@ -63,6 +63,7 @@ class RunSessionView:
     status: RunStatus | None
     links_under_static: dict[str, str]
     cycle: str | None = None
+    branch: str | None = None
 
 
 def wall_duration_ms_from_metadata(md: dict[str, Any]) -> float:

@@ -24,6 +24,7 @@ from testo_core.history.read_model import get_run, list_recent_runs
 from testo_core.history.views import CompletedRunView
 from testo_core.services import flaky_service
 from testo_core.services.report_archive_diff import _load_cases
+from testo_core.services.rerun_commands import FailingCase, rerun_commands
 
 # Runs of the cycle (this one included) looked at for "failing since" and flakiness.
 DEFAULT_WINDOW = flaky_service.DEFAULT_WINDOW
@@ -68,6 +69,8 @@ class RunFailures:
     groups: tuple[FailureGroup, ...]
     baseline_run_id: str | None = None
     baseline_branch: str | None = None
+    # Commands that rerun just these tests, one per runner that can name them.
+    rerun_commands: tuple[str, ...] = ()
 
     @property
     def new_failures(self) -> int:
@@ -189,6 +192,12 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
         runs_considered=1 + len(earlier_cases),
         tests=tuple(tests),
         groups=_groups(tests),
+        rerun_commands=tuple(
+            rerun_commands(
+                [FailingCase(t.name, t.full_name, t.group, t.stage) for t in tests],
+                {str(st.get("name")): str(st.get("framework") or "") for st in run.stage_health},
+            )
+        ),
         baseline_run_id=baseline.run_id if baseline_cases and baseline else None,
         # Named only when it is another branch (a PR's target), so the UI can say "new since main".
         baseline_branch=(

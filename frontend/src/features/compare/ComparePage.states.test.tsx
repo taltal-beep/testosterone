@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -115,12 +115,17 @@ describe("ComparePage states", () => {
     expect(await screen.findByText("At least two completed runs are required for comparison.")).toBeInTheDocument();
   });
 
-  it("asks for two different runs until both are picked", async () => {
-    stubApi([["/api/v1/runs", RUNS]]);
+  it("opens on the latest run against the one before it, and asks for two different runs", async () => {
+    stubApi([
+      ["/api/v1/analytics/delta", DELTA],
+      ["/api/v1/runs", RUNS]
+    ]);
     renderAt();
-    expect(await screen.findByText("Select two different runs to start comparison.")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Current run"), { target: { value: "run-2" } });
+    await waitFor(() => expect(screen.getByLabelText("Current run")).toHaveValue("run-2"));
+    expect(screen.getByLabelText("Baseline run")).toHaveValue("run-1");
+    expect(screen.getByLabelText("Cycle")).toHaveValue("fake-api");
     fireEvent.change(screen.getByLabelText("Baseline run"), { target: { value: "run-2" } });
+    expect(screen.getByLabelText("Current run")).toHaveValue("run-2");
     expect(screen.getByText("Select two different runs to start comparison.")).toBeInTheDocument();
   });
 

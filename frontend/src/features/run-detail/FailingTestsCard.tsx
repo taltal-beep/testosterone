@@ -65,6 +65,32 @@ function FailingTestRow({
   );
 }
 
+/** The commands that rerun just these tests, one per runner, with a copy button. */
+function RerunCommands({ commands }: { commands: string[] }) {
+  const [copied, setCopied] = useState(false);
+  const text = commands.join("\n");
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {
+      // No clipboard (plain http, or denied): the command is still there to select.
+      setCopied(false);
+    }
+  }
+  return (
+    <div className="mb-4 rounded-xl border border-white/10 bg-ink-900/60 p-3" data-testid="rerun-commands">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Rerun these tests</p>
+        <Button variant="secondary" size="sm" onClick={copy} aria-label="Copy rerun command">
+          {copied ? "Copied" : "Copy"}
+        </Button>
+      </div>
+      <pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs text-ink-100">{text}</pre>
+    </div>
+  );
+}
+
 /**
  * The first thing on a failed run's page: which tests failed, with their
  * message, whether they broke in this run or have been failing for a while,
@@ -101,7 +127,8 @@ export function FailingTestsCard({ runId, cycle }: { runId: string; cycle?: stri
     new_failures: newFailures,
     runs_considered: runsConsidered,
     baseline_run_id: baselineRunId,
-    baseline_branch: baselineBranch
+    baseline_branch: baselineBranch,
+    rerun_commands: rerunCommands = []
   } = query.data;
   if (tests.length === 0) {
     return (
@@ -127,6 +154,8 @@ export function FailingTestsCard({ runId, cycle }: { runId: string; cycle?: stri
         ) : null}
         .
       </p>
+
+      {rerunCommands.length > 0 ? <RerunCommands commands={rerunCommands} /> : null}
 
       {groups.length > 0 ? (
         <div className="mb-4 rounded-xl border border-white/10 bg-ink-900/60 p-3">

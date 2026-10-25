@@ -60,7 +60,8 @@ const FAILURES = {
   ],
   groups: [{ message: "ConnectionRefusedError: [Errno 111]", count: 2, keys: ["k1", "k2"] }],
   baseline_run_id: "run-0",
-  baseline_branch: null
+  baseline_branch: null,
+  rerun_commands: []
 };
 const PYRAMID = { unit: 4, integration: 0, e2e: 2, shape: "pyramid", message: "Healthy" };
 
@@ -214,6 +215,19 @@ describe("RunDetailPage states", () => {
       "href",
       "https://github.com/acme/shop/commit/abc1234def"
     );
+  });
+
+  it("offers a command that reruns just the failing tests", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    const command = "pytest tests/ui/test_login.py::test_login tests/ui/test_logout.py::test_logout";
+    stubApi(defaultRoutes({ "/api/v1/runs/run-1/failures": { ...FAILURES, rerun_commands: [command] } }));
+    renderAt();
+    expect(await screen.findByText("Rerun these tests")).toBeInTheDocument();
+    expect(screen.getByText(command)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Copy rerun command" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(command));
+    expect(await screen.findByText("Copied")).toBeInTheDocument();
   });
 
   it("explains a failed run with no failing test", async () => {
