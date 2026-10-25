@@ -615,7 +615,7 @@ export interface components {
             max_output_tokens?: number;
             /**
              * Model
-             * @default gpt-4o-mini
+             * @default gpt-4.1-mini
              */
             model?: string;
             /**

@@ -26,17 +26,20 @@ def classify_shape(m: PyramidModel) -> tuple[PyramidShape, str]:
     u, i, e = m.unit, m.integration, m.e2e
     total = u + i + e
     if total == 0:
-        return PyramidShape.IRREGULAR, "No tiered tests (add markers / paths)."
+        return PyramidShape.IRREGULAR, "No tiered tests yet: set `tier:` on a stage."
 
     if e > u:
-        return PyramidShape.TOP_HEAVY, "TOP-HEAVY ANTI-PATTERN (E2E > Unit)"
+        return PyramidShape.TOP_HEAVY, "More end-to-end tests than unit tests: slow and brittle."
     if i > u and i > e:
-        return PyramidShape.MID_BULGE, "INTEGRATION-HEAVY (diamond risk)"
+        return PyramidShape.MID_BULGE, "More integration tests than unit or end-to-end tests."
     if u > i > e:
-        return PyramidShape.HEALTHY, "Healthy pyramid balance"
+        return PyramidShape.HEALTHY, "Mostly unit tests, fewest end-to-end: a healthy pyramid."
     if u == i == e:
-        return PyramidShape.IRREGULAR, "Flat tier mix (non-ideal)"
-    return PyramidShape.IRREGULAR, "Non-ideal tier ordering"
+        return PyramidShape.IRREGULAR, "As many end-to-end tests as unit tests."
+    return (
+        PyramidShape.IRREGULAR,
+        "Not a clean pyramid: each tier should be smaller than the one below it.",
+    )
 
 
 def _allocate_widths(total_width: int, u: int, i: int, e: int) -> tuple[int, int, int]:

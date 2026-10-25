@@ -123,7 +123,7 @@ def init(
     ),
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite an existing file."),
 ) -> None:
-    """Write a starter testosterone.yaml at ``path``."""
+    """Write a starter testosterone.yaml (--path, default ./testosterone.yaml)."""
     from testo_core.cli.ui.console import default_console
 
     console = default_console()

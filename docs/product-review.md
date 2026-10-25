@@ -70,6 +70,8 @@ Every area except trust, in the order that moves the score most. "Realistic" say
 
 First-pass findings P1 to P9, D1, D2, D4, D5, A1 to A7, C1 to C7 and C9 are fixed (#166 to #174). D3 and D6 are carried into P13 and D7, and C8 is still open.
 
+Since this pass: P10 to P14 are fixed (#176 to #178), and A8, A9, C8 and C10 in the wave-2 polish pull request (see [Product to Ten](Specs%20%26%20ADRs/Product%20to%20Ten%20-%202026-10-25.md)). The scores above are this pass's and are not re-scored until the next pass.
+
 ## First pass (2026-10-24)
 
 ### First pass verdict (2026-10-24)

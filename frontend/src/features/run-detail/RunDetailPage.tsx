@@ -4,7 +4,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { API_BASE, apiClient } from "../../lib/api-client";
 import { Badge, Button, Card, KeyValue, PageHeader, Spinner, StatusPill, TestPyramid } from "../../components/ui";
-import { countLabel, describeExitCode, formatDuration, formatRunLabel } from "../../lib/format";
+import { countLabel, describeExitCode, formatDuration, formatPercent, formatRunLabel } from "../../lib/format";
 import { AI_SUMMARY_SNAPSHOT_MESSAGE, IS_STATIC_BUILD } from "../../lib/static-backend";
 import { FailingTestsCard } from "./FailingTestsCard";
 
@@ -224,7 +224,7 @@ export function RunDetailPage() {
               }
             }}
           >
-            Generate AI Summary
+            Generate AI summary
           </Button>
           {aiError ? <p className="mt-2 text-sm text-danger-400">{aiError}</p> : null}
         </Card>
@@ -248,7 +248,7 @@ export function RunDetailPage() {
                     </span>
                   )}
                   <Badge tone={stage.health_pct == null ? "neutral" : stage.health_pct >= 100 ? "success" : stage.health_pct > 0 ? "warn" : "danger"}>
-                    {stage.health_pct != null ? `${stage.health_pct.toFixed(2)}%` : "n/a"}
+                    {formatPercent(stage.health_pct)}
                   </Badge>
                 </span>
               </li>
@@ -288,7 +288,7 @@ export function RunDetailPage() {
           items={[
             { label: "Run ID", value: <span className="font-mono text-xs">{run.run_id}</span> },
             { label: "Exit code", value: describeExitCode(run.returncode) },
-            { label: "Health", value: run.health_pct != null ? `${run.health_pct.toFixed(2)}%` : "n/a" },
+            { label: "Health", value: formatPercent(run.health_pct) },
             { label: "Duration", value: formatDuration(run.wall_duration_ms) }
           ]}
         />

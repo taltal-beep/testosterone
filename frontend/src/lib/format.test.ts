@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { countLabel, formatRunLabel, shortRunId } from "./format";
+import { countLabel, formatPercent, formatRunLabel, shortRunId } from "./format";
 
 describe("run labels", () => {
   it("names a run by cycle and start time", () => {
@@ -22,5 +22,16 @@ describe("countLabel", () => {
     expect(countLabel(1, "improvement")).toBe("1 improvement");
     expect(countLabel(0, "improvement")).toBe("0 improvements");
     expect(countLabel(3, "regression")).toBe("3 regressions");
+  });
+});
+
+describe("formatPercent", () => {
+  it("shows whole numbers, but never rounds a failure up to 100% or a pass down to 0%", () => {
+    expect(formatPercent(20)).toBe("20%");
+    expect(formatPercent(66.666)).toBe("67%");
+    expect(formatPercent(99.96)).toBe("99.9%");
+    expect(formatPercent(0.2)).toBe("0.2%");
+    expect(formatPercent(100)).toBe("100%");
+    expect(formatPercent(null)).toBe("n/a");
   });
 });

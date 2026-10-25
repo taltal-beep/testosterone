@@ -192,7 +192,7 @@ class Exporter:
     def generate_ai_summaries(self, run_ids: list[str]) -> None:
         """Generate (or reuse) the AI failure summary of each run, if a key is set.
 
-        Goes through the API like the UI's "Generate AI Summary" button does:
+        Goes through the API like the UI's "Generate AI summary" button does:
         enable the Anthropic provider with the key from the environment, then
         ask for each run's summary. The key itself is never written anywhere;
         only the summary text ends up in ``ai-summary.json``.
