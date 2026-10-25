@@ -174,6 +174,11 @@ class RunDetail(ApiModel):
     snapshot_dir: str | None = None
     audit_json: str | None = None
     stage_health: list[StageHealth] = Field(default_factory=list)
+    # What the run tested, when recorded (CI provenance or the local checkout).
+    branch: str | None = None
+    commit: str | None = None
+    base_branch: str | None = None
+    repository: str | None = None
 
 
 class RunDetailResponse(ApiModel):
@@ -208,6 +213,8 @@ class FailingTestItem(ApiModel):
     failing_runs: int
     failing_since_run_id: str
     flaky: bool
+    # Broke in this run: passing (or absent) on the baseline run, or, with none, in the run before.
+    new: bool
 
 
 class FailureGroupItem(ApiModel):
@@ -220,6 +227,11 @@ class RunFailuresResponse(ApiModel):
     run_id: str
     runs_considered: int
     new_failures: int
+    # The run "new" is judged against: the latest run on the PR's target branch,
+    # else the run before on the same branch. ``baseline_branch`` is set only in
+    # the first case (the target branch's name).
+    baseline_run_id: str | None = None
+    baseline_branch: str | None = None
     tests: list[FailingTestItem]
     groups: list[FailureGroupItem]
 

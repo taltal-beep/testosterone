@@ -20,6 +20,12 @@ The second pass of the [product review](../product-review.md) scored the product
 
 With no config file at all, as with `testo ui` over ingested runs, the read routes list the recorded cycles instead of answering 503. A `config_path` the caller names must still exist, and an invalid config is still a 503.
 
+### "New" means new against the baseline, and the run says what it tested (P11, P12)
+
+The run page's failing-tests card counted a test as new when the cycle's previous run, on any branch, passed it. On a repo with parallel pull requests that run is often someone else's branch. `load_run_failures` now uses the PR comment's rule ([Product Roadmap Work](Product%20Roadmap%20Work%20-%202026-10-25.md), P3): a run with a recorded target branch is judged against the latest run on that branch, and any other run against the run before on its own branch. A test is `new` when it isn't failing on that baseline. Streaks ("Failing for N runs") and flakiness follow the run's own branch; runs that recorded no branch stay in, since they can't be told apart. `GET /api/v1/runs/{run_id}/failures` adds `new` per test and `baseline_run_id`, plus `baseline_branch` when the baseline is another branch, so the card can say "1 new since main, 3 already failing on main" and mark a test "Also failing on main".
+
+`GET /api/v1/runs/{run_id}` now returns the `branch`, `commit`, `base_branch` and `repository` the run recorded, and the run page shows them under its title, with the commit linked on GitHub.
+
 ## Consequences
 
 - A team that only ingests JUnit gets the same cycle page as one that runs cycles through `testo run`, apart from starting runs.

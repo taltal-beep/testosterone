@@ -76,6 +76,10 @@ def get_run_detail(run_id: str) -> RunDetailResponse:
             target_repo=record.target_repo,
             snapshot_dir=record.snapshot_dir,
             audit_json=record.audit_json,
+            branch=record.branch,
+            commit=record.commit,
+            base_branch=record.base_branch,
+            repository=record.repository,
             stage_health=[
                 StageHealth(
                     name=str(s.get("name")),
@@ -128,6 +132,8 @@ def get_run_failures(run_id: str) -> RunFailuresResponse:
         run_id=failures.run_id,
         runs_considered=failures.runs_considered,
         new_failures=failures.new_failures,
+        baseline_run_id=failures.baseline_run_id,
+        baseline_branch=failures.baseline_branch,
         tests=[FailingTestItem(**vars(t)) for t in failures.tests],
         groups=[
             FailureGroupItem(message=g.message, count=g.count, keys=list(g.keys))

@@ -40,7 +40,8 @@ const FAILURES = {
       duration_ms: 1500,
       failing_runs: 1,
       failing_since_run_id: "run-1",
-      flaky: true
+      flaky: true,
+      new: true
     },
     {
       key: "k2",
@@ -53,10 +54,13 @@ const FAILURES = {
       duration_ms: 20,
       failing_runs: 3,
       failing_since_run_id: "run-0abcdef",
-      flaky: false
+      flaky: false,
+      new: false
     }
   ],
-  groups: [{ message: "ConnectionRefusedError: [Errno 111]", count: 2, keys: ["k1", "k2"] }]
+  groups: [{ message: "ConnectionRefusedError: [Errno 111]", count: 2, keys: ["k1", "k2"] }],
+  baseline_run_id: "run-0",
+  baseline_branch: null
 };
 const PYRAMID = { unit: 4, integration: 0, e2e: 2, shape: "pyramid", message: "Healthy" };
 
@@ -183,6 +187,33 @@ describe("RunDetailPage states", () => {
     // The failing tests come before the stage list.
     const headings = screen.getAllByRole("heading").map((h) => h.textContent);
     expect(headings.indexOf("Failing tests")).toBeLessThan(headings.indexOf("Stages"));
+  });
+
+  it("judges a pull request's failures against its target branch", async () => {
+    stubApi(
+      defaultRoutes({
+        "/api/v1/runs/run-1": {
+          run: { ...RUN, branch: "feat/login", base_branch: "main", commit: "abc1234def", repository: "acme/shop" }
+        },
+        "/api/v1/runs/run-1/failures": {
+          ...FAILURES,
+          baseline_branch: "main",
+          tests: [FAILURES.tests[0], { ...FAILURES.tests[1], failing_runs: 1 }]
+        }
+      })
+    );
+    renderAt();
+    expect(await screen.findByText(/2 tests failed/)).toHaveTextContent(
+      "2 tests failed, 1 new since main, 1 already failing on main."
+    );
+    expect(screen.getByText("New")).toHaveAttribute("title", "Not failing on main");
+    expect(screen.getByText("Also failing on main")).toBeInTheDocument();
+    // The header says what the run tested.
+    expect(screen.getByText("feat/login")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "abc1234" })).toHaveAttribute(
+      "href",
+      "https://github.com/acme/shop/commit/abc1234def"
+    );
   });
 
   it("explains a failed run with no failing test", async () => {

@@ -4,9 +4,11 @@ Per-test outcomes come from each run's artifact snapshot (the Allure
 ``*-result.json`` files), the same source Compare and flaky detection read, so
 this needs no schema change and works for engine and ingested runs alike.
 
-For each failing test it reports how many runs in a row it has been failing
-(``failing_runs``; 1 means it broke in this run), whether it is flaky in the
-cycle's recent history, and the first line of its failure message. Tests that
+For each failing test it reports whether it is new against the run's baseline
+(the latest run on a pull request's target branch, else the run before on the
+same branch, as in the PR comment), how many runs in a row it has been failing
+on this branch (``failing_runs``), whether it is flaky in the cycle's recent
+history, and the first line of its failure message. Tests that
 fail with the same message are grouped, so ten tests that all hit
 ``ConnectionRefusedError`` read as one cause, not ten.
 """
@@ -41,11 +43,13 @@ class FailingTest:
     status: str
     message: str
     duration_ms: int | None
-    # Consecutive runs of the cycle, ending with this one, in which the test failed.
+    # Consecutive runs of the cycle on this run's branch, ending with this one, in which it failed.
     failing_runs: int
     # The oldest run of that streak (this run when ``failing_runs`` is 1).
     failing_since_run_id: str
     flaky: bool
+    # Not failing on the baseline run (or, with no baseline, not in the run before).
+    new: bool
 
 
 @dataclass(frozen=True)
@@ -62,10 +66,12 @@ class RunFailures:
     tests: tuple[FailingTest, ...]
     # Messages shared by two or more failing tests, largest group first.
     groups: tuple[FailureGroup, ...]
+    baseline_run_id: str | None = None
+    baseline_branch: str | None = None
 
     @property
     def new_failures(self) -> int:
-        return sum(1 for t in self.tests if t.failing_runs == 1)
+        return sum(1 for t in self.tests if t.new)
 
 
 def message_signature(message: str) -> str:
@@ -79,16 +85,27 @@ def _cases(run: CompletedRunView) -> dict[str, dict[str, Any]]:
     return _load_cases(paths.ORCHESTRATOR_ROOT / run.snapshot_dir)
 
 
-def _earlier_runs(run: CompletedRunView, window: int) -> list[CompletedRunView]:
-    """Up to ``window - 1`` runs of ``run``'s cycle before it, newest first."""
+def _earlier_runs(run: CompletedRunView) -> list[CompletedRunView]:
+    """``run``'s cycle's runs before it, on any branch, newest first."""
     if not run.cycle:
         return []
-    earlier = [
+    return [
         r
         for r in list_recent_runs(limit=_SCAN_LIMIT)
         if r.cycle == run.cycle and r.created_at < run.created_at and r.run_id != run.run_id
     ]
-    return earlier[: max(0, window - 1)]
+
+
+def _baseline(
+    run: CompletedRunView, earlier: list[CompletedRunView], lineage: list[CompletedRunView]
+) -> CompletedRunView | None:
+    """A pull request's target branch's latest run, else the run before on the same branch."""
+    target = run.base_branch
+    if target and target != run.branch:
+        on_target = next((r for r in earlier if r.branch == target), None)
+        if on_target is not None:
+            return on_target
+    return lineage[0] if lineage else None
 
 
 def _groups(tests: list[FailingTest]) -> tuple[FailureGroup, ...]:
@@ -118,9 +135,14 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
     if not failing:
         return RunFailures(run_id=run.run_id, runs_considered=1, tests=(), groups=())
 
-    earlier = _earlier_runs(run, window)
-    earlier_cases = [(r, _cases(r)) for r in earlier]
+    earlier = _earlier_runs(run)
+    # Streaks and flakiness follow this run's branch, so another branch's runs don't mix in.
+    # Runs that recorded no branch can't be told apart, so they stay in.
+    lineage = [r for r in earlier if r.branch in (run.branch, None)] if run.branch else earlier
+    earlier_cases = [(r, _cases(r)) for r in lineage[: window - 1]]
     earlier_cases = [(r, c) for r, c in earlier_cases if c]
+    baseline = _baseline(run, earlier, lineage)
+    baseline_cases = _cases(baseline) if baseline is not None else {}
 
     # Flaky over the same window, ending at this run (oldest first for flaky_service).
     observations: dict[str, list[dict[str, Any]]] = {}
@@ -139,6 +161,11 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
             if prev is None or prev["status"] not in _FAILED:
                 break
             streak, since = streak + 1, older.run_id
+        if baseline_cases:
+            on_baseline = baseline_cases.get(key)
+            new = on_baseline is None or on_baseline["status"] not in _FAILED
+        else:
+            new = streak == 1
         tests.append(
             FailingTest(
                 key=key[:200],
@@ -152,13 +179,21 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
                 failing_runs=streak,
                 failing_since_run_id=since,
                 flaky=flaky_service.classify(key, observations.get(key, [])) is not None,
+                new=new,
             )
         )
     # New breakages first, then the longest-standing ones; ties by stage and name.
-    tests.sort(key=lambda t: (t.failing_runs != 1, -t.failing_runs, t.stage, t.name))
+    tests.sort(key=lambda t: (not t.new, -t.failing_runs, t.stage, t.name))
     return RunFailures(
         run_id=run.run_id,
         runs_considered=1 + len(earlier_cases),
         tests=tuple(tests),
         groups=_groups(tests),
+        baseline_run_id=baseline.run_id if baseline_cases and baseline else None,
+        # Named only when it is another branch (a PR's target), so the UI can say "new since main".
+        baseline_branch=(
+            baseline.branch
+            if baseline_cases and baseline and baseline.branch != run.branch
+            else None
+        ),
     )
