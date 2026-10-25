@@ -36,6 +36,7 @@ RUN_METADATA_KEYS: tuple[str, ...] = (
     "ci_job_id",
     "ci_commit_sha",
     "ci_ref_name",
+    "ci_base_ref",
     "repository",
 )
 _MAX_METADATA_CHARS = 256

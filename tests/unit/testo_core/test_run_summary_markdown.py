@@ -145,3 +145,38 @@ def test_quarantined_failures_are_labelled(two_runs: list[CompletedRunView]) -> 
     )
     assert "| unit | pytest | ✅ pass · 1 quarantined |" in text
     assert "- `test_a` _(quarantined)_" in text
+
+
+def test_a_pull_request_is_compared_with_its_target_branch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pr = replace(_run("pr", created_at=3, returncode=1), branch="feature", base_branch="main")
+    other_pr = replace(_run("other", created_at=2), branch="other-feature", base_branch="main")
+    main = replace(_run("main", created_at=1), branch="main")
+    runs = [pr, other_pr, main]
+    _write(tmp_path, main, {"test_a": "passed"})
+    _write(tmp_path, other_pr, {"test_a": "failed"})
+    _write(tmp_path, pr, {"test_a": "failed"})
+    monkeypatch.setattr(md.paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(md, "list_recent_runs", lambda *, limit: runs)
+
+    summary = md.load_run_summary(cycle="unit")
+
+    assert summary is not None and summary.previous is not None
+    assert summary.previous.run_id == "main"
+    assert [c.kind for c in summary.changes] == ["regression"]
+    assert "**Since the last run on `main`:** 1 regression" in md.render_markdown(summary)
+
+
+def test_baseline_branch_falls_back_to_the_previous_run(two_runs: list[CompletedRunView]) -> None:
+    summary = md.load_run_summary(cycle="unit", baseline_branch="main")
+    assert summary is not None and summary.previous is not None
+    assert summary.previous.run_id == "old"
+    assert summary.baseline_branch is None
+    assert "Since the previous run" in md.render_markdown(summary)
+
+
+def test_pick_baseline_ignores_its_own_branch() -> None:
+    run = replace(_run("new", created_at=2), branch="main", base_branch=None)
+    older = [replace(_run("old", created_at=1), branch="main")]
+    assert md.pick_baseline(run, older, "main") == (older[0], None)
