@@ -2,7 +2,7 @@
 type: index
 status: current
 created: 2026-06-25
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 # Testosterone docs
@@ -21,6 +21,7 @@ The notes are plain markdown. They open as an Obsidian vault, and are published 
 ## Using the CLI
 
 - [Getting Started](Getting%20Started.md): install, write `testosterone.yaml`, run a cycle, see what changed, run it in GitHub Actions
+- [Compared With Other Tools](Compared%20With%20Other%20Tools.md): where Testosterone fits next to Allure, ReportPortal, Currents, Trunk and Datadog, and when to pick one of them instead
 - [Setup Prompts](Prompts%20&%20Snippets/Setup%20Prompts.md): copy-paste prompts for an AI assistant to install Testosterone in your project, write `testosterone.yaml`, add CI and open the UI
 - [Command Reference](CLI%20Commands/Command%20Reference.md): every `testo` command, flag and exit code, and the `testosterone.yaml` schema
 - [Troubleshooting and Error Codes](CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md): exit codes, NDJSON errors, debugging playbook

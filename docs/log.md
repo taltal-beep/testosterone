@@ -96,3 +96,7 @@ Added [Product Review](product-review.md) next to the code-side Project Review, 
 ## 2026-10-25: product roadmap work
 
 Added [Product Roadmap Work - 2026-10-25](Specs%20&%20ADRs/Product%20Roadmap%20Work%20-%202026-10-25.md) to Specs & ADRs (decisions behind each roadmap item from the Product Review).
+
+## 2026-10-25: comparison page
+
+Added [Compared With Other Tools](Compared%20With%20Other%20Tools.md), a user-facing guide next to Getting Started (in the docs site nav and the Index), from the Product Review's competitive position.
