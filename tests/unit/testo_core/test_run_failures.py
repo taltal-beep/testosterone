@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -143,6 +144,52 @@ def test_a_green_run_has_no_failures(history) -> None:  # noqa: ANN001
 
 def test_unknown_run_is_none(history) -> None:  # noqa: ANN001
     assert run_failures.load_run_failures("nope") is None
+
+
+def test_a_pull_request_is_judged_against_its_target_branch(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
+    # Newest first: the PR's run, a parallel PR, main, then the PR's earlier run.
+    pr = replace(_run("pr2", created_at=4), branch="feat", base_branch="main")
+    other_pr = replace(_run("x1", created_at=3), branch="other", base_branch="main")
+    main = replace(_run("m1", created_at=2), branch="main")
+    pr_before = replace(_run("pr1", created_at=1), branch="feat", base_branch="main")
+    runs = [pr, other_pr, main, pr_before]
+    monkeypatch.setattr(run_failures.paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(run_failures, "list_recent_runs", lambda *, limit: runs)
+    monkeypatch.setattr(run_failures, "get_run", lambda *, run_id: pr if run_id == "pr2" else None)
+    fail, ok = ("failed", "boom"), ("passed", "")
+    _write(tmp_path, pr, {"test_broken_on_main": fail, "test_mine": fail, "test_since_pr1": fail})
+    _write(
+        tmp_path, other_pr, {"test_broken_on_main": fail, "test_mine": fail, "test_since_pr1": fail}
+    )
+    _write(tmp_path, main, {"test_broken_on_main": fail, "test_mine": ok, "test_since_pr1": ok})
+    _write(
+        tmp_path, pr_before, {"test_broken_on_main": ok, "test_mine": ok, "test_since_pr1": fail}
+    )
+
+    found = run_failures.load_run_failures("pr2")
+
+    assert found is not None
+    assert (found.baseline_run_id, found.baseline_branch) == ("m1", "main")
+    tests = {t.name: t for t in found.tests}
+    assert not tests["test_broken_on_main"].new  # main has it too
+    assert tests["test_mine"].new
+    assert tests["test_since_pr1"].new  # passing on main, so this PR broke it
+    # Streaks follow the PR's own branch: the parallel PR's failure doesn't count.
+    assert tests["test_mine"].failing_runs == 1
+    assert tests["test_since_pr1"].failing_runs == 2
+    assert found.new_failures == 2
+
+
+def test_without_branches_new_means_not_failing_in_the_run_before(history) -> None:  # noqa: ANN001
+    root, runs = history
+    _write(root, runs["r3"], {"test_a": ("failed", "x"), "test_b": ("passed", "")})
+    _write(root, runs["r4"], {"test_a": ("failed", "x"), "test_b": ("failed", "y")})
+
+    found = run_failures.load_run_failures("r4")
+
+    assert found is not None
+    assert found.baseline_run_id == "r3" and found.baseline_branch is None
+    assert {t.name: t.new for t in found.tests} == {"test_a": False, "test_b": True}
 
 
 def test_message_signature_ignores_numbers_and_quoted_values() -> None:

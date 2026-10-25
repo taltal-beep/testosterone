@@ -1874,6 +1874,10 @@
             "title": "Name",
             "type": "string"
           },
+          "new": {
+            "title": "New",
+            "type": "boolean"
+          },
           "stage": {
             "title": "Stage",
             "type": "string"
@@ -1894,7 +1898,8 @@
           "duration_ms",
           "failing_runs",
           "failing_since_run_id",
-          "flaky"
+          "flaky",
+          "new"
         ],
         "title": "FailingTestItem",
         "type": "object"
@@ -2221,6 +2226,28 @@
             ],
             "title": "Avg Case Ms"
           },
+          "base_branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Branch"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
           "broken": {
             "anyOf": [
               {
@@ -2231,6 +2258,17 @@
               }
             ],
             "title": "Broken"
+          },
+          "commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit"
           },
           "created_at": {
             "title": "Created At",
@@ -2294,6 +2332,17 @@
               }
             ],
             "title": "Passed"
+          },
+          "repository": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repository"
           },
           "returncode": {
             "title": "Returncode",
@@ -2399,7 +2448,11 @@
           "target_repo",
           "snapshot_dir",
           "audit_json",
-          "stage_health"
+          "stage_health",
+          "branch",
+          "commit",
+          "base_branch",
+          "repository"
         ],
         "title": "RunDetail",
         "type": "object"
@@ -2444,6 +2497,28 @@
       },
       "RunFailuresResponse": {
         "properties": {
+          "baseline_branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Branch"
+          },
+          "baseline_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Run Id"
+          },
           "groups": {
             "items": {
               "$ref": "#/components/schemas/FailureGroupItem"
@@ -2475,6 +2550,8 @@
           "run_id",
           "runs_considered",
           "new_failures",
+          "baseline_run_id",
+          "baseline_branch",
           "tests",
           "groups"
         ],

@@ -48,6 +48,10 @@ def test_runs_and_details_contract(monkeypatch) -> None:  # noqa: ANN001
             target_repo="/tmp/repo",
             snapshot_dir="runs/run-1/artifacts",
             audit_json=None,
+            branch="feat",
+            commit="abc1234",
+            base_branch="main",
+            repository="acme/shop",
         ),
     )
     monkeypatch.setattr(
@@ -68,6 +72,13 @@ def test_runs_and_details_contract(monkeypatch) -> None:  # noqa: ANN001
     detail_payload = detail_resp.json()
     assert set(detail_payload.keys()) == {"run", "metrics", "sync"}
     assert detail_payload["run"]["run_id"] == "run-1"
+    run = detail_payload["run"]
+    assert (run["branch"], run["commit"], run["base_branch"], run["repository"]) == (
+        "feat",
+        "abc1234",
+        "main",
+        "acme/shop",
+    )
 
     reports_resp = client.get("/api/v1/runs/run-1/reports")
     assert reports_resp.status_code == 200
@@ -212,6 +223,7 @@ def test_run_failures_contract(monkeypatch) -> None:  # noqa: ANN001
         failing_runs=1,
         failing_since_run_id="run-1",
         flaky=False,
+        new=True,
     )
     monkeypatch.setattr(
         "testo_api.routes.history.load_run_failures",
@@ -223,6 +235,8 @@ def test_run_failures_contract(monkeypatch) -> None:  # noqa: ANN001
                 groups=(
                     FailureGroup(message="ConnectionRefusedError", count=2, keys=("k1", "k2")),
                 ),
+                baseline_run_id="run-0",
+                baseline_branch="main",
             )
             if run_id == "run-1"
             else None
@@ -235,6 +249,8 @@ def test_run_failures_contract(monkeypatch) -> None:  # noqa: ANN001
     payload = resp.json()
     assert payload["new_failures"] == 1
     assert payload["runs_considered"] == 3
+    assert (payload["baseline_run_id"], payload["baseline_branch"]) == ("run-0", "main")
+    assert payload["tests"][0]["new"] is True
     assert payload["tests"][0]["name"] == "test_login"
     assert payload["tests"][0]["failing_since_run_id"] == "run-1"
     assert payload["groups"] == [

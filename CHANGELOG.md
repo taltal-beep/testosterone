@@ -9,9 +9,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- The run page shows the branch, pull request target and commit the run tested (linked on GitHub), and `GET /api/v1/runs/{run_id}` returns them
 - Cycles recorded with `testo ingest` (or by another machine) have a cycle page: `GET /api/v1/cycles` lists them after the config's cycles with `source: "history"`, and their page shows the test search, slowest tests and flaky card without a Run panel. `testo ui` in a folder with no `testosterone.yaml` lists recorded cycles instead of an error
 - Docs: second pass of the product review ([docs/product-review.md](docs/product-review.md)): 6.5 to 7.5, what a 10 needs in each area, and new findings, chiefly that cycles created by `testo ingest` have no cycle page
 - A try-it page (`/try`, "Try a file" under Tools, also on the static demo): drop JUnit XML files, or use the sample, and see the run the way Testosterone shows one (verdict, failing tests with shared causes grouped, slowest tests), read in the browser with nothing uploaded
+
+### Changed
+- A failing test is "New" on the run page when it isn't failing on the run's baseline: the latest run on a pull request's target branch, else the run before on the same branch, as in the PR comment. The card says "new since main" and marks tests that also fail on main; streaks follow the run's own branch. `GET /api/v1/runs/{run_id}/failures` adds `new`, `baseline_run_id` and `baseline_branch`
 
 ## [1.3.0] - 2026-10-25
 

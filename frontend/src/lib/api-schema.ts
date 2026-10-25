@@ -1117,6 +1117,8 @@ export interface components {
             message: string;
             /** Name */
             name: string;
+            /** New */
+            new: boolean;
             /** Stage */
             stage: string;
             /** Status */
@@ -1242,8 +1244,14 @@ export interface components {
             audit_json: string | null;
             /** Avg Case Ms */
             avg_case_ms: number | null;
+            /** Base Branch */
+            base_branch: string | null;
+            /** Branch */
+            branch: string | null;
             /** Broken */
             broken: number | null;
+            /** Commit */
+            commit: string | null;
             /** Created At */
             created_at: number;
             /** Cycle */
@@ -1258,6 +1266,8 @@ export interface components {
             metrics_duration_ms: number | null;
             /** Passed */
             passed: number | null;
+            /** Repository */
+            repository: string | null;
             /** Returncode */
             returncode: number;
             /** Run Id */
@@ -1295,6 +1305,10 @@ export interface components {
         };
         /** RunFailuresResponse */
         RunFailuresResponse: {
+            /** Baseline Branch */
+            baseline_branch: string | null;
+            /** Baseline Run Id */
+            baseline_run_id: string | null;
             /** Groups */
             groups: components["schemas"]["FailureGroupItem"][];
             /** New Failures */

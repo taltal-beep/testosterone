@@ -9,8 +9,18 @@ import { countLabel, formatDuration, shortRunId, testPath } from "../../lib/form
 // Enough to read at a glance; the rest are one click away.
 const INITIAL_ROWS = 15;
 
-function Streak({ test }: { test: FailingTestItem }) {
-  if (test.failing_runs <= 1) return <Badge tone="danger">New</Badge>;
+function Streak({ test, baselineBranch }: { test: FailingTestItem; baselineBranch?: string | null }) {
+  if (test.new) {
+    return (
+      <Badge tone="danger" title={baselineBranch ? `Not failing on ${baselineBranch}` : undefined}>
+        New
+      </Badge>
+    );
+  }
+  // Failing on the baseline too, though this branch only just ran it.
+  if (test.failing_runs <= 1) {
+    return <Badge tone="warn">{baselineBranch ? `Also failing on ${baselineBranch}` : "Failing before"}</Badge>;
+  }
   return (
     <Badge tone="warn" title={`Failing since run ${shortRunId(test.failing_since_run_id)}`}>
       Failing for {test.failing_runs} runs
@@ -18,7 +28,15 @@ function Streak({ test }: { test: FailingTestItem }) {
   );
 }
 
-function FailingTestRow({ test, cycle }: { test: FailingTestItem; cycle?: string | null }) {
+function FailingTestRow({
+  test,
+  cycle,
+  baselineBranch
+}: {
+  test: FailingTestItem;
+  cycle?: string | null;
+  baselineBranch?: string | null;
+}) {
   return (
     <li className="space-y-1 py-3 first:pt-0 last:pb-0">
       <div className="flex flex-wrap items-center gap-2">
@@ -29,7 +47,7 @@ function FailingTestRow({ test, cycle }: { test: FailingTestItem; cycle?: string
         ) : (
           <span className="break-all font-medium text-ink-50">{test.name}</span>
         )}
-        <Streak test={test} />
+        <Streak test={test} baselineBranch={baselineBranch} />
         {test.flaky ? <Badge tone="brand">Flaky</Badge> : null}
         {test.status === "broken" ? <Badge>Broken</Badge> : null}
       </div>
@@ -77,7 +95,14 @@ export function FailingTestsCard({ runId, cycle }: { runId: string; cycle?: stri
     );
   }
 
-  const { tests, groups, new_failures: newFailures, runs_considered: runsConsidered } = query.data;
+  const {
+    tests,
+    groups,
+    new_failures: newFailures,
+    runs_considered: runsConsidered,
+    baseline_run_id: baselineRunId,
+    baseline_branch: baselineBranch
+  } = query.data;
   if (tests.length === 0) {
     return (
       <Card title="Failing tests">
@@ -96,8 +121,11 @@ export function FailingTestsCard({ runId, cycle }: { runId: string; cycle?: stri
     <Card title="Failing tests" data-testid="failing-tests">
       <p className="mb-3 text-sm text-ink-200">
         {countLabel(tests.length, "test")} failed
-        {newFailures > 0 ? <>, {newFailures} new in this run</> : null}
-        {longStanding > 0 && runsConsidered > 1 ? <>, {longStanding} already failing before</> : null}.
+        {newFailures > 0 ? <>, {newFailures} new {baselineBranch ? `since ${baselineBranch}` : "in this run"}</> : null}
+        {longStanding > 0 && (baselineRunId || runsConsidered > 1) ? (
+          <>, {longStanding} already failing {baselineBranch ? `on ${baselineBranch}` : "before"}</>
+        ) : null}
+        .
       </p>
 
       {groups.length > 0 ? (
@@ -116,7 +144,7 @@ export function FailingTestsCard({ runId, cycle }: { runId: string; cycle?: stri
 
       <ul className="divide-y divide-white/5">
         {visible.map((test) => (
-          <FailingTestRow key={test.key} test={test} cycle={cycle} />
+          <FailingTestRow key={test.key} test={test} cycle={cycle} baselineBranch={baselineBranch} />
         ))}
       </ul>
 

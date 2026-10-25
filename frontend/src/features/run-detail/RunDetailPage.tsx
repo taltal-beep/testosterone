@@ -8,6 +8,47 @@ import { countLabel, describeExitCode, formatDuration, formatRunLabel } from "..
 import { AI_SUMMARY_SNAPSHOT_MESSAGE, IS_STATIC_BUILD } from "../../lib/static-backend";
 import { FailingTestsCard } from "./FailingTestsCard";
 
+type RunProvenanceFields = {
+  branch?: string | null;
+  commit?: string | null;
+  base_branch?: string | null;
+  repository?: string | null;
+};
+
+/** Branch, PR target and commit the run tested, when it recorded them. */
+function RunProvenance({ run }: { run: RunProvenanceFields }) {
+  if (!run.branch && !run.commit) return null;
+  const short = run.commit ? run.commit.slice(0, 7) : null;
+  const commitUrl =
+    run.commit && run.repository && /^[\w.-]+\/[\w.-]+$/.test(run.repository)
+      ? `https://github.com/${run.repository}/commit/${run.commit}`
+      : null;
+  return (
+    <span className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-ink-400">
+      {run.branch ? <span className="font-mono text-ink-200">{run.branch}</span> : null}
+      {run.base_branch && run.base_branch !== run.branch ? (
+        <span>
+          into <span className="font-mono text-ink-200">{run.base_branch}</span>
+        </span>
+      ) : null}
+      {short ? (
+        <>
+          {run.branch ? <span aria-hidden>·</span> : null}
+          {commitUrl ? (
+            <a href={commitUrl} className="font-mono text-brand-300 hover:underline" title={run.commit ?? undefined}>
+              {short}
+            </a>
+          ) : (
+            <span className="font-mono" title={run.commit ?? undefined}>
+              {short}
+            </span>
+          )}
+        </>
+      ) : null}
+    </span>
+  );
+}
+
 // Error codes that the user fixes on the AI settings page.
 const AI_SETTINGS_ERROR_CODES = new Set(["ai_feature_disabled", "provider_misconfigured", "unsupported_provider_model"]);
 
@@ -118,7 +159,12 @@ export function RunDetailPage() {
             <StatusPill status={run.status} returncode={run.returncode} />
           </span>
         }
-        subtitle={runVerdict(run)}
+        subtitle={
+          <>
+            {runVerdict(run)}
+            <RunProvenance run={run} />
+          </>
+        }
         actions={
           <Link to="/runs">
             <Button variant="secondary" size="sm">
