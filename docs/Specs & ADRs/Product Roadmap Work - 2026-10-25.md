@@ -29,6 +29,10 @@ The [Product Review](../product-review.md) scored Testosterone 6.5 / 10 as a pro
 - **`testo ui` is local only.** It binds `127.0.0.1` and adds exactly its own two origins to `TESTO_CORS_ORIGINS`, so the UI it serves can start runs without a token while a foreign or DNS-rebinding page is still refused. Anything wider is `testo-api` with a token.
 - **`testo-api` starts uvicorn with the `create_app` factory**, so the app reads the environment at serve time rather than when `testo_api` was first imported.
 
+### Timing noise is not a regression (P6)
+
+Compare flagged a 3 ms slower run as a regression, so every pair of runs had red in it. A duration change now counts only when it is at least 5 % of the baseline and at least a floor (100 ms for run durations, 5 ms for the per-test average); smaller changes are neutral with reason `within_noise`, shown as "Within noise", and the dashboard trend reads "flat". The rule and constants live in [Delta Comparison Policy](Delta%20Comparison%20Policy.md#timing-noise-added-2026-10-25). Counts and health keep no floor. A fixed rule beats a statistical one (per-test variance across runs) for now: it needs no history and is easy to explain; variance-based thresholds can come with the slowest-tests work (P7).
+
 ## Consequences
 
 - The run page answers "what broke?" without opening Allure or Compare.

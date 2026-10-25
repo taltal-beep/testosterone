@@ -45,13 +45,14 @@ describe("ComparePage", () => {
                 performance: {
                   wall_duration_ms: _metric("regression", 1300, 1100, 200, 18.18, "lower_is_better", "ms"),
                   metrics_duration_ms: _metric("regression", 1200, 1000, 200, 20, "lower_is_better", "ms"),
-                  avg_case_ms: _metric("regression", 10.4, 8.9, 1.5, 16.85, "lower_is_better", "ms")
+                  // +1.5 ms is under the per-test floor: the API calls it neutral, within noise.
+                  avg_case_ms: { ..._metric("neutral", 10.4, 8.9, 1.5, 16.85, "lower_is_better", "ms"), reason: "within_noise" }
                 }
               },
               status_summary: {
-                regressions: ["failed", "health_pct", "wall_duration_ms", "metrics_duration_ms", "avg_case_ms"],
+                regressions: ["failed", "health_pct", "wall_duration_ms", "metrics_duration_ms"],
                 improvements: ["total_tests", "passed"],
-                unchanged: ["broken", "skipped"],
+                unchanged: ["broken", "skipped", "avg_case_ms"],
                 unknown: []
               },
               highlights: ["Failed tests worsened by 6 tests."]
@@ -84,7 +85,7 @@ describe("ComparePage", () => {
     expect(screen.getByLabelText("Current run")).toHaveValue("run-2");
     expect(screen.getByLabelText("Baseline run")).toHaveValue("run-1");
 
-    await waitFor(() => expect(screen.getByTestId("status-summary")).toHaveTextContent("5 regressions"));
+    await waitFor(() => expect(screen.getByTestId("status-summary")).toHaveTextContent("4 regressions"));
     expect(screen.getByTestId("status-summary")).toHaveTextContent("2 improvements");
 
     const failedRow = screen.getByTestId("metric-failed");
@@ -93,6 +94,7 @@ describe("ComparePage", () => {
     expect(failedRow).toHaveTextContent("Regression");
     expect(screen.getByTestId("metric-health_pct")).toHaveTextContent("−6.0 pp");
     expect(screen.getByTestId("metric-wall_duration_ms")).toHaveTextContent("1.30 s");
+    expect(screen.getByTestId("metric-avg_case_ms")).toHaveTextContent("Within noise");
     expect(screen.queryByText(/state=/)).not.toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.getByText("Failed tests worsened by 6 tests.")).toBeInTheDocument();

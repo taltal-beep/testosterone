@@ -215,3 +215,43 @@ def test_compare_runs_no_stage_deltas_when_no_stage_health() -> None:
     )
     result = service.compare_runs(current_run_id="current", baseline_run_id="baseline")
     assert result.stage_deltas == ()
+
+
+@pytest.mark.parametrize(
+    ("baseline_ms", "current_ms", "expected"),
+    [
+        (6520.0, 6430.0, "neutral"),  # -90 ms, -1.4%: jitter
+        (3410.0, 3420.0, "neutral"),  # +10 ms, +0.3%
+        (1000.0, 1080.0, "neutral"),  # +8% but under the 100 ms floor
+        (10_000.0, 10_300.0, "neutral"),  # +300 ms but only +3%
+        (1000.0, 1200.0, "regression"),  # +200 ms, +20%
+        (2000.0, 1500.0, "improvement"),  # -500 ms, -25%
+    ],
+)
+def test_duration_changes_within_timing_noise_are_neutral(
+    baseline_ms: float, current_ms: float, expected: str
+) -> None:
+    service = _service(
+        {
+            "base": _view(run_id="base", wall_duration_ms=baseline_ms),
+            "cur": _view(run_id="cur", wall_duration_ms=current_ms),
+        }
+    )
+    result = service.compare_runs(current_run_id="cur", baseline_run_id="base")
+    wall = next(m for m in result.metrics if m.metric_key == "wall_duration_ms")
+    assert wall.classification == expected
+    assert (wall.reason == "within_noise") is (expected == "neutral")
+    # The numbers are still reported; only the verdict changes.
+    assert wall.absolute_delta == pytest.approx(current_ms - baseline_ms)
+
+
+def test_average_case_duration_has_its_own_small_floor() -> None:
+    service = _service(
+        {
+            "base": _view(run_id="base", avg_case_ms=20.0),
+            "cur": _view(run_id="cur", avg_case_ms=30.0),  # +10 ms, +50%: real
+        }
+    )
+    result = service.compare_runs(current_run_id="cur", baseline_run_id="base")
+    avg = next(m for m in result.metrics if m.metric_key == "avg_case_ms")
+    assert avg.classification == "regression"
