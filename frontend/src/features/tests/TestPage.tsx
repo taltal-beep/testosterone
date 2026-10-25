@@ -18,19 +18,26 @@ function DurationBars({ points }: { points: TestPointItem[] }) {
   const oldestFirst = [...points].reverse();
   const longest = Math.max(1, ...oldestFirst.map((p) => p.duration_ms ?? 0));
   return (
-    <div
-      className="flex h-24 items-end gap-1"
-      role="img"
-      aria-label={`Duration per run, oldest first: ${oldestFirst.map((p) => `${formatDuration(p.duration_ms)} ${p.status}`).join(", ")}`}
-    >
-      {oldestFirst.map((p) => (
-        <span
-          key={p.run_id}
-          title={`${formatRunTime(p.created_at)} · ${p.status} · ${formatDuration(p.duration_ms)}`}
-          className={`min-w-1.5 max-w-8 flex-1 rounded-t ${p.status === "passed" ? "bg-success-500/80" : FAILED.has(p.status) ? "bg-danger-500/80" : "bg-ink-600"}`}
-          style={{ height: `${Math.max(4, ((p.duration_ms ?? 0) / longest) * 100)}%` }}
-        />
-      ))}
+    <div className="flex gap-2">
+      {/* The scale, so equal durations don't read as a busy chart. */}
+      <div className="flex h-24 flex-col justify-between text-right font-mono text-[11px] text-ink-400" aria-hidden>
+        <span>{formatDuration(longest)}</span>
+        <span>0</span>
+      </div>
+      <div
+        className="flex h-24 flex-1 items-end gap-1 border-b border-l border-white/10"
+        role="img"
+        aria-label={`Duration per run, oldest first: ${oldestFirst.map((p) => `${formatDuration(p.duration_ms)} ${p.status}`).join(", ")}`}
+      >
+        {oldestFirst.map((p) => (
+          <span
+            key={p.run_id}
+            title={`${formatRunTime(p.created_at)} · ${p.status} · ${formatDuration(p.duration_ms)}`}
+            className={`min-w-1.5 max-w-8 flex-1 rounded-t ${p.status === "passed" ? "bg-success-500/80" : FAILED.has(p.status) ? "bg-danger-500/80" : "bg-ink-600"}`}
+            style={{ height: `${Math.max(4, ((p.duration_ms ?? 0) / longest) * 100)}%` }}
+          />
+        ))}
+      </div>
     </div>
   );
 }

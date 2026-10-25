@@ -81,3 +81,12 @@ export function formatPercent(value: number | null | undefined): string {
   if (whole === 0 && value > 0) return `${Math.ceil(value * 10) / 10}%`;
   return `${whole}%`;
 }
+
+/** "Passed 2 of the last 6 runs (33%)": a cycle's recent pass rate, from runs newest first. */
+export function passRateLine(runs: { returncode?: number | null }[]): string {
+  const finished = runs.filter((run) => run.returncode != null);
+  if (finished.length === 0) return "No finished runs yet.";
+  const passed = finished.filter((run) => run.returncode === 0).length;
+  const pct = formatPercent((passed / finished.length) * 100);
+  return `Passed ${passed} of the last ${countLabel(finished.length, "run")} (${pct}).`;
+}

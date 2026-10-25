@@ -142,6 +142,15 @@ def test_latest_run_per_cycle_keeps_the_newest_of_each(sqlite_repo) -> None:
     )
 
 
+def test_list_run_sessions_of_one_cycle(sqlite_repo) -> None:
+    for plan in ("web", "api", "web", "api"):
+        sqlite_repo.create_run(status=RunStatus.COMPLETED, metadata={"exit_code": 0, "plan": plan})
+
+    assert [s.cycle for s in list_run_sessions(limit=5, cycle="web")] == ["web", "web"]
+    assert len(list_run_sessions(limit=1, cycle="api")) == 1
+    assert list_run_sessions(limit=5, cycle="nope") == []
+
+
 def test_list_run_sessions_maps_report_layout(sqlite_repo, static_history: Path) -> None:
     rid = str(sqlite_repo.create_run(status=RunStatus.COMPLETED, metadata={"exit_code": 0}).id)
     base = static_history / rid

@@ -180,6 +180,24 @@ describe("DashboardPage", () => {
     );
   });
 
+  it("says plainly when every cycle is red", async () => {
+    const red = { run_id: "r", created_at: 1, branch: null, failed_tests: 1, new_failures: 0, failing_runs: 1 };
+    stubOverviewFetch(overviewPayload(), {
+      cycles: 2,
+      passing_cycles: 0,
+      failing: [
+        { ...red, cycle: "web" },
+        { ...red, cycle: "api" }
+      ],
+      newly_flaky: [],
+      slower: [{ cycle: "api", key: "k2", name: "test_search", slowdown_ms: 1100, slowdown_pct: 95.5 }]
+    });
+    renderDashboard();
+    const card = await screen.findByTestId("needs-attention");
+    expect(card).toHaveTextContent("All 2 cycles are red.");
+    expect(card).toHaveTextContent("+1.1 s (+96%)");
+  });
+
   it("renders degraded notice and unavailable report links when data exists", async () => {
     stubOverviewFetch(
       overviewPayload({
