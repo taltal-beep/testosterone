@@ -62,6 +62,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import plugins as plugins_mod
     from testo_core.cli.commands import report as report_cmd
     from testo_core.cli.commands import run as run_cmd
+    from testo_core.cli.commands import ui_cmd
     from testo_core.cli.commands import users as users_cmd
     from testo_core.cli.commands import version as version_cmd
     from testo_core.cli.commands import watch as watch_mod
@@ -76,6 +77,11 @@ def _register_commands() -> None:
         help="Record JUnit XML (Jest, Go, JUnit5, ...) or Playwright JSON as a run of a cycle.",
         rich_help_panel="Run and report",
     )(ingest_mod.ingest)
+    app.command(
+        name="ui",
+        help="Open the web UI on this machine's run history (http://127.0.0.1:8000).",
+        rich_help_panel="Run and report",
+    )(ui_cmd.ui)
     app.command(
         name="notify",
         help="Send a recorded run to Slack or Teams (webhook URLs from the environment).",

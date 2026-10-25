@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 # Command Reference
@@ -244,6 +244,25 @@ testo flaky --cycle nightly --new --json     # only tests the latest run made fl
 A test is flaky when, within the window, it both passed and failed and its outcome changed at least twice (skipped runs are ignored). One change is a regression or a fix, which `testo summary` shows. Exit `2` when fewer than two runs with per-test results exist. Reads run-history records (`run_id`s) and each run's artifact snapshot, the same data as `GET /api/v1/analytics/flaky?cycle=<name>` and the Flaky tests card on the cycle page. See [Open Source Features - 2026-10-19](../Specs%20&%20ADRs/Open%20Source%20Features%20-%202026-10-19.md).
 
 The table's Quarantined column (and `"quarantined"` in `--json`) shows which flaky tests match the cycle's [`quarantine:` rules](../Testing%20Workflows/QA%20Strategies.md#defining-work-in-testosteroneyaml); for the others it prints a `quarantine:` snippet to paste. A quarantined test's failures don't fail `testo run`; see [Flaky Test Quarantine - 2026-10-22](../Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md).
+
+---
+
+## `testo ui`
+
+Open the web UI (Dashboard, Cycles, Runs, Compare, AI settings) on this machine's run history: the same database and `./.testo/` data the CLI uses.
+
+```bash
+pip install 'testo-core[api]'
+testo ui                     # http://127.0.0.1:8000, opens the browser
+testo ui --port 9000 --no-open
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--port`, `-p` | `8000` | Port on 127.0.0.1 |
+| `--open` / `--no-open` | `--open` | Open the default browser once the server is up |
+
+It starts `testo-api` bound to `127.0.0.1` only (for a shared server use the [Team Server](../Processes%20&%20Guides/Team%20Server.md)) and serves the UI that ships inside the wheel, or the build `TESTO_UI_DIR` points at. The UI's own origin (`http://127.0.0.1:<port>`, `http://localhost:<port>`) is added to `TESTO_CORS_ORIGINS` for this process so it can start runs; every other origin is still refused. Exit `2` when the `[api]` extra is missing or no built UI is found (a source checkout builds one with `scripts/build_ui_bundle.sh`, which needs Node 22).
 
 ---
 

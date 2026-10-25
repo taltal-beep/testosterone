@@ -47,4 +47,11 @@ if python -c "import behave" 2>/dev/null || python -c "import behavex" 2>/dev/nu
   echo "behave/behavex installed without the [bdd] extra" >&2
   exit 1
 fi
+# The wheel carries the web UI that `testo ui` serves (scripts/build_ui_bundle.sh).
+python - "$wheel" <<'PY'
+import sys, zipfile
+names = zipfile.ZipFile(sys.argv[1]).namelist()
+if "testo_api/ui_dist/index.html" not in names:
+    sys.exit("the wheel has no bundled UI (testo_api/ui_dist/index.html); run scripts/build_ui_bundle.sh first")
+PY
 echo "package smoke passed: $(basename "$wheel")"

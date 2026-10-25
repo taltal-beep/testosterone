@@ -250,5 +250,7 @@ def run(argv: list[str] | None = None) -> int:
         logger.warning(
             "TESTO_PROTECT_READS has no effect without TESTO_API_TOKEN; reads stay open."
         )
-    uvicorn.run("testo_api.main:app", host=host, port=port, reload=reload)
+    # A factory, so the app reads the environment as it is now: ``testo ui`` sets
+    # TESTO_CORS_ORIGINS after ``testo_api`` (and its module-level ``app``) was imported.
+    uvicorn.run("testo_api.main:create_app", factory=True, host=host, port=port, reload=reload)
     return 0

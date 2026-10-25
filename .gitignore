@@ -21,6 +21,8 @@ tests/artifacts/*.db
 .artifacts/
 
 # Built Python distribution artifacts
+# The UI copied into the wheel by scripts/build_ui_bundle.sh
+testo_api/ui_dist/
 dist/
 build/
 *.egg-info/

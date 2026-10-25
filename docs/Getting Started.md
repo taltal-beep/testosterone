@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-19
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 # Getting Started
@@ -136,6 +136,6 @@ The run gets the same history, `testo summary`, `testo flaky` and Compare as a `
 
 ## Next
 
-- **Web UI**: Dashboard, Runs, Compare and AI failure summaries. It runs from a checkout of the repository; see the README's [UI section](https://github.com/taltal-beep/testosterone#ui), or look at the [live demo](https://taltal-beep.github.io/testosterone/).
+- **Web UI**: Dashboard, Runs, Compare and AI failure summaries on the same history. `pip install 'testo-core[api]'`, then `testo ui` opens it on <http://127.0.0.1:8000> (releases after 1.2.0; before that it runs from a checkout, see the README's [UI section](https://github.com/taltal-beep/testosterone#ui)). Or look at the [live demo](https://taltal-beep.github.io/testosterone/).
 - **Using an AI coding assistant?** [Setup Prompts](Prompts%20&%20Snippets/Setup%20Prompts.md) are copy-paste prompts that do the steps above for you.
 - **How it works**: [System Diagram](Architecture/System%20Diagram.md).

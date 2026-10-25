@@ -113,7 +113,7 @@ Optional per-cycle **selective execution**: Git diff or filesystem snapshot agai
 
 | Package | Purpose |
 |---------|---------|
-| `testo_api/` | FastAPI `/api/v1` — cycle discovery (`GET /cycles`, `GET /cycles/{cycle}`), cycle and ad-hoc executions with SSE, JUnit uploads (`POST /ingest`), runs, analytics, AI summaries, health probes. With `TESTO_UI_DIR` it also serves the built UI at `/` ([Team Server](../Processes%20&%20Guides/Team%20Server.md)) |
+| `testo_api/` | FastAPI `/api/v1` — cycle discovery (`GET /cycles`, `GET /cycles/{cycle}`), cycle and ad-hoc executions with SSE, JUnit uploads (`POST /ingest`), runs, analytics, AI summaries, health probes. It also serves the built UI at `/`: the one bundled in the wheel (`testo ui`), or `TESTO_UI_DIR` ([Team Server](../Processes%20&%20Guides/Team%20Server.md)) |
 | `frontend/` | React UI — cycles-first navigation plus Quick Run, see [Phase 5 UI Redesign - Cycles-First Navigation](../Specs%20&%20ADRs/Phase%205%20UI%20Redesign%20-%20Cycles-First%20Navigation.md) |
 | `testo_core/services/` | `cycle_run.py` (the run use case shared by CLI and API), dashboard, delta, AI failure analysis, report archive diff |
 
