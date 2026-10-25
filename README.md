@@ -103,6 +103,8 @@ testo ingest 'junit*.xml' --cycle web                      # recorded; run again
 testo summary --cycle web
 ```
 
+Using pytest? `pytest --testo` records every run the same way, with no extra step.
+
 Or let Testosterone run the tests as a cycle:
 
 ```bash

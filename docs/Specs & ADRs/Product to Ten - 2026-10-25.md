@@ -50,6 +50,12 @@ The dashboard opened on four KPI tiles for the latest run, whatever its cycle, t
 
 The no-runs page told people to press Run on a cycle, which a `pip install` user with no `testosterone.yaml` can't. It now offers the three ways in: `testo ingest` for existing JUnit output, `testo config init` and `testo run`, or the try-it page.
 
+### `pytest --testo` records local runs (time to first value)
+
+The fastest way to a first run was `pytest --junitxml` plus `testo ingest`, two commands to remember. testo-core now ships a pytest plugin (`testo_core/pytest_plugin.py`, entry point `pytest11`) that does both: `--testo` (or `--testo-cycle NAME`, or `TESTO_RECORD=1`) points pytest's own `--junitxml` at a temporary file inside the rootdir and, after the session, records it with `execute_ingest_command`, the function behind `testo ingest`. So there is still one ingest path; the plugin only saves the typing. The report sits inside the rootdir so the run records the checkout's branch and commit, which "New since main" and the rerun command use.
+
+The plugin is registered for every pytest run on a machine with testo-core installed, so it is inert without the flag, imports nothing from testo-core until it records, skips xdist workers, and turns any recording failure into one summary line instead of a different exit code.
+
 ## Consequences
 
 - A team that only ingests JUnit gets the same cycle page as one that runs cycles through `testo run`, apart from starting runs.

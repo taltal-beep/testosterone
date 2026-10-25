@@ -134,6 +134,15 @@ testo ingest 'reports/**/*.xml' --cycle web-unit
 
 The run gets the same history, `testo summary`, `testo flaky` and Compare as a `testo run`. For one history across every CI job and teammate, run the [Team Server](Processes%20&%20Guides/Team%20Server.md) and add `--server https://your-server --token "$TESTO_API_TOKEN"`. Details: [Command Reference § testo ingest](CLI%20Commands/Command%20Reference.md#testo-ingest).
 
+## Using pytest? One flag
+
+```bash
+pip install testo-core
+pytest --testo                       # or --testo-cycle api-unit to name the cycle
+```
+
+Every run is recorded like `testo ingest` would record it (the cycle defaults to the project folder's name), with the checkout's branch and commit, so `testo ui` shows what broke since the last run on your branch. Without the flag the plugin does nothing. Details: [Command Reference § pytest --testo](CLI%20Commands/Command%20Reference.md#pytest-testo).
+
 ## Next
 
 - **Web UI**: Dashboard, Runs, Compare and AI failure summaries on the same history. `pip install 'testo-core[api]'`, then `testo ui` opens it on <http://127.0.0.1:8000> (releases after 1.2.0; before that it runs from a checkout, see the README's [UI section](https://github.com/taltal-beep/testosterone#ui)). Or look at the [live demo](https://taltal-beep.github.io/testosterone/).
