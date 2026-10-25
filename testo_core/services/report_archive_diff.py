@@ -38,6 +38,26 @@ def _label_value(labels: Any, name: str) -> str:
     return ""
 
 
+def _case_message(data: dict[str, Any]) -> str:
+    """First non-empty line of the failure message (or trace), for lists and grouping."""
+    details = data.get("statusDetails")
+    if not isinstance(details, dict):
+        return ""
+    text = str(details.get("message") or details.get("trace") or "")
+    line = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")
+    return line[:300]
+
+
+def _case_stage(path: Path, plan_root: Path) -> str:
+    """The stage a result file belongs to: the folder just above ``allure-results``."""
+    parts = path.relative_to(plan_root).parts
+    if "allure-results" in parts:
+        idx = parts.index("allure-results")
+        if idx > 0:
+            return parts[idx - 1]
+    return ""
+
+
 def _case_group(data: dict[str, Any]) -> str:
     """Stable grouping key (module / suite) for dashboard tables."""
 
@@ -76,6 +96,8 @@ def _load_cases(plan_root: Path) -> dict[str, dict[str, Any]]:
             "group": _case_group(data),
             "status": st,
             "duration_ms": _case_duration_ms(data),
+            "message": _case_message(data),
+            "stage": _case_stage(path, plan_root),
         }
     return out
 

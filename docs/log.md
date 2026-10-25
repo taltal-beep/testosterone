@@ -92,3 +92,7 @@ Added [Throwaway Stage Containers - 2026-10-24](Specs%20&%20ADRs/Throwaway%20Sta
 ## 2026-10-24: product review
 
 Added [Product Review](product-review.md) next to the code-side Project Review, and pointed the [Product Roadmap](Roadmap%20&%20Strategy/Product%20Roadmap.md)'s next steps at its Now / Next / Later roadmap.
+
+## 2026-10-25: product roadmap work
+
+Added [Product Roadmap Work - 2026-10-25](Specs%20&%20ADRs/Product%20Roadmap%20Work%20-%202026-10-25.md) to Specs & ADRs (decisions behind each roadmap item from the Product Review).

@@ -58,7 +58,7 @@ export function resolveStaticPath(pathname: string, search: URLSearchParams): st
   const run = /^\/runs\/([^/]+)$/.exec(path);
   if (run) return `runs/${run[1]}/detail.json`;
 
-  const runSub = /^\/runs\/([^/]+)\/(reports|pyramid|ai-summary)$/.exec(path);
+  const runSub = /^\/runs\/([^/]+)\/(reports|pyramid|failures|ai-summary)$/.exec(path);
   if (runSub) return `runs/${runSub[1]}/${runSub[2]}.json`;
 
   if (path === "/analytics/flaky") {

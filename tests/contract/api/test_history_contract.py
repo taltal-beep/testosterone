@@ -195,3 +195,49 @@ def test_run_pyramid_contract_missing_run(monkeypatch) -> None:  # noqa: ANN001
     client = TestClient(create_app())
     resp = client.get("/api/v1/runs/does-not-exist/pyramid")
     assert resp.status_code == 404
+
+
+def test_run_failures_contract(monkeypatch) -> None:  # noqa: ANN001
+    from testo_core.services.run_failures import FailingTest, FailureGroup, RunFailures
+
+    failing = FailingTest(
+        key="k1",
+        name="test_login",
+        full_name="tests.api.test_login",
+        group="tests.api",
+        stage="api",
+        status="failed",
+        message="ConnectionRefusedError",
+        duration_ms=12,
+        failing_runs=1,
+        failing_since_run_id="run-1",
+        flaky=False,
+    )
+    monkeypatch.setattr(
+        "testo_api.routes.history.load_run_failures",
+        lambda run_id: (
+            RunFailures(  # noqa: ARG005
+                run_id="run-1",
+                runs_considered=3,
+                tests=(failing,),
+                groups=(
+                    FailureGroup(message="ConnectionRefusedError", count=2, keys=("k1", "k2")),
+                ),
+            )
+            if run_id == "run-1"
+            else None
+        ),
+    )
+
+    client = TestClient(create_app())
+    resp = client.get("/api/v1/runs/run-1/failures")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["new_failures"] == 1
+    assert payload["runs_considered"] == 3
+    assert payload["tests"][0]["name"] == "test_login"
+    assert payload["tests"][0]["failing_since_run_id"] == "run-1"
+    assert payload["groups"] == [
+        {"message": "ConnectionRefusedError", "count": 2, "keys": ["k1", "k2"]}
+    ]
+    assert client.get("/api/v1/runs/missing/failures").status_code == 404

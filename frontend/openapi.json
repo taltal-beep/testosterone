@@ -1772,6 +1772,102 @@
         "title": "DeltaStatusSummaryResponse",
         "type": "object"
       },
+      "FailingTestItem": {
+        "properties": {
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "failing_runs": {
+            "title": "Failing Runs",
+            "type": "integer"
+          },
+          "failing_since_run_id": {
+            "title": "Failing Since Run Id",
+            "type": "string"
+          },
+          "flaky": {
+            "title": "Flaky",
+            "type": "boolean"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "full_name",
+          "group",
+          "stage",
+          "status",
+          "message",
+          "duration_ms",
+          "failing_runs",
+          "failing_since_run_id",
+          "flaky"
+        ],
+        "title": "FailingTestItem",
+        "type": "object"
+      },
+      "FailureGroupItem": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Keys",
+            "type": "array"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "count",
+          "keys"
+        ],
+        "title": "FailureGroupItem",
+        "type": "object"
+      },
       "FlakyTestItem": {
         "properties": {
           "failed": {
@@ -2267,6 +2363,45 @@
           "sync"
         ],
         "title": "RunDetailResponse",
+        "type": "object"
+      },
+      "RunFailuresResponse": {
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/FailureGroupItem"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "new_failures": {
+            "title": "New Failures",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "runs_considered": {
+            "title": "Runs Considered",
+            "type": "integer"
+          },
+          "tests": {
+            "items": {
+              "$ref": "#/components/schemas/FailingTestItem"
+            },
+            "title": "Tests",
+            "type": "array"
+          }
+        },
+        "required": [
+          "run_id",
+          "runs_considered",
+          "new_failures",
+          "tests",
+          "groups"
+        ],
+        "title": "RunFailuresResponse",
         "type": "object"
       },
       "RunListItem": {
@@ -3662,6 +3797,49 @@
         "summary": "Generate Run Ai Summary",
         "tags": [
           "ai"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/failures": {
+      "get": {
+        "description": "The run's failing tests: message, stage, how long each has been failing, flaky or not.",
+        "operationId": "get_run_failures_api_v1_runs__run_id__failures_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunFailuresResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run Failures",
+        "tags": [
+          "history"
         ]
       }
     },

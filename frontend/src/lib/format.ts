@@ -33,3 +33,34 @@ export function formatRunLabel(run: RunLike): string {
 export function countLabel(count: number, singular: string, plural = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : plural}`;
 }
+
+/** A duration the way people read it: "850 ms" under a second, "6.4 s" under a minute, then "2 min 5 s". */
+export function formatDuration(ms: number | null | undefined): string {
+  if (ms == null || !Number.isFinite(ms)) return "n/a";
+  if (ms < 1000) return `${Math.round(ms)} ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)} s`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes} min ${Math.round(seconds - minutes * 60)} s`;
+}
+
+/** What an engine exit code means (Architecture Overview § Exit code contract). */
+export function describeExitCode(code: number | null | undefined): string {
+  switch (code) {
+    case null:
+    case undefined:
+      return "n/a";
+    case 0:
+      return "0 (passed)";
+    case 1:
+      return "1 (tests failed)";
+    case 2:
+      return "2 (invalid config or input)";
+    case 3:
+      return "3 (infrastructure error)";
+    case 4:
+      return "4 (internal error)";
+    default:
+      return String(code);
+  }
+}
