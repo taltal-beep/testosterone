@@ -2530,6 +2530,13 @@
             "title": "New Failures",
             "type": "integer"
           },
+          "rerun_commands": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rerun Commands",
+            "type": "array"
+          },
           "run_id": {
             "title": "Run Id",
             "type": "string"
@@ -2552,6 +2559,7 @@
           "new_failures",
           "baseline_run_id",
           "baseline_branch",
+          "rerun_commands",
           "tests",
           "groups"
         ],
@@ -2560,6 +2568,17 @@
       },
       "RunListItem": {
         "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
           "broken": {
             "anyOf": [
               {
@@ -2680,7 +2699,8 @@
           "failed",
           "skipped",
           "broken",
-          "links_under_static"
+          "links_under_static",
+          "branch"
         ],
         "title": "RunListItem",
         "type": "object"

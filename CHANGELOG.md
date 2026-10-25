@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- The run page has a "Rerun these tests" command per runner (pytest node ids, `npx playwright test --grep`, `behave --name`) with a Copy button, from the new `rerun_commands` field of `GET /api/v1/runs/{run_id}/failures`
+- Compare opens on the latest run against the one before it in its cycle, and each run in the pickers shows its branch (`GET /api/v1/runs` adds `branch`)
 - The run page shows the branch, pull request target and commit the run tested (linked on GitHub), and `GET /api/v1/runs/{run_id}` returns them
 - Cycles recorded with `testo ingest` (or by another machine) have a cycle page: `GET /api/v1/cycles` lists them after the config's cycles with `source: "history"`, and their page shows the test search, slowest tests and flaky card without a Run panel. `testo ui` in a folder with no `testosterone.yaml` lists recorded cycles instead of an error
 - Docs: second pass of the product review ([docs/product-review.md](docs/product-review.md)): 6.5 to 7.5, what a 10 needs in each area, and new findings, chiefly that cycles created by `testo ingest` have no cycle page

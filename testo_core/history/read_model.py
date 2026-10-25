@@ -60,6 +60,7 @@ def list_run_sessions(*, limit: int = 30) -> list[RunSessionView]:
             broken=r.broken,
             status=r.status,
             links_under_static=local_report_links(r.run_id),
+            branch=r.branch,
         )
         for r in list_recent_runs(limit=limit)
     ]

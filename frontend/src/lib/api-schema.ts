@@ -1313,6 +1313,8 @@ export interface components {
             groups: components["schemas"]["FailureGroupItem"][];
             /** New Failures */
             new_failures: number;
+            /** Rerun Commands */
+            rerun_commands: string[];
             /** Run Id */
             run_id: string;
             /** Runs Considered */
@@ -1322,6 +1324,8 @@ export interface components {
         };
         /** RunListItem */
         RunListItem: {
+            /** Branch */
+            branch: string | null;
             /** Broken */
             broken: number | null;
             /** Created At */

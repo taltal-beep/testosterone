@@ -43,6 +43,7 @@ def list_runs(limit: int = 30) -> RunListResponse:
             skipped=s.skipped,
             broken=s.broken,
             links_under_static=s.links_under_static,
+            branch=s.branch,
         )
         for s in sessions
     ]
@@ -134,6 +135,7 @@ def get_run_failures(run_id: str) -> RunFailuresResponse:
         new_failures=failures.new_failures,
         baseline_run_id=failures.baseline_run_id,
         baseline_branch=failures.baseline_branch,
+        rerun_commands=list(failures.rerun_commands),
         tests=[FailingTestItem(**vars(t)) for t in failures.tests],
         groups=[
             FailureGroupItem(message=g.message, count=g.count, keys=list(g.keys))
