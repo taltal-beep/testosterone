@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 import { apiClient, type FailingTestItem } from "../../lib/api-client";
 import { Badge, Button, Card } from "../../components/ui";
-import { countLabel, formatDuration, shortRunId } from "../../lib/format";
+import { countLabel, formatDuration, shortRunId, testPath } from "../../lib/format";
 
 // Enough to read at a glance; the rest are one click away.
 const INITIAL_ROWS = 15;
@@ -18,11 +18,17 @@ function Streak({ test }: { test: FailingTestItem }) {
   );
 }
 
-function FailingTestRow({ test }: { test: FailingTestItem }) {
+function FailingTestRow({ test, cycle }: { test: FailingTestItem; cycle?: string | null }) {
   return (
     <li className="space-y-1 py-3 first:pt-0 last:pb-0">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="break-all font-medium text-ink-50">{test.name}</span>
+        {cycle ? (
+          <Link to={testPath(cycle, test.key)} className="break-all font-medium text-brand-300 hover:underline">
+            {test.name}
+          </Link>
+        ) : (
+          <span className="break-all font-medium text-ink-50">{test.name}</span>
+        )}
         <Streak test={test} />
         {test.flaky ? <Badge tone="brand">Flaky</Badge> : null}
         {test.status === "broken" ? <Badge>Broken</Badge> : null}
@@ -110,7 +116,7 @@ export function FailingTestsCard({ runId, cycle }: { runId: string; cycle?: stri
 
       <ul className="divide-y divide-white/5">
         {visible.map((test) => (
-          <FailingTestRow key={test.key} test={test} />
+          <FailingTestRow key={test.key} test={test} cycle={cycle} />
         ))}
       </ul>
 

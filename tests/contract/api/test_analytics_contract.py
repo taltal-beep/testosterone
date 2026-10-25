@@ -371,3 +371,65 @@ def test_analytics_flaky_contract(monkeypatch) -> None:  # noqa: ANN001
     assert payload["items"][0]["history"] == ["passed", "failed", "passed"]
 
     assert client.get("/api/v1/analytics/flaky?cycle=x&window=1").status_code == 422
+
+
+def test_cycle_tests_and_test_history_contract(monkeypatch) -> None:  # noqa: ANN001
+    from testo_core.services import test_history as th
+
+    summary = th.TestSummary(
+        key="k1",
+        name="test_login",
+        full_name="tests.api.test_login",
+        group="tests.api",
+        stage="api",
+        runs=4,
+        passed=3,
+        failed=1,
+        last_status="failed",
+        flaky=False,
+        last_duration_ms=400,
+        median_duration_ms=120,
+        slowdown_ms=280,
+        slowdown_pct=233.3,
+    )
+    point = th.TestPoint(
+        run_id="run-4",
+        created_at=4.0,
+        status="failed",
+        duration_ms=400,
+        message="AssertionError",
+        branch="main",
+    )
+    seen: dict[str, object] = {}
+
+    def fake_list(cycle: str, *, window: int, query: str | None) -> th.CycleTests:
+        seen.update(cycle=cycle, window=window, query=query)
+        return th.CycleTests(cycle=cycle, runs_considered=4, tests=(summary,))
+
+    monkeypatch.setattr("testo_api.routes.analytics.list_cycle_tests", fake_list)
+    monkeypatch.setattr(
+        "testo_api.routes.analytics.load_test_history",
+        lambda cycle, key, *, window: (
+            th.TestHistory(cycle=cycle, summary=summary, points=(point,)) if key == "k1" else None
+        ),
+    )
+
+    client = TestClient(create_app())
+    listing = client.get("/api/v1/analytics/tests", params={"cycle": "smoke", "q": "login"})
+    assert listing.status_code == 200
+    assert seen == {"cycle": "smoke", "window": 20, "query": "login"}
+    item = listing.json()["items"][0]
+    assert (item["name"], item["slowdown_ms"], item["median_duration_ms"]) == (
+        "test_login",
+        280,
+        120,
+    )
+
+    history = client.get("/api/v1/analytics/test-history", params={"cycle": "smoke", "key": "k1"})
+    assert history.status_code == 200
+    body = history.json()
+    assert body["test"]["key"] == "k1"
+    assert body["points"][0]["branch"] == "main"
+    assert body["last_failure"]["message"] == "AssertionError"
+    missing = client.get("/api/v1/analytics/test-history", params={"cycle": "smoke", "key": "nope"})
+    assert missing.status_code == 404

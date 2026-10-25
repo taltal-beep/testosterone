@@ -41,6 +41,16 @@ export const READ_ONLY_MESSAGE =
 export const AI_SUMMARY_SNAPSHOT_MESSAGE =
   "AI summaries are generated live when you run Testosterone locally; this snapshot was built without an API key.";
 
+/** FNV-1a (32-bit) of `key` as 8 hex digits; must match `test_history.stable_id` in Python. */
+export function stableId(key: string): string {
+  let hash = 0x811c9dc5;
+  for (const byte of new TextEncoder().encode(key)) {
+    hash ^= byte;
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
 /** Map one API request onto the file the export wrote for it, or null if there is none. */
 export function resolveStaticPath(pathname: string, search: URLSearchParams): string | null {
   const path = pathname.replace(/^.*\/api\/v1/, "");
@@ -64,6 +74,17 @@ export function resolveStaticPath(pathname: string, search: URLSearchParams): st
   if (path === "/analytics/flaky") {
     const name = search.get("cycle");
     return name ? `flaky/${name}.json` : null;
+  }
+
+  if (path === "/analytics/tests") {
+    const name = search.get("cycle");
+    return name ? `tests/${name}.json` : null;
+  }
+
+  if (path === "/analytics/test-history") {
+    const name = search.get("cycle");
+    const key = search.get("key");
+    return name && key ? `test-history/${name}/${stableId(key)}.json` : null;
   }
 
   if (path === "/analytics/delta" || path === "/analytics/delta/cases") {

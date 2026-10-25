@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- A page for each test (`/cycles/<cycle>/test?key=`): pass rate, flaky or not, last failure, duration per run and every run with its branch. The cycle page can search its tests and lists the slowest tests and the ones that got slower. New endpoints `GET /api/v1/analytics/tests` and `GET /api/v1/analytics/test-history`
 - Pull request comments and `testo report markdown` compare a PR's run with the latest run on its target branch (new `--baseline-branch` overrides), not with whichever run came before, and say which baseline they used. Runs record the PR's target branch (`ci_base_ref`, also accepted by `testo ingest`), the PR's own branch on GitHub, and the local git branch and commit outside CI
 - `testo ui`: the web UI ships inside the wheel, so `pip install 'testo-core[api]' && testo ui` opens the dashboard on this machine's run history (http://127.0.0.1:8000) with no checkout or Node. `testo-api` also serves the bundled UI when `TESTO_UI_DIR` isn't set
 - UI accessibility and copy pass: stronger primary-button contrast, a visible keyboard focus ring, a skip link, h1 → h2 headings, a 44px mobile menu button, AI settings fits a phone, load errors say what to check, sentence-case titles, "Advanced" is now "Tools" with a plain Docs link, and the dashboard hides unknown trends and missing reports. `testo --help` has the README's tagline and no RST double backticks

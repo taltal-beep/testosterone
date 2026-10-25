@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { resolveStaticPath } from "./static-backend";
+import { resolveStaticPath, stableId } from "./static-backend";
 
 function resolve(url: string): string | null {
   const parsed = new URL(url, "https://example.gitlab.io/testosterone/");
@@ -96,5 +96,13 @@ describe("installStaticBackend", () => {
     expect(body.error.code).toBe("read_only_build");
     expect(body.error.message).toBe(backend.READ_ONLY_MESSAGE);
     expect(backend.READ_ONLY_MESSAGE).not.toMatch(/GitLab|GitHub/);
+  });
+
+  it("maps the per-test endpoints onto hashed file names", () => {
+    expect(stableId("")).toBe("811c9dc5");
+    expect(stableId("a")).toBe("e40c292c");
+    expect(resolve("/api/v1/analytics/tests?cycle=smoke")).toBe("tests/smoke.json");
+    expect(resolve("/api/v1/analytics/test-history?cycle=smoke&key=a")).toBe("test-history/smoke/e40c292c.json");
+    expect(resolve("/api/v1/analytics/test-history?cycle=smoke")).toBeNull();
   });
 });

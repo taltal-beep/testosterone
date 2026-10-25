@@ -323,6 +323,49 @@ class FlakyTestsResponse(ApiModel):
     items: list[FlakyTestItem] = Field(default_factory=list)
 
 
+class TestSummaryItem(ApiModel):
+    """One test across a cycle's recent runs (``testo_core/services/test_history.py``)."""
+
+    key: str
+    name: str
+    full_name: str
+    group: str
+    stage: str
+    runs: int
+    passed: int
+    failed: int
+    last_status: str
+    flaky: bool
+    last_duration_ms: int | None = None
+    median_duration_ms: int | None = None
+    # Recent median minus the earlier one, only when that is more than timing noise.
+    slowdown_ms: int | None = None
+    slowdown_pct: float | None = None
+
+
+class CycleTestsResponse(ApiModel):
+    cycle: str
+    runs_considered: int
+    items: list[TestSummaryItem] = Field(default_factory=list)
+
+
+class TestPointItem(ApiModel):
+    run_id: str
+    created_at: float
+    status: str
+    duration_ms: int | None = None
+    message: str = ""
+    branch: str | None = None
+
+
+class TestHistoryResponse(ApiModel):
+    cycle: str
+    test: TestSummaryItem
+    # Newest first.
+    points: list[TestPointItem] = Field(default_factory=list)
+    last_failure: TestPointItem | None = None
+
+
 class DashboardHeadlineKpis(ApiModel):
     latest_run_id: str | None = None
     latest_status: str | None = None

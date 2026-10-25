@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 
 import { apiClient, type FlakyTestItem } from "../../lib/api-client";
 import { Badge, Card, Spinner } from "../../components/ui";
+import { testPath } from "../../lib/format";
 
 const DOT: Record<string, string> = {
   passed: "bg-success-500",
@@ -59,7 +61,9 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
           {report.items.map((item) => (
             <li key={item.key} className="rounded-2xl border border-white/5 bg-ink-950/70 p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-sm text-ink-100">{item.name}</span>
+                <Link to={testPath(cycle, item.key)} className="font-mono text-sm text-brand-300 hover:underline">
+                  {item.name}
+                </Link>
                 <Badge tone="warn">
                   {item.flips} flips in {item.runs} runs
                 </Badge>

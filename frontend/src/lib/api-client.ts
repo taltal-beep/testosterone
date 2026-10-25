@@ -37,6 +37,10 @@ export type CaseChangeKind = DeltaCaseChange["kind"];
 export type DeltaCaseChangesResponse = Schemas["DeltaCaseChangesResponse"];
 export type FlakyTestItem = Schemas["FlakyTestItem"];
 export type FlakyTestsResponse = Schemas["FlakyTestsResponse"];
+export type TestSummaryItem = Schemas["TestSummaryItem"];
+export type CycleTestsResponse = Schemas["CycleTestsResponse"];
+export type TestPointItem = Schemas["TestPointItem"];
+export type TestHistoryResponse = Schemas["TestHistoryResponse"];
 
 export type AiConfigStatus = Schemas["AiConfigStatusResponse"];
 export type UpdateAiConfigRequest = Schemas["AiConfigUpdateRequest"];
@@ -152,6 +156,14 @@ export const apiClient = {
   getFlakyTests(cycle: string): Promise<FlakyTestsResponse> {
     const params = new URLSearchParams({ cycle });
     return api<FlakyTestsResponse>(`/api/v1/analytics/flaky?${params.toString()}`);
+  },
+  getCycleTests(cycle: string): Promise<CycleTestsResponse> {
+    const params = new URLSearchParams({ cycle });
+    return api<CycleTestsResponse>(`/api/v1/analytics/tests?${params.toString()}`);
+  },
+  getTestHistory(cycle: string, key: string): Promise<TestHistoryResponse> {
+    const params = new URLSearchParams({ cycle, key });
+    return api<TestHistoryResponse>(`/api/v1/analytics/test-history?${params.toString()}`);
   },
   getDashboardOverview(recentLimit = 5): Promise<DashboardOverviewResponse> {
     return api<DashboardOverviewResponse>(`/api/v1/dashboard/overview?recent_limit=${recentLimit}`);

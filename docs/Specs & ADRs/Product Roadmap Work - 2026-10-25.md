@@ -51,6 +51,14 @@ The PR comment compared each run with the cycle's previous run, which on a team 
 
 Compare keeps its explicit baseline picker; the dashboard trend still compares the last two runs of a cycle, which is the right question there ("is this cycle getting better?").
 
+### A page per test, test search, slowest and slowing tests (P4, P7)
+
+`services/test_history.py` reads each test's outcome, duration and message from the cycle's last 20 run snapshots (the same Allure files the flaky detector reads, so no schema change). Two endpoints serve it: `GET /api/v1/analytics/tests?cycle=` lists every test (failing and flaky first, with median duration and slowdown) and `GET /api/v1/analytics/test-history?cycle=&key=` gives one test's runs, newest first, with its last failure. The test key is a query parameter because Allure keys can hold any character.
+
+- The per-test page is `/cycles/<cycle>/test?key=<key>`: pass rate, flaky badge, last failure with its run, a duration bar per run and every run with branch and message. The failing-tests card, the flaky card and the cycle's test list link to it.
+- The cycle page gains a Tests card: a search box (name, full name, group), "Slowest tests" by median time and "Got slower", where the median of the last three runs beats the median before by more than timing noise (the 5 % rule from P6, with a 20 ms floor for one test).
+- The static demo exports the list and one history file per test, named by a 32-bit FNV-1a of the key that `static-backend.ts` computes the same way.
+
 ## Consequences
 
 - The run page answers "what broke?" without opening Allure or Compare.

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { FlakyTestsCard } from "./FlakyTestsCard";
@@ -9,7 +10,7 @@ function renderCard(payload: unknown) {
   vi.stubGlobal("fetch", fetchMock);
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <FlakyTestsCard cycle="fake-api" />
+      <MemoryRouter><FlakyTestsCard cycle="fake-api" /></MemoryRouter>
     </QueryClientProvider>
   );
   return fetchMock;

@@ -9,6 +9,7 @@ import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { QuickRunPage } from "../features/execution/QuickRunPage";
 import { HistoryPage } from "../features/history/HistoryPage";
 import { RunDetailPage } from "../features/run-detail/RunDetailPage";
+import { TestPage } from "../features/tests/TestPage";
 import { AIIntegrationSettingsPage } from "../features/settings/AIIntegrationSettingsPage";
 
 export const routes = [
@@ -27,6 +28,10 @@ export const routes = [
       {
         path: "cycles/:name",
         element: <CycleDetailPage />
+      },
+      {
+        path: "cycles/:name/test",
+        element: <TestPage />
       },
       {
         path: "runs",
