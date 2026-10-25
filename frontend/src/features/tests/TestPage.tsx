@@ -65,7 +65,7 @@ export function TestPage() {
     );
   }
 
-  const { test, points, last_failure: lastFailure } = query.data;
+  const { test, points, last_failure: lastFailure, owners, issue_url: issueUrl } = query.data;
   const passRate = test.runs > 0 ? Math.round((100 * test.passed) / test.runs) : null;
 
   return (
@@ -83,7 +83,16 @@ export function TestPage() {
             ? `Passed ${test.passed} of ${countLabel(test.runs, "run")} (${passRate}%) in ${cycle}`
             : `No recorded outcome in ${cycle}`
         }
-        actions={back}
+        actions={
+          <span className="flex flex-wrap items-center gap-3">
+            {issueUrl ? (
+              <a href={issueUrl} target="_blank" rel="noreferrer" className="text-sm text-brand-300 hover:underline">
+                Open an issue
+              </a>
+            ) : null}
+            {back}
+          </span>
+        }
       />
 
       {lastFailure ? (
@@ -133,7 +142,8 @@ export function TestPage() {
           items={[
             { label: "Full name", value: <span className="break-all font-mono text-xs">{test.full_name || "—"}</span> },
             { label: "Group", value: test.group },
-            { label: "Stage", value: test.stage || "—" }
+            { label: "Stage", value: test.stage || "—" },
+            { label: "Owners", value: owners.length > 0 ? owners.join(", ") : "No CODEOWNERS rule matches this test" }
           ]}
         />
       </Card>

@@ -9,6 +9,7 @@ each run's own Allure ``*-result.json`` snapshot, so it needs no schema change.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from statistics import median
 from typing import Any
 
@@ -191,3 +192,11 @@ def load_test_history(cycle: str, key: str, *, window: int = DEFAULT_WINDOW) -> 
         for run, case in reversed(observed)
     )
     return TestHistory(cycle=cycle, summary=_summarise(key, observed), points=points)
+
+
+def cycle_source(cycle: str) -> tuple[Path | None, str | None]:
+    """The checkout and ``owner/name`` repository of the cycle's latest run that recorded them."""
+    for run in flaky_service._cycle_runs(cycle):
+        if run.target_repo or run.repository:
+            return (Path(run.target_repo) if run.target_repo else None), run.repository
+    return None, None

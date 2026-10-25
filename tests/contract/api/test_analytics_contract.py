@@ -373,7 +373,7 @@ def test_analytics_flaky_contract(monkeypatch) -> None:  # noqa: ANN001
     assert client.get("/api/v1/analytics/flaky?cycle=x&window=1").status_code == 422
 
 
-def test_cycle_tests_and_test_history_contract(monkeypatch) -> None:  # noqa: ANN001
+def test_cycle_tests_and_test_history_contract(monkeypatch, tmp_path) -> None:  # noqa: ANN001
     from testo_core.services import test_history as th
 
     summary = th.TestSummary(
@@ -414,6 +414,11 @@ def test_cycle_tests_and_test_history_contract(monkeypatch) -> None:  # noqa: AN
         ),
     )
 
+    (tmp_path / "CODEOWNERS").write_text("tests/api/ @org/api\n", encoding="utf-8")
+    monkeypatch.setattr(
+        "testo_api.routes.analytics.cycle_source", lambda cycle: (tmp_path, "acme/shop")
+    )
+
     client = TestClient(create_app())
     listing = client.get("/api/v1/analytics/tests", params={"cycle": "smoke", "q": "login"})
     assert listing.status_code == 200
@@ -431,5 +436,7 @@ def test_cycle_tests_and_test_history_contract(monkeypatch) -> None:  # noqa: AN
     assert body["test"]["key"] == "k1"
     assert body["points"][0]["branch"] == "main"
     assert body["last_failure"]["message"] == "AssertionError"
+    assert body["owners"] == ["@org/api"]
+    assert body["issue_url"].startswith("https://github.com/acme/shop/issues/new?title=Flaky+test")
     missing = client.get("/api/v1/analytics/test-history", params={"cycle": "smoke", "key": "nope"})
     assert missing.status_code == 404

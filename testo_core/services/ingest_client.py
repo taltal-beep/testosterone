@@ -13,7 +13,7 @@ from contextlib import ExitStack
 from pathlib import Path
 from typing import Any
 
-from testo_core.services.ci_provenance import detect_ci_provenance
+from testo_core.services.ci_provenance import ci_repository, detect_ci_provenance
 
 UPLOAD_TIMEOUT_S = 120.0
 
@@ -27,12 +27,7 @@ def client_run_metadata(env: Mapping[str, str] | None = None) -> dict[str, str]:
     source = os.environ if env is None else env
     provenance = detect_ci_provenance(source)
     metadata = provenance.to_metadata() if provenance else {}
-    repository = (
-        source.get("GITHUB_REPOSITORY")
-        or source.get("CI_PROJECT_PATH")
-        or source.get("BUILDKITE_REPO")
-        or source.get("CIRCLE_PROJECT_REPONAME")
-    )
+    repository = ci_repository(source)
     if repository:
         metadata["repository"] = repository
     return metadata

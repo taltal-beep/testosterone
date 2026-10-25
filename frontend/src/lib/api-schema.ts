@@ -1131,12 +1131,16 @@ export interface components {
             group: string;
             /** History */
             history: string[];
+            /** Issue Url */
+            issue_url: string | null;
             /** Key */
             key: string;
             /** Last Status */
             last_status: string;
             /** Name */
             name: string;
+            /** Owners */
+            owners: string[];
             /** Passed */
             passed: number;
             /** Runs */
@@ -1391,7 +1395,11 @@ export interface components {
         TestHistoryResponse: {
             /** Cycle */
             cycle: string;
+            /** Issue Url */
+            issue_url: string | null;
             last_failure: components["schemas"]["TestPointItem"] | null;
+            /** Owners */
+            owners: string[];
             /** Points */
             points: components["schemas"]["TestPointItem"][];
             test: components["schemas"]["TestSummaryItem"];
