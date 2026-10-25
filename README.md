@@ -31,33 +31,26 @@ read-only static site.
 
 ## What's new
 
-New in 1.2.0:
+New in 1.3.0:
 
-- **`testo ingest`: bring any runner.** Keep your CI as it is and add one step after the tests:
-  `testo ingest 'reports/**/*.xml' --cycle web`. JUnit XML from Jest, Vitest, `go test`, JUnit5
-  or anything else becomes a recorded run with history, Compare, `testo flaky` and the PR
-  comment. No `testosterone.yaml` needed.
-- **Team server.** `docker compose up` in [deploy/server/](deploy/server/) starts the API, the
-  web UI and Postgres in one place; CI jobs upload with `testo ingest --server URL --token ...`
-  so the whole team shares one history. Guide: [Team Server](docs/Processes%20&%20Guides/Team%20Server.md).
-- **Lighter install.** `pip install testo-core` no longer pulls in Behave, BehaveX and Allure-Behave.
-  Behave users add the extra: `pip install 'testo-core[bdd]'`.
-- **Flaky test detection.** `testo flaky --cycle <name>` lists tests that keep flipping between
-  pass and fail across a cycle's recent runs (`--fail-on-flaky` to gate CI), and the cycle page
-  in the UI shows them too.
-- **Pull request comments.** The GitHub Action writes the run, its failing tests and what changed
-  since the previous run to the job summary, and with `comment-on-pr: "true"` keeps one comment
-  per cycle on the pull request. The text comes from `testo report markdown`.
-- **Plugins.** Add your own test runner or reporter from any package through the
-  `testo.frameworks` / `testo.reporters` entry points; `testo plugins` lists what is installed.
-  [examples/plugin/](examples/plugin/) is a complete one.
-- **Playwright.** `equipment: playwright` runs `npx playwright test` with its JUnit and HTML
-  reporters wired in, so its tests count in summaries, diffs and the UI with no extra setup.
-- **A restyled web UI** (navy glass cards, a sidebar on desktop) and a
-  [docs site](https://taltal-beep.github.io/testosterone/docs/) with a
-  [Getting Started](docs/Getting%20Started.md) guide.
-- **Fixes:** a `pip install`ed `testo-core` keeps its run data in `./.testo/` (or `$TESTO_HOME`)
-  instead of `site-packages`, and BehaveX stages keep BehaveX's own full HTML report.
+- **See what failed first.** A failed run's page opens with its failing tests: the message, the
+  stage, "New" or "Failing for 3 runs", a flaky badge, and failures that share a cause grouped.
+- **`testo ui`.** `pip install 'testo-core[api]' && testo ui` opens the dashboard on this
+  machine's run history. The UI ships in the wheel: no checkout, no Node.
+- **A page per test.** Pass rate, last failure, duration per run and every run with its branch.
+  The cycle page searches tests and lists the slowest ones and the ones that got slower.
+- **Pull request comments judged against `main`.** A PR's run is compared with the latest run on
+  its target branch, not with another PR's run (`testo report markdown --baseline-branch`).
+- **Owners and issues for flaky tests.** Owners come from your CODEOWNERS file, with an
+  "Open an issue" link prefilled with the test, its last failure and its owners.
+- **Less noise.** A run that is a few milliseconds slower is no longer a regression.
+- **Team server, all opt-in:** per-user accounts and an audit log (`TESTO_AUTH=accounts`), a queue
+  that survives restarts (`TESTO_RUN_QUEUE=db`), parallel stages (`max_parallel_stages`), and each
+  stage in a throwaway container (`TESTO_RUNNER=container`).
+
+New in 1.2.0: `testo ingest` for any runner's JUnit XML, the team server, a lighter install
+(Behave moved to the `bdd` extra), flaky test detection, pull request comments, plugins and
+`equipment: playwright`.
 
 <details>
 <summary><strong>See the new commands</strong>: <code>testo flaky</code>, <code>testo report markdown</code> and <code>testo plugins</code> on the fake-api cycle</summary>
@@ -156,7 +149,7 @@ pip install 'testo-core[api]'
 testo ui                               # API + web UI on http://127.0.0.1:8000, opens the browser
 ```
 
-The wheel carries a built UI (releases after 1.2.0), so this needs no checkout and no Node.
+The wheel carries a built UI (1.3.0 and later), so this needs no checkout and no Node.
 Working on the frontend itself:
 
 ```bash

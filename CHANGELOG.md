@@ -8,6 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-25
+
 ### Added
 - Flaky tests and the per-test page show the test's owners from CODEOWNERS and an "Open an issue" link (GitHub's new-issue form, prefilled with the test, cycle, last failure and owners). Runs record their `repository` (`owner/name`) from CI variables or a github.com `origin` remote
 - A page for each test (`/cycles/<cycle>/test?key=`): pass rate, flaky or not, last failure, duration per run and every run with its branch. The cycle page can search its tests and lists the slowest tests and the ones that got slower. New endpoints `GET /api/v1/analytics/tests` and `GET /api/v1/analytics/test-history`
@@ -327,7 +329,8 @@ First public release. Published to PyPI (`testo-core`), GHCR (`testo-runner`), a
 
 ---
 
-[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/taltal-beep/testosterone/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/taltal-beep/testosterone/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/taltal-beep/testosterone/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/taltal-beep/testosterone/compare/v1.0.0...v1.1.0
