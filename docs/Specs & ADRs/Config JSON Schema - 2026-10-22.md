@@ -24,7 +24,7 @@ related: "Command Reference, Getting Started"
 
 - **Generate from the dataclasses.** Rejected: the dataclasses are the loaded form, not the YAML. YAML has `equipment`, `if` and `args` as a string or list; the dataclasses have `framework`, `if_expr` and a tuple.
 - **Switch the loader to Pydantic and use its schema.** Rejected for now: a rewrite of the loader for a small editor feature.
-- **Submit to SchemaStore.** Done on 2026-10-26 with the maintainer's go-ahead: [SchemaStore/schemastore#6552](https://github.com/SchemaStore/schemastore/pull/6552) registers this URL for `testosterone.yaml` and `testosterone.yml`. Once it is merged, editors apply the schema to those files without the `$schema` line, and it keeps following `main` because SchemaStore links to the file here instead of copying it.
+- **Submit to SchemaStore.** Tried and declined for now: [SchemaStore/schemastore#6546](https://github.com/SchemaStore/schemastore/pull/6546) (2026-10-24) was closed by a maintainer, who said space in the catalog is limited and to open a new PR once the tool is widely used. A duplicate opened by mistake on 2026-10-26 ([#6552](https://github.com/SchemaStore/schemastore/pull/6552)) was closed the same day. Until then, editors need the `$schema` line, which `testo config init` and `testo init` already write.
 
 ## Consequences
 
