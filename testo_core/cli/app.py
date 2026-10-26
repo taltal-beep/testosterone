@@ -49,6 +49,7 @@ def _register_commands() -> None:
     Each handler does its own deferred imports (engine, frameworks, DB), so
     only the lightweight Typer + Rich surface is loaded here.
     """
+    from testo_core.cli.commands import badge as badge_mod
     from testo_core.cli.commands import clean as clean_mod
     from testo_core.cli.commands import config as config_cmd
     from testo_core.cli.commands import config_db as config_db_cmd
@@ -94,6 +95,11 @@ def _register_commands() -> None:
         help="Send a recorded run to Slack or Teams (webhook URLs from the environment).",
         rich_help_panel="Run and report",
     )(notify_mod.notify)
+    app.command(
+        name="badge",
+        help="Write a README badge for a cycle's latest run (SVG, or shields.io JSON).",
+        rich_help_panel="Run and report",
+    )(badge_mod.badge)
     app.command(
         name="config-db",
         help="Set database.url in testosterone.yaml (or \\[tool.testosterone] in pyproject.toml).",

@@ -317,6 +317,30 @@ Exit `0` when sent or when there is nothing to report, `2` for a bad flag, a mis
 
 ---
 
+## `testo badge`
+
+A README badge for a cycle's latest run: **tests | 412 passed · 2 flaky**. Green when everything passed, yellow when the cycle has flaky tests (`testo flaky`'s window), red when a test failed or broke, grey with no run.
+
+```bash
+testo badge --cycle web --out public/testo-badge.svg     # in CI, next to a published report
+testo badge --cycle web --format json --out public/testo-badge.json   # a shields.io endpoint badge
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--cycle` | latest run of any cycle | Which cycle's latest run |
+| `--out` / `-o` | stdout | File to write (folders are created) |
+| `--format` | `svg` | `svg`: the image. `json`: what `https://img.shields.io/endpoint?url=<its URL>` reads, for shields.io's styles and logos |
+| `--label` | `tests` | Left-hand text |
+
+Exit `0`, or `2` for a bad `--format`. A [team server](../Processes%20&%20Guides/Team%20Server.md) serves the same badge live at `GET /api/v1/badge.svg?cycle=web` and `GET /api/v1/badge.json?cycle=web` (cached 5 minutes). Those are reads like any other: with `TESTO_PROTECT_READS` on, a public README can't load them, so publish the file `testo badge` writes instead. Put it in a README with:
+
+```markdown
+[![tests](https://you.github.io/project/testo-badge.svg)](https://you.github.io/project/)
+```
+
+---
+
 ## `testo doctor`
 
 Health check: config load, framework CLIs on PATH, Node.js + Allure Report 3 CLI, optional Docker warnings, DB probe if `DATABASE_URL` or config URL is set.

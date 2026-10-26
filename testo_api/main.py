@@ -16,6 +16,7 @@ from testo_api.report_origin import route_report_request
 from testo_api.routes.ai import router as ai_router
 from testo_api.routes.analytics import router as analytics_router
 from testo_api.routes.auth import router as auth_router
+from testo_api.routes.badge import router as badge_router
 from testo_api.routes.cycles import router as cycles_router
 from testo_api.routes.dashboard import router as dashboard_router
 from testo_api.routes.health import router as health_router
@@ -87,6 +88,7 @@ def create_app() -> FastAPI:
 
     app.include_router(ai_router)
     app.include_router(auth_router)
+    app.include_router(badge_router)
     app.include_router(cycles_router)
     app.include_router(history_router)
     app.include_router(analytics_router)
