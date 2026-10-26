@@ -277,7 +277,9 @@ def _run_resolved_stage(
             on_chunk=on_chunk,
             tail_lines=tail_lines,
             quarantine=quarantine,
-            resource_env=resource_env,
+            # Which stage this is (pytest --testo-shard reads the cycle's test times),
+            # plus the stage's key or what its workers need to lease their own.
+            testo_env={"TESTO_CYCLE": plan_name, "TESTO_STAGE": stage.name, **resource_env},
         )
     finally:
         if held is not None:
@@ -305,7 +307,7 @@ def _run_process_stage(
     on_chunk: Callable[[bytes], None] | None,
     tail_lines: int,
     quarantine: tuple[QuarantineRule, ...],
-    resource_env: Mapping[str, str],
+    testo_env: Mapping[str, str],
 ) -> StageResult:
     argv = adapter.build_argv(
         target_repo=target_repo,
@@ -326,9 +328,8 @@ def _run_process_stage(
         "TESTO_ARTIFACTS_ROOT",
         "TESTO_SHARED_ALLURE_RESULTS_DIR",
     }
-    # The stage's key (per: stage), or what its workers need to lease their own.
-    env.update(resource_env)
-    stage_keys |= set(resource_env)
+    env.update(testo_env)
+    stage_keys |= set(testo_env)
     adapter_env = getattr(adapter, "extra_env", None)
     if adapter_env is not None:
         for key, value in adapter_env().items():

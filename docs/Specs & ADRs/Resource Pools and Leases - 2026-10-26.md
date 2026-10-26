@@ -27,6 +27,7 @@ The owner asked for a general answer, not a VM feature: the system under test al
 5. **One client, two places.** `testo_core/resources/client.py` talks to the local run-history database, or to a team server's `/api/v1/resources` when `TESTO_SERVER_URL` is set. `acquire()` waits, runs `on_take`, and returns a `HeldLease` that heartbeats in a thread and runs `on_release` and gives the key back on exit. `testo lease run POOL -- CMD` is the CLI wrapper; workers read `TESTO_RESOURCE_ID` and friends.
 6. **The server learns pools from its users.** A take request carries the pool's keys, labels and data (never its hooks), so a team server needs no copy of each repository's config, and every client decides what it would accept. Reads never show lease ids; taking a key back from someone else needs `admin` with accounts.
 7. **Stages ask for keys** (phase 2). A stage's `resources:` names a pool and `per: worker | test | stage` (`testo_core/engine/stage_resources.py`). `per: stage` is leased by the executor around the stage's process. For `worker` and `test` the executor only passes the pool down in `TESTO_RESOURCE_SPEC` (with where the leases live), and the pytest plugin's autouse fixtures in each worker take the keys, so the xdist controller never holds one and a key is never shared between workers. `workers: auto` sets the worker count to the pool's free keys when the stage starts. A `per: stage` stage that gets no key returns `124`, the same as a timeout.
+8. **Shards by time** (phase 3). `testo_core/services/test_split.py` splits a list of tests into N shards with the longest-processing-time rule (longest first, each to the least-loaded shard; within 4/3 of the best split), using each test's median duration from `list_cycle_tests` or the team server's `GET /api/v1/analytics/tests`. Ties go by name, so the split depends only on the set of tests and their times, never their order; shards on different machines agree as long as they read the same history. `pytest --testo-shard I/N` deselects the other shards' tests (after `-k`/`-m`); under xdist the controller loads the times once and passes them to its workers in `workerinput`, so every worker picks the same tests. `testo split` does the same for any runner. `testo run` now sets `TESTO_CYCLE` and `TESTO_STAGE` for each stage, so the plugin finds the cycle's times.
 
 ## Options considered
 
@@ -43,8 +44,9 @@ The owner asked for a general answer, not a VM feature: the system under test al
 - The user name in a lease comes from the client's OS account unless the server has accounts and a signed-in session; the shared API token names no one.
 - Keys nobody has described for a week, and that are free and enabled, drop off the Resources page; their rows stay.
 - `workers: auto` counts free keys once; if other people take keys meanwhile, the extra workers wait in line rather than share.
+- A shard that can't load the times (server down) stops with a usage error instead of splitting without them, because other shards might have them and pick differently.
 - The queue position is lost if a waiter's process restarts (it gets a new id). That's the price of not keeping state on the client.
 
 ## Next
 
-Phase 2 (stage `resources:`, `workers: auto`, the pytest options and `testo_resource` fixture) is done. Later, not started: timing-based splitting of tests across keys, then per-stage CPU and memory limits in the container runner.
+Phases 2 (stage `resources:`, `workers: auto`, the pytest options and `testo_resource` fixture) and 3 (shards by time) are done. Later, not started: per-stage CPU and memory limits in the container runner.

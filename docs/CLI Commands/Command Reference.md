@@ -405,6 +405,30 @@ Exit codes: `2` for an unknown pool, a bad config or no command after `--`; `3` 
 
 ---
 
+## `testo split`
+
+Split a cycle's tests into shards that take about the same time, from each test's median time over the cycle's recent runs (longest test first, each to the shard with the least time so far). For CI matrix jobs, or one shard per key of a pool. Guide: [Shared Resource Pools § Split tests by time](../Processes%20&%20Guides/Shared%20Resource%20Pools.md#split-tests-by-time).
+
+```bash
+testo split --cycle flows --shards 4                       # table: tests and time per shard
+pytest --collect-only -q | testo split --cycle flows --shards 4 --index 2 --tests -   # shard 2's node ids
+testo split --cycle flows --shards 4 --json                # every shard, with its tests
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--cycle` | required | Cycle whose test times to use |
+| `--shards` | required | How many shards |
+| `--index I` | none | Print only shard I's tests (1 to `--shards`), one per line |
+| `--tests FILE` | the cycle's history | Tests to split, one per line (`-` reads stdin). pytest node ids are matched to their recorded names |
+| `--stage` | all | Only this stage's tests |
+| `--server` | `$TESTO_SERVER_URL` | Read the times from a team server (token from `$TESTO_API_TOKEN`) |
+| `--window` | `20` | Recent runs to take the times from |
+
+Tests with no recorded time count as a typical (median) test; with no history at all the split is round robin. The split depends only on which tests there are and their times, not their order, so every shard that sees the same history picks the same tests. Exit codes: `2` for a bad `--index` or unreadable `--tests`, `3` when the server can't be reached, `1` when there is nothing to split.
+
+---
+
 ## `testo version`
 
 ```bash
@@ -432,6 +456,8 @@ testo-core installs a pytest plugin (entry point `pytest11`, `testo_core/pytest_
 | `--testo-resource-per worker\|test` | One key per worker (default) or a fresh one per test |
 | `--testo-resource-label LABEL` | Only keys with this label (repeat for more) |
 | `--testo-resource-wait DURATION` | How long to wait for a key (default `30m`); then the test fails |
+| `--testo-shard I/N` | Run only shard I of N, split by time like [`testo split`](#testo-split) (also `$TESTO_SHARD`). Bad value or unreachable server: usage error (exit `4`), never a guess |
+| `--testo-timings CYCLE` | Cycle whose test times `--testo-shard` uses (default `$TESTO_CYCLE`, which `testo run` sets, else the rootdir's name; from `--testo-server` / `$TESTO_SERVER_URL` when set) |
 
 The session's JUnit XML (yours if `--junitxml` is set, else a temporary file in a `.testo-*` folder of the rootdir, removed afterwards) is recorded through the same path as `testo ingest`, into a `pytest` stage, and the run writes `artifacts/` like `testo ingest` does. One line in pytest's summary says where it went. Recording never changes pytest's exit code: a problem is reported on that line instead. Nothing is recorded when no tests ran, or on a pytest-xdist worker (the controller records).
 
@@ -458,6 +484,8 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `TESTO_SLACK_WEBHOOK_URL`, `TESTO_TEAMS_WEBHOOK_URL` | Webhooks for `testo notify` and the `slack` / `teams` reporters |
 | `TESTO_SERVER_URL`, `TESTO_API_TOKEN` | Team server for `testo lease` (and `pytest --testo-server`) |
 | `TESTO_LEASE_DB_URL` | Database for local leases when it isn't the run-history one |
+| `TESTO_SHARD` | `I/N`: run only that shard of a pytest session ([`--testo-shard`](#pytest---testo)) |
+| `TESTO_CYCLE`, `TESTO_STAGE` | Set by `testo run` for each stage's process: which cycle and stage it is |
 | Reporter tokens | e.g. `REPORTPORTAL_TOKEN`, `SLACK_WEBHOOK` via `${env:…}` in YAML |
 
 ---
