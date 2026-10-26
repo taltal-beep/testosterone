@@ -299,7 +299,10 @@ def apply_workers_override(
 ) -> Plan:
     """Return *plan* with only the resolved *stages*, each forced to *workers_override* when set."""
     if workers_override is not None:
-        stages = [dataclasses.replace(s, workers=int(workers_override)) for s in stages]
+        stages = [
+            dataclasses.replace(s, workers=int(workers_override), workers_auto=False)
+            for s in stages
+        ]
     return dataclasses.replace(plan, stages=tuple(stages))
 
 

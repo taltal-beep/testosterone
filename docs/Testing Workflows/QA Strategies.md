@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-06-25
-updated: 2026-10-24
+updated: 2026-10-26
 ---
 
 # QA Strategies
@@ -92,6 +92,8 @@ cycles:
 ```
 
 See [Deep Dive § Orchestrator level](../Architecture/Deep%20Dive%20-%20Execution%20Logic.md#orchestrator-level--opt-in-parallel-stages).
+
+**Keys for parallel workers** (per stage): `resources: POOL` gives each worker (or each test, or the stage) its own key from a pool under the top-level `resources:`, and `workers: auto` starts one worker per free key. See [Shared Resource Pools § Use a pool in a cycle](../Processes%20&%20Guides/Shared%20Resource%20Pools.md#use-a-pool-in-a-cycle).
 
 **Results an earlier step wrote (`equipment: junit`):** no command runs; the stage records the JUnit XML its `junit_xml` globs match (files of any age) and fails when a test failed or nothing matched. `testo ingest` builds exactly this stage on the fly ([Command Reference § testo ingest](../CLI%20Commands/Command%20Reference.md#testo-ingest)).
 

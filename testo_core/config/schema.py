@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from testo_core.resources.pools import ResourcePool
+    from testo_core.resources.pools import ResourcePool, StageResources
 
 # Supported frameworks. Add new ones in :mod:`testo_core.frameworks` and append here.
 SUPPORTED_FRAMEWORKS: frozenset[str] = frozenset(
@@ -91,6 +91,10 @@ class Stage:
     # files in the stage's results dir, so non-Allure runners count in the
     # summaries, health % and reports like any other stage.
     junit_xml: tuple[str, ...] = ()
+    # ``resources:``: the pool its workers lease keys from (testo_core/resources/).
+    resources: StageResources | None = None
+    # ``workers: auto``: as many workers as the pool has free keys when the stage starts.
+    workers_auto: bool = False
 
 
 @dataclass(frozen=True)

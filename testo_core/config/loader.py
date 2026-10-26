@@ -167,6 +167,7 @@ def _build_cycle_config(
     if not isinstance(cycles_raw, dict) or not cycles_raw:
         raise ConfigValidationError("'cycles:' must be a non-empty mapping.")
     shared_quarantine = parse_quarantine(raw.get("quarantine"), where="top-level")
+    pools = parse_resources(raw.get("resources"))
     cycles: dict[str, Plan] = {}
     for cycle_name, cycle_raw in cycles_raw.items():
         name_key = str(cycle_name)
@@ -182,6 +183,7 @@ def _build_cycle_config(
             defaults=defaults,
             config_dir=config_dir,
             shared_quarantine=shared_quarantine,
+            pools=pools,
         )
         cycles[cycle.name] = cycle
     reporters = parse_reporters(raw.get("reporters"), config_dir=config_dir)
@@ -191,7 +193,7 @@ def _build_cycle_config(
         cycles=cycles,
         reporters=reporters,
         source_path=source,
-        resources=parse_resources(raw.get("resources")),
+        resources=pools,
     )
 
 

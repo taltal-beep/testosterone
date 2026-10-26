@@ -70,6 +70,7 @@ def test_full_config_is_valid() -> None:
         "defaults": {"target_repo": ".", "timeout_s": None, "workers": 2, "extra_env": {"A": 1}},
         "reporters": [{"type": "allure"}, {"type": "slack", "when": "change"}],
         "quarantine": ["test_upload_retries"],
+        "resources": {"vms": {"items": ["vm-1", {"id": "vm-2", "labels": ["win"]}]}},
         "cycles": {
             "pr": {
                 "description": "PR gate",
@@ -86,6 +87,23 @@ def test_full_config_is_valid() -> None:
                     },
                     {"name": "legacy", "framework": "behave", "args": ["features/smoke.feature"]},
                     {"name": "go", "equipment": "junit", "junit_xml": ["reports/go-*.xml"]},
+                    {
+                        "name": "flows",
+                        "equipment": "pytest",
+                        "workers": "auto",
+                        "resources": {
+                            "pool": "vms",
+                            "per": "test",
+                            "labels": ["win"],
+                            "wait": "10m",
+                        },
+                    },
+                    {
+                        "name": "deploy",
+                        "equipment": "command",
+                        "args": "./d.sh",
+                        "resources": "vms",
+                    },
                 ],
             }
         },
@@ -119,6 +137,30 @@ def test_full_config_is_valid() -> None:
             "does not match",
         ),
         ({"cycels": {}}, "'cycels' was unexpected"),
+        (
+            {
+                "cycles": {
+                    "c": {"stages": [{"name": "s", "equipment": "pytest", "workers": "many"}]}
+                }
+            },
+            "is not valid under any of the given schemas",
+        ),
+        (
+            {
+                "cycles": {
+                    "c": {
+                        "stages": [
+                            {
+                                "name": "s",
+                                "equipment": "pytest",
+                                "resources": {"pool": "v", "per": "run"},
+                            }
+                        ]
+                    }
+                }
+            },
+            "is not valid under any of the given schemas",
+        ),
         (
             {"quarantine": [{"test": "t", "ownr": "@x"}], "cycles": {}},
             "is not valid under any of the given schemas",

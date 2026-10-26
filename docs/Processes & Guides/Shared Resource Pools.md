@@ -65,6 +65,54 @@ testo lease run flow-vms --label win11 --wait 10m -- ./run_flow.sh
 
 Scripts that can't wrap a command use `take`, `heartbeat` and `release`; see [Command Reference § testo lease](../CLI%20Commands/Command%20Reference.md#testo-lease). Run several `testo lease run` at once (one per worker, from a shell loop, a CI matrix or your own runner) and each gets a different key; when there are more workers than keys, the extra ones wait in line.
 
+## Use a pool in a cycle
+
+A stage can ask for keys itself with `resources:`, so `testo run` hands them out:
+
+```yaml
+cycles:
+  flows:
+    stages:
+      - name: flow-tests
+        equipment: pytest
+        args: "tests/flows"
+        workers: auto                 # as many pytest-xdist workers as the pool has free keys
+        resources:
+          pool: flow-vms
+          per: worker                 # worker (default), test, or stage
+          labels: [win11]             # optional: only keys with these labels
+          wait: 30m                   # how long to wait for a key (default 30m; "forever" for no limit)
+      - name: deploy-check
+        equipment: command
+        args: "./check_all.sh"
+        resources: { pool: flow-vms, per: stage }
+```
+
+`resources: flow-vms` is short for `{pool: flow-vms}`.
+
+| `per` | Who takes a key | When it goes back |
+|-------|-----------------|-------------------|
+| `worker` | Each pytest(-xdist) worker, once, for all the tests it runs | When the worker ends |
+| `test` | Each test (pytest only); `on_take` and `on_release` run around every test, so each test gets a freshly reset key | After the test |
+| `stage` | Testosterone, before the stage starts. The stage's process gets the variables above | When the stage ends. With no key within `wait`, the stage fails like a timeout (`testo run` exits `3`) |
+
+With `per: worker` or `per: test`, the stage passes the pool down in `TESTO_RESOURCE_SPEC` and the pytest plugin in each worker takes the key, so the pytest-xdist controller holds none. Other runners can take one per worker with `testo lease run "$TESTO_RESOURCE_POOL" -- ...`. `workers: auto` needs `per: worker` or `per: test`, and counts free keys once, when the stage starts; a worker that finds none free waits in line.
+
+The same works in plain pytest, without a cycle:
+
+```bash
+pytest -n 4 --testo-resource flow-vms                         # a key per worker
+pytest --testo-resource flow-vms --testo-resource-per test --testo-resource-label win11
+```
+
+and a test reads its key from the `testo_resource` fixture (or from the variables):
+
+```python
+def test_checkout(testo_resource):
+    vm = testo_resource.id  # "vm-03"
+    address = testo_resource.data["address"]  # from the key's data
+```
+
 ## Many developers, many laptops
 
 Leases are kept in a database, never in files:

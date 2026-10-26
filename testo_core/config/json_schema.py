@@ -94,10 +94,38 @@ def build_json_schema() -> dict[str, Any]:
                 ],
             },
             "workers": {
-                "type": "integer",
-                "minimum": 1,
                 "description": "Parallel workers (pytest with xdist, behavex, playwright). "
-                "Defaults to defaults.workers.",
+                "Defaults to defaults.workers. 'auto' (with resources per worker or test): "
+                "as many as the pool has free keys.",
+                "oneOf": [{"type": "integer", "minimum": 1}, {"const": "auto"}],
+            },
+            "resources": {
+                "description": "A pool from the top-level 'resources' that this stage's keys "
+                "come from: its name, or an object.",
+                "oneOf": [
+                    {"type": "string", "pattern": _KEY_PATTERN},
+                    {
+                        "type": "object",
+                        "required": ["pool"],
+                        "properties": {
+                            "pool": {"type": "string", "pattern": _KEY_PATTERN},
+                            "per": {
+                                "enum": ["worker", "test", "stage"],
+                                "default": "worker",
+                                "description": "Who leases a key: each test worker (pytest, or "
+                                "`testo lease run`), each test (pytest only), or the stage itself.",
+                            },
+                            "labels": {"type": "array", "items": {"type": "string"}},
+                            "wait": {
+                                "description": "How long to wait for a free key: seconds, "
+                                "'90s', '10m', '2h' or 'forever'.",
+                                "default": "30m",
+                                "type": ["number", "string"],
+                            },
+                        },
+                        "additionalProperties": False,
+                    },
+                ],
             },
             "timeout_s": _timeout(defaults.timeout_s),
             "if": {
