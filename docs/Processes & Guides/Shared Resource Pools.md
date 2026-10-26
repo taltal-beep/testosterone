@@ -26,7 +26,9 @@ resources:
       - { id: vm-03, labels: [win11], data: { address: 10.0.0.13 } }
     lease_ttl: 120                                   # seconds without a heartbeat before a key is free again
     max_per_user: 4                                  # optional: most keys one person may hold
+    reuse_delay: 40                                  # optional: seconds an expired key stays out
     on_take: "vmrun revertToSnapshot $TESTO_RESOURCE_ID clean"   # optional, your own command
+    on_check: "./vm-ready.sh $TESTO_RESOURCE_ID"     # optional: exit 0 if the key is usable
     on_release: "my-cleanup $TESTO_RESOURCE_ID"      # optional
     hook_timeout: 300                                # seconds, for each hook
   license-seats:
@@ -39,8 +41,10 @@ resources:
 | `count` | | Instead of `items`: that many keys named `<pool>-1` to `<pool>-N` |
 | `lease_ttl` | `120` | Seconds a lease lives without a heartbeat. A worker that dies frees its key after this long |
 | `max_per_user` | none | Most keys one user may hold at once; more requests wait |
-| `on_take` | none | Shell command run, with the variables below set, right after a key is taken. If it fails, the key is taken out of the pool (disabled) and another key is tried |
-| `on_release` | none | Shell command run before a key is given back. If it fails, the key is disabled |
+| `reuse_delay` | `lease_ttl / 3` | Seconds a key whose lease expired stays out of the pool, so a holder that was only frozen (a debugger, a sleeping laptop) finds out it lost the key before anyone else gets it. `0` hands it out at once |
+| `on_take` | none | Shell command run, with the variables below set, right after a key is taken: reset it here. If it fails, the key is taken out of the pool (disabled) and another key is tried |
+| `on_check` | none | Shell command run after `on_take`: exit `0` if the key is usable. If it fails, the key is disabled and another key is tried |
+| `on_release` | none | Shell command run before a key is given back. If it works, the key is marked clean for the next taker (`TESTO_RESOURCE_CLEAN=1`). If it fails, the key is disabled |
 | `hook_timeout` | `300` | Seconds each hook may take; longer counts as a failure |
 
 ## Give each worker its own key
@@ -61,6 +65,7 @@ testo lease run flow-vms --label win11 --wait 10m -- ./run_flow.sh
 | `TESTO_RESOURCE_LABELS` | `win11` | Its labels, comma-separated |
 | `TESTO_RESOURCE_DATA` | `{"address": "10.0.0.13"}` | Its `data`, as JSON |
 | `TESTO_RESOURCE_<NAME>` | `TESTO_RESOURCE_ADDRESS=10.0.0.13` | One variable per `data` value |
+| `TESTO_RESOURCE_CLEAN` | `1` | `1` when the last holder gave the key back after a successful `on_release` (or `testo lease release --clean`); `0` when it is new, expired, was taken back, or the pool has no `on_release` |
 | `TESTO_LEASE_ID` | `5f0c…` | Unique per lease: a safe name for this worker's own folder or log |
 
 Scripts that can't wrap a command use `take`, `heartbeat` and `release`; see [Command Reference § testo lease](../CLI%20Commands/Command%20Reference.md#testo-lease). Run several `testo lease run` at once (one per worker, from a shell loop, a CI matrix or your own runner) and each gets a different key; when there are more workers than keys, the extra ones wait in line.
@@ -140,9 +145,32 @@ Leases are kept in a database, never in files:
 
 Each lease records who holds it: the user name and host of the machine, the process, and with accounts on the server, the signed-in account. Every run keeps its own artifacts folder, and `TESTO_LEASE_ID` names a per-worker folder, so developers' files don't clash either.
 
+## Write the hooks
+
+Hooks are where your own tools create, reset and check the things in a pool; Testosterone only runs them, on the machine that took the key (never on the team server). The same three hooks fit any kind of key:
+
+| Hook | Its job | A VM | A test account | A database |
+|------|---------|------|----------------|------------|
+| `on_take` | Reset to a known state | Revert to the `clean` snapshot | Reset the password, delete its data | Restore a template |
+| `on_check` | Is it usable? | It answers on the network | It can log in | It accepts a connection |
+| `on_release` | Tidy up for the next one | Revert now, so the next take is fast | Log it out | Drop test data |
+
+Write them so they can run again on a key in any state: "already reverted" or "already gone" counts as success, because a crash can stop any hook halfway, and the next taker runs `on_take` on whatever was left. Exit `0` when it worked; anything else takes the key out of the pool with the hook's last line of output as the reason.
+
+**Reset on take, not only on release.** A worker that crashes never runs `on_release`, so the next taker gets the key as the crashed worker left it. To reset only when needed, skip the slow part when the last holder already did it:
+
+```bash
+# on_take: revert only if the previous holder didn't leave it clean
+[ "$TESTO_RESOURCE_CLEAN" = 1 ] || vmrun revertToSnapshot "$TESTO_RESOURCE_ID" clean
+```
+
+with the revert also in `on_release`, so a normal run pays for it once, at the end, and a crash still never hands over a dirty VM.
+
+Keys are made outside test runs: create the VMs, accounts or databases once with your own scripts and list them under `items`. Testosterone doesn't create or delete keys.
+
 ## See and fix the pool
 
-The **Resources** page in the UI (under Tools) shows every pool, each key's holder, when it was taken and its last heartbeat, and how many requests wait. It refreshes every few seconds. From there, or with `testo lease`, you can:
+The **Resources** page in the UI (under Tools) shows every pool, each key's holder, when it was taken and its last heartbeat, and how many requests wait. A key whose holder stopped heartbeating shows as **Expired** with when it is free again. It refreshes every few seconds. From there, or with `testo lease`, you can:
 
 - **Disable** a broken key so nobody gets it (`testo lease disable flow-vms vm-02 --reason "snapshot broken"`), and put it back (`testo lease enable`). Keys whose hooks failed show up here, disabled, with the reason.
 - **Take a key back** from its holder (`testo lease free`; an admin on a server with accounts). The holder's next heartbeat finds it gone, and `testo lease run` warns that the lease was lost.
@@ -150,7 +178,8 @@ The **Resources** page in the UI (under Tools) shows every pool, each key's hold
 ## How it works
 
 - **A lease, not a lock.** A lease is a database row with an owner and an expiry time, one row per key. Taking a key is one insert, so two workers can't get the same key on any database, from any number of machines.
-- **Heartbeats.** The holder pushes the expiry forward every `lease_ttl / 3` seconds. A process that crashes, is killed, or whose laptop goes to sleep stops sending them, and its key is free once `lease_ttl` passes. No stale locks to delete by hand.
+- **Heartbeats.** The holder pushes the expiry forward every `lease_ttl / 3` seconds. A process that crashes, is killed, or whose laptop goes to sleep stops sending them, and its key is free once `lease_ttl` and then `reuse_delay` pass. No stale locks to delete by hand. A heartbeat after the expiry is refused, so a holder that wakes up learns it lost the key (`testo lease run` warns) instead of sharing it.
+- **Clean or not.** Each key remembers whether its last lease ended with a successful `on_release`. Taking the key clears the mark, so an expired or taken-back lease never leaves a key marked clean.
 - **Fair queue.** A request that finds no free key waits in line, oldest first. A request only goes ahead of an older one when they want different keys (other labels), so nobody waits behind someone who can't use the free key anyway.
 - **One clock.** All times come from the database's owner: the team server, or this machine.
 

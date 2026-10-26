@@ -412,8 +412,8 @@ testo lease list                                     # who holds what, how many 
 | `testo lease run POOL [-l LABEL] [--wait 30m] [--note TEXT] -- CMD...` | Wait for a key, run `CMD` with `TESTO_RESOURCE_ID`, `TESTO_RESOURCE_POOL`, `TESTO_RESOURCE_LABELS`, `TESTO_RESOURCE_DATA`, `TESTO_RESOURCE_<NAME>` per data value and `TESTO_LEASE_ID` set, heartbeat while it runs, give the key back when it ends. Exits with `CMD`'s exit code |
 | `testo lease take POOL [-l LABEL] [--wait 30m] [--ttl DURATION] [--json]` | Take a key and print `<key> <lease id>` (or JSON with the env vars). Nothing heartbeats it: it lives `--ttl` (default the pool's `lease_ttl`) unless you call `heartbeat` |
 | `testo lease heartbeat LEASE_ID` | Keep a lease alive for another TTL. Exit `1` when it is gone |
-| `testo lease release LEASE_ID` | Give the key back |
-| `testo lease list [POOL] [--json]` | Each pool's keys: free, held (by whom, since when) or disabled, and how many requests wait |
+| `testo lease release LEASE_ID [--clean]` | Give the key back. `--clean`: you reset it yourself, so the next taker gets `TESTO_RESOURCE_CLEAN=1` |
+| `testo lease list [POOL] [--json]` | Each pool's keys: free (and whether it was left clean), held (by whom, since when), expired (free again after the pool's `reuse_delay`) or disabled, and how many requests wait |
 | `testo lease disable POOL KEY [--reason TEXT]` / `enable POOL KEY` | Take a broken key out of the pool, put it back |
 | `testo lease free POOL KEY` | Take a key back from its holder (needs `admin` on a server with accounts) |
 

@@ -52,6 +52,10 @@ def test_a_pool_survives_the_trip_through_json() -> None:
     # A server never gets the commands.
     assert "on_take" not in pool.to_json(hooks=False)
     assert parse_pool("vms", pool.to_json(hooks=False)).on_take is None
+    checked = parse_pool("vms", {"count": 2, "on_check": "ping", "reuse_delay": 0})
+    assert parse_pool("vms", checked.to_json()) == checked
+    assert "on_check" not in checked.to_json(hooks=False)
+    assert parse_pool("vms", checked.to_json(hooks=False)).reuse_delay == 0
 
 
 @pytest.mark.parametrize(
@@ -68,6 +72,8 @@ def test_a_pool_survives_the_trip_through_json() -> None:
         ({"items": [{"id": "a", "data": {"x": [1]}}]}, "must be a plain value"),
         ({"items": ["a"], "lease_ttl": 0}, "lease_ttl must be a number of seconds above 0"),
         ({"items": ["a"], "on_take": ""}, "on_take must be a non-empty command"),
+        ({"items": ["a"], "on_check": 3}, "on_check must be a non-empty command"),
+        ({"items": ["a"], "reuse_delay": -1}, "reuse_delay must be a number of seconds 0 or more"),
         ({"items": ["a"], "ttl": 5}, "unknown key(s) ['ttl']"),
     ],
 )
