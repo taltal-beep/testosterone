@@ -157,7 +157,7 @@ def test_oversized_attachment_is_skipped(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     ("content", "message"),
-    [("{not json", "not valid JSON"), ('{"config": {}}', "not a Playwright JSON report")],
+    [("{not json", "not valid JSON"), ('{"config": {}}', "not a known JSON report")],
 )
 def test_bad_json_is_reported_and_skipped(tmp_path: Path, content: str, message: str) -> None:
     (tmp_path / "bad.json").write_text(content, encoding="utf-8")

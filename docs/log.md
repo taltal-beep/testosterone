@@ -108,3 +108,7 @@ Added [Shared Resource Pools](Processes%20&%20Guides/Shared%20Resource%20Pools.m
 ## 2026-10-26: project health
 
 Added [Project Health - 2026-10-26](Specs%20&%20ADRs/Project%20Health%20-%202026-10-26.md) to Specs & ADRs (the test health score and the test-only AI review checks).
+
+## 2026-10-26: runner coverage
+
+Added [Runner Coverage - 2026-10-26](Specs%20&%20ADRs/Runner%20Coverage%20-%202026-10-26.md) to Specs & ADRs (result files recognised by content: Jest/Vitest JSON, TRX, `go test -json`, Robot `output.xml`, Allure folders).

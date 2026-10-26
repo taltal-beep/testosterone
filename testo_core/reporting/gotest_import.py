@@ -1,0 +1,167 @@
+"""Convert ``go test -json`` output into Allure ``*-result.json`` dicts.
+
+``go test -json ./... > go-test.json`` is built into Go, so Go suites need no
+``gotestsum`` or ``go-junit-report``. The file is one JSON event per line
+(``{"Action": "pass", "Package": "...", "Test": "TestX/case", "Elapsed": 0.01}``);
+lines that aren't events (build output) are ignored.
+
+What becomes a result:
+
+- every test that ran to ``pass``, ``fail`` or ``skip``, named
+  ``<package>.<Test>/<subtest>``;
+- a parent test only when it has no subtests, or failed while none of its
+  subtests did (otherwise its subtests already tell the story, and counting the
+  parent too would report one failure twice);
+- a package that failed with no failing test (a build error, a panic in
+  ``TestMain``): one ``broken`` result for the package.
+
+A test's output lines become its trace; the first ``file.go:N:`` line is its message.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+from testo_core.reporting.imported_results import iso_ms, make_result
+
+_STATUS = {"pass": "passed", "fail": "failed", "skip": "skipped"}
+_LOCATION = re.compile(r"^\s*[\w./-]+\.go:\d+:")
+_HEADER = re.compile(r"^\s*(=== (RUN|PAUSE|CONT|NAME)|--- (PASS|FAIL|SKIP))")
+
+
+@dataclass
+class _Test:
+    package: str
+    name: str
+    start_ms: int
+    action: str | None = None
+    elapsed_ms: int = 0
+    output: list[str] = field(default_factory=list)
+
+
+def _events(text: str) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(event, dict) and isinstance(event.get("Action"), str):
+            events.append(event)
+    return events
+
+
+def is_gotest_text(text: str) -> bool:
+    """True when the first JSON line of ``text`` is a ``go test -json`` event."""
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if not line.startswith("{"):
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            return False
+        return isinstance(event, dict) and "Action" in event and "Package" in event
+    return False
+
+
+def _elapsed_ms(value: Any) -> int:
+    try:
+        return max(0, int(round(float(value or 0) * 1000)))
+    except (TypeError, ValueError):
+        return 0
+
+
+def gotest_results_for_text(text: str, *, tool: str, fallback_ms: int) -> list[dict[str, Any]]:
+    tests: dict[tuple[str, str], _Test] = {}
+    packages: dict[str, _Test] = {}
+    for event in _events(text):
+        package = str(event.get("Package") or "")
+        name = event.get("Test")
+        action = str(event["Action"])
+        stamp = iso_ms(event.get("Time"), fallback_ms)
+        if name:
+            key = (package, str(name))
+            test = tests.setdefault(key, _Test(package, str(name), stamp))
+        else:
+            test = packages.setdefault(package, _Test(package, "", stamp))
+        if action == "output":
+            test.output.append(str(event.get("Output") or ""))
+        elif action in _STATUS:
+            test.action = action
+            test.elapsed_ms = _elapsed_ms(event.get("Elapsed"))
+
+    finished = {k: t for k, t in tests.items() if t.action in _STATUS}
+    parents = {(p, n.rsplit("/", 1)[0]) for p, n in finished if "/" in n}
+    failing_children = {
+        (p, n.rsplit("/", 1)[0])
+        for (p, n), t in finished.items()
+        if "/" in n and t.action == "fail"
+    }
+
+    results: list[dict[str, Any]] = []
+    for key, test in finished.items():
+        if key in parents and not (test.action == "fail" and key not in failing_children):
+            continue
+        results.append(_result(test, tool=tool))
+    failed_packages = {p for (p, _), t in finished.items() if t.action == "fail"}
+    for package, pkg in packages.items():
+        if pkg.action == "fail" and package not in failed_packages:
+            results.append(
+                _result(
+                    _Test(
+                        package,
+                        "(package failed)",
+                        pkg.start_ms,
+                        "fail",
+                        pkg.elapsed_ms,
+                        pkg.output,
+                    ),
+                    tool=tool,
+                    status="broken",
+                )
+            )
+    return results
+
+
+def _result(test: _Test, *, tool: str, status: str | None = None) -> dict[str, Any]:
+    lines = [line.rstrip("\n") for line in test.output]
+    body = [line for line in lines if not _HEADER.match(line)]
+    message = next((line.strip() for line in body if _LOCATION.match(line)), None)
+    if message is None and test.action != "pass":
+        message = next((line.strip() for line in body if line.strip()), None)
+    trace = "\n".join(body).strip() or None
+    leaf = test.name.rsplit("/", 1)[-1]
+    return make_result(
+        tool=tool,
+        framework="go",
+        language="go",
+        name=leaf,
+        full_name=f"{test.package}.{test.name}" if test.package else test.name,
+        status=status or _STATUS[str(test.action)],
+        start_ms=test.start_ms,
+        duration_ms=test.elapsed_ms,
+        suite=test.package or "go",
+        message=message if test.action != "pass" else None,
+        trace=trace if test.action != "pass" else None,
+        labels=[{"name": "subSuite", "value": test.name.rsplit("/", 1)[0]}]
+        if "/" in test.name
+        else [],
+    )
+
+
+def gotest_results_for_file(path: Path, *, tool: str) -> list[dict[str, Any]]:
+    """Allure result dicts for one ``go test -json`` file; :class:`ValueError` if it isn't one."""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if not is_gotest_text(text):
+        raise ValueError("not go test -json output (no Action/Package events)")
+    return gotest_results_for_text(text, tool=tool, fallback_ms=int(path.stat().st_mtime * 1000))

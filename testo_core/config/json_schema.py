@@ -94,7 +94,7 @@ def build_json_schema() -> dict[str, Any]:
                 ],
             },
             "workers": {
-                "description": "Parallel workers (pytest with xdist, behavex, playwright). "
+                "description": "Parallel workers (pytest with xdist, behavex, playwright, jest, vitest). "
                 "Defaults to defaults.workers. 'auto' (with resources per worker or test): "
                 "as many as the pool has free keys.",
                 "oneOf": [{"type": "integer", "minimum": 1}, {"const": "auto"}],

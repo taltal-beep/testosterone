@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-26
 related: "Product Review, Product Roadmap Work"
 ---
 
@@ -30,7 +30,7 @@ The run page's failing-tests card counted a test as new when the cycle's previou
 
 A bare `/compare` opened with two empty pickers. It now shows the latest run against the run before it in the same cycle, until the user picks, and each run option names its branch (`GET /api/v1/runs` adds `branch`), so two runs from the same minute can be told apart.
 
-`GET /api/v1/runs/{run_id}/failures` adds `rerun_commands`: one command per runner that reruns just the failing tests, built by `services/rerun_commands.py` from each test's stage, that stage's recorded framework and the test's names. pytest gets node ids (`pytest tests/api/test_orders.py::test_cancel`), Playwright `npx playwright test --grep`, and Behave `--name '^scenario$'`. JUnit or command stages count as pytest only when the names point at a Python test module; anything else is left out rather than guessed, and over 30 tests gives no command (rerun the stage). The run page shows the commands above the failing tests with a Copy button.
+`GET /api/v1/runs/{run_id}/failures` adds `rerun_commands`: one command per runner that reruns just the failing tests, built by `services/rerun_commands.py` from each test's stage, that stage's recorded framework and the test's names. pytest gets node ids (`pytest tests/api/test_orders.py::test_cancel`), Playwright `npx playwright test --grep`, and Behave `--name '^scenario$'`. JUnit or command stages count as pytest only when the names point at a Python test module; anything else is left out rather than guessed, and over 30 tests gives no command (rerun the stage). The run page shows the commands above the failing tests with a Copy button. More runners were added on 2026-10-26: [Runner Coverage](Runner%20Coverage%20-%202026-10-26.md).
 
 ### Accessibility and copy polish (A8, A9, C8, C10)
 

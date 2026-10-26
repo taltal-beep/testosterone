@@ -79,6 +79,14 @@ def get_adapter(framework: str) -> FrameworkAdapter:
         from testo_core.frameworks.playwright_adapter import PlaywrightAdapter
 
         return PlaywrightAdapter()
+    if framework in ("jest", "vitest"):
+        from testo_core.frameworks.jest_adapter import JestAdapter, VitestAdapter
+
+        return JestAdapter() if framework == "jest" else VitestAdapter()
+    if framework == "cypress":
+        from testo_core.frameworks.cypress_adapter import CypressAdapter
+
+        return CypressAdapter()
 
     from testo_core import plugins
 
