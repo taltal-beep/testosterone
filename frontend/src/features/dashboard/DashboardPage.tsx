@@ -6,6 +6,7 @@ import { Card, HealthBar, PageHeader, RunLabel, Spinner, StatusPill } from "../.
 import { MuscleShrug } from "../../components/mascot";
 import { formatDuration, formatPercent } from "../../lib/format";
 import { NeedsAttention } from "./NeedsAttention";
+import { TONE_TEXT, scoreTone } from "../health/score";
 
 const RECENT_RUNS_REFRESH_MS = 15_000;
 
@@ -62,7 +63,7 @@ export function DashboardPage() {
       <TrendBaseline kpis={data.headline_kpis} />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard label="Health" value={formatPercent(data.headline_kpis.health_pct)} trend={data.trend_indicators.health} />
+        <ProjectHealthKpi />
         <KpiCard
           label="Failed"
          
@@ -98,7 +99,7 @@ export function DashboardPage() {
                     <RunLabel run={run} linked href={run.run_detail_url} />
                   </div>
                   <div className="flex items-center gap-3 text-xs text-ink-400">
-                    <span>health {formatPercent(run.health_pct)}</span>
+                    <span>{formatPercent(run.health_pct)} passed</span>
                     {run.compare_url ? (
                       <Link to={run.compare_url} className="-my-1 inline-block py-1 text-brand-300 hover:underline">
                         compare
@@ -204,6 +205,30 @@ function TrendBaseline({ kpis }: { kpis: DashboardOverviewResponse["headline_kpi
         "No earlier run of this cycle in recent history, so there is no trend."
       )}
     </p>
+  );
+}
+
+/**
+ * The project's test health score, the same number the Project health page
+ * leads with (one source: GET /api/v1/project-health), linking to that page.
+ */
+function ProjectHealthKpi() {
+  const query = useQuery({ queryKey: ["project-health", ""], queryFn: () => apiClient.getProjectHealth() });
+  const score = query.data?.score;
+  return (
+    <Link
+      to="/health"
+      className="glass-card group block p-4 transition-colors hover:border-brand-500/50"
+      data-testid="project-health-kpi"
+      aria-label={score == null ? "Project health: no score yet. Open project health" : `Project health: ${score} out of 100${query.data?.grade ? `, grade ${query.data.grade}` : ""}. Open project health`}
+    >
+      <strong className="text-xs font-medium text-ink-300">Project health</strong>
+      <p className={`my-0.5 text-lg font-bold ${score == null ? "text-white" : TONE_TEXT[scoreTone(score)]}`}>
+        {score == null ? "n/a" : `${score} / 100`}
+        {query.data?.grade ? <span className="ml-1.5 text-sm font-semibold text-ink-300">{query.data.grade}</span> : null}
+      </p>
+      <p className="text-xs font-semibold text-brand-300 group-hover:underline">See what drives it →</p>
+    </Link>
   );
 }
 

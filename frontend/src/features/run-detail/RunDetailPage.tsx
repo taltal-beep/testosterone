@@ -288,7 +288,7 @@ export function RunDetailPage() {
           items={[
             { label: "Run ID", value: <span className="font-mono text-xs">{run.run_id}</span> },
             { label: "Exit code", value: describeExitCode(run.returncode) },
-            { label: "Health", value: formatPercent(run.health_pct) },
+            { label: "Pass rate", value: formatPercent(run.health_pct) },
             { label: "Duration", value: formatDuration(run.wall_duration_ms) }
           ]}
         />
