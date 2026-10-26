@@ -298,10 +298,12 @@ See [Scale Runs and Stages - 2026-10-24](../Specs%20&%20ADRs/Scale%20Runs%20and%
 | `behavex` | `--parallel-processes N --parallel-scheme feature`, unless `args:` already set them. |
 | `pytest` | `-n N` when N > 1 **and** pytest-xdist is importable by the `pytest` on PATH (the adapter reads its shebang and probes that interpreter). Without xdist it logs one warning and runs serially. A `-n`/`--numprocesses` or `-p no:xdist` in `args:` wins. |
 | `playwright` | `--workers=N`, unless `args:` set `--workers`/`-j` (this replaces `workers` in `playwright.config`). |
+| `jest`, `vitest` | `--maxWorkers=N`, unless `args:` set it (Jest: also `-w`, `--runInBand`/`-i`; Vitest: also `--pool`, `--no-file-parallelism`). |
 | `behave` | Nothing — native behave is single-process. Setting `workers:` on the stage loads fine but logs a warning. |
 | `command` | Nothing — the command owns its own flags (same warning). |
+| `cypress` | Nothing — Cypress runs specs one after another without its paid cloud (same warning). |
 
-The API's `GET /api/v1/cycles/{cycle}` returns `workers: null` for `behave` and `command` stages, so the UI only shows *Workers* where it can apply (pytest's is labelled "with pytest-xdist").
+The API's `GET /api/v1/cycles/{cycle}` returns `workers: null` for `behave`, `cypress` and `command` stages, so the UI only shows *Workers* where it can apply (pytest's is labelled "with pytest-xdist").
 
 ### Threading in the engine
 

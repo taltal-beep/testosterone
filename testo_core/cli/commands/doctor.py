@@ -88,6 +88,9 @@ def doctor(
             "behave": "behave",
             "behavex": "behavex",
             "playwright": "npx",
+            "jest": "npx",
+            "vitest": "npx",
+            "cypress": "npx",
         }
         for fw in sorted(used_fw):
             exe = exe_map.get(fw)

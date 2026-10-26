@@ -189,9 +189,9 @@ def _results_for_any(
         )
         return _FileResults([result], attachments=copied)
     if is_jest_report(data):
-        return _FileResults(
-            jest_results_for_report(data, tool=tool, root=repo, fallback_ms=fallback_ms)
-        )
+        results = jest_results_for_report(data, tool=tool, root=repo, fallback_ms=fallback_ms)
+        flaky = sum(1 for r in results if (r.get("statusDetails") or {}).get("flaky"))
+        return _FileResults(results, flaky=flaky)
     if isinstance(data, dict) and isinstance(data.get("suites"), list):
         from testo_core.reporting.playwright_import import playwright_results_for_file
 

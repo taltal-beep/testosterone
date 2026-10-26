@@ -13,13 +13,16 @@ from pathlib import Path
 
 # Supported frameworks. Add new ones in :mod:`testo_core.frameworks` and append here.
 SUPPORTED_FRAMEWORKS: frozenset[str] = frozenset(
-    {"pytest", "behave", "behavex", "command", "junit", "playwright"}
+    {"pytest", "behave", "behavex", "command", "junit", "playwright", "jest", "vitest", "cypress"}
 )
 
 # Frameworks that act on a stage's ``workers``: BehaveX always (``--parallel-processes``),
-# Playwright always (``--workers``), pytest only when pytest-xdist is installed (``-n``).
+# Playwright always (``--workers``), Jest and Vitest always (``--maxWorkers``),
+# pytest only when pytest-xdist is installed (``-n``).
 # The others run single-process.
-PARALLEL_FRAMEWORKS: frozenset[str] = frozenset({"pytest", "behavex", "playwright"})
+PARALLEL_FRAMEWORKS: frozenset[str] = frozenset(
+    {"pytest", "behavex", "playwright", "jest", "vitest"}
+)
 
 # Test-pyramid tiers a stage's tests are counted under. See `pyramid_data.py`.
 SUPPORTED_TIERS: frozenset[str] = frozenset({"unit", "integration", "e2e"})
@@ -30,7 +33,10 @@ DEFAULT_TIER_BY_FRAMEWORK: dict[str, str] = {
     "behave": "integration",
     "behavex": "e2e",
     "playwright": "e2e",
-    # Any other runner (Jest, Playwright, Maestro, go test, ...): the stage's
+    "jest": "unit",
+    "vitest": "unit",
+    "cypress": "e2e",
+    # Any other runner (Maestro, go test, dotnet test, ...): the stage's
     # ``args`` are the whole argv; results come in through ``junit_xml``.
     "command": "unit",
     # Runs nothing: records the JUnit XML its ``junit_xml`` globs match (``testo ingest``).

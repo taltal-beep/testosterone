@@ -93,7 +93,7 @@ def build_json_schema() -> dict[str, Any]:
             "workers": {
                 "type": "integer",
                 "minimum": 1,
-                "description": "Parallel workers (pytest with xdist, behavex, playwright). "
+                "description": "Parallel workers (pytest with xdist, behavex, playwright, jest, vitest). "
                 "Defaults to defaults.workers.",
             },
             "timeout_s": _timeout(defaults.timeout_s),

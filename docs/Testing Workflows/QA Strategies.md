@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-06-25
-updated: 2026-10-24
+updated: 2026-10-26
 ---
 
 # QA Strategies
@@ -15,7 +15,7 @@ Related: [Architecture Overview](../Architecture/Architecture%20Overview.md), [C
 
 ## Mental model
 
-A **cycle** (plan) is an ordered list of **stages**. Each stage names an **equipment** framework (`pytest`, `behave`, `behavex`, `playwright`, `command`, `junit`; `behave` and `behavex` come with the `bdd` extra), a **target_repo**, and CLI **args**. The engine runs stages **one after another** on the host unless a trigger skips the whole cycle.
+A **cycle** (plan) is an ordered list of **stages**. Each stage names an **equipment** framework (`pytest`, `behave`, `behavex`, `playwright`, `jest`, `vitest`, `cypress`, `command`, `junit`; `behave` and `behavex` come with the `bdd` extra), a **target_repo**, and CLI **args**. The engine runs stages **one after another** on the host unless a trigger skips the whole cycle.
 
 ```mermaid
 flowchart LR
@@ -49,21 +49,34 @@ cycles:
 
 **Multi-framework cycle:** `sample-all-frameworks` chains pytest → native Behave → BehaveX on `sample_target_repo`.
 
-**Any other runner (`equipment: command`):** `args` is the whole command. Point `junit_xml` at the JUnit report it writes, and the results show up like a pytest stage's:
+**JavaScript runners (`equipment: jest`, `vitest`, `cypress`, `playwright`):** `args` go to the runner; the adapter adds the report Testosterone reads (the runner's own JSON for Jest and Vitest, the built-in JUnit reporter for Cypress) and `--maxWorkers` from `workers`:
 
 ```yaml
       - name: app-unit
-        equipment: command
+        equipment: jest              # or vitest
         target_repo: ClientApp
-        args: ["npx", "jest", "--ci", "--reporters=default", "--reporters=jest-junit"]
-        junit_xml: junit.xml            # string or list of globs, relative to target_repo
-        tier: unit
+        args: ["--ci", "src/"]
       - name: app-e2e
-        equipment: command
+        equipment: cypress
         target_repo: ClientApp
-        args: ["npx", "playwright", "test"]
-        junit_xml: ["test-results/*.xml"]
-        tier: e2e
+        args: ["--spec", "cypress/e2e/**/*.cy.ts"]
+```
+
+**Any other runner (`equipment: command`):** `args` is the whole command. Point `junit_xml` at the report it writes (JUnit XML, or the runner's own format: [which file each runner writes](../CLI%20Commands/Command%20Reference.md#testo-ingest)), and the results show up like a pytest stage's:
+
+```yaml
+      - name: api-unit
+        equipment: command
+        target_repo: Api
+        args: ["dotnet", "test", "--logger", "trx;LogFileName=results.trx", "--results-directory", "TestResults"]
+        junit_xml: "TestResults/*.trx"  # string or list of globs, relative to target_repo
+        tier: unit
+      - name: worker-unit
+        equipment: command
+        target_repo: worker
+        args: ["sh", "-c", "go test -json ./... > go-test.json"]
+        junit_xml: go-test.json
+        tier: unit
 ```
 
 Validation: a `command` stage needs `args`, and `junit_xml` patterns must be relative and stay inside `target_repo`. `junit_xml` also works on pytest/Behave stages.

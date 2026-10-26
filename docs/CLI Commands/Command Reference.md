@@ -103,10 +103,11 @@ Files it reads, with the command that writes each one (no extra package needed e
 | Runner | Write results with | Read as |
 |--------|--------------------|---------|
 | pytest | `pytest --junitxml=junit.xml` (or [`pytest --testo`](#pytest---testo)) | JUnit XML |
-| Jest | `npx jest --json --outputFile=jest.json` | Jest JSON: `describe` blocks, retried tests flagged flaky, test files that failed to load |
-| Vitest | `npx vitest run --reporter=json --outputFile=vitest.json` | Jest-style JSON, labelled `vitest` |
+| Jest | `npx jest --json --outputFile=jest.json` (or `equipment: jest`) | Jest JSON: `describe` blocks, retried tests flagged flaky, test files that failed to load |
+| Vitest | `npx vitest run --reporter=json --outputFile=vitest.json` (or `equipment: vitest`) | Jest-style JSON, labelled `vitest` |
 | Playwright | `npx playwright test --reporter=json` (`PLAYWRIGHT_JSON_OUTPUT_FILE=results.json`) | Playwright JSON: retries, flaky tests, traces |
-| Cypress, Mocha, WebdriverIO | their `junit` reporter | JUnit XML |
+| Cypress | `npx cypress run --reporter junit` (or `equipment: cypress`) | JUnit XML |
+| Mocha, WebdriverIO | their `junit` reporter | JUnit XML |
 | JUnit 4/5, TestNG, Kotest (Maven, Gradle) | built in: `target/surefire-reports/*.xml`, `build/test-results/**/*.xml` | JUnit XML |
 | .NET (xUnit, NUnit, MSTest) | `dotnet test --logger trx` | TRX: data rows one result each |
 | Go | `go test -json ./... > go-test.json` | `go test -json`: subtests, build failures as broken |
@@ -169,7 +170,7 @@ testo report pyramid <run-id>
 | `testo report native [ROUTINE]` | List or open BehaveX/pytest native HTML under stage dirs |
 | `testo report markdown [--cycle NAME \| --run-id ID] [--out FILE] [--run-url URL] [--baseline-branch BRANCH]` | The cycle's latest run (or one run) as GitHub-flavored Markdown: headline counts, per-stage table, failing tests, and per-test changes since its baseline: the latest run on `--baseline-branch`, else on the pull request's recorded target branch (`ci_base_ref`), else the cycle's previous run. The first line is a hidden `<!-- testo-summary:<cycle> -->` marker. Exit `2` when no run is recorded. The GitHub Action uses it for the job summary and the PR comment |
 | `testo report annotations [--cycle NAME \| --run-id ID] [--workspace DIR] [--limit N] [-c CONFIG]` | The run's failing tests as GitHub Actions `::error file=…,line=…` workflow commands, so each failure shows on its line in the pull request's "Files changed". The location is the first stack-trace frame inside `--workspace` (default `.`), tried relative to the workspace, each stage's `target_repo` from the config, and the run's target repo. At most `--limit` (default `10`, GitHub's per-step cap) lines, then a `::notice` with the rest. Exit `2` when no run is recorded. The GitHub Action prints it by default. See [Alerts Where Developers Look - 2026-10-22](../Specs%20&%20ADRs/Alerts%20Where%20Developers%20Look%20-%202026-10-22.md) |
-| `testo report pyramid RUN_ID [-c CONFIG]` | ASCII unit/integration/e2e test pyramid for a completed run (`run_id`, not the archive UUID); stage→tier is the stage's `tier:` (default inferred from `equipment`: pytest→unit, behave→integration, behavex→e2e, playwright→e2e) as recorded in the run when it executed; `-c` is only read for older runs that predate recorded tiers. See [Architecture Overview § Test pyramid](../Architecture/Architecture%20Overview.md#test-pyramid). |
+| `testo report pyramid RUN_ID [-c CONFIG]` | ASCII unit/integration/e2e test pyramid for a completed run (`run_id`, not the archive UUID); stage→tier is the stage's `tier:` (default inferred from `equipment`: pytest→unit, behave→integration, behavex→e2e, playwright→e2e, jest→unit, vitest→unit, cypress→e2e) as recorded in the run when it executed; `-c` is only read for older runs that predate recorded tiers. See [Architecture Overview § Test pyramid](../Architecture/Architecture%20Overview.md#test-pyramid). |
 
 ---
 
@@ -195,7 +196,7 @@ Config errors print `[fail]config error: …` and exit **2**.
 
 | Subcommand | Description |
 |------------|-------------|
-| `testo config validate` | Load YAML; optional `--check-executables` for pytest/behave/behavex (and `npx` for playwright) on PATH |
+| `testo config validate` | Load YAML; optional `--check-executables` for pytest/behave/behavex (and `npx` for playwright, jest, vitest and cypress) on PATH |
 | `testo config init` | Write starter `testosterone.yaml` with one active `smoke-test` cycle running `pytest -q tests` and commented-out marker/BehaveX examples (`--path`, `--force`) |
 | `testo config db` | Set `database.url` (PostgreSQL prompts or `--url`) |
 

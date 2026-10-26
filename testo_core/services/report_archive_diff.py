@@ -98,6 +98,7 @@ def _load_cases(plan_root: Path) -> dict[str, dict[str, Any]]:
             "duration_ms": _case_duration_ms(data),
             "message": _case_message(data),
             "stage": _case_stage(path, plan_root),
+            "framework": _label_value(data.get("labels"), "framework"),
         }
     return out
 

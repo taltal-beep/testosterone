@@ -124,9 +124,12 @@
                 "behave",
                 "behavex",
                 "command",
+                "cypress",
+                "jest",
                 "junit",
                 "playwright",
-                "pytest"
+                "pytest",
+                "vitest"
               ]
             },
             {
@@ -143,9 +146,12 @@
                 "behave",
                 "behavex",
                 "command",
+                "cypress",
+                "jest",
                 "junit",
                 "playwright",
-                "pytest"
+                "pytest",
+                "vitest"
               ]
             },
             {
@@ -178,7 +184,7 @@
         "workers": {
           "type": "integer",
           "minimum": 1,
-          "description": "Parallel workers (pytest with xdist, behavex, playwright). Defaults to defaults.workers."
+          "description": "Parallel workers (pytest with xdist, behavex, playwright, jest, vitest). Defaults to defaults.workers."
         },
         "timeout_s": {
           "type": [
@@ -210,7 +216,7 @@
             "integration",
             "unit"
           ],
-          "description": "Test-pyramid tier the stage's tests count under. Default by equipment: behave=integration, behavex=e2e, command=unit, junit=unit, playwright=e2e, pytest=unit."
+          "description": "Test-pyramid tier the stage's tests count under. Default by equipment: behave=integration, behavex=e2e, command=unit, cypress=e2e, jest=unit, junit=unit, playwright=e2e, pytest=unit, vitest=unit."
         },
         "junit_xml": {
           "description": "Glob(s), relative to target_repo, of JUnit XML reports the stage writes. They are imported as results after the stage.",

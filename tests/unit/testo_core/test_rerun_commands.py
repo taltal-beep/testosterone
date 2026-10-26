@@ -67,3 +67,62 @@ def test_too_many_failures_get_no_command() -> None:
         FailingCase(f"test_{i}", f"tests.test_a#test_{i}", "", "unit") for i in range(MAX_TESTS + 1)
     ]
     assert rerun_commands(cases, {"unit": "pytest"}) == []
+
+
+def test_runners_named_by_their_result_files() -> None:
+    cases = [
+        FailingCase("adds tax", "src/cart.test.js › cart › adds tax", "", "unit", "jest"),
+        FailingCase("refunds", "src/pay.test.js › refunds", "", "unit", "jest"),
+        FailingCase("negative", "example.com/shop.TestCart/negative", "", "go", "go"),
+        FailingCase("TestLater", "example.com/shop/v2.TestLater", "", "go", "go"),
+        FailingCase("Rows(2)", "Shop.Tests.RowTests.Rows(2)", "", "net", "dotnet"),
+        FailingCase("Rejects", "Shop.Tests.CartTests.Rejects", "", "net", "dotnet"),
+        FailingCase("Wrong Password", "Tests.Login.Wrong Password", "", "e2e", "robot"),
+    ]
+    commands = rerun_commands(
+        cases, {"unit": "junit", "go": "junit", "net": "command", "e2e": "junit"}
+    )
+    assert commands == [
+        "npx jest src/cart.test.js src/pay.test.js -t '^(cart adds tax|refunds)$'",
+        "go test -run '^(TestCart|TestLater)$' example.com/shop example.com/shop/v2",
+        "dotnet test --filter 'FullyQualifiedName=Shop.Tests.RowTests.Rows"
+        "|FullyQualifiedName=Shop.Tests.CartTests.Rejects'",
+        "robot --test 'Wrong Password' tests",
+    ]
+
+
+def test_vitest_stage() -> None:
+    case = FailingCase("adds", "src/cart.test.ts › cart › adds", "", "unit", "vitest")
+    assert rerun_commands([case], {"unit": "vitest"}) == [
+        "npx vitest run src/cart.test.ts -t '^(cart adds)$'"
+    ]
+
+
+def test_java_needs_the_build_tool(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    cases = [
+        FailingCase("addsTax()", "com.acme.CartTest.addsTax()", "", "junit"),
+        FailingCase("rejects", "com.acme.CartTest.rejects", "", "junit"),
+        FailingCase("refunds", "com.acme.PayTest.refunds", "", "junit"),
+    ]
+    assert rerun_commands(cases, {"junit": "junit"}) == []
+    assert rerun_commands(cases, {"junit": "junit"}, repo=tmp_path) == []
+
+    (tmp_path / "pom.xml").write_text("<project/>", encoding="utf-8")
+    assert rerun_commands(cases, {"junit": "junit"}, repo=tmp_path) == [
+        "mvn test '-Dtest=CartTest#addsTax+rejects,PayTest#refunds' "
+        "-Dsurefire.failIfNoSpecifiedTests=false"
+    ]
+
+    (tmp_path / "pom.xml").unlink()
+    (tmp_path / "build.gradle.kts").write_text("", encoding="utf-8")
+    (tmp_path / "gradlew").write_text("", encoding="utf-8")
+    assert rerun_commands(cases, {"junit": "junit"}, repo=tmp_path) == [
+        "./gradlew test --tests com.acme.CartTest.addsTax --tests com.acme.CartTest.rejects "
+        "--tests com.acme.PayTest.refunds"
+    ]
+
+
+def test_java_display_names_are_left_out(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    (tmp_path / "pom.xml").write_text("<project/>", encoding="utf-8")
+    case = FailingCase("adds tax to totals", "com.acme.CartTest.adds tax to totals", "", "junit")
+    assert rerun_commands([case], {"junit": "junit"}, repo=tmp_path) == []
