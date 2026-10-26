@@ -11,11 +11,17 @@ runners whose command can name single tests are covered:
     go test             ``go test -run '^(TestA|TestB)$' <packages>`` (top-level tests)
     .NET                ``dotnet test --filter FullyQualifiedName=...``
     Robot Framework     ``robot --test <name> <root suite folder>``
+    RSpec               ``rspec <spec files> -e <full description>`` (``bundle exec``
+                        when the repository has a ``Gemfile``)
+    Android (Espresso)  ``./gradlew connectedAndroidTest`` with the instrumentation
+                        runner's ``class=Class#method`` argument
     JUnit 4/5, TestNG   ``mvn test -Dtest=Class#method`` or ``gradle test --tests``,
                         when the repository has a ``pom.xml`` or a Gradle build
 
 JUnit files ingested from other runners get a pytest command when their names
-point at a Python test module. Anything else is left out rather than guessed.
+point at a Python test module. Anything else is left out rather than guessed:
+k6 checks and thresholds (only the whole script reruns) and XCTest (``xcodebuild``
+also needs a scheme and a destination the results don't record).
 """
 
 from __future__ import annotations
@@ -36,7 +42,9 @@ _REGEX_SPECIAL = re.compile(r"[.*+?^${}()|\[\]\\/]")
 
 _PYTEST_FILE = re.compile(r"test_\w*\.py|\w+_test\.py")
 # Frameworks a result file can name for itself (``framework`` label), whatever stage read it.
-_SELF_NAMED = frozenset({"playwright", "jest", "vitest", "go", "dotnet", "robot"})
+_SELF_NAMED = frozenset(
+    {"playwright", "jest", "vitest", "go", "dotnet", "robot", "rspec", "android"}
+)
 # Java method names a build tool can select (not a @DisplayName with spaces).
 _JAVA_METHOD = re.compile(r"[A-Za-z_$][\w$]*")
 
@@ -145,6 +153,37 @@ def _robot(cases: list[FailingCase]) -> str | None:
     return shlex.join([*args, folder])
 
 
+def _rspec(cases: list[FailingCase], repo: Path | None) -> str | None:
+    files: list[str] = []
+    descriptions: list[str] = []
+    for case in cases:
+        spec_file, sep, description = case.full_name.partition(" › ")
+        if not sep or not spec_file.endswith(".rb"):
+            return None
+        files.append(spec_file)
+        descriptions.append(description)
+    base = ["bundle", "exec", "rspec"] if repo and (repo / "Gemfile").is_file() else ["rspec"]
+    args = [*base, *dict.fromkeys(files)]
+    for description in dict.fromkeys(descriptions):
+        args += ["-e", description]
+    return shlex.join(args)
+
+
+def _android(cases: list[FailingCase], repo: Path | None) -> str | None:
+    targets = [_java_target(c) for c in cases]
+    if not targets or any(t is None for t in targets):
+        return None
+    selector = ",".join(dict.fromkeys(f"{cls}#{method}" for cls, method in filter(None, targets)))
+    gradle = "./gradlew" if repo is None or (repo / "gradlew").is_file() else "gradle"
+    return shlex.join(
+        [
+            gradle,
+            "connectedAndroidTest",
+            f"-Pandroid.testInstrumentationRunnerArguments.class={selector}",
+        ]
+    )
+
+
 def _java_target(case: FailingCase) -> tuple[str, str] | None:
     """(fully qualified class, method) for a JUnit/TestNG case, if the method can be selected."""
     method = re.sub(r"\(.*\)$", "", case.name).strip()
@@ -228,6 +267,10 @@ def rerun_commands(
             command = _dotnet(group)
         elif framework == "robot":
             command = _robot(group)
+        elif framework == "rspec":
+            command = _rspec(group, repo)
+        elif framework == "android":
+            command = _android(group, repo)
         elif framework == "java" and build_tool:
             command = _java(group, build_tool)
         else:
