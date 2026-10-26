@@ -75,6 +75,16 @@
     "quarantine": {
       "$ref": "#/definitions/quarantine"
     },
+    "resources": {
+      "type": "object",
+      "description": "Pools of keys parallel workers lease (`testo lease`).",
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._@:-]{0,127}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/definitions/resource_pool"
+      }
+    },
     "cycles": {
       "type": "object",
       "minProperties": 1,
@@ -355,6 +365,101 @@
         }
       },
       "additionalProperties": true
+    },
+    "resource_pool": {
+      "type": "object",
+      "description": "Keys that parallel workers share (VMs, devices, accounts, seats). Testosterone hands each worker its own key; it never acts on the keys itself.",
+      "oneOf": [
+        {
+          "required": [
+            "items"
+          ]
+        },
+        {
+          "required": [
+            "count"
+          ]
+        }
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "description": "A key name, or a key with labels and data for the worker.",
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._@:-]{0,127}$"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._@:-]{0,127}$"
+                  },
+                  "labels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Passed to the worker as TESTO_RESOURCE_<NAME> variables.",
+                    "additionalProperties": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "N anonymous keys named <pool>-1 ... <pool>-N."
+        },
+        "lease_ttl": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 120.0,
+          "description": "Seconds without a heartbeat before a key is free again."
+        },
+        "max_per_user": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Most keys one person may hold at once."
+        },
+        "on_take": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Your command, run with TESTO_RESOURCE_* set after a key is taken. If it fails, the key is taken out of the pool."
+        },
+        "on_release": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Your command, run before a key is given back."
+        },
+        "hook_timeout": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 300.0
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

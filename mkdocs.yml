@@ -95,6 +95,7 @@ nav:
       - Troubleshooting and Error Codes: CLI Commands/Troubleshooting and Error Codes.md
       - CI-CD Pipeline Setup: Processes & Guides/CI-CD Pipeline Setup.md
       - Team Server: Processes & Guides/Team Server.md
+      - Shared Resource Pools: Processes & Guides/Shared Resource Pools.md
       - Setup Prompts: Prompts & Snippets/Setup Prompts.md
   - Architecture:
       - System Diagram: Architecture/System Diagram.md
@@ -111,6 +112,7 @@ nav:
       - Changelog Policy: changelog_automation_policy.md
   - Decisions:
       - Specs & ADRs: Specs & ADRs/README.md
+      - Resource Pools and Leases: Specs & ADRs/Resource Pools and Leases - 2026-10-26.md
       - Scale Runs and Stages: Specs & ADRs/Scale Runs and Stages - 2026-10-24.md
       - Ingest and Team Server: Specs & ADRs/Ingest and Team Server - 2026-10-22.md
       - UI Restyle: Specs & ADRs/UI Restyle - 2026-10-19.md

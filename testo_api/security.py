@@ -63,7 +63,8 @@ LOGOUT_PATH = "/api/v1/auth/logout"
 _OPEN_PATHS = frozenset({LOGIN_PATH, LOGIN_POST_PATH, LOGOUT_PATH})
 _OPEN_PREFIXES = ("/api/v1/health/",)
 # Writes under these need the admin role in accounts mode; every other write needs runner.
-_ADMIN_WRITE_PREFIXES = ("/api/v1/ai/",)
+# Taking a key back from its holder is an admin's call; taking and giving back your own is a runner's.
+_ADMIN_WRITE_PREFIXES = ("/api/v1/ai/", "/api/v1/resources/items/release")
 SESSION_MAX_AGE = 30 * 24 * 3600
 
 AuthMode = Literal["token", "accounts"]

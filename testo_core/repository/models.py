@@ -160,3 +160,78 @@ class FailureTriage(SQLModel, table=True):
     test_key: str = Field(default="", max_length=200)
     marked_by: str | None = Field(default=None, max_length=64)
     marked_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))
+
+
+class ResourceItemRow(SQLModel, table=True):
+    """A key of a resource pool, as last described by a client's ``resources:`` config.
+
+    Pools live in each client's config, so this table is how the server (and the
+    Resources page) learns them. ``disabled`` takes a broken key out of the pool
+    until someone puts it back. See :mod:`testo_core.resources.store`.
+    """
+
+    __tablename__ = "resource_item"
+    __table_args__ = {"extend_existing": True}
+
+    pool: str = Field(primary_key=True, max_length=128)
+    item: str = Field(primary_key=True, max_length=128)
+    labels: list[str] = Field(
+        default_factory=list, sa_column=Column("labels", _METADATA_JSON_COL, nullable=False)
+    )
+    data: dict[str, str] = Field(
+        default_factory=dict, sa_column=Column("data", _METADATA_JSON_COL, nullable=False)
+    )
+    disabled: bool = Field(default=False)
+    disabled_reason: str = Field(default="", max_length=500)
+    disabled_by: str | None = Field(default=None, max_length=64)
+    # Epoch seconds, like the lease times: comparable on every dialect.
+    seen_at: float = Field(default=0.0)
+
+
+class ResourceLease(SQLModel, table=True):
+    """Who holds a pool's key right now. One row per key, so taking one is a single insert.
+
+    The primary key is the key itself, which is what makes two holders impossible:
+    a second insert for the same key fails on every database, across processes and
+    machines. ``expires_at`` moves forward with each heartbeat; a row past it is
+    deleted by the next take.
+    """
+
+    __tablename__ = "resource_lease"
+    __table_args__ = {"extend_existing": True}
+
+    pool: str = Field(primary_key=True, max_length=128)
+    item: str = Field(primary_key=True, max_length=128)
+    lease_id: str = Field(unique=True, index=True, max_length=64)
+    holder_user: str = Field(default="", max_length=64)
+    holder_host: str = Field(default="", max_length=255)
+    holder_pid: int = Field(default=0)
+    run_id: str = Field(default="", max_length=128)
+    stage: str = Field(default="", max_length=128)
+    worker: str = Field(default="", max_length=64)
+    note: str = Field(default="", max_length=200)
+    taken_at: float = Field(default=0.0)
+    heartbeat_at: float = Field(default=0.0)
+    expires_at: float = Field(default=0.0, index=True)
+    ttl_s: float = Field(default=120.0)
+
+
+class ResourceWaiter(SQLModel, table=True):
+    """A request waiting for a key, so keys go out first come, first served.
+
+    ``candidates`` are the keys it would accept; a waiter only lets a later one
+    go first when they want different keys. Rows expire when the waiter stops
+    asking (see ``WAITER_TTL_S``).
+    """
+
+    __tablename__ = "resource_waiter"
+    __table_args__ = {"extend_existing": True}
+
+    id: str = Field(primary_key=True, max_length=64)
+    pool: str = Field(index=True, max_length=128)
+    candidates: list[str] = Field(
+        default_factory=list, sa_column=Column("candidates", _METADATA_JSON_COL, nullable=False)
+    )
+    holder_user: str = Field(default="", max_length=64)
+    created_at: float = Field(default=0.0, index=True)
+    heartbeat_at: float = Field(default=0.0)

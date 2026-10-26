@@ -9,6 +9,7 @@ import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { QuickRunPage } from "../features/execution/QuickRunPage";
 import { ProjectHealthPage } from "../features/health/ProjectHealthPage";
 import { HistoryPage } from "../features/history/HistoryPage";
+import { ResourcesPage } from "../features/resources/ResourcesPage";
 import { RunDetailPage } from "../features/run-detail/RunDetailPage";
 import { TestPage } from "../features/tests/TestPage";
 import { TryPage } from "../features/try/TryPage";
@@ -50,6 +51,10 @@ export const routes = [
       {
         path: "health",
         element: <ProjectHealthPage />
+      },
+      {
+        path: "resources",
+        element: <ResourcesPage />
       },
       {
         path: "quick-run",
