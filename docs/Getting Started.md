@@ -125,7 +125,7 @@ Every key (timeouts, workers, triggers on changed paths, reporters such as Allur
 
 ## Already have CI? Record its results instead
 
-If your tests already run somewhere, skip the YAML and add one step after them. Any runner that writes JUnit XML works (JUnit5, pytest's `--junitxml`, PHPUnit, ...), and so do the files Jest, Vitest, Playwright, `dotnet test`, `go test -json` and Robot Framework write themselves, or an `allure-results` folder:
+If your tests already run somewhere, skip the YAML and add one step after them. Any runner that writes JUnit XML works (JUnit5, pytest's `--junitxml`, PHPUnit, ...), and so do the files Jest, Vitest, Playwright, `dotnet test`, `go test -json`, Robot Framework, RSpec, k6 and Xcode (`xcresulttool`) write themselves, or an `allure-results` folder:
 
 ```bash
 pip install testo-core

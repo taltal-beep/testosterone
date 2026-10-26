@@ -1,4 +1,4 @@
-"""Runners' own result formats, recognised by content: Jest/Vitest JSON, TRX, go test -json, Robot, Allure."""
+"""Runners' own result formats, recognised by content: Jest/Vitest, TRX, Go, Robot, RSpec, k6, XCTest, Allure."""
 
 from __future__ import annotations
 
@@ -338,3 +338,272 @@ def test_junit_still_works_next_to_other_formats(tmp_path: Path) -> None:
     )
     assert imported.tests == 11
     assert "a.B.c" in results
+
+
+RSPEC = {
+    "version": "3.13.0",
+    "examples": [
+        {
+            "id": "./spec/cart_spec.rb[1:1]",
+            "description": "adds tax",
+            "full_description": "Cart adds tax",
+            "status": "passed",
+            "file_path": "./spec/cart_spec.rb",
+            "line_number": 4,
+            "run_time": 0.012,
+        },
+        {
+            "id": "./spec/cart_spec.rb[1:2]",
+            "description": "rejects negative",
+            "full_description": "Cart rejects negative",
+            "status": "failed",
+            "file_path": "./spec/cart_spec.rb",
+            "line_number": 8,
+            "run_time": 0.003,
+            "exception": {
+                "class": "RSpec::Expectations::ExpectationNotMetError",
+                "message": "\nexpected: 2\n     got: 1\n",
+                "backtrace": ["./spec/cart_spec.rb:9:in `block (2 levels)'"],
+            },
+        },
+        {
+            "id": "./spec/cart_spec.rb[1:3]",
+            "description": "later",
+            "full_description": "Cart later",
+            "status": "pending",
+            "file_path": "./spec/cart_spec.rb",
+            "line_number": 12,
+            "run_time": 0,
+            "pending_message": "Not yet implemented",
+        },
+    ],
+    "summary": {"duration": 0.02, "example_count": 3, "errors_outside_of_examples_count": 1},
+    "messages": ["An error occurred while loading ./spec/broken_spec.rb."],
+    "summary_line": "3 examples, 1 failure, 1 pending, 1 error occurred outside of examples",
+}
+
+
+def test_rspec_json(tmp_path: Path) -> None:
+    imported, results, _ = _import(tmp_path, {"out/rspec.json": json.dumps(RSPEC)})
+
+    assert imported.errors == ()
+    assert {k: v["status"] for k, v in results.items()} == {
+        "spec/cart_spec.rb › Cart adds tax": "passed",
+        "spec/cart_spec.rb › Cart rejects negative": "failed",
+        "spec/cart_spec.rb › Cart later": "skipped",
+        "(errors outside of examples)": "broken",
+    }
+    failed = results["spec/cart_spec.rb › Cart rejects negative"]
+    assert failed["name"] == "rejects negative"
+    assert failed["statusDetails"]["message"] == (
+        "RSpec::Expectations::ExpectationNotMetError: expected: 2"
+    )
+    assert "cart_spec.rb:9" in failed["statusDetails"]["trace"]
+    assert _label(failed, "framework") == "rspec"
+    assert _label(failed, "line") == "8"
+    assert results["spec/cart_spec.rb › Cart later"]["statusDetails"]["message"] == (
+        "Not yet implemented"
+    )
+    assert "broken_spec.rb" in results["(errors outside of examples)"]["statusDetails"]["trace"]
+
+
+K6_EXPORT = {
+    "metrics": {
+        "http_req_duration": {"avg": 120.5, "p(95)": 640.2, "thresholds": {"p(95)<500": True}},
+        "http_req_failed": {"value": 0.0, "thresholds": {"rate<0.01": False}},
+        "iterations": {"count": 120},
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "groups": {
+            "checkout": {
+                "name": "checkout",
+                "path": "::checkout",
+                "groups": {},
+                "checks": {
+                    "paid": {"name": "paid", "path": "::checkout::paid", "passes": 117, "fails": 3}
+                },
+            }
+        },
+        "checks": {"status is 200": {"name": "status is 200", "passes": 120, "fails": 0}},
+    },
+}
+
+K6_HANDLE_SUMMARY = {
+    "state": {"testRunDurationMs": 30898.9},
+    "metrics": {
+        "http_req_duration": {
+            "type": "trend",
+            "values": {"avg": 120.5, "p(95)": 410.0},
+            "thresholds": {"p(95)<500": {"ok": True}},
+        },
+        "checks": {
+            "type": "rate",
+            "values": {"rate": 0.9},
+            "thresholds": {"rate>0.95": {"ok": False}},
+        },
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "groups": [],
+        "checks": [{"name": "status is 200", "path": "::status is 200", "passes": 9, "fails": 1}],
+    },
+}
+
+
+def test_k6_summary_export(tmp_path: Path) -> None:
+    imported, results, _ = _import(tmp_path, {"out/k6-summary.json": json.dumps(K6_EXPORT)})
+
+    assert imported.errors == ()
+    assert {k: v["status"] for k, v in results.items()} == {
+        "checks › status is 200": "passed",
+        "checks › checkout › paid": "failed",
+        "thresholds › http_req_duration › p(95)<500": "failed",
+        "thresholds › http_req_failed › rate<0.01": "passed",
+    }
+    assert results["checks › checkout › paid"]["statusDetails"]["message"] == "3 of 120 failed"
+    crossed = results["thresholds › http_req_duration › p(95)<500"]
+    assert "p(95)=640.2" in crossed["statusDetails"]["message"]
+    assert _label(crossed, "framework") == "k6"
+    assert crossed["stop"] == crossed["start"]
+
+
+def test_k6_handle_summary(tmp_path: Path) -> None:
+    imported, results, _ = _import(tmp_path, {"out/summary.json": json.dumps(K6_HANDLE_SUMMARY)})
+
+    assert imported.errors == ()
+    assert {k: v["status"] for k, v in results.items()} == {
+        "checks › status is 200": "failed",
+        "thresholds › checks › rate>0.95": "failed",
+        "thresholds › http_req_duration › p(95)<500": "passed",
+    }
+    assert imported.failed == 2
+
+
+XCRESULT = {
+    "devices": [{"deviceName": "iPhone 16", "platform": "iOS Simulator"}],
+    "testPlanConfigurations": [{"configurationId": "1", "configurationName": "Default"}],
+    "testNodes": [
+        {
+            "nodeType": "Test Plan",
+            "name": "Shop",
+            "result": "Failed",
+            "children": [
+                {
+                    "nodeType": "Unit test bundle",
+                    "name": "ShopTests",
+                    "result": "Failed",
+                    "children": [
+                        {
+                            "nodeType": "Test Suite",
+                            "name": "CartTests",
+                            "nodeIdentifier": "CartTests",
+                            "result": "Failed",
+                            "children": [
+                                {
+                                    "nodeType": "Test Case",
+                                    "name": "testAddsTax()",
+                                    "nodeIdentifier": "CartTests/testAddsTax()",
+                                    "result": "Passed",
+                                    "duration": "0.12s",
+                                },
+                                {
+                                    "nodeType": "Test Case",
+                                    "name": "testRejectsNegative()",
+                                    "nodeIdentifier": "CartTests/testRejectsNegative()",
+                                    "result": "Failed",
+                                    "durationInSeconds": 0.5,
+                                    "children": [
+                                        {
+                                            "nodeType": "Failure Message",
+                                            "name": "CartTests.swift:21: XCTAssertEqual failed",
+                                            "result": "Failed",
+                                        }
+                                    ],
+                                },
+                                {
+                                    "nodeType": "Test Case",
+                                    "name": "testRetried()",
+                                    "nodeIdentifier": "CartTests/testRetried()",
+                                    "result": "Passed",
+                                    "duration": "1m 2s",
+                                    "children": [
+                                        {"nodeType": "Repetition", "name": "1", "result": "Failed"},
+                                        {"nodeType": "Repetition", "name": "2", "result": "Passed"},
+                                    ],
+                                },
+                                {
+                                    "nodeType": "Test Case",
+                                    "name": "testLater()",
+                                    "nodeIdentifier": "CartTests/testLater()",
+                                    "result": "Skipped",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+    ],
+}
+
+
+def test_xcresult_json(tmp_path: Path) -> None:
+    imported, results, _ = _import(tmp_path, {"out/xcresult.json": json.dumps(XCRESULT)})
+
+    assert imported.errors == ()
+    assert {k: v["status"] for k, v in results.items()} == {
+        "ShopTests/CartTests/testAddsTax()": "passed",
+        "ShopTests/CartTests/testRejectsNegative()": "failed",
+        "ShopTests/CartTests/testRetried()": "passed",
+        "ShopTests/CartTests/testLater()": "skipped",
+    }
+    assert imported.flaky == 1
+    passed = results["ShopTests/CartTests/testAddsTax()"]
+    assert passed["stop"] - passed["start"] == 120
+    failed = results["ShopTests/CartTests/testRejectsNegative()"]
+    assert failed["stop"] - failed["start"] == 500
+    assert failed["statusDetails"]["message"] == "CartTests.swift:21: XCTAssertEqual failed"
+    assert _label(failed, "framework") == "xctest"
+    assert _label(failed, "suite") == "ShopTests"
+    assert results["ShopTests/CartTests/testRetried()"]["statusDetails"]["flaky"] is True
+
+
+ANDROID_JUNIT = """<?xml version='1.0' encoding='UTF-8' ?>
+<testsuite name="com.acme.CartTest" tests="2" failures="1" errors="0" skipped="0" time="1.2"
+    timestamp="2026-10-26T10:00:00" hostname="localhost">
+  <properties>
+    <property name="device" value="Pixel_8(AVD) - 15" />
+    <property name="flavor" value="" />
+    <property name="project" value=":app" />
+  </properties>
+  <testcase name="addsTax" classname="com.acme.CartTest" time="0.4" />
+  <testcase name="opensCheckout" classname="com.acme.CartTest" time="0.8">
+    <failure>androidx.test.espresso.NoMatchingViewException: No views in hierarchy</failure>
+  </testcase>
+</testsuite>
+"""
+
+
+def test_android_instrumentation_junit(tmp_path: Path) -> None:
+    imported, results, _ = _import(
+        tmp_path, {"out/TEST-Pixel_8(AVD) - 15-_app-.xml": ANDROID_JUNIT}
+    )
+
+    assert imported.errors == ()
+    assert {k: v["status"] for k, v in results.items()} == {
+        "com.acme.CartTest.addsTax": "passed",
+        "com.acme.CartTest.opensCheckout": "failed",
+    }
+    failed = results["com.acme.CartTest.opensCheckout"]
+    assert _label(failed, "framework") == "android"
+    assert _label(failed, "host") == "Pixel_8(AVD) - 15"
+
+
+def test_plain_junit_keeps_the_stage_tool_as_framework(tmp_path: Path) -> None:
+    junit = '<testsuite name="s"><testcase classname="a.B" name="c"/></testsuite>'
+    _, results, _ = _import(tmp_path, {"out/junit.xml": junit}, tool="maestro")
+    assert _label(results["a.B.c"], "framework") == "maestro"
+    assert _label(results["a.B.c"], "host") is None

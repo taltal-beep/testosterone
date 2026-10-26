@@ -113,7 +113,11 @@ Files it reads, with the command that writes each one (no extra package needed e
 | Go | `go test -json ./... > go-test.json` | `go test -json`: subtests, build failures as broken |
 | Rust | `cargo nextest run --profile ci` with JUnit output configured | JUnit XML |
 | PHPUnit, Pest | `--log-junit junit.xml` | JUnit XML |
-| RSpec, Minitest | `rspec_junit_formatter`, `minitest-reporters` | JUnit XML |
+| RSpec | `rspec --format progress --format json --out rspec.json` | RSpec JSON: failure class and backtrace, pending examples as skipped, load errors as broken |
+| Minitest | `minitest-reporters` | JUnit XML |
+| XCTest, Swift Testing (Xcode 16+) | `xcrun xcresulttool get test-results tests --path Tests.xcresult > xcresult.json` after `xcodebuild test -resultBundlePath Tests.xcresult` | `xcresulttool` JSON: failure messages, retries flagged flaky |
+| Android instrumentation (Espresso, UI Automator, Compose) | built in: `./gradlew connectedAndroidTest` writes `app/build/outputs/androidTest-results/connected/**/*.xml` | JUnit XML, labelled `android` with the device it ran on |
+| k6 | `k6 run --summary-export=k6-summary.json script.js` (or `JSON.stringify(data)` from `handleSummary`) | k6 summary: each check and each threshold is one result |
 | Robot Framework | `robot` (writes `output.xml`) | Robot `output.xml`: tags, failure messages |
 | GoogleTest, Catch2 | `--gtest_output=xml:gtest.xml`, `-r junit` | JUnit XML |
 | Anything with an Allure adapter | its `allure-results/` folder | Allure results, with their attachments |
