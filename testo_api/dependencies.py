@@ -6,6 +6,7 @@ from testo_core.services.ai.integration_settings import (
     InMemoryAiSettingsStore,
     default_ai_settings_path,
 )
+from testo_core.services.ask_tests import AskTestsService
 from testo_core.services.failure_analysis_service import FailureAnalysisService
 from testo_core.services.project_review import ProjectReviewService
 
@@ -36,3 +37,10 @@ _PROJECT_REVIEW_SERVICE = ProjectReviewService(settings_store=_AI_SETTINGS_STORE
 
 def get_project_review_service() -> ProjectReviewService:
     return _PROJECT_REVIEW_SERVICE
+
+
+_ASK_TESTS_SERVICE = AskTestsService(settings_store=_AI_SETTINGS_STORE)
+
+
+def get_ask_tests_service() -> AskTestsService:
+    return _ASK_TESTS_SERVICE
