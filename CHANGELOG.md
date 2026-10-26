@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- The GitHub Action at the repository root, ready for the GitHub Marketplace: `uses: taltal-beep/testosterone@v1` (name "Testosterone Test History", with an icon). `taltal-beep/testosterone/integrations/github-action@v1` keeps working; a test keeps the two copies the same
 - `testo badge`: a README badge for a cycle's latest run ("tests | 412 passed · 2 flaky", green, yellow or red), as an SVG or a shields.io endpoint JSON. A team server serves it live at `GET /api/v1/badge.svg` and `GET /api/v1/badge.json` (`?cycle=`)
 - `testo lease demo` fills the Resources page with made-up pools, holders, a disabled key and a queue, to try it out (`--clear` undoes it); the live demo shows them too.
 - `testo ingest`, `junit_xml` globs and `POST /api/v1/ingest` also read RSpec JSON (`rspec --format json`), k6 summaries (`--summary-export` or `handleSummary` JSON: each check and threshold is one result) and Xcode test results exported by `xcrun xcresulttool get test-results tests` (XCTest and Swift Testing, retries flagged flaky). Android instrumentation JUnit XML (Espresso, `connectedAndroidTest`) is labelled `android` with its device. "Rerun these tests" adds `rspec <files> -e` and `./gradlew connectedAndroidTest` with the failing classes and methods
