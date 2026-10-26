@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- `testo lease demo` fills the Resources page with made-up pools, holders, a disabled key and a queue, to try it out (`--clear` undoes it); the live demo shows them too.
 - Shards by time: `pytest --testo-shard I/N` (or `TESTO_SHARD=I/N testo run ...`) runs one of N shards that take about the same time, from the recorded test times; `testo split` prints a shard's tests for other runners. `testo run` sets `TESTO_CYCLE` and `TESTO_STAGE` for each stage.
 - Stages can ask for keys: `resources: POOL` on a stage gives each pytest worker (`per: worker`), each test (`per: test`) or the stage (`per: stage`) its own key, and `workers: auto` starts one worker per free key. In plain pytest: `--testo-resource POOL` and the `testo_resource` fixture.
 - Resource pools for parallel runs: list keys (VMs, devices, test accounts, seats) under `resources:` in `testosterone.yaml`, and `testo lease run POOL -- CMD` gives each worker its own key in `TESTO_RESOURCE_ID`. Leases are rows with a heartbeat and a TTL, so a crashed worker frees its key; requests wait in a fair queue; failing `on_take`/`on_release` hooks take a key out of the pool. With `TESTO_SERVER_URL` the leases live on the team server, so developers on different laptops share one pool. Also `testo lease take/heartbeat/release/list/disable/enable/free`, `/api/v1/resources` and a Resources page in the UI. New tables `resource_item`, `resource_lease`, `resource_waiter`

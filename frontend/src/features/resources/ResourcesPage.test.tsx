@@ -73,5 +73,6 @@ describe("ResourcesPage", () => {
 
     await waitFor(() => expect(screen.getByText("No resource pools yet")).toBeInTheDocument());
     expect(screen.getByText(/testo lease run POOL -- your-command/)).toBeInTheDocument();
+    expect(screen.getByText("testo lease demo")).toBeInTheDocument();
   });
 });

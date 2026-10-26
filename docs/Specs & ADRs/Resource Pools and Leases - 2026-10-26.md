@@ -45,6 +45,7 @@ The owner asked for a general answer, not a VM feature: the system under test al
 - Keys nobody has described for a week, and that are free and enabled, drop off the Resources page; their rows stay.
 - `workers: auto` counts free keys once; if other people take keys meanwhile, the extra workers wait in line rather than share.
 - A shard that can't load the times (server down) stops with a usage error instead of splitting without them, because other shards might have them and pick differently.
+- `testo lease demo` and the demo site (`export_static_site.py --demo-resources`) fill the pools with invented data from `testo_core/resources/demo.py`, so the Resources page can be tried without real keys.
 - The queue position is lost if a waiter's process restarts (it gets a new id). That's the price of not keeping state on the client.
 
 ## Next

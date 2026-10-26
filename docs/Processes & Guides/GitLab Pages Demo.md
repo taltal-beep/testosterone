@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-07
-updated: 2026-10-19
+updated: 2026-10-26
 title: GitLab Pages Demo
 tags: [ci, gitlab, pages, frontend, demo]
 ---
@@ -122,13 +122,15 @@ python -m playwright install chromium
 testo run --cycle self-test --ci
 testo run --cycle fake-api --ci || true
 testo run --cycle fake-api --ci || true   # a second run gives Compare a pair locally
-python scripts/export_static_site.py --out public --site-url http://localhost:8090/testo
+python scripts/export_static_site.py --out public --site-url http://localhost:8090/testo --demo-resources
 
 cd frontend
 VITE_BASE=/testo/ VITE_STATIC_DATA_BASE=/testo/data \
   VITE_API_BASE_URL=http://localhost:8090/testo npm run build
 cd .. && cp -r frontend/dist/. public/ && cp public/index.html public/404.html
 ```
+
+`--demo-resources` fills the throwaway history database with the made-up pools from `testo lease demo` first, so the Resources page has something to show. Leave it off when exporting a real database.
 
 Serve `public/` under a `/testo/` path (any static server) and the demo behaves
 as it does on Pages, except for the 404 fallback, which is Pages-specific.

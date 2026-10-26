@@ -385,3 +385,36 @@ def free(
 ) -> None:
     """Take a key back from whoever holds it (an admin on a team server)."""
     _admin("free", pool_name, key, server)
+
+
+@app.command("demo")
+def demo(
+    clear: bool = typer.Option(False, "--clear", help="Give the demo keys back instead."),
+) -> None:
+    """Fill this machine's pools with made-up keys and holders, to try the Resources page.
+
+    Adds pools demo-flow-vms, demo-phones and demo-license-seats with some keys held by
+    invented people, one disabled and two requests waiting (those leave after about 30 s).
+    """
+    import os
+
+    from testo_core.cli.ui.console import default_console
+    from testo_core.resources.client import LEASE_DB_ENV, backend_from_env
+    from testo_core.resources.demo import clear_demo, seed_demo
+    from testo_core.resources.store import LeaseStore
+
+    # Always this machine's database (the one `testo ui` shows), never a team server.
+    env = {k: v for k, v in os.environ.items() if k == LEASE_DB_ENV}
+    store = backend_from_env(env=env)
+    assert isinstance(store, LeaseStore)
+    console = default_console()
+    if clear:
+        freed = clear_demo(store)
+        console.print(f"[ok]Gave back {freed} demo key(s).[/]")
+        return
+    result = seed_demo(store)
+    console.print(
+        f"[ok]Demo pools ready:[/] {result.held} keys held, {result.disabled} disabled, "
+        f"{result.waiting} waiting. See them with `testo lease list` or on the Resources "
+        "page of `testo ui`. Undo with `testo lease demo --clear`."
+    )

@@ -393,6 +393,7 @@ testo lease list                                     # who holds what, how many 
 | `testo lease list [POOL] [--json]` | Each pool's keys: free, held (by whom, since when) or disabled, and how many requests wait |
 | `testo lease disable POOL KEY [--reason TEXT]` / `enable POOL KEY` | Take a broken key out of the pool, put it back |
 | `testo lease free POOL KEY` | Take a key back from its holder (needs `admin` on a server with accounts) |
+| `testo lease demo [--clear]` | Fill this machine's database with made-up pools (`demo-flow-vms`, `demo-phones`, `demo-license-seats`), some keys held by invented people, one disabled and two requests waiting, to try `testo lease list` and the Resources page. Never touches a team server. `--clear` gives the keys back |
 
 | Flag | Default | Meaning |
 |------|---------|---------|
