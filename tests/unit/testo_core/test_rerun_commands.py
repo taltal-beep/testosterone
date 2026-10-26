@@ -126,3 +126,42 @@ def test_java_display_names_are_left_out(tmp_path) -> None:  # type: ignore[no-u
     (tmp_path / "pom.xml").write_text("<project/>", encoding="utf-8")
     case = FailingCase("adds tax to totals", "com.acme.CartTest.adds tax to totals", "", "junit")
     assert rerun_commands([case], {"junit": "junit"}, repo=tmp_path) == []
+
+
+def test_rspec(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    cases = [
+        FailingCase("adds tax", "spec/cart_spec.rb › Cart adds tax", "", "ruby", "rspec"),
+        FailingCase("refunds", "spec/pay_spec.rb › Pay refunds", "", "ruby", "rspec"),
+    ]
+    assert rerun_commands(cases, {"ruby": "junit"}) == [
+        "rspec spec/cart_spec.rb spec/pay_spec.rb -e 'Cart adds tax' -e 'Pay refunds'"
+    ]
+    (tmp_path / "Gemfile").write_text("", encoding="utf-8")
+    assert rerun_commands(cases[:1], {"ruby": "junit"}, repo=tmp_path) == [
+        "bundle exec rspec spec/cart_spec.rb -e 'Cart adds tax'"
+    ]
+
+
+def test_android_instrumentation(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    cases = [
+        FailingCase("addsTax", "com.acme.CartTest.addsTax", "", "app", "android"),
+        FailingCase("opens", "com.acme.MainTest.opens", "", "app", "android"),
+    ]
+    assert rerun_commands(cases, {"app": "junit"}, repo=tmp_path) == [
+        "gradle connectedAndroidTest "
+        "'-Pandroid.testInstrumentationRunnerArguments.class="
+        "com.acme.CartTest#addsTax,com.acme.MainTest#opens'"
+    ]
+    (tmp_path / "gradlew").write_text("", encoding="utf-8")
+    assert rerun_commands(cases[:1], {"app": "junit"}, repo=tmp_path) == [
+        "./gradlew connectedAndroidTest "
+        "'-Pandroid.testInstrumentationRunnerArguments.class=com.acme.CartTest#addsTax'"
+    ]
+
+
+def test_k6_and_xctest_get_no_command() -> None:
+    cases = [
+        FailingCase("status is 200", "checks › status is 200", "", "load", "k6"),
+        FailingCase("testAdds()", "ShopTests/CartTests/testAdds()", "", "ios", "xctest"),
+    ]
+    assert rerun_commands(cases, {"load": "junit", "ios": "junit"}) == []

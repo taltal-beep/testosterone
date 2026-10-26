@@ -40,4 +40,20 @@ A coverage review (2026-10-26) estimated that Testosterone supported about 23% o
 - `historyId` still hashes the stage's tool with `fullName`, so moving a suite from JUnit XML to its runner's own format starts a new history for its tests (different names).
 - Allure containers (fixtures) are not shown; Testosterone has no place for them.
 
+## Addendum: RSpec, k6, XCTest and Android (2026-10-26)
+
+A comparison with Qualflare (a hosted test-results service that lists XCTest, RSpec, k6 and Espresso among its 23+ frameworks) found these four still needed a JUnit reporter or weren't covered. Same pattern, same entry point:
+
+| File | Written by | Importer |
+|------|-----------|----------|
+| RSpec JSON (`examples` list + `summary`) | `rspec --format json` | `rspec_import.py` |
+| k6 summary (`metrics` + `root_group`) | `k6 run --summary-export=...`, or `handleSummary` writing `JSON.stringify(data)` | `k6_import.py` |
+| `xcresulttool` JSON (`testNodes` tree) | `xcrun xcresulttool get test-results tests --path X.xcresult` (Xcode 16+) | `xcresult_import.py` |
+| Android instrumentation JUnit (suite `device` property) | `connectedAndroidTest` (Espresso, UI Automator, Compose) | `junit_import.py` |
+
+- **RSpec.** `full_name` is `spec file › full description`. Pending examples are skipped; errors outside examples (a spec file that failed to load) become one `broken` result. Rerun: `rspec <files> -e <description>`, with `bundle exec` when the target repo has a `Gemfile`.
+- **k6.** A load test has no test cases, so each **check** and each **threshold** becomes one result (`checks › group › name`, `thresholds › metric › expression`). A check with any failed iteration is `failed` ("3 of 120 failed"); a crossed threshold is `failed` with the metric's values. Both the `--summary-export` shape (keyed by name, threshold `true` = failed) and the `handleSummary` shape (lists, `{"ok": false}`) are read. Results have no duration (each would span the whole run). No rerun command: only the whole script reruns.
+- **XCTest.** The `.xcresult` bundle is a database only Apple's tool reads, so the input is the JSON `xcresulttool` exports; reading the bundle directly would need macOS. `full_name` is `Bundle/Suite/test()`, the `-only-testing:` form. A test that passed on a repetition after failing is flaky. No rerun command: `xcodebuild` also needs a scheme and destination the results don't record.
+- **Android.** The Android Gradle plugin's JUnit XML already worked; suites that name a `device` are now labelled `android` (and the device as `host`), so the run page offers `./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=Class#method`. In a project with several modules that have instrumentation tests, run it on the module's own task.
+
 Builds on [Command Adapter and JUnit Import](Command%20Adapter%20and%20JUnit%20Import%20-%202026-09-25.md), [Playwright JSON Import](Playwright%20JSON%20Import%20-%202026-10-22.md) and [Ingest and Team Server](Ingest%20and%20Team%20Server%20-%202026-10-22.md).

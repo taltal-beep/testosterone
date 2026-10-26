@@ -23,9 +23,15 @@ their name, and read by their own importer, which keeps what JUnit loses:
     .NET TRX (``<TestRun>``)       -> :mod:`~testo_core.reporting.trx_import`
     ``go test -json`` output       -> :mod:`~testo_core.reporting.gotest_import`
     Robot Framework ``output.xml`` -> :mod:`~testo_core.reporting.robot_import`
+    RSpec JSON (``examples``)      -> :mod:`~testo_core.reporting.rspec_import`
+    k6 summary JSON                -> :mod:`~testo_core.reporting.k6_import`
+    ``xcresulttool`` JSON          -> :mod:`~testo_core.reporting.xcresult_import`
     Allure ``*-result.json``       -> :mod:`~testo_core.reporting.allure_passthrough`
 
-Any other XML is read as JUnit (which every other runner can write).
+Any other XML is read as JUnit (which every other runner can write). Android
+instrumentation tests (Espresso, UI Automator, Compose) write JUnit XML whose
+suites name their ``device``; those results are labelled ``android`` so the
+run page offers a ``connectedAndroidTest`` rerun command.
 
 A ``junit`` stage (``testo ingest``) runs no command at all: the executor calls
 this without ``not_before`` and derives the stage's returncode from ``failed``.
@@ -102,11 +108,20 @@ def _suites(root: ET.Element) -> list[ET.Element]:
     return list(root.iter("testsuite"))
 
 
+def _android_device(suite: ET.Element) -> str | None:
+    """The device an Android instrumentation suite (Espresso, ``connectedAndroidTest``) ran on."""
+    for prop in suite.iterfind("properties/property"):
+        if prop.get("name") == "device" and prop.get("value"):
+            return prop.get("value")
+    return None
+
+
 def _results_for_root(root: ET.Element, *, path: Path, tool: str, fallback_ms: int) -> list[dict]:
     results: list[dict] = []
     for suite in _suites(root):
         suite_name = suite.get("name") or path.stem
         clock = _suite_start_ms(suite, fallback_ms)
+        device = _android_device(suite)
         for case in suite.findall("testcase"):
             name = case.get("name") or "(unnamed)"
             classname = case.get("classname") or suite_name
@@ -125,8 +140,9 @@ def _results_for_root(root: ET.Element, *, path: Path, tool: str, fallback_ms: i
                 "labels": [
                     {"name": "suite", "value": suite_name},
                     {"name": "testClass", "value": classname},
-                    {"name": "framework", "value": tool},
+                    {"name": "framework", "value": "android" if device else tool},
                     {"name": "language", "value": "junit"},
+                    *([{"name": "host", "value": device}] if device else []),
                 ],
             }
             if message or trace:
@@ -192,6 +208,21 @@ def _results_for_any(
         results = jest_results_for_report(data, tool=tool, root=repo, fallback_ms=fallback_ms)
         flaky = sum(1 for r in results if (r.get("statusDetails") or {}).get("flaky"))
         return _FileResults(results, flaky=flaky)
+    from testo_core.reporting.k6_import import is_k6_summary, k6_results_for_summary
+    from testo_core.reporting.rspec_import import is_rspec_report, rspec_results_for_report
+    from testo_core.reporting.xcresult_import import (
+        is_xcresult_report,
+        xcresult_results_for_report,
+    )
+
+    if is_rspec_report(data):
+        return _FileResults(rspec_results_for_report(data, tool=tool, fallback_ms=fallback_ms))
+    if is_k6_summary(data):
+        return _FileResults(k6_results_for_summary(data, tool=tool, fallback_ms=fallback_ms))
+    if is_xcresult_report(data):
+        results = xcresult_results_for_report(data, tool=tool, fallback_ms=fallback_ms)
+        flaky = sum(1 for r in results if (r.get("statusDetails") or {}).get("flaky"))
+        return _FileResults(results, flaky=flaky)
     if isinstance(data, dict) and isinstance(data.get("suites"), list):
         from testo_core.reporting.playwright_import import playwright_results_for_file
 
@@ -202,7 +233,8 @@ def _results_for_any(
     if is_gotest_text(text):  # a single-event go test file is valid JSON too
         return _FileResults(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
     raise ValueError(
-        "not a known JSON report (Playwright, Jest/Vitest, go test -json or an Allure result)"
+        "not a known JSON report (Playwright, Jest/Vitest, RSpec, k6, xcresulttool,"
+        " go test -json or an Allure result)"
     )
 
 
