@@ -396,9 +396,12 @@ def pytest_collection_modifyitems(
     from testo_core.services.test_split import nodeid_names, plan_split
 
     index, count = shard
+    timings: dict[str, float] = (
+        config.stash[_SHARD_TIMINGS] if _SHARD_TIMINGS in config.stash else {}
+    )
     plan = plan_split(
         [item.nodeid for item in items],
-        config.stash.get(_SHARD_TIMINGS, None) or {},
+        timings,
         count,
         names_for=nodeid_names,
     )
