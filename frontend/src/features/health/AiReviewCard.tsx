@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, type ReviewSkillItem, type SkillResultItem } from "../../lib/api-client";
 import { Badge, Button, Card, Spinner } from "../../components/ui";
 import { formatRunTime } from "../../lib/format";
+import { IS_STATIC_BUILD } from "../../lib/static-backend";
 import { ScoreRing, scoreTone } from "./score";
 
 const STORAGE_KEY = "testo.reviewSkills";
@@ -182,7 +183,12 @@ export function AiReviewCard({ cycle }: { cycle?: string }) {
         an opinion: asking again can give a different answer, and each review is one call to your provider.
       </p>
 
-      {aiStatus.data && !aiReady ? (
+      {IS_STATIC_BUILD ? (
+        <p className="mt-3 rounded-xl border border-white/10 bg-ink-800/60 px-3 py-2 text-sm text-ink-200" data-testid="ai-review-demo-note">
+          This demo is read-only, so the AI review can't run here. Browse the checks below, then run it on your own project with{" "}
+          <code className="font-mono text-xs">testo ui</code> and an AI provider (a free Gemini key works).
+        </p>
+      ) : aiStatus.data && !aiReady ? (
         <p className="mt-3 rounded-xl border border-warn-500/30 bg-warn-500/10 px-3 py-2 text-sm text-warn-200">
           AI is not set up yet.{" "}
           <Link to="/settings/ai" className="font-semibold text-brand-300 hover:underline">
@@ -233,7 +239,7 @@ export function AiReviewCard({ cycle }: { cycle?: string }) {
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button onClick={() => run.mutate()} disabled={run.isPending || enabled.length === 0 || !aiReady}>
+        <Button onClick={() => run.mutate()} disabled={IS_STATIC_BUILD || run.isPending || enabled.length === 0 || !aiReady}>
           {run.isPending ? <Spinner /> : null}
           {current ? "Run the review again" : "Run AI review"}
         </Button>
