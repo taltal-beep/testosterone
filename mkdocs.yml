@@ -113,6 +113,7 @@ nav:
   - Decisions:
       - Specs & ADRs: Specs & ADRs/README.md
       - Resource Pools and Leases: Specs & ADRs/Resource Pools and Leases - 2026-10-26.md
+      - Resource Lifecycle Hooks: Specs & ADRs/Resource Lifecycle Hooks - 2026-10-26.md
       - Scale Runs and Stages: Specs & ADRs/Scale Runs and Stages - 2026-10-24.md
       - Ingest and Team Server: Specs & ADRs/Ingest and Team Server - 2026-10-22.md
       - UI Restyle: Specs & ADRs/UI Restyle - 2026-10-19.md
@@ -122,6 +123,7 @@ nav:
       - Plugin API: Specs & ADRs/Plugin API - 2026-10-19.md
       - Playwright Adapter: Specs & ADRs/Playwright Adapter - 2026-10-19.md
       - Playwright JSON Import: Specs & ADRs/Playwright JSON Import - 2026-10-22.md
+      - Runner Coverage: Specs & ADRs/Runner Coverage - 2026-10-26.md
       - BehaveX Reports: Specs & ADRs/BehaveX Reports - 2026-10-21.md
       - Config JSON Schema: Specs & ADRs/Config JSON Schema - 2026-10-22.md
       - Flaky Test Quarantine: Specs & ADRs/Flaky Test Quarantine - 2026-10-22.md

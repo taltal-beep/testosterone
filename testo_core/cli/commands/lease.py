@@ -263,13 +263,18 @@ def heartbeat(
 @app.command("release")
 def release(
     lease_id: str = typer.Argument(...),
+    clean: bool = typer.Option(
+        False,
+        "--clean",
+        help="You reset the key yourself: the next taker gets TESTO_RESOURCE_CLEAN=1.",
+    ),
     server: str | None = _SERVER,
 ) -> None:
     """Give back a key from `take`."""
     from testo_core.resources.store import LeaseError
 
     try:
-        _backend(server).release(lease_id)
+        _backend(server).release(lease_id, clean=clean)
     except LeaseError as exc:
         raise _fail(str(exc), EngineExitCode.INFRA_FAILURE) from exc
 
@@ -332,8 +337,11 @@ def list_pools(
                     )
                 )
                 state, since = "[warn]held[/]", f"{int(now - item.lease.taken_at)}s ago"
+                if item.lease.expired(now):
+                    free_in = item.lease.expires_at + item.lease.reuse_delay_s - now
+                    state = f"[warn]expired, free in {max(0, int(free_in))}s[/]"
             else:
-                state, holder, since = "[ok]free[/]", "", ""
+                state, holder, since = "[ok]free[/]" + (" (clean)" if item.clean else ""), "", ""
             table.add_row(escape(item.item), state, holder, since)
         console.print(table)
 

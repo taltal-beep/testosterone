@@ -68,6 +68,18 @@ describe("ResourcesPage", () => {
     expect(posts).toContainEqual([expect.stringContaining("/api/v1/resources/items/enable"), JSON.stringify({ pool: "flow-vms", item: "vm-03" })]);
   });
 
+  it("shows a key whose heartbeats stopped as expired until its reuse delay is over", async () => {
+    const expired = { ...lease, heartbeat_at: now - 150, expires_at: now - 30, reuse_delay_s: 40 };
+    renderPage({
+      pools: [{ ...pools.pools[0], items: [{ ...pools.pools[0].items[0], lease: expired }] }]
+    });
+
+    await waitFor(() => expect(screen.getByText("flow-vms")).toBeInTheDocument());
+    const [key] = screen.getAllByTestId("resource-key");
+    expect(within(key).getByText("Expired")).toBeInTheDocument();
+    expect(key).toHaveTextContent(/free again in (9|10)s/);
+  });
+
   it("explains how to add a pool when there is none", async () => {
     renderPage({ pools: [] });
 

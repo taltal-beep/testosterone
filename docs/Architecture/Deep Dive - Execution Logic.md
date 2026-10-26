@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-10-24
+updated: 2026-10-26
 ---
 
 # Deep Dive — Execution Logic
@@ -241,7 +241,7 @@ For `behavex`, `_finish_behavex_reports` runs best-effort. The adapter starts Be
 
 A `junit` stage skips the subprocess entirely: `_record_junit_stage` imports its `junit_xml` reports without the age filter (they predate the stage by definition), sets the returncode to 1 when a case failed or broke or no file matched (0 otherwise), uses the reports' summed test time as the stage duration, and writes what it read to `run.log` as `[testo] junit: ...`. The plan's `duration_s` is the larger of the wall clock and the summed stage durations, so an ingested run shows its test time rather than the milliseconds the import took.
 
-For any stage with `junit_xml` globs (typically `equipment: command`), `_import_junit` converts the matching JUnit XML (only files inside `target_repo`, only files written since the stage started) into one Allure `*-result.json` per `<testcase>` in `allure-results/<framework>/`: `<failure>` → failed, `<error>` → broken, `<skipped>` → skipped, otherwise passed. It is best-effort, like the BehaveX hook. The process exit code still decides the stage result, and the import outcome (count, or malformed files skipped) is appended to `run.log` as `[testo] junit_xml: ...`.
+For any stage with `junit_xml` globs (typically `equipment: command`), `_import_junit` converts the matching result files (only files inside `target_repo`, only files written since the stage started) into Allure `*-result.json` files in `allure-results/<framework>/`. JUnit XML gives one result per `<testcase>`: `<failure>` → failed, `<error>` → broken, `<skipped>` → skipped, otherwise passed. Other formats are recognised by content and read by their own importer ([Runner Coverage](../Specs%20&%20ADRs/Runner%20Coverage%20-%202026-10-26.md)). It is best-effort, like the BehaveX hook. The process exit code still decides the stage result, and the import outcome (count, or malformed files skipped) is appended to `run.log` as `[testo] junit_xml: ...`.
 
 Last, when the plan has `quarantine:` rules and the process exited `1`, `testo_core/engine/quarantine.py` reads the stage's Allure results. If every failed or broken test matches a rule, the stage's `returncode` becomes `0` and the original goes to `waived_returncode`; the matched names go to `StageResult.quarantined` either way and to `run.log` as `[testo] quarantine: ...`. The result files are not changed, so the failures still count in health, reports and Compare. See [Flaky Test Quarantine - 2026-10-22](../Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md).
 
@@ -298,10 +298,12 @@ See [Scale Runs and Stages - 2026-10-24](../Specs%20&%20ADRs/Scale%20Runs%20and%
 | `behavex` | `--parallel-processes N --parallel-scheme feature`, unless `args:` already set them. |
 | `pytest` | `-n N` when N > 1 **and** pytest-xdist is importable by the `pytest` on PATH (the adapter reads its shebang and probes that interpreter). Without xdist it logs one warning and runs serially. A `-n`/`--numprocesses` or `-p no:xdist` in `args:` wins. |
 | `playwright` | `--workers=N`, unless `args:` set `--workers`/`-j` (this replaces `workers` in `playwright.config`). |
+| `jest`, `vitest` | `--maxWorkers=N`, unless `args:` set it (Jest: also `-w`, `--runInBand`/`-i`; Vitest: also `--pool`, `--no-file-parallelism`). |
 | `behave` | Nothing — native behave is single-process. Setting `workers:` on the stage loads fine but logs a warning. |
 | `command` | Nothing — the command owns its own flags (same warning). |
+| `cypress` | Nothing — Cypress runs specs one after another without its paid cloud (same warning). |
 
-The API's `GET /api/v1/cycles/{cycle}` returns `workers: null` for `behave` and `command` stages, so the UI only shows *Workers* where it can apply (pytest's is labelled "with pytest-xdist").
+The API's `GET /api/v1/cycles/{cycle}` returns `workers: null` for `behave`, `cypress` and `command` stages, so the UI only shows *Workers* where it can apply (pytest's is labelled "with pytest-xdist").
 
 ### Threading in the engine
 

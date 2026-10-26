@@ -94,7 +94,7 @@ def build_json_schema() -> dict[str, Any]:
                 ],
             },
             "workers": {
-                "description": "Parallel workers (pytest with xdist, behavex, playwright). "
+                "description": "Parallel workers (pytest with xdist, behavex, playwright, jest, vitest). "
                 "Defaults to defaults.workers. 'auto' (with resources per worker or test): "
                 "as many as the pool has free keys.",
                 "oneOf": [{"type": "integer", "minimum": 1}, {"const": "auto"}],
@@ -276,14 +276,26 @@ def build_json_schema() -> dict[str, Any]:
                 "minimum": 1,
                 "description": "Most keys one person may hold at once.",
             },
+            "reuse_delay": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Seconds an expired lease keeps its key out of the pool, so a "
+                "frozen holder can notice it lost the key (default: lease_ttl / 3).",
+            },
             "on_take": {
                 **command,
                 "description": "Your command, run with TESTO_RESOURCE_* set after a key is "
                 "taken. If it fails, the key is taken out of the pool.",
             },
+            "on_check": {
+                **command,
+                "description": "Your command, run after on_take: exit 0 if the key is usable. "
+                "If it fails, the key is taken out of the pool.",
+            },
             "on_release": {
                 **command,
-                "description": "Your command, run before a key is given back.",
+                "description": "Your command, run before a key is given back. If it works, the "
+                "next taker gets TESTO_RESOURCE_CLEAN=1.",
             },
             "hook_timeout": {
                 "type": "number",

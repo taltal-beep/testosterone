@@ -106,7 +106,7 @@ def execute_ingest_command(
     server: str | None = None,
     token: str | None = None,
 ) -> int:
-    """Record existing JUnit XML as a run of *cycle*, through the same service as ``testo run``.
+    """Record existing test result files (JUnit XML and the other known formats) as a run of *cycle*, through the same service as ``testo run``.
 
     With *server*, upload the files to that server's ``POST /api/v1/ingest``
     instead; it records them through the same service on its side.
@@ -199,7 +199,8 @@ def report_patterns(reports: list[str], *, repo: Path) -> tuple[str, ...]:
     """Turn ``testo ingest`` arguments into globs relative to *repo*.
 
     The shell usually expands globs into absolute or relative file paths; an
-    absolute one must sit inside *repo*.
+    absolute one must sit inside *repo*. A directory (``allure-results/``)
+    stands for the files directly in it.
     """
     out: list[str] = []
     for raw in reports:
@@ -214,6 +215,8 @@ def report_patterns(reports: list[str], *, repo: Path) -> tuple[str, ...]:
                 raise ConfigError(
                     f"report {raw!r} is outside --repo {repo}; pass --repo to a parent directory."
                 ) from None
+        if (repo / text).is_dir():
+            text = f"{text.rstrip('/')}/*"
         out.append(text)
     return tuple(out)
 

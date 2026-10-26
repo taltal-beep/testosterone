@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-19
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # Getting Started
@@ -125,14 +125,14 @@ Every key (timeouts, workers, triggers on changed paths, reporters such as Allur
 
 ## Already have CI? Record its results instead
 
-If your tests already run somewhere and write JUnit XML (Jest, Vitest, `go test`, JUnit5, pytest's `--junitxml`, ...), skip the YAML and add one step after them:
+If your tests already run somewhere, skip the YAML and add one step after them. Any runner that writes JUnit XML works (JUnit5, pytest's `--junitxml`, PHPUnit, ...), and so do the files Jest, Vitest, Playwright, `dotnet test`, `go test -json` and Robot Framework write themselves, or an `allure-results` folder:
 
 ```bash
 pip install testo-core
 testo ingest 'reports/**/*.xml' --cycle web-unit
 ```
 
-The run gets the same history, `testo summary`, `testo flaky` and Compare as a `testo run`. For one history across every CI job and teammate, run the [Team Server](Processes%20&%20Guides/Team%20Server.md) and add `--server https://your-server --token "$TESTO_API_TOKEN"`. Details: [Command Reference § testo ingest](CLI%20Commands/Command%20Reference.md#testo-ingest).
+The run gets the same history, `testo summary`, `testo flaky` and Compare as a `testo run`. For one history across every CI job and teammate, run the [Team Server](Processes%20&%20Guides/Team%20Server.md) and add `--server https://your-server --token "$TESTO_API_TOKEN"`. Which file each runner writes: [Command Reference § testo ingest](CLI%20Commands/Command%20Reference.md#testo-ingest).
 
 ## Using pytest? One flag
 

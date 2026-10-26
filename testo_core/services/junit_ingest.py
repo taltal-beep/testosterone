@@ -1,4 +1,4 @@
-"""Record uploaded JUnit XML (or Playwright JSON) as a run: the server side of ``testo ingest --server``.
+"""Record uploaded test result files (JUnit XML and the other formats junit_import reads) as a run: the server side of ``testo ingest --server``.
 
 CI jobs anywhere upload their JUnit XML to one Testosterone server
 (``POST /api/v1/ingest``), so the whole team's runs land in one history. The
@@ -41,6 +41,7 @@ RUN_METADATA_KEYS: tuple[str, ...] = (
 )
 _MAX_METADATA_CHARS = 256
 _UNSAFE_FILENAME = re.compile(r"[^A-Za-z0-9._-]+")
+_SAFE_SUFFIX = re.compile(r"\.[a-z0-9]{1,10}")
 
 # One ingest at a time: they take milliseconds, and the run history (often
 # SQLite) and report archive are shared by every request.
@@ -89,7 +90,7 @@ def ingest_uploaded_reports(
     )
 
     if not reports:
-        raise ConfigValidationError("no JUnit XML files in the upload.")
+        raise ConfigValidationError("no test result files in the upload.")
     if len(reports) > MAX_FILES:
         raise ConfigValidationError(f"too many files ({len(reports)}; the limit is {MAX_FILES}).")
     total = 0
@@ -108,16 +109,18 @@ def ingest_uploaded_reports(
         root = Path(scratch)
         reports_dir = root / "reports"
         reports_dir.mkdir()
+        used: set[str] = set()
         for index, (name, content) in enumerate(reports):
-            # Client file names are only a label; the index keeps them unique.
-            label = _UNSAFE_FILENAME.sub("_", Path(name or "report").stem)[:80] or "report"
-            # .json is a Playwright JSON report, anything else JUnit XML (junit_import decides by suffix).
-            suffix = ".json" if (name or "").lower().endswith(".json") else ".xml"
-            (reports_dir / f"{index:03d}-{label}{suffix}").write_bytes(content)
+            # Client file names are only a label; what a file is comes from its content
+            # (junit_import). The name is kept when it is safe, because an Allure result
+            # names its attachments by file name; otherwise the index keeps it unique.
+            filename = _stored_name(name, index, used)
+            used.add(filename)
+            (reports_dir / filename).write_bytes(content)
 
         plan = junit_ingest_plan(
             cycle=cycle,
-            reports=["reports/*.xml", "reports/*.json"],
+            reports=["reports/*"],
             target_repo=root,
             stage_name=stage,
             tier=tier,
@@ -148,6 +151,18 @@ def ingest_uploaded_reports(
         failed=counts.get("failed", 0) + counts.get("broken", 0),
         skipped=counts.get("skipped", 0),
     )
+
+
+def _stored_name(name: str, index: int, used: set[str]) -> str:
+    raw = Path(name or "report").name
+    stem = _UNSAFE_FILENAME.sub("_", Path(raw).stem)[:80].strip("._") or "report"
+    suffix = Path(raw).suffix.lower()
+    if not _SAFE_SUFFIX.fullmatch(suffix):
+        suffix = ".xml"
+    candidate = f"{stem}{suffix}"
+    if candidate in used:
+        candidate = f"{index:03d}-{candidate}"
+    return candidate
 
 
 def _status_counts(results_dir: Path) -> dict[str, int]:

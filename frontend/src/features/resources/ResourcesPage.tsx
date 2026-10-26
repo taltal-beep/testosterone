@@ -46,8 +46,12 @@ function KeyRow({ pool, item, now }: { pool: string; item: ResourceItemStatus; n
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["resources"] })
   });
 
+  // Heartbeats stopped: the key stays out until the reuse delay is over.
+  const expired = item.lease && item.lease.expires_at < now ? item.lease : null;
   const state = item.disabled ? (
     <Badge tone="danger">Disabled</Badge>
+  ) : expired ? (
+    <Badge tone="warn">Expired</Badge>
   ) : item.lease ? (
     <Badge tone="warn">Held</Badge>
   ) : (
@@ -73,6 +77,9 @@ function KeyRow({ pool, item, now }: { pool: string; item: ResourceItemStatus; n
           <p className="text-xs text-ink-300">
             {holderLine(item.lease)} · taken {ago(item.lease.taken_at, now)} · last heartbeat{" "}
             {ago(item.lease.heartbeat_at, now)}
+            {expired
+              ? ` · free again in ${Math.max(0, Math.ceil(expired.expires_at + (expired.reuse_delay_s ?? 0) - now))}s`
+              : ""}
           </p>
         ) : null}
         {error ? (

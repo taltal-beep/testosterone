@@ -13,6 +13,7 @@ makes sure two workers never hold the same one at the same time (see
         lease_ttl: 120          # seconds without a heartbeat before a key is free again
         max_per_user: 2         # optional
         on_take: "my-tool revert $TESTO_RESOURCE_ID"     # optional, your own command
+        on_check: "my-tool ping $TESTO_RESOURCE_ID"      # optional: exit 0 = usable
       seats:
         count: 3                # keys seat-1, seat-2, seat-3
 
@@ -36,7 +37,17 @@ MAX_ITEMS: Final[int] = 1000
 # Pool names and keys show up in URLs, env vars and table rows; keep them plain.
 _NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._@:-]{0,127}$")
 _POOL_KEYS: Final[frozenset[str]] = frozenset(
-    {"items", "count", "lease_ttl", "max_per_user", "on_take", "on_release", "hook_timeout"}
+    {
+        "items",
+        "count",
+        "lease_ttl",
+        "max_per_user",
+        "reuse_delay",
+        "on_take",
+        "on_check",
+        "on_release",
+        "hook_timeout",
+    }
 )
 _ITEM_KEYS: Final[frozenset[str]] = frozenset({"id", "labels", "data"})
 
@@ -59,10 +70,19 @@ class ResourcePool:
     items: tuple[ResourceItem, ...]
     lease_ttl_s: float = DEFAULT_LEASE_TTL_S
     max_per_user: int | None = None
+    # Seconds a key whose lease expired stays out of the pool, so a holder that was
+    # only frozen (not dead) has a heartbeat's time to notice it lost the key.
+    # None: one heartbeat interval (lease_ttl / 3).
+    reuse_delay_s: float | None = None
     # Commands run (with the lease's env vars) by the process that took the key.
     on_take: str | None = None
+    on_check: str | None = None
     on_release: str | None = None
     hook_timeout_s: float = DEFAULT_HOOK_TIMEOUT_S
+
+    @property
+    def reuse_delay(self) -> float:
+        return self.lease_ttl_s / 3 if self.reuse_delay_s is None else self.reuse_delay_s
 
     def matching(self, labels: Iterable[str] = ()) -> tuple[ResourceItem, ...]:
         wanted = tuple(labels)
@@ -80,10 +100,12 @@ class ResourcePool:
             ],
             "lease_ttl": self.lease_ttl_s,
             "max_per_user": self.max_per_user,
+            "reuse_delay": self.reuse_delay_s,
         }
         if hooks:
             data.update(
                 on_take=self.on_take,
+                on_check=self.on_check,
                 on_release=self.on_release,
                 hook_timeout=self.hook_timeout_s,
             )
@@ -202,6 +224,7 @@ def parse_pool(name: str, raw: Any) -> ResourcePool:
         items = _parse_items(raw["items"], where=where)
 
     max_per_user_raw = raw.get("max_per_user")
+    reuse_delay_raw = raw.get("reuse_delay")
     return ResourcePool(
         name=name,
         items=items,
@@ -211,7 +234,13 @@ def parse_pool(name: str, raw: Any) -> ResourcePool:
             if max_per_user_raw is None
             else _whole_number(max_per_user_raw, f"{where}.max_per_user", minimum=1)
         ),
+        reuse_delay_s=(
+            None
+            if reuse_delay_raw is None
+            else _seconds(reuse_delay_raw, f"{where}.reuse_delay", 0.0, allow_zero=True)
+        ),
         on_take=_command(raw.get("on_take"), f"{where}.on_take"),
+        on_check=_command(raw.get("on_check"), f"{where}.on_check"),
         on_release=_command(raw.get("on_release"), f"{where}.on_release"),
         hook_timeout_s=_seconds(
             raw.get("hook_timeout"), f"{where}.hook_timeout", DEFAULT_HOOK_TIMEOUT_S
@@ -290,11 +319,17 @@ def _whole_number(raw: Any, where: str, *, minimum: int) -> int:
     return raw
 
 
-def _seconds(raw: Any, where: str, default: float) -> float:
+def _seconds(raw: Any, where: str, default: float, *, allow_zero: bool = False) -> float:
     if raw is None:
         return default
-    if isinstance(raw, bool) or not isinstance(raw, (int, float)) or raw <= 0:
-        raise ConfigValidationError(f"{where} must be a number of seconds above 0.")
+    if (
+        isinstance(raw, bool)
+        or not isinstance(raw, (int, float))
+        or raw < 0
+        or (raw == 0 and not allow_zero)
+    ):
+        floor = "0 or more" if allow_zero else "above 0"
+        raise ConfigValidationError(f"{where} must be a number of seconds {floor}.")
     return float(raw)
 
 

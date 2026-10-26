@@ -63,6 +63,8 @@ def lease_item(lease: Lease) -> ResourceLeaseItem:
         heartbeat_at=lease.heartbeat_at,
         expires_at=lease.expires_at,
         ttl_s=lease.ttl_s,
+        reuse_delay_s=lease.reuse_delay_s,
+        clean=lease.clean,
     )
 
 
@@ -85,9 +87,11 @@ def pool_status(pool: PoolStatus) -> ResourcePoolStatus:
                     heartbeat_at=i.lease.heartbeat_at,
                     expires_at=i.lease.expires_at,
                     ttl_s=i.lease.ttl_s,
+                    reuse_delay_s=i.lease.reuse_delay_s,
                 )
                 if i.lease
                 else None,
+                clean=i.clean,
             )
             for i in pool.items
         ],
@@ -141,9 +145,9 @@ def heartbeat_lease(lease_id: str = _LEASE_ID) -> ResourceLeaseItem:
 
 
 @router.delete("/leases/{lease_id}", status_code=204)
-def release_lease(lease_id: str = _LEASE_ID) -> Response:
-    """Give a key back."""
-    if not LeaseStore().release(lease_id):
+def release_lease(lease_id: str = _LEASE_ID, clean: bool = False) -> Response:
+    """Give a key back. ``clean=true``: the holder reset it, so the next taker may skip a reset."""
+    if not LeaseStore().release(lease_id, clean=clean):
         raise HTTPException(status_code=404, detail="That lease is gone (expired or released).")
     return Response(status_code=204)
 

@@ -100,6 +100,51 @@ def test_a_failing_on_release_hook_disables_the_key(store: LeaseStore) -> None:
     )
 
 
+def test_a_failing_on_check_hook_disables_the_key_and_tries_the_next(
+    store: LeaseStore, tmp_path: Path
+) -> None:
+    # on_take "resets" every key; on_check then finds vm-1 unusable.
+    script = tmp_path / "check.py"
+    script.write_text(
+        "import os, sys\nsys.exit(2 if os.environ['TESTO_RESOURCE_ID'] == 'vm-1' else 0)\n"
+    )
+    pool = parse_pool(
+        "vms",
+        {
+            "items": ["vm-1", "vm-2"],
+            "on_take": _ok(0),
+            "on_check": f'"{sys.executable}" "{script}"',
+        },
+    )
+    with acquire(store, pool, wait_s=0) as held:
+        assert held.id == "vm-2"
+    broken = next(i for i in store.status("vms")[0].items if i.item == "vm-1")
+    assert broken.disabled and broken.disabled_reason == "on_check failed: exit 2"
+
+
+def test_a_working_on_release_tells_the_next_taker_the_key_is_clean(
+    store: LeaseStore, tmp_path: Path
+) -> None:
+    seen = tmp_path / "seen.txt"
+    script = tmp_path / "record.py"
+    script.write_text(
+        f"import os\nopen({str(seen)!r}, 'a').write(os.environ['TESTO_RESOURCE_CLEAN'])\n"
+    )
+    record = f'"{sys.executable}" "{script}"'
+    pool = parse_pool("vms", {"items": ["vm-1"], "on_take": record, "on_release": _ok(0)})
+    with acquire(store, pool, wait_s=0) as held:
+        assert held.env()["TESTO_RESOURCE_CLEAN"] == "0"
+    with acquire(store, pool, wait_s=0) as held:
+        assert held.env()["TESTO_RESOURCE_CLEAN"] == "1"
+    # on_take saw it too, so it can skip a slow reset.
+    assert seen.read_text() == "01"
+    # Without an on_release nobody reset the key, so it is never clean.
+    plain = parse_pool("seats", {"count": 1})
+    for _ in range(2):
+        with acquire(store, plain, wait_s=0) as held:
+            assert held.env()["TESTO_RESOURCE_CLEAN"] == "0"
+
+
 def test_the_heartbeat_keeps_a_short_lease_alive(store: LeaseStore) -> None:
     pool = parse_pool("vms", {"items": ["vm-1"], "lease_ttl": 1.5})
     with acquire(store, pool, wait_s=0) as held:

@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from testo_core import paths
@@ -211,6 +212,7 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
             )
         )
     tests = _with_triage(run.cycle, tests)
+    case_frameworks = {k[:200]: str(c.get("framework") or "") for k, c in failing.items()}
     # New breakages first, then the longest-standing ones; ties by stage and name.
     tests.sort(key=lambda t: (not t.new, -t.failing_runs, t.stage, t.name))
     return RunFailures(
@@ -220,8 +222,14 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
         groups=_groups(tests),
         rerun_commands=tuple(
             rerun_commands(
-                [FailingCase(t.name, t.full_name, t.group, t.stage) for t in tests],
+                [
+                    FailingCase(
+                        t.name, t.full_name, t.group, t.stage, case_frameworks.get(t.key, "")
+                    )
+                    for t in tests
+                ],
                 {str(st.get("name")): str(st.get("framework") or "") for st in run.stage_health},
+                repo=Path(run.target_repo) if run.target_repo else None,
             )
         ),
         baseline_run_id=baseline.run_id if baseline_cases and baseline else None,
