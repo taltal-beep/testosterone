@@ -5146,6 +5146,125 @@
         ]
       }
     },
+    "/api/v1/badge.json": {
+      "get": {
+        "description": "The same badge as a shields.io endpoint (``img.shields.io/endpoint?url=...``).",
+        "operationId": "get_badge_json_api_v1_badge_json_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cycle"
+            }
+          },
+          {
+            "in": "query",
+            "name": "label",
+            "required": false,
+            "schema": {
+              "default": "tests",
+              "maxLength": 40,
+              "title": "Label",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Badge Json Api V1 Badge Json Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Badge Json",
+        "tags": [
+          "badge"
+        ]
+      }
+    },
+    "/api/v1/badge.svg": {
+      "get": {
+        "description": "The latest run of ``cycle`` (any cycle when omitted) as an SVG badge.",
+        "operationId": "get_badge_svg_api_v1_badge_svg_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cycle"
+            }
+          },
+          {
+            "in": "query",
+            "name": "label",
+            "required": false,
+            "schema": {
+              "default": "tests",
+              "maxLength": 40,
+              "title": "Label",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Badge Svg",
+        "tags": [
+          "badge"
+        ]
+      }
+    },
     "/api/v1/cycle-executions/{execution_id}": {
       "get": {
         "operationId": "get_cycle_execution_api_v1_cycle_executions__execution_id__get",

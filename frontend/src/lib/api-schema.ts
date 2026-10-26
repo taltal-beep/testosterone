@@ -204,6 +204,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/badge.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Badge Json
+         * @description The same badge as a shields.io endpoint (``img.shields.io/endpoint?url=...``).
+         */
+        get: operations["get_badge_json_api_v1_badge_json_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/badge.svg": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Badge Svg
+         * @description The latest run of ``cycle`` (any cycle when omitted) as an SVG badge.
+         */
+        get: operations["get_badge_svg_api_v1_badge_svg_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cycle-executions/{execution_id}": {
         parameters: {
             query?: never;
@@ -2639,6 +2679,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WhoAmIResponse"];
+                };
+            };
+        };
+    };
+    get_badge_json_api_v1_badge_json_get: {
+        parameters: {
+            query?: {
+                cycle?: string | null;
+                label?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_badge_svg_api_v1_badge_svg_get: {
+        parameters: {
+            query?: {
+                cycle?: string | null;
+                label?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
