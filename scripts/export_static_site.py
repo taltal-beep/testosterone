@@ -50,6 +50,11 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/dashboard/overview.json           GET /api/v1/dashboard/overview
     data/dashboard/recent-runs.json        GET /api/v1/dashboard/runs/recent
     data/dashboard/attention.json          GET /api/v1/dashboard/attention
+    data/project-health/all.json           GET /api/v1/project-health
+    data/project-health/cycles/<name>.json GET /api/v1/project-health?cycle={name}
+    data/project-health/skills.json        GET /api/v1/project-health/skills
+    data/project-health/ai-review.json     GET /api/v1/project-health/ai-review
+    data/project-health/ai-review/<name>.json  GET /api/v1/project-health/ai-review?cycle={name}
     data/delta/<current>__<baseline>/comparison.json
     data/delta/<current>__<baseline>/cases.json
 """
@@ -242,6 +247,11 @@ class Exporter:
                 f"/api/v1/analytics/flaky?cycle={quote(name, safe='')}", f"flaky/{name}.json"
             )
             self.export_tests(name)
+            query = f"?cycle={quote(name, safe='')}"
+            self._dump(f"/api/v1/project-health{query}", f"project-health/cycles/{name}.json")
+            self._dump(
+                f"/api/v1/project-health/ai-review{query}", f"project-health/ai-review/{name}.json"
+            )
 
     def export_tests(self, cycle: str) -> None:
         """The cycle's test list, and one history file per test for the per-test page."""
@@ -264,6 +274,9 @@ class Exporter:
             self._write("dashboard/overview.json", self._absolutize_report_links(overview))
         self._dump("/api/v1/dashboard/runs/recent?limit=8", "dashboard/recent-runs.json")
         self._dump("/api/v1/dashboard/attention", "dashboard/attention.json")
+        self._dump("/api/v1/project-health", "project-health/all.json")
+        self._dump("/api/v1/project-health/skills", "project-health/skills.json")
+        self._dump("/api/v1/project-health/ai-review", "project-health/ai-review.json")
 
     def export_deltas(self, runs: list[dict[str, Any]]) -> list[list[str]]:
         """Export the run pairs the UI can ask for.

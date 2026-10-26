@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # Vault log
@@ -100,3 +100,7 @@ Added [Product Roadmap Work - 2026-10-25](Specs%20&%20ADRs/Product%20Roadmap%20W
 ## 2026-10-25: comparison page
 
 Added [Compared With Other Tools](Compared%20With%20Other%20Tools.md), a user-facing guide next to Getting Started (in the docs site nav and the Index), from the Product Review's competitive position.
+
+## 2026-10-26: project health
+
+Added [Project Health - 2026-10-26](Specs%20&%20ADRs/Project%20Health%20-%202026-10-26.md) to Specs & ADRs (the test health score and the test-only AI review checks).

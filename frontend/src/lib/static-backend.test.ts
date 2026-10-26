@@ -17,6 +17,10 @@ describe("resolveStaticPath", () => {
     expect(resolve("/api/v1/dashboard/overview?recent_limit=6")).toBe("dashboard/overview.json");
     expect(resolve("/api/v1/dashboard/runs/recent?limit=8")).toBe("dashboard/recent-runs.json");
     expect(resolve("/api/v1/dashboard/attention")).toBe("dashboard/attention.json");
+    expect(resolve("/api/v1/project-health")).toBe("project-health/all.json");
+    expect(resolve("/api/v1/project-health?cycle=web")).toBe("project-health/cycles/web.json");
+    expect(resolve("/api/v1/project-health/skills")).toBe("project-health/skills.json");
+    expect(resolve("/api/v1/project-health/ai-review?cycle=web")).toBe("project-health/ai-review/web.json");
   });
 
   it("maps per-run endpoints", () => {
