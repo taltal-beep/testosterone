@@ -46,7 +46,7 @@ const RELIABILITY_ORDER: Array<{ key: keyof ReliabilityMetrics; label: string }>
   { key: "failed", label: "Failed" },
   { key: "broken", label: "Broken" },
   { key: "skipped", label: "Skipped" },
-  { key: "health_pct", label: "Health" }
+  { key: "health_pct", label: "Pass rate" }
 ];
 
 const PERFORMANCE_ORDER: Array<{ key: keyof PerformanceMetrics; label: string }> = [
