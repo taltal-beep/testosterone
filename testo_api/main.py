@@ -21,6 +21,7 @@ from testo_api.routes.dashboard import router as dashboard_router
 from testo_api.routes.health import router as health_router
 from testo_api.routes.history import router as history_router
 from testo_api.routes.ingest import router as ingest_router
+from testo_api.routes.project_health import router as project_health_router
 from testo_api.routes.resources import router as resources_router
 from testo_api.routes.triage import router as triage_router
 from testo_api.security import (
@@ -92,6 +93,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard_router)
     app.include_router(health_router)
     app.include_router(ingest_router)
+    app.include_router(project_health_router)
     app.include_router(triage_router)
     app.include_router(resources_router)
 

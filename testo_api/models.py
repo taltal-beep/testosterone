@@ -690,3 +690,103 @@ class ResourceItemRequest(ApiModel):
     pool: str = Field(min_length=1, max_length=128)
     item: str = Field(min_length=1, max_length=128)
     reason: str = Field(default="", max_length=500)
+
+
+class HealthSignalItem(ApiModel):
+    key: str
+    name: str
+    score: int | None = None
+    weight: int
+    value: str
+    how: str
+
+
+class CycleHealthItem(ApiModel):
+    cycle: str
+    run_id: str
+    created_at: float
+    passed_latest: bool
+    tests: int
+    failing: int
+    flaky: int
+    slower: int
+    green_runs: int
+    runs: int
+    score: int | None = None
+
+
+class HealthFindingItem(ApiModel):
+    kind: Literal["red_cycle", "flaky", "slower", "quarantined", "skipped"]
+    cycle: str
+    title: str
+    detail: str
+    test_key: str | None = None
+    run_id: str | None = None
+
+
+class ProjectHealthResponse(ApiModel):
+    """A repeatable 0-100 score of the project under test, from its recorded runs."""
+
+    scope: str | None = None
+    score: int | None = None
+    grade: str | None = None
+    cycles: int
+    runs_considered: int
+    tests: int
+    latest_run_at: float | None = None
+    signals: list[HealthSignalItem] = Field(default_factory=list)
+    by_cycle: list[CycleHealthItem] = Field(default_factory=list)
+    findings: list[HealthFindingItem] = Field(default_factory=list)
+
+
+class ReviewSkillItem(ApiModel):
+    id: str
+    name: str
+    category: str
+    tagline: str
+    summary: str
+    checks: list[str] = Field(default_factory=list)
+    reads: list[str] = Field(default_factory=list)
+    default_on: bool
+
+
+class ReviewSkillsResponse(ApiModel):
+    items: list[ReviewSkillItem]
+
+
+class ReviewFindingItem(ApiModel):
+    severity: Literal["high", "medium", "low"]
+    title: str
+    detail: str
+
+
+class SkillResultItem(ApiModel):
+    skill_id: str
+    name: str
+    score: int | None = None
+    summary: str
+    findings: list[ReviewFindingItem] = Field(default_factory=list)
+
+
+class ProjectReviewResponse(ApiModel):
+    """An AI estimate of the project's tests, one result per enabled review skill."""
+
+    scope: str | None = None
+    status: Literal["available", "not_generated", "failed"]
+    score: int | None = None
+    grade: str | None = None
+    summary: str | None = None
+    skills: list[SkillResultItem] = Field(default_factory=list)
+    provider: str | None = None
+    model: str | None = None
+    generated_at: float | None = None
+    based_on_run_id: str | None = None
+    stale: bool = False
+    error_code: str | None = None
+    error_message: str | None = None
+    context_stats: dict[str, int] = Field(default_factory=dict)
+
+
+class GenerateProjectReviewRequest(ApiModel):
+    cycle: str | None = Field(None, max_length=200)
+    skills: list[str] = Field(..., max_length=20)

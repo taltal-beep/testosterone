@@ -59,6 +59,13 @@ export type ResourcesResponse = Schemas["ResourcesResponse"];
 export type ResourcePoolStatus = Schemas["ResourcePoolStatus"];
 export type ResourceItemStatus = Schemas["ResourceItemStatus"];
 export type ResourceLeaseInfo = Schemas["ResourceLeaseInfo"];
+export type ProjectHealthResponse = Schemas["ProjectHealthResponse"];
+export type HealthSignalItem = Schemas["HealthSignalItem"];
+export type HealthFindingItem = Schemas["HealthFindingItem"];
+export type ReviewSkillItem = Schemas["ReviewSkillItem"];
+export type ReviewSkillsResponse = Schemas["ReviewSkillsResponse"];
+export type ProjectReviewResponse = Schemas["ProjectReviewResponse"];
+export type SkillResultItem = Schemas["SkillResultItem"];
 
 export type HealthReadyResponse = Schemas["HealthReadyResponse"];
 export type WhoAmI = Schemas["WhoAmIResponse"];
@@ -209,6 +216,23 @@ export const apiClient = {
   },
   getDashboardAttention(): Promise<DashboardAttentionResponse> {
     return api<DashboardAttentionResponse>("/api/v1/dashboard/attention");
+  },
+  getProjectHealth(cycle?: string): Promise<ProjectHealthResponse> {
+    const query = cycle ? `?${new URLSearchParams({ cycle })}` : "";
+    return api<ProjectHealthResponse>(`/api/v1/project-health${query}`);
+  },
+  listReviewSkills(): Promise<ReviewSkillsResponse> {
+    return api<ReviewSkillsResponse>("/api/v1/project-health/skills");
+  },
+  getProjectReview(cycle?: string): Promise<ProjectReviewResponse> {
+    const query = cycle ? `?${new URLSearchParams({ cycle })}` : "";
+    return api<ProjectReviewResponse>(`/api/v1/project-health/ai-review${query}`);
+  },
+  generateProjectReview(cycle: string | undefined, skills: string[]): Promise<ProjectReviewResponse> {
+    return api<ProjectReviewResponse>("/api/v1/project-health/ai-review", {
+      method: "POST",
+      body: JSON.stringify({ cycle: cycle ?? null, skills })
+    });
   },
   getAiConfigStatus(): Promise<AiConfigStatus> {
     return api<AiConfigStatus>("/api/v1/ai/config/status");

@@ -104,3 +104,7 @@ Added [Compared With Other Tools](Compared%20With%20Other%20Tools.md), a user-fa
 ## 2026-10-26: resource pools
 
 Added [Shared Resource Pools](Processes%20&%20Guides/Shared%20Resource%20Pools.md) (guide for `testo lease` and `resources:`) and [Resource Pools and Leases - 2026-10-26](Specs%20&%20ADRs/Resource%20Pools%20and%20Leases%20-%202026-10-26.md), linked from the Index, the Specs & ADRs README and the docs site menu.
+
+## 2026-10-26: project health
+
+Added [Project Health - 2026-10-26](Specs%20&%20ADRs/Project%20Health%20-%202026-10-26.md) to Specs & ADRs (the test health score and the test-only AI review checks).

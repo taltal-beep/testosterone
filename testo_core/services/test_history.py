@@ -220,3 +220,23 @@ def cycle_source(cycle: str) -> tuple[Path | None, str | None]:
         if run.target_repo or run.repository:
             return (Path(run.target_repo) if run.target_repo else None), run.repository
     return None, None
+
+
+def test_presence(cycle: str, *, window: int = DEFAULT_WINDOW) -> dict[str, tuple[str, int, int]]:
+    """``key -> (name, first_seen, last_seen)`` in runs ago (0 = the latest run analysed).
+
+    A test missing from the latest runs (``last_seen > 0``) was removed or renamed; one
+    with a small ``first_seen`` is new. Feeds the AI review's test churn check.
+    """
+    runs = [r.run_id for r in flaky_service._cycle_runs(cycle)[: max(1, int(window))]]
+    _, per_test = _observations(cycle, window)
+    analysed = [
+        r for r in runs if any(r == run.run_id for obs in per_test.values() for run, _ in obs)
+    ]
+    position = {run_id: index for index, run_id in enumerate(analysed)}
+    presence: dict[str, tuple[str, int, int]] = {}
+    for key, observed in per_test.items():
+        ago = [position[run.run_id] for run, _ in observed if run.run_id in position]
+        if ago:
+            presence[key] = (str(observed[-1][1].get("name") or key), max(ago), min(ago))
+    return presence

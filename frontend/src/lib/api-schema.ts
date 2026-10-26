@@ -407,6 +407,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/project-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Project Health
+         * @description The project under test's test health score: every cycle, or ``cycle`` alone.
+         */
+        get: operations["get_project_health_api_v1_project_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/project-health/ai-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Project Review
+         * @description The last AI review of the scope, if any; ``stale`` when newer runs came in.
+         */
+        get: operations["get_project_review_api_v1_project_health_ai_review_get"];
+        put?: never;
+        /**
+         * Generate Project Review
+         * @description Ask the configured AI provider to review the project with the chosen skills.
+         */
+        post: operations["generate_project_review_api_v1_project_health_ai_review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/project-health/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Review Skills
+         * @description The review skills the AI review can use, each with what it checks and reads.
+         */
+        get: operations["list_review_skills_api_v1_project_health_skills_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/resources": {
         parameters: {
             query?: never;
@@ -1063,6 +1127,31 @@ export interface components {
              */
             status: "queued" | "running" | "completed" | "failed";
         };
+        /** CycleHealthItem */
+        CycleHealthItem: {
+            /** Created At */
+            created_at: number;
+            /** Cycle */
+            cycle: string;
+            /** Failing */
+            failing: number;
+            /** Flaky */
+            flaky: number;
+            /** Green Runs */
+            green_runs: number;
+            /** Passed Latest */
+            passed_latest: boolean;
+            /** Run Id */
+            run_id: string;
+            /** Runs */
+            runs: number;
+            /** Score */
+            score: number | null;
+            /** Slower */
+            slower: number;
+            /** Tests */
+            tests: number;
+        };
         /** CycleListResponse */
         CycleListResponse: {
             /** Config Path */
@@ -1455,10 +1544,35 @@ export interface components {
              */
             force_refresh?: boolean;
         };
+        /** GenerateProjectReviewRequest */
+        GenerateProjectReviewRequest: {
+            /** Cycle */
+            cycle?: string | null;
+            /** Skills */
+            skills: string[];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HealthFindingItem */
+        HealthFindingItem: {
+            /** Cycle */
+            cycle: string;
+            /** Detail */
+            detail: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "red_cycle" | "flaky" | "slower" | "quarantined" | "skipped";
+            /** Run Id */
+            run_id: string | null;
+            /** Test Key */
+            test_key: string | null;
+            /** Title */
+            title: string;
         };
         /** HealthLiveResponse */
         HealthLiveResponse: {
@@ -1479,6 +1593,21 @@ export interface components {
              * @enum {string}
              */
             status: "ready" | "degraded";
+        };
+        /** HealthSignalItem */
+        HealthSignalItem: {
+            /** How */
+            how: string;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Score */
+            score: number | null;
+            /** Value */
+            value: string;
+            /** Weight */
+            weight: number;
         };
         /**
          * IngestResponse
@@ -1501,6 +1630,74 @@ export interface components {
             skipped: number;
             /** Tests */
             tests: number;
+        };
+        /**
+         * ProjectHealthResponse
+         * @description A repeatable 0-100 score of the project under test, from its recorded runs.
+         */
+        ProjectHealthResponse: {
+            /** By Cycle */
+            by_cycle: components["schemas"]["CycleHealthItem"][];
+            /** Cycles */
+            cycles: number;
+            /** Findings */
+            findings: components["schemas"]["HealthFindingItem"][];
+            /** Grade */
+            grade: string | null;
+            /** Latest Run At */
+            latest_run_at: number | null;
+            /** Runs Considered */
+            runs_considered: number;
+            /** Scope */
+            scope: string | null;
+            /** Score */
+            score: number | null;
+            /** Signals */
+            signals: components["schemas"]["HealthSignalItem"][];
+            /** Tests */
+            tests: number;
+        };
+        /**
+         * ProjectReviewResponse
+         * @description An AI estimate of the project's tests, one result per enabled review skill.
+         */
+        ProjectReviewResponse: {
+            /** Based On Run Id */
+            based_on_run_id: string | null;
+            /** Context Stats */
+            context_stats: {
+                [key: string]: number;
+            };
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Generated At */
+            generated_at: number | null;
+            /** Grade */
+            grade: string | null;
+            /** Model */
+            model: string | null;
+            /** Provider */
+            provider: string | null;
+            /** Scope */
+            scope: string | null;
+            /** Score */
+            score: number | null;
+            /** Skills */
+            skills: components["schemas"]["SkillResultItem"][];
+            /**
+             * Stale
+             * @default false
+             */
+            stale: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "not_generated" | "failed";
+            /** Summary */
+            summary: string | null;
         };
         /** ReadinessCheck */
         ReadinessCheck: {
@@ -1724,6 +1921,42 @@ export interface components {
             /** Pools */
             pools: components["schemas"]["ResourcePoolStatus"][];
         };
+        /** ReviewFindingItem */
+        ReviewFindingItem: {
+            /** Detail */
+            detail: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "high" | "medium" | "low";
+            /** Title */
+            title: string;
+        };
+        /** ReviewSkillItem */
+        ReviewSkillItem: {
+            /** Category */
+            category: string;
+            /** Checks */
+            checks: string[];
+            /** Default On */
+            default_on: boolean;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Reads */
+            reads: string[];
+            /** Summary */
+            summary: string;
+            /** Tagline */
+            tagline: string;
+        };
+        /** ReviewSkillsResponse */
+        ReviewSkillsResponse: {
+            /** Items */
+            items: components["schemas"]["ReviewSkillItem"][];
+        };
         /** RunDetail */
         RunDetail: {
             /** Audit Json */
@@ -1872,6 +2105,19 @@ export interface components {
             static_links: {
                 [key: string]: string;
             };
+        };
+        /** SkillResultItem */
+        SkillResultItem: {
+            /** Findings */
+            findings: components["schemas"]["ReviewFindingItem"][];
+            /** Name */
+            name: string;
+            /** Score */
+            score: number | null;
+            /** Skill Id */
+            skill_id: string;
+            /** Summary */
+            summary: string;
         };
         /** StageHealth */
         StageHealth: {
@@ -2689,6 +2935,121 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_project_health_api_v1_project_health_get: {
+        parameters: {
+            query?: {
+                cycle?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectHealthResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_project_review_api_v1_project_health_ai_review_get: {
+        parameters: {
+            query?: {
+                cycle?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectReviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_project_review_api_v1_project_health_ai_review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateProjectReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectReviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_review_skills_api_v1_project_health_skills_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewSkillsResponse"];
                 };
             };
         };

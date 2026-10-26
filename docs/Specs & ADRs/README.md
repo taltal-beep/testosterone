@@ -40,5 +40,6 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Changelog enforcement | [changelog_automation_policy.md](../changelog_automation_policy.md) |
 | Product roadmap from the product review (failing tests first, and what follows) | [Product Roadmap Work - 2026-10-25](Product%20Roadmap%20Work%20-%202026-10-25.md) |
 | Product review second pass: every area except trust toward 10 | [Product to Ten - 2026-10-25](Product%20to%20Ten%20-%202026-10-25.md) |
+| Project health page: a repeatable test health score and an optional AI review of the tests | [Project Health - 2026-10-26](Project%20Health%20-%202026-10-26.md) |
 
 Older plans and incident write-ups (Allure 3 migration plan, reporters port, report-links fix, CLI–UI parity, the `doctor`/`clean`/`watch`/`init` restore) are in the [Archive](../Archive/README.md).

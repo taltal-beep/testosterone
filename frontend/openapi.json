@@ -917,6 +917,76 @@
         "title": "CycleExecutionStatusResponse",
         "type": "object"
       },
+      "CycleHealthItem": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "failing": {
+            "title": "Failing",
+            "type": "integer"
+          },
+          "flaky": {
+            "title": "Flaky",
+            "type": "integer"
+          },
+          "green_runs": {
+            "title": "Green Runs",
+            "type": "integer"
+          },
+          "passed_latest": {
+            "title": "Passed Latest",
+            "type": "boolean"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "slower": {
+            "title": "Slower",
+            "type": "integer"
+          },
+          "tests": {
+            "title": "Tests",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cycle",
+          "run_id",
+          "created_at",
+          "passed_latest",
+          "tests",
+          "failing",
+          "flaky",
+          "slower",
+          "green_runs",
+          "runs",
+          "score"
+        ],
+        "title": "CycleHealthItem",
+        "type": "object"
+      },
       "CycleListResponse": {
         "properties": {
           "config_path": {
@@ -2249,6 +2319,35 @@
         "title": "GenerateAiSummaryRequest",
         "type": "object"
       },
+      "GenerateProjectReviewRequest": {
+        "properties": {
+          "cycle": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Skills",
+            "type": "array"
+          }
+        },
+        "required": [
+          "skills"
+        ],
+        "title": "GenerateProjectReviewRequest",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2260,6 +2359,65 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthFindingItem": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "red_cycle",
+              "flaky",
+              "slower",
+              "quarantined",
+              "skipped"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "test_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Test Key"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "cycle",
+          "title",
+          "detail",
+          "test_key",
+          "run_id"
+        ],
+        "title": "HealthFindingItem",
         "type": "object"
       },
       "HealthLiveResponse": {
@@ -2299,6 +2457,51 @@
           "checks"
         ],
         "title": "HealthReadyResponse",
+        "type": "object"
+      },
+      "HealthSignalItem": {
+        "properties": {
+          "how": {
+            "title": "How",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "score",
+          "weight",
+          "value",
+          "how"
+        ],
+        "title": "HealthSignalItem",
         "type": "object"
       },
       "IngestResponse": {
@@ -2362,6 +2565,263 @@
           "run_url"
         ],
         "title": "IngestResponse",
+        "type": "object"
+      },
+      "ProjectHealthResponse": {
+        "description": "A repeatable 0-100 score of the project under test, from its recorded runs.",
+        "properties": {
+          "by_cycle": {
+            "items": {
+              "$ref": "#/components/schemas/CycleHealthItem"
+            },
+            "title": "By Cycle",
+            "type": "array"
+          },
+          "cycles": {
+            "title": "Cycles",
+            "type": "integer"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/HealthFindingItem"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade"
+          },
+          "latest_run_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Run At"
+          },
+          "runs_considered": {
+            "title": "Runs Considered",
+            "type": "integer"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/HealthSignalItem"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "tests": {
+            "title": "Tests",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scope",
+          "score",
+          "grade",
+          "cycles",
+          "runs_considered",
+          "tests",
+          "latest_run_at",
+          "signals",
+          "by_cycle",
+          "findings"
+        ],
+        "title": "ProjectHealthResponse",
+        "type": "object"
+      },
+      "ProjectReviewResponse": {
+        "description": "An AI estimate of the project's tests, one result per enabled review skill.",
+        "properties": {
+          "based_on_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Based On Run Id"
+          },
+          "context_stats": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Context Stats",
+            "type": "object"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/SkillResultItem"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "stale": {
+            "default": false,
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "not_generated",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "scope",
+          "status",
+          "score",
+          "grade",
+          "summary",
+          "skills",
+          "provider",
+          "model",
+          "generated_at",
+          "based_on_run_id",
+          "stale",
+          "error_code",
+          "error_message",
+          "context_stats"
+        ],
+        "title": "ProjectReviewResponse",
         "type": "object"
       },
       "ReadinessCheck": {
@@ -2825,6 +3285,104 @@
           "pools"
         ],
         "title": "ResourcesResponse",
+        "type": "object"
+      },
+      "ReviewFindingItem": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "severity",
+          "title",
+          "detail"
+        ],
+        "title": "ReviewFindingItem",
+        "type": "object"
+      },
+      "ReviewSkillItem": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "checks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "default_on": {
+            "title": "Default On",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reads": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reads",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "tagline": {
+            "title": "Tagline",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "tagline",
+          "summary",
+          "checks",
+          "reads",
+          "default_on"
+        ],
+        "title": "ReviewSkillItem",
+        "type": "object"
+      },
+      "ReviewSkillsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewSkillItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReviewSkillsResponse",
         "type": "object"
       },
       "RunDetail": {
@@ -3431,6 +3989,49 @@
           "artifact_links"
         ],
         "title": "RunReportsResponse",
+        "type": "object"
+      },
+      "SkillResultItem": {
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewFindingItem"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "skill_id": {
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id",
+          "name",
+          "score",
+          "summary",
+          "findings"
+        ],
+        "title": "SkillResultItem",
         "type": "object"
       },
       "StageHealth": {
@@ -4953,6 +5554,168 @@
         "summary": "Ingest Reports",
         "tags": [
           "ingest"
+        ]
+      }
+    },
+    "/api/v1/project-health": {
+      "get": {
+        "description": "The project under test's test health score: every cycle, or ``cycle`` alone.",
+        "operationId": "get_project_health_api_v1_project_health_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectHealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Project Health",
+        "tags": [
+          "project-health"
+        ]
+      }
+    },
+    "/api/v1/project-health/ai-review": {
+      "get": {
+        "description": "The last AI review of the scope, if any; ``stale`` when newer runs came in.",
+        "operationId": "get_project_review_api_v1_project_health_ai_review_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectReviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Project Review",
+        "tags": [
+          "project-health"
+        ]
+      },
+      "post": {
+        "description": "Ask the configured AI provider to review the project with the chosen skills.",
+        "operationId": "generate_project_review_api_v1_project_health_ai_review_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateProjectReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectReviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate Project Review",
+        "tags": [
+          "project-health"
+        ]
+      }
+    },
+    "/api/v1/project-health/skills": {
+      "get": {
+        "description": "The review skills the AI review can use, each with what it checks and reads.",
+        "operationId": "list_review_skills_api_v1_project_health_skills_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewSkillsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Review Skills",
+        "tags": [
+          "project-health"
         ]
       }
     },
