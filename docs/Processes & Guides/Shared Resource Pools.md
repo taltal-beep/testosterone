@@ -113,6 +113,24 @@ def test_checkout(testo_resource):
     address = testo_resource.data["address"]  # from the key's data
 ```
 
+## Split tests by time
+
+With pytest-xdist and `per: worker`, workers already share the tests as they go. For separate processes (CI matrix jobs, or one `testo lease run` per key), split the suite up front into shards that take about the same time, from the times Testosterone recorded for each test:
+
+```bash
+# CI matrix job I of 4 (the same in every job: shards that see the same history agree)
+TESTO_SHARD=$I/4 testo run --cycle flows
+# or plain pytest
+pytest --testo-shard 2/4 --testo-timings flows tests/flows
+
+# one shard per key of a pool, all at once on this machine
+for i in 1 2 3 4; do
+  testo lease run flow-vms -- pytest --testo-shard $i/4 --testo-timings flows tests/flows &
+done; wait
+```
+
+The longest tests are placed first, each in the shard with the least time so far; a test with no recorded time counts as a typical one, and with no history at all the split is round robin. Times come from this machine's history, or from the team server when `TESTO_SERVER_URL` is set, so CI jobs and laptops should read from the same place. For other runners, `testo split` prints a shard's tests ([Command Reference § testo split](../CLI%20Commands/Command%20Reference.md#testo-split)).
+
 ## Many developers, many laptops
 
 Leases are kept in a database, never in files:

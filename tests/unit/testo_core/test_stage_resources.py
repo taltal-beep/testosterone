@@ -138,6 +138,7 @@ def test_per_worker_hands_the_pool_down_and_auto_counts_free_keys(
     assert env["TESTO_RESOURCE_POOL"] == "vms"
     assert env["TESTO_LEASE_DB_URL"] == lease_db
     assert "TESTO_RESOURCE_ID" not in env  # each worker takes its own
+    assert (env["TESTO_CYCLE"], env["TESTO_STAGE"]) == ("c", "s")
     log = result.log_path.read_text()  # type: ignore[union-attr]
     assert "workers: auto -> 2 (2 free key(s) in pool 'vms')" in log
 
