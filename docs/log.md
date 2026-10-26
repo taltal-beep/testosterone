@@ -116,3 +116,7 @@ Added [Runner Coverage - 2026-10-26](Specs%20&%20ADRs/Runner%20Coverage%20-%2020
 ## 2026-10-26: resource lifecycle hooks
 
 Added [Resource Lifecycle Hooks - 2026-10-26](Specs%20&%20ADRs/Resource%20Lifecycle%20Hooks%20-%202026-10-26.md) to Specs & ADRs (`on_check`, clean releases, `reuse_delay`), linked from its README and the docs site menu.
+
+## 2026-10-26: qualflare follow-ups
+
+Added [Qualflare Follow-ups - 2026-10-26](Specs%20&%20ADRs/Qualflare%20Follow-ups%20-%202026-10-26.md) to Specs & ADRs (README badge, asking about your tests, Jira issues from failures), linked from its README and the docs site menu.
