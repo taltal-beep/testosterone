@@ -300,6 +300,7 @@ class Exporter:
     def export_misc(self) -> None:
         self._dump("/api/v1/health/ready", "health.json")
         self._dump("/api/v1/ai/config/status", "ai-config.json")
+        self._dump("/api/v1/resources", "resources.json")
 
     # --- report HTML --------------------------------------------------------
 

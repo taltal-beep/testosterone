@@ -8,6 +8,7 @@ import { CyclesPage } from "../features/cycles/CyclesPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { QuickRunPage } from "../features/execution/QuickRunPage";
 import { HistoryPage } from "../features/history/HistoryPage";
+import { ResourcesPage } from "../features/resources/ResourcesPage";
 import { RunDetailPage } from "../features/run-detail/RunDetailPage";
 import { TestPage } from "../features/tests/TestPage";
 import { TryPage } from "../features/try/TryPage";
@@ -45,6 +46,10 @@ export const routes = [
       {
         path: "compare",
         element: <ComparePage />
+      },
+      {
+        path: "resources",
+        element: <ResourcesPage />
       },
       {
         path: "quick-run",

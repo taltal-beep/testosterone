@@ -607,3 +607,86 @@ class IngestResponse(ApiModel):
     failed: int
     skipped: int
     run_url: str | None = None
+
+
+class ResourceHolder(ApiModel):
+    """Who holds (or asks for) a key. On a server with accounts, ``user`` is the account."""
+
+    user: str = Field(default="", max_length=64)
+    host: str = Field(default="", max_length=255)
+    pid: int = 0
+    run_id: str = Field(default="", max_length=128)
+    stage: str = Field(default="", max_length=128)
+    worker: str = Field(default="", max_length=64)
+    note: str = Field(default="", max_length=200)
+
+
+class ResourceLeaseInfo(ApiModel):
+    """A key's current holder, as anyone who can read the server sees it (no lease id)."""
+
+    holder: ResourceHolder
+    taken_at: float
+    heartbeat_at: float
+    expires_at: float
+    ttl_s: float
+
+
+class ResourceLeaseItem(ResourceLeaseInfo):
+    """A lease as its holder sees it: ``lease_id`` keeps it alive and gives it back."""
+
+    lease_id: str
+    pool: str
+    item: str
+    labels: list[str] = Field(default_factory=list)
+    data: dict[str, str] = Field(default_factory=dict)
+
+
+class ResourceItemStatus(ApiModel):
+    item: str
+    labels: list[str] = Field(default_factory=list)
+    data: dict[str, str] = Field(default_factory=dict)
+    disabled: bool = False
+    disabled_reason: str = ""
+    disabled_by: str | None = None
+    lease: ResourceLeaseInfo | None = None
+
+
+class ResourcePoolStatus(ApiModel):
+    name: str
+    free: int
+    # Requests waiting for a key of this pool right now.
+    waiting: int
+    items: list[ResourceItemStatus]
+
+
+class ResourcesResponse(ApiModel):
+    pools: list[ResourcePoolStatus]
+
+
+class ResourceTakeRequest(ApiModel):
+    """``POST /api/v1/resources/leases``: what ``testo lease`` and the workers send.
+
+    ``spec`` is the pool from the caller's ``resources:`` config, without its hooks:
+    the server only keeps the leases, so it learns pools from the people using them.
+    """
+
+    pool: str = Field(min_length=1, max_length=128)
+    spec: dict[str, Any]
+    labels: list[str] = Field(default_factory=list, max_length=32)
+    holder: ResourceHolder = Field(default_factory=ResourceHolder)
+    # The same id on every try while waiting keeps the caller's place in the queue.
+    waiter_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,64}$")
+
+
+class ResourceTakeResponse(ApiModel):
+    lease: ResourceLeaseItem | None = None
+    ahead: int = 0
+    free: int = 0
+    # busy: ask again; limit: max_per_user reached; no_items: no usable key, waiting won't help.
+    reason: Literal["busy", "limit", "no_items"] | None = None
+
+
+class ResourceItemRequest(ApiModel):
+    pool: str = Field(min_length=1, max_length=128)
+    item: str = Field(min_length=1, max_length=128)
+    reason: str = Field(default="", max_length=500)

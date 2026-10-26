@@ -23,9 +23,12 @@ from testo_core.config.schema import (
     SUPPORTED_TIERS,
     Defaults,
 )
+from testo_core.resources.pools import DEFAULT_HOOK_TIMEOUT_S, DEFAULT_LEASE_TTL_S
 
 SCHEMA_ID = "https://raw.githubusercontent.com/taltal-beep/testosterone/main/schema/testosterone.schema.json"
 
+# Resource pool and key names (testo_core.resources.pools).
+_KEY_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._@:-]{0,127}$"
 _NAME_PATTERN = r"^(?![/\\])(?![A-Za-z]:)(?!.*(^|[/\\])\.\.([/\\]|$)).+$"
 
 
@@ -200,6 +203,69 @@ def build_json_schema() -> dict[str, Any]:
         "additionalProperties": True,
     }
 
+    key_name = {"type": "string", "pattern": _KEY_PATTERN}
+    resource_item = {
+        "description": "A key name, or a key with labels and data for the worker.",
+        "oneOf": [
+            key_name,
+            {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                    "id": key_name,
+                    "labels": {"type": "array", "items": {"type": "string", "minLength": 1}},
+                    "data": {
+                        "type": "object",
+                        "description": "Passed to the worker as TESTO_RESOURCE_<NAME> variables.",
+                        "additionalProperties": {"type": ["string", "number", "boolean", "null"]},
+                    },
+                },
+                "additionalProperties": False,
+            },
+        ],
+    }
+    command = {"type": "string", "minLength": 1}
+    resource_pool = {
+        "type": "object",
+        "description": "Keys that parallel workers share (VMs, devices, accounts, seats). "
+        "Testosterone hands each worker its own key; it never acts on the keys itself.",
+        "oneOf": [{"required": ["items"]}, {"required": ["count"]}],
+        "properties": {
+            "items": {"type": "array", "minItems": 1, "items": resource_item},
+            "count": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "N anonymous keys named <pool>-1 ... <pool>-N.",
+            },
+            "lease_ttl": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "default": DEFAULT_LEASE_TTL_S,
+                "description": "Seconds without a heartbeat before a key is free again.",
+            },
+            "max_per_user": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Most keys one person may hold at once.",
+            },
+            "on_take": {
+                **command,
+                "description": "Your command, run with TESTO_RESOURCE_* set after a key is "
+                "taken. If it fails, the key is taken out of the pool.",
+            },
+            "on_release": {
+                **command,
+                "description": "Your command, run before a key is given back.",
+            },
+            "hook_timeout": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "default": DEFAULT_HOOK_TIMEOUT_S,
+            },
+        },
+        "additionalProperties": False,
+    }
+
     return {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "$id": SCHEMA_ID,
@@ -235,6 +301,12 @@ def build_json_schema() -> dict[str, Any]:
             },
             "reporters": {"type": "array", "items": {"$ref": "#/definitions/reporter"}},
             "quarantine": {"$ref": "#/definitions/quarantine"},
+            "resources": {
+                "type": "object",
+                "description": "Pools of keys parallel workers lease (`testo lease`).",
+                "propertyNames": {"pattern": _KEY_PATTERN},
+                "additionalProperties": {"$ref": "#/definitions/resource_pool"},
+            },
             "cycles": {
                 "type": "object",
                 "minProperties": 1,
@@ -248,5 +320,6 @@ def build_json_schema() -> dict[str, Any]:
             "cycle": cycle,
             "quarantine": quarantine,
             "reporter": reporter,
+            "resource_pool": resource_pool,
         },
     }

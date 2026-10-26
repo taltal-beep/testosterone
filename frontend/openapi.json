@@ -2393,6 +2393,440 @@
         "title": "ReadinessCheck",
         "type": "object"
       },
+      "ResourceHolder-Input": {
+        "description": "Who holds (or asks for) a key. On a server with accounts, ``user`` is the account.",
+        "properties": {
+          "host": {
+            "default": "",
+            "maxLength": 255,
+            "title": "Host",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Note",
+            "type": "string"
+          },
+          "pid": {
+            "default": 0,
+            "title": "Pid",
+            "type": "integer"
+          },
+          "run_id": {
+            "default": "",
+            "maxLength": 128,
+            "title": "Run Id",
+            "type": "string"
+          },
+          "stage": {
+            "default": "",
+            "maxLength": 128,
+            "title": "Stage",
+            "type": "string"
+          },
+          "user": {
+            "default": "",
+            "maxLength": 64,
+            "title": "User",
+            "type": "string"
+          },
+          "worker": {
+            "default": "",
+            "maxLength": 64,
+            "title": "Worker",
+            "type": "string"
+          }
+        },
+        "title": "ResourceHolder",
+        "type": "object"
+      },
+      "ResourceHolder-Output": {
+        "description": "Who holds (or asks for) a key. On a server with accounts, ``user`` is the account.",
+        "properties": {
+          "host": {
+            "default": "",
+            "maxLength": 255,
+            "title": "Host",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Note",
+            "type": "string"
+          },
+          "pid": {
+            "default": 0,
+            "title": "Pid",
+            "type": "integer"
+          },
+          "run_id": {
+            "default": "",
+            "maxLength": 128,
+            "title": "Run Id",
+            "type": "string"
+          },
+          "stage": {
+            "default": "",
+            "maxLength": 128,
+            "title": "Stage",
+            "type": "string"
+          },
+          "user": {
+            "default": "",
+            "maxLength": 64,
+            "title": "User",
+            "type": "string"
+          },
+          "worker": {
+            "default": "",
+            "maxLength": 64,
+            "title": "Worker",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "host",
+          "pid",
+          "run_id",
+          "stage",
+          "worker",
+          "note"
+        ],
+        "title": "ResourceHolder",
+        "type": "object"
+      },
+      "ResourceItemRequest": {
+        "properties": {
+          "item": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Item",
+            "type": "string"
+          },
+          "pool": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Pool",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pool",
+          "item"
+        ],
+        "title": "ResourceItemRequest",
+        "type": "object"
+      },
+      "ResourceItemStatus": {
+        "properties": {
+          "data": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Data",
+            "type": "object"
+          },
+          "disabled": {
+            "default": false,
+            "title": "Disabled",
+            "type": "boolean"
+          },
+          "disabled_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disabled By"
+          },
+          "disabled_reason": {
+            "default": "",
+            "title": "Disabled Reason",
+            "type": "string"
+          },
+          "item": {
+            "title": "Item",
+            "type": "string"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "lease": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResourceLeaseInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "item",
+          "labels",
+          "data",
+          "disabled",
+          "disabled_reason",
+          "disabled_by",
+          "lease"
+        ],
+        "title": "ResourceItemStatus",
+        "type": "object"
+      },
+      "ResourceLeaseInfo": {
+        "description": "A key's current holder, as anyone who can read the server sees it (no lease id).",
+        "properties": {
+          "expires_at": {
+            "title": "Expires At",
+            "type": "number"
+          },
+          "heartbeat_at": {
+            "title": "Heartbeat At",
+            "type": "number"
+          },
+          "holder": {
+            "$ref": "#/components/schemas/ResourceHolder-Output"
+          },
+          "taken_at": {
+            "title": "Taken At",
+            "type": "number"
+          },
+          "ttl_s": {
+            "title": "Ttl S",
+            "type": "number"
+          }
+        },
+        "required": [
+          "holder",
+          "taken_at",
+          "heartbeat_at",
+          "expires_at",
+          "ttl_s"
+        ],
+        "title": "ResourceLeaseInfo",
+        "type": "object"
+      },
+      "ResourceLeaseItem": {
+        "description": "A lease as its holder sees it: ``lease_id`` keeps it alive and gives it back.",
+        "properties": {
+          "data": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Data",
+            "type": "object"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "number"
+          },
+          "heartbeat_at": {
+            "title": "Heartbeat At",
+            "type": "number"
+          },
+          "holder": {
+            "$ref": "#/components/schemas/ResourceHolder-Output"
+          },
+          "item": {
+            "title": "Item",
+            "type": "string"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "lease_id": {
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "pool": {
+            "title": "Pool",
+            "type": "string"
+          },
+          "taken_at": {
+            "title": "Taken At",
+            "type": "number"
+          },
+          "ttl_s": {
+            "title": "Ttl S",
+            "type": "number"
+          }
+        },
+        "required": [
+          "holder",
+          "taken_at",
+          "heartbeat_at",
+          "expires_at",
+          "ttl_s",
+          "lease_id",
+          "pool",
+          "item",
+          "labels",
+          "data"
+        ],
+        "title": "ResourceLeaseItem",
+        "type": "object"
+      },
+      "ResourcePoolStatus": {
+        "properties": {
+          "free": {
+            "title": "Free",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ResourceItemStatus"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "waiting": {
+            "title": "Waiting",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "free",
+          "waiting",
+          "items"
+        ],
+        "title": "ResourcePoolStatus",
+        "type": "object"
+      },
+      "ResourceTakeRequest": {
+        "description": "``POST /api/v1/resources/leases``: what ``testo lease`` and the workers send.\n\n``spec`` is the pool from the caller's ``resources:`` config, without its hooks:\nthe server only keeps the leases, so it learns pools from the people using them.",
+        "properties": {
+          "holder": {
+            "$ref": "#/components/schemas/ResourceHolder-Input"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Labels",
+            "type": "array"
+          },
+          "pool": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Pool",
+            "type": "string"
+          },
+          "spec": {
+            "additionalProperties": true,
+            "title": "Spec",
+            "type": "object"
+          },
+          "waiter_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiter Id"
+          }
+        },
+        "required": [
+          "pool",
+          "spec"
+        ],
+        "title": "ResourceTakeRequest",
+        "type": "object"
+      },
+      "ResourceTakeResponse": {
+        "properties": {
+          "ahead": {
+            "default": 0,
+            "title": "Ahead",
+            "type": "integer"
+          },
+          "free": {
+            "default": 0,
+            "title": "Free",
+            "type": "integer"
+          },
+          "lease": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResourceLeaseItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "busy",
+                  "limit",
+                  "no_items"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "lease",
+          "ahead",
+          "free",
+          "reason"
+        ],
+        "title": "ResourceTakeResponse",
+        "type": "object"
+      },
+      "ResourcesResponse": {
+        "properties": {
+          "pools": {
+            "items": {
+              "$ref": "#/components/schemas/ResourcePoolStatus"
+            },
+            "title": "Pools",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pools"
+        ],
+        "title": "ResourcesResponse",
+        "type": "object"
+      },
       "RunDetail": {
         "properties": {
           "audit_json": {
@@ -4519,6 +4953,321 @@
         "summary": "Ingest Reports",
         "tags": [
           "ingest"
+        ]
+      }
+    },
+    "/api/v1/resources": {
+      "get": {
+        "description": "Every pool the server knows, with each key's holder and how many requests wait.",
+        "operationId": "list_resources_api_v1_resources_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "pool",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pool"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourcesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Resources",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/api/v1/resources/items/disable": {
+      "post": {
+        "description": "Take a broken key out of its pool; nobody gets it until it is enabled again.",
+        "operationId": "disable_item_api_v1_resources_items_disable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Disable Item",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/api/v1/resources/items/enable": {
+      "post": {
+        "description": "Put a key back in its pool.",
+        "operationId": "enable_item_api_v1_resources_items_enable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Enable Item",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/api/v1/resources/items/release": {
+      "post": {
+        "description": "Take a key back from whoever holds it (admin). Their next heartbeat finds it gone.",
+        "operationId": "force_release_item_api_v1_resources_items_release_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Force Release Item",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/api/v1/resources/leases": {
+      "post": {
+        "description": "Take a free key, or say how many requests are ahead. Ask again (same ``waiter_id``) to wait.",
+        "operationId": "take_lease_api_v1_resources_leases_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceTakeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceTakeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Take Lease",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/api/v1/resources/leases/{lease_id}": {
+      "delete": {
+        "description": "Give a key back.",
+        "operationId": "release_lease_api_v1_resources_leases__lease_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lease_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Lease Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Release Lease",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/api/v1/resources/leases/{lease_id}/heartbeat": {
+      "post": {
+        "description": "Keep a lease. 404 means it is gone: it expired, or an admin took the key back.",
+        "operationId": "heartbeat_lease_api_v1_resources_leases__lease_id__heartbeat_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lease_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{32}$",
+              "title": "Lease Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceLeaseItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Heartbeat Lease",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/api/v1/resources/waiters/{waiter_id}": {
+      "delete": {
+        "description": "Stop waiting for a key.",
+        "operationId": "leave_queue_api_v1_resources_waiters__waiter_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "waiter_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Waiter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Leave Queue",
+        "tags": [
+          "resources"
         ]
       }
     },

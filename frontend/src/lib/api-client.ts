@@ -55,6 +55,11 @@ export type DashboardOverviewResponse = Schemas["DashboardOverviewResponse"];
 export type DashboardRecentRunsResponse = Schemas["DashboardRecentRunsResponse"];
 export type DashboardAttentionResponse = Schemas["DashboardAttentionResponse"];
 
+export type ResourcesResponse = Schemas["ResourcesResponse"];
+export type ResourcePoolStatus = Schemas["ResourcePoolStatus"];
+export type ResourceItemStatus = Schemas["ResourceItemStatus"];
+export type ResourceLeaseInfo = Schemas["ResourceLeaseInfo"];
+
 export type HealthReadyResponse = Schemas["HealthReadyResponse"];
 export type WhoAmI = Schemas["WhoAmIResponse"];
 
@@ -186,6 +191,21 @@ export const apiClient = {
   },
   getDashboardRecentRuns(limit = 10): Promise<DashboardRecentRunsResponse> {
     return api<DashboardRecentRunsResponse>(`/api/v1/dashboard/runs/recent?limit=${limit}`);
+  },
+  listResources(): Promise<ResourcesResponse> {
+    return api<ResourcesResponse>("/api/v1/resources");
+  },
+  disableResource(pool: string, item: string, reason: string): Promise<void> {
+    return api<void>("/api/v1/resources/items/disable", {
+      method: "POST",
+      body: JSON.stringify({ pool, item, reason })
+    });
+  },
+  enableResource(pool: string, item: string): Promise<void> {
+    return api<void>("/api/v1/resources/items/enable", { method: "POST", body: JSON.stringify({ pool, item }) });
+  },
+  freeResource(pool: string, item: string): Promise<void> {
+    return api<void>("/api/v1/resources/items/release", { method: "POST", body: JSON.stringify({ pool, item }) });
   },
   getDashboardAttention(): Promise<DashboardAttentionResponse> {
     return api<DashboardAttentionResponse>("/api/v1/dashboard/attention");

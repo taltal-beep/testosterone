@@ -53,6 +53,13 @@ export const BoltIcon = () => (
   </Icon>
 );
 
+export const KeyIcon = () => (
+  <Icon>
+    <circle cx="8" cy="15" r="4" />
+    <path d="m11 12 9-9M17 6l3 3M14 9l2 2" />
+  </Icon>
+);
+
 export const UploadIcon = () => (
   <Icon>
     <path d="M12 15V3M7 8l5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />

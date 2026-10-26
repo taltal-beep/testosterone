@@ -1,0 +1,225 @@
+"""Resource pools: the ``resources:`` section of ``testosterone.yaml``.
+
+A pool is a list of keys that parallel test workers share: VMs, phones,
+test accounts, license seats. Testosterone never looks inside a key; it only
+makes sure two workers never hold the same one at the same time (see
+:mod:`testo_core.resources.store`). Example::
+
+    resources:
+      flow-vms:
+        items:
+          - vm-01
+          - { id: vm-02, labels: [win11], data: { address: 10.0.0.12 } }
+        lease_ttl: 120          # seconds without a heartbeat before a key is free again
+        max_per_user: 2         # optional
+        on_take: "my-tool revert $TESTO_RESOURCE_ID"     # optional, your own command
+      seats:
+        count: 3                # keys seat-1, seat-2, seat-3
+
+The same parser reads a pool back from JSON (:meth:`ResourcePool.to_json`),
+which is how a pool travels to a team server or to a stage's workers.
+"""
+
+from __future__ import annotations
+
+import re
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+from typing import Any, Final
+
+from testo_core.config.errors import ConfigValidationError
+
+DEFAULT_LEASE_TTL_S: Final[float] = 120.0
+DEFAULT_HOOK_TIMEOUT_S: Final[float] = 300.0
+MAX_ITEMS: Final[int] = 1000
+
+# Pool names and keys show up in URLs, env vars and table rows; keep them plain.
+_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._@:-]{0,127}$")
+_POOL_KEYS: Final[frozenset[str]] = frozenset(
+    {"items", "count", "lease_ttl", "max_per_user", "on_take", "on_release", "hook_timeout"}
+)
+_ITEM_KEYS: Final[frozenset[str]] = frozenset({"id", "labels", "data"})
+
+
+@dataclass(frozen=True)
+class ResourceItem:
+    """One key in a pool. ``data`` is passed to the worker untouched (as strings)."""
+
+    id: str
+    labels: tuple[str, ...] = ()
+    data: tuple[tuple[str, str], ...] = ()
+
+    def has_labels(self, wanted: Iterable[str]) -> bool:
+        return set(wanted) <= set(self.labels)
+
+
+@dataclass(frozen=True)
+class ResourcePool:
+    name: str
+    items: tuple[ResourceItem, ...]
+    lease_ttl_s: float = DEFAULT_LEASE_TTL_S
+    max_per_user: int | None = None
+    # Commands run (with the lease's env vars) by the process that took the key.
+    on_take: str | None = None
+    on_release: str | None = None
+    hook_timeout_s: float = DEFAULT_HOOK_TIMEOUT_S
+
+    def matching(self, labels: Iterable[str] = ()) -> tuple[ResourceItem, ...]:
+        wanted = tuple(labels)
+        return tuple(item for item in self.items if item.has_labels(wanted))
+
+    def item(self, item_id: str) -> ResourceItem | None:
+        return next((item for item in self.items if item.id == item_id), None)
+
+    def to_json(self, *, hooks: bool = True) -> dict[str, Any]:
+        """The pool as JSON. ``hooks=False`` leaves out the commands (a server never runs them)."""
+        data: dict[str, Any] = {
+            "items": [
+                {"id": item.id, "labels": list(item.labels), "data": dict(item.data)}
+                for item in self.items
+            ],
+            "lease_ttl": self.lease_ttl_s,
+            "max_per_user": self.max_per_user,
+        }
+        if hooks:
+            data.update(
+                on_take=self.on_take,
+                on_release=self.on_release,
+                hook_timeout=self.hook_timeout_s,
+            )
+        return data
+
+
+def parse_resources(raw: Any) -> dict[str, ResourcePool]:
+    """The top-level ``resources:`` mapping (missing means no pools)."""
+    if raw is None:
+        return {}
+    if not isinstance(raw, Mapping):
+        raise ConfigValidationError("'resources:' must be a mapping of pool names to pools.")
+    return {str(name): parse_pool(str(name), body) for name, body in raw.items()}
+
+
+def parse_pool(name: str, raw: Any) -> ResourcePool:
+    where = f"resources.{name}"
+    check_name(name, kind="resource pool name")
+    if not isinstance(raw, Mapping):
+        raise ConfigValidationError(f"{where} must be a mapping with 'items' or 'count'.")
+    unknown = sorted(str(k) for k in raw if k not in _POOL_KEYS)
+    if unknown:
+        raise ConfigValidationError(
+            f"{where} has unknown key(s) {unknown}; allowed: {sorted(_POOL_KEYS)}"
+        )
+    has_items, has_count = raw.get("items") is not None, raw.get("count") is not None
+    if has_items == has_count:
+        raise ConfigValidationError(f"{where} needs exactly one of 'items' or 'count'.")
+    if has_count:
+        count = _whole_number(raw["count"], f"{where}.count", minimum=1)
+        if count > MAX_ITEMS:
+            raise ConfigValidationError(f"{where}.count must be at most {MAX_ITEMS}.")
+        items = tuple(ResourceItem(id=f"{name}-{i}") for i in range(1, count + 1))
+    else:
+        items = _parse_items(raw["items"], where=where)
+
+    max_per_user_raw = raw.get("max_per_user")
+    return ResourcePool(
+        name=name,
+        items=items,
+        lease_ttl_s=_seconds(raw.get("lease_ttl"), f"{where}.lease_ttl", DEFAULT_LEASE_TTL_S),
+        max_per_user=(
+            None
+            if max_per_user_raw is None
+            else _whole_number(max_per_user_raw, f"{where}.max_per_user", minimum=1)
+        ),
+        on_take=_command(raw.get("on_take"), f"{where}.on_take"),
+        on_release=_command(raw.get("on_release"), f"{where}.on_release"),
+        hook_timeout_s=_seconds(
+            raw.get("hook_timeout"), f"{where}.hook_timeout", DEFAULT_HOOK_TIMEOUT_S
+        ),
+    )
+
+
+def check_name(value: str, *, kind: str) -> None:
+    if not _NAME_RE.match(value):
+        raise ConfigValidationError(
+            f"{kind} {value!r} must be 1-128 letters, digits or . _ @ : - "
+            "and start with a letter or digit."
+        )
+
+
+def _parse_items(raw: Any, *, where: str) -> tuple[ResourceItem, ...]:
+    if not isinstance(raw, list) or not raw:
+        raise ConfigValidationError(f"{where}.items must be a non-empty list.")
+    if len(raw) > MAX_ITEMS:
+        raise ConfigValidationError(f"{where}.items can hold at most {MAX_ITEMS} keys.")
+    items: list[ResourceItem] = []
+    seen: set[str] = set()
+    for i, entry in enumerate(raw):
+        label = f"{where}.items[{i}]"
+        if isinstance(entry, (str, int)) and not isinstance(entry, bool):
+            entry = {"id": str(entry)}
+        if not isinstance(entry, Mapping):
+            raise ConfigValidationError(f"{label} must be a key name or a mapping with 'id'.")
+        unknown = sorted(str(k) for k in entry if k not in _ITEM_KEYS)
+        if unknown:
+            raise ConfigValidationError(
+                f"{label} has unknown key(s) {unknown}; allowed: {sorted(_ITEM_KEYS)}"
+            )
+        item_id = str(entry.get("id") or "").strip()
+        check_name(item_id, kind=f"{label}.id")
+        if item_id in seen:
+            raise ConfigValidationError(f"{label}: key {item_id!r} is listed twice.")
+        seen.add(item_id)
+        items.append(
+            ResourceItem(
+                id=item_id,
+                labels=parse_labels(entry.get("labels"), where=f"{label}.labels"),
+                data=_parse_data(entry.get("data"), where=f"{label}.data"),
+            )
+        )
+    return tuple(items)
+
+
+def parse_labels(raw: Any, *, where: str) -> tuple[str, ...]:
+    if raw is None:
+        return ()
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, list) or not all(isinstance(x, str) and x.strip() for x in raw):
+        raise ConfigValidationError(f"{where} must be a list of non-empty strings.")
+    return tuple(dict.fromkeys(x.strip() for x in raw))
+
+
+def _parse_data(raw: Any, *, where: str) -> tuple[tuple[str, str], ...]:
+    if raw is None:
+        return ()
+    if not isinstance(raw, Mapping):
+        raise ConfigValidationError(f"{where} must be a mapping of names to values.")
+    out: list[tuple[str, str]] = []
+    for key, value in raw.items():
+        if isinstance(value, (Mapping, list)):
+            raise ConfigValidationError(f"{where}.{key} must be a plain value, not a list or map.")
+        out.append((str(key), "" if value is None else str(value)))
+    return tuple(out)
+
+
+def _whole_number(raw: Any, where: str, *, minimum: int) -> int:
+    # bool is an int subclass; `count: true` is a typo, not 1.
+    if isinstance(raw, bool) or not isinstance(raw, int) or raw < minimum:
+        raise ConfigValidationError(f"{where} must be a whole number of at least {minimum}.")
+    return raw
+
+
+def _seconds(raw: Any, where: str, default: float) -> float:
+    if raw is None:
+        return default
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)) or raw <= 0:
+        raise ConfigValidationError(f"{where} must be a number of seconds above 0.")
+    return float(raw)
+
+
+def _command(raw: Any, where: str) -> str | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, str) or not raw.strip():
+        raise ConfigValidationError(f"{where} must be a non-empty command string.")
+    return raw.strip()

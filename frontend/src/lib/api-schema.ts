@@ -407,6 +407,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Resources
+         * @description Every pool the server knows, with each key's holder and how many requests wait.
+         */
+        get: operations["list_resources_api_v1_resources_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/items/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Disable Item
+         * @description Take a broken key out of its pool; nobody gets it until it is enabled again.
+         */
+        post: operations["disable_item_api_v1_resources_items_disable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/items/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enable Item
+         * @description Put a key back in its pool.
+         */
+        post: operations["enable_item_api_v1_resources_items_enable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/items/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Force Release Item
+         * @description Take a key back from whoever holds it (admin). Their next heartbeat finds it gone.
+         */
+        post: operations["force_release_item_api_v1_resources_items_release_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/leases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Take Lease
+         * @description Take a free key, or say how many requests are ahead. Ask again (same ``waiter_id``) to wait.
+         */
+        post: operations["take_lease_api_v1_resources_leases_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/leases/{lease_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Release Lease
+         * @description Give a key back.
+         */
+        delete: operations["release_lease_api_v1_resources_leases__lease_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/leases/{lease_id}/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Heartbeat Lease
+         * @description Keep a lease. 404 means it is gone: it expired, or an admin took the key back.
+         */
+        post: operations["heartbeat_lease_api_v1_resources_leases__lease_id__heartbeat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/waiters/{waiter_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Leave Queue
+         * @description Stop waiting for a key.
+         */
+        delete: operations["leave_queue_api_v1_resources_waiters__waiter_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs": {
         parameters: {
             query?: never;
@@ -1351,6 +1511,218 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "degraded";
+        };
+        /**
+         * ResourceHolder
+         * @description Who holds (or asks for) a key. On a server with accounts, ``user`` is the account.
+         */
+        "ResourceHolder-Input": {
+            /**
+             * Host
+             * @default
+             */
+            host?: string;
+            /**
+             * Note
+             * @default
+             */
+            note?: string;
+            /**
+             * Pid
+             * @default 0
+             */
+            pid?: number;
+            /**
+             * Run Id
+             * @default
+             */
+            run_id?: string;
+            /**
+             * Stage
+             * @default
+             */
+            stage?: string;
+            /**
+             * User
+             * @default
+             */
+            user?: string;
+            /**
+             * Worker
+             * @default
+             */
+            worker?: string;
+        };
+        /**
+         * ResourceHolder
+         * @description Who holds (or asks for) a key. On a server with accounts, ``user`` is the account.
+         */
+        "ResourceHolder-Output": {
+            /**
+             * Host
+             * @default
+             */
+            host: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /**
+             * Pid
+             * @default 0
+             */
+            pid: number;
+            /**
+             * Run Id
+             * @default
+             */
+            run_id: string;
+            /**
+             * Stage
+             * @default
+             */
+            stage: string;
+            /**
+             * User
+             * @default
+             */
+            user: string;
+            /**
+             * Worker
+             * @default
+             */
+            worker: string;
+        };
+        /** ResourceItemRequest */
+        ResourceItemRequest: {
+            /** Item */
+            item: string;
+            /** Pool */
+            pool: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason?: string;
+        };
+        /** ResourceItemStatus */
+        ResourceItemStatus: {
+            /** Data */
+            data: {
+                [key: string]: string;
+            };
+            /**
+             * Disabled
+             * @default false
+             */
+            disabled: boolean;
+            /** Disabled By */
+            disabled_by: string | null;
+            /**
+             * Disabled Reason
+             * @default
+             */
+            disabled_reason: string;
+            /** Item */
+            item: string;
+            /** Labels */
+            labels: string[];
+            lease: components["schemas"]["ResourceLeaseInfo"] | null;
+        };
+        /**
+         * ResourceLeaseInfo
+         * @description A key's current holder, as anyone who can read the server sees it (no lease id).
+         */
+        ResourceLeaseInfo: {
+            /** Expires At */
+            expires_at: number;
+            /** Heartbeat At */
+            heartbeat_at: number;
+            holder: components["schemas"]["ResourceHolder-Output"];
+            /** Taken At */
+            taken_at: number;
+            /** Ttl S */
+            ttl_s: number;
+        };
+        /**
+         * ResourceLeaseItem
+         * @description A lease as its holder sees it: ``lease_id`` keeps it alive and gives it back.
+         */
+        ResourceLeaseItem: {
+            /** Data */
+            data: {
+                [key: string]: string;
+            };
+            /** Expires At */
+            expires_at: number;
+            /** Heartbeat At */
+            heartbeat_at: number;
+            holder: components["schemas"]["ResourceHolder-Output"];
+            /** Item */
+            item: string;
+            /** Labels */
+            labels: string[];
+            /** Lease Id */
+            lease_id: string;
+            /** Pool */
+            pool: string;
+            /** Taken At */
+            taken_at: number;
+            /** Ttl S */
+            ttl_s: number;
+        };
+        /** ResourcePoolStatus */
+        ResourcePoolStatus: {
+            /** Free */
+            free: number;
+            /** Items */
+            items: components["schemas"]["ResourceItemStatus"][];
+            /** Name */
+            name: string;
+            /** Waiting */
+            waiting: number;
+        };
+        /**
+         * ResourceTakeRequest
+         * @description ``POST /api/v1/resources/leases``: what ``testo lease`` and the workers send.
+         *
+         *     ``spec`` is the pool from the caller's ``resources:`` config, without its hooks:
+         *     the server only keeps the leases, so it learns pools from the people using them.
+         */
+        ResourceTakeRequest: {
+            holder?: components["schemas"]["ResourceHolder-Input"];
+            /** Labels */
+            labels?: string[];
+            /** Pool */
+            pool: string;
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+            /** Waiter Id */
+            waiter_id?: string | null;
+        };
+        /** ResourceTakeResponse */
+        ResourceTakeResponse: {
+            /**
+             * Ahead
+             * @default 0
+             */
+            ahead: number;
+            /**
+             * Free
+             * @default 0
+             */
+            free: number;
+            lease: components["schemas"]["ResourceLeaseItem"] | null;
+            /** Reason */
+            reason: ("busy" | "limit" | "no_items") | null;
+        };
+        /** ResourcesResponse */
+        ResourcesResponse: {
+            /** Pools */
+            pools: components["schemas"]["ResourcePoolStatus"][];
         };
         /** RunDetail */
         RunDetail: {
@@ -2309,6 +2681,252 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["IngestResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_resources_api_v1_resources_get: {
+        parameters: {
+            query?: {
+                pool?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourcesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disable_item_api_v1_resources_items_disable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResourceItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enable_item_api_v1_resources_items_enable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResourceItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    force_release_item_api_v1_resources_items_release_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResourceItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    take_lease_api_v1_resources_leases_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResourceTakeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceTakeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    release_lease_api_v1_resources_leases__lease_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lease_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    heartbeat_lease_api_v1_resources_leases__lease_id__heartbeat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lease_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceLeaseItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    leave_queue_api_v1_resources_waiters__waiter_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                waiter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
