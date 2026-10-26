@@ -348,9 +348,10 @@ def _configure_shard(config: pytest.Config) -> None:
     )
 
     try:
-        config.stash[_SHARD] = parse_shard(raw)
+        shard = parse_shard(raw)
     except SplitError as exc:
         raise pytest.UsageError(f"--testo-shard: {exc}") from exc
+    config.stash[_SHARD] = shard
     workerinput = getattr(config, "workerinput", None)
     if workerinput is not None and _WORKER_TIMINGS in workerinput:
         # The controller's times, so every worker keeps the same tests.
@@ -373,8 +374,7 @@ def _configure_shard(config: pytest.Config) -> None:
     if _is_xdist_controller(config):  # the workers collect and pick the tests
         timed = sum(1 for t in times if t.median_ms is not None)
         config.stash[_SHARD_SUMMARY] = (
-            f"testo: shard {config.stash[_SHARD][0]}/{config.stash[_SHARD][1]} of cycle "
-            f"{cycle!r} (times known for {timed} tests)"
+            f"testo: shard {shard[0]}/{shard[1]} of cycle {cycle!r} (times known for {timed} tests)"
         )
 
 
@@ -398,7 +398,7 @@ def pytest_collection_modifyitems(
     index, count = shard
     plan = plan_split(
         [item.nodeid for item in items],
-        config.stash.get(_SHARD_TIMINGS, {}),
+        config.stash.get(_SHARD_TIMINGS, None) or {},
         count,
         names_for=nodeid_names,
     )

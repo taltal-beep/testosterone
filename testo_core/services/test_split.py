@@ -177,7 +177,7 @@ def load_test_times(
         try:
             resp = requests.get(
                 url,
-                params={"cycle": cycle, "window": window},
+                params={"cycle": cycle, "window": str(window)},
                 headers=headers,
                 timeout=_HTTP_TIMEOUT_S,
             )
