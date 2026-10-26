@@ -796,3 +796,30 @@ class ProjectReviewResponse(ApiModel):
 class GenerateProjectReviewRequest(ApiModel):
     cycle: str | None = Field(None, max_length=200)
     skills: list[str] = Field(..., max_length=20)
+
+
+class AskTurnItem(ApiModel):
+    question: str = Field(..., max_length=500)
+    answer: str = Field(..., max_length=4000)
+
+
+class AskRequest(ApiModel):
+    question: str = Field(..., min_length=1, max_length=500)
+    cycle: str | None = Field(None, max_length=200)
+    # The conversation so far, oldest first; only the last few turns are used.
+    history: list[AskTurnItem] = Field(default_factory=list, max_length=20)
+
+
+class AskResponse(ApiModel):
+    """An AI answer to a question about the recorded test history."""
+
+    status: Literal["answered", "failed"]
+    question: str
+    scope: str | None = None
+    answer: str | None = None
+    provider: str | None = None
+    model: str | None = None
+    answered_at: float | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+    context_stats: dict[str, int] = Field(default_factory=dict)

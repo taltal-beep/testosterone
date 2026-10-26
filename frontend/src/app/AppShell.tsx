@@ -15,7 +15,8 @@ const PRIMARY_LINKS: NavLinkSpec[] = [
   { to: "/cycles", label: "Cycles", icon: Icons.CyclesIcon },
   { to: "/runs", label: "Runs", icon: Icons.RunsIcon },
   { to: "/compare", label: "Compare", icon: Icons.CompareIcon },
-  { to: "/health", label: "Project health", icon: Icons.HeartIcon }
+  { to: "/health", label: "Project health", icon: Icons.HeartIcon },
+  { to: "/ask", label: "Ask", icon: Icons.ChatIcon }
 ];
 
 const ADVANCED_LINKS: NavLinkSpec[] = [

@@ -302,7 +302,7 @@ def _scope_runs(cycle: str | None) -> list[Any]:
     return [r for r in runs if cycle is None or r.cycle == cycle]
 
 
-def _context(health: ProjectHealth, *, max_chars: int) -> tuple[str, dict[str, int]]:
+def history_evidence(health: ProjectHealth, *, max_chars: int) -> tuple[str, dict[str, int]]:
     """The evidence block: scores, per-cycle results, failures, flaky/slow tests, test names."""
     cycles: list[dict[str, Any]] = []
     failures = names = 0
@@ -390,7 +390,7 @@ def build_prompt(
     health: ProjectHealth, skills: list[ReviewSkill], *, max_chars: int
 ) -> tuple[str, dict[str, int]]:
     rubric = "\n".join(f'- id "{s.id}" ({s.name}): {s.rubric}' for s in skills)
-    evidence, stats = _context(health, max_chars=max_chars)
+    evidence, stats = history_evidence(health, max_chars=max_chars)
     return f"{_INSTRUCTIONS}{rubric}\n\nEvidence (JSON):\n{evidence}\n", stats
 
 
