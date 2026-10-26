@@ -28,6 +28,7 @@ from testo_core.config.schema import (
     ReporterSpec,
     Stage,
 )
+from testo_core.resources.pools import ResourcePool, parse_stage_resources
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ def parse_cycle(
     defaults: Defaults,
     config_dir: Path,
     shared_quarantine: tuple[QuarantineRule, ...] = (),
+    pools: Mapping[str, ResourcePool] | None = None,
 ) -> Plan:
     if not isinstance(cycle_raw, dict):
         raise ConfigValidationError(f"cycle {cycle_name!r} must be a mapping.")
@@ -64,7 +66,8 @@ def parse_cycle(
     if not isinstance(stages_raw, list) or not stages_raw:
         raise ConfigValidationError(f"cycle {cycle_name!r} must define a non-empty 'stages:' list.")
     stages = tuple(
-        parse_stage(stage_raw=item, defaults=defaults, config_dir=config_dir) for item in stages_raw
+        parse_stage(stage_raw=item, defaults=defaults, config_dir=config_dir, pools=pools)
+        for item in stages_raw
     )
     trigger = _parse_trigger(cycle_raw.get("trigger"), cycle_name=cycle_name)
     quarantine = shared_quarantine + parse_quarantine(
@@ -200,7 +203,13 @@ def parse_reporters(raw: Any, *, config_dir: Path) -> tuple[ReporterSpec, ...]:
     return tuple(out)
 
 
-def parse_stage(*, stage_raw: Mapping[str, Any], defaults: Defaults, config_dir: Path) -> Stage:
+def parse_stage(
+    *,
+    stage_raw: Mapping[str, Any],
+    defaults: Defaults,
+    config_dir: Path,
+    pools: Mapping[str, ResourcePool] | None = None,
+) -> Stage:
     if not isinstance(stage_raw, Mapping):
         raise ConfigValidationError("stage entries must be mappings.")
     name = str(stage_raw.get("name") or "").strip()
@@ -246,7 +255,21 @@ def parse_stage(*, stage_raw: Mapping[str, Any], defaults: Defaults, config_dir:
     else:
         raise ConfigValidationError(f"stage {name!r}: 'args' must be a string or list.")
 
-    workers = int(stage_raw.get("workers", defaults.workers))
+    resources = parse_stage_resources(
+        stage_raw.get("resources"), pools=pools or {}, where=f"stage {name!r}"
+    )
+    workers_auto = str(stage_raw.get("workers", "")).strip().lower() == "auto"
+    if workers_auto and (resources is None or resources.per == "stage"):
+        raise ConfigValidationError(
+            f"stage {name!r}: 'workers: auto' needs 'resources' with per: worker or per: test "
+            "(it starts one worker per free key)."
+        )
+    if resources is not None and resources.per == "test" and framework != "pytest":
+        raise ConfigValidationError(
+            f"stage {name!r}: resources per: test works with pytest only; use per: worker "
+            "or per: stage."
+        )
+    workers = defaults.workers if workers_auto else int(stage_raw.get("workers", defaults.workers))
     # Plugin adapters get ``workers`` in build_argv and decide for themselves.
     if (
         "workers" in stage_raw
@@ -318,6 +341,8 @@ def parse_stage(*, stage_raw: Mapping[str, Any], defaults: Defaults, config_dir:
         extra_env=extra_env,
         tier=tier,
         junit_xml=junit_xml,
+        resources=resources,
+        workers_auto=workers_auto,
     )
 
 

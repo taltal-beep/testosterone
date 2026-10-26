@@ -90,6 +90,87 @@ class ResourcePool:
         return data
 
 
+STAGE_PER: Final[tuple[str, ...]] = ("worker", "test", "stage")
+DEFAULT_STAGE_WAIT_S: Final[float] = 1800.0
+_STAGE_KEYS: Final[frozenset[str]] = frozenset({"pool", "per", "labels", "wait"})
+_DURATION_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*([smh]?)\s*$")
+_UNITS: Final[dict[str, float]] = {"": 1.0, "s": 1.0, "m": 60.0, "h": 3600.0}
+
+
+@dataclass(frozen=True)
+class StageResources:
+    """A stage's ``resources:``: which pool its workers lease from, and how.
+
+    ``per``: ``worker`` (each test process holds one key for its whole session),
+    ``test`` (pytest: a key per test, so ``on_take`` runs before every test) or
+    ``stage`` (Testosterone holds one key while the stage runs).
+    """
+
+    pool: ResourcePool
+    per: str = "worker"
+    labels: tuple[str, ...] = ()
+    wait_s: float | None = DEFAULT_STAGE_WAIT_S
+
+
+def parse_duration(raw: Any) -> float | None:
+    """``90``, ``"90s"``, ``"10m"``, ``"2h"`` in seconds; ``"forever"`` or None is no limit."""
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        raise ValueError(f"{raw!r} is not a duration like 90s, 10m or 2h.")
+    if isinstance(raw, (int, float)):
+        if raw < 0:
+            raise ValueError("a duration can't be negative.")
+        return float(raw)
+    text = str(raw).strip().lower()
+    if text in ("forever", "inf", "none"):
+        return None
+    match = _DURATION_RE.match(text)
+    if not match:
+        raise ValueError(f"{raw!r} is not a duration like 90s, 10m or 2h.")
+    return float(match.group(1)) * _UNITS[match.group(2)]
+
+
+def parse_stage_resources(
+    raw: Any, *, pools: Mapping[str, ResourcePool], where: str
+) -> StageResources | None:
+    """A stage's ``resources:``: a pool name, or ``{pool, per?, labels?, wait?}``."""
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        raw = {"pool": raw}
+    if not isinstance(raw, Mapping):
+        raise ConfigValidationError(f"{where}: 'resources' must be a pool name or a mapping.")
+    unknown = sorted(str(k) for k in raw if k not in _STAGE_KEYS)
+    if unknown:
+        raise ConfigValidationError(
+            f"{where}: 'resources' has unknown key(s) {unknown}; allowed: {sorted(_STAGE_KEYS)}"
+        )
+    name = str(raw.get("pool") or "").strip()
+    if name not in pools:
+        known = ", ".join(sorted(pools)) or "none"
+        raise ConfigValidationError(
+            f"{where}: resources.pool {name!r} is not a pool under the top-level "
+            f"'resources:' (pools: {known})."
+        )
+    per = str(raw.get("per") or "worker").strip()
+    if per not in STAGE_PER:
+        raise ConfigValidationError(
+            f"{where}: resources.per must be one of {', '.join(STAGE_PER)} (got {per!r})."
+        )
+    labels = parse_labels(raw.get("labels"), where=f"{where}: resources.labels")
+    pool = pools[name]
+    if not pool.matching(labels):
+        raise ConfigValidationError(
+            f"{where}: no key of pool {name!r} has the labels {list(labels)}."
+        )
+    try:
+        wait_s = parse_duration(raw["wait"]) if "wait" in raw else DEFAULT_STAGE_WAIT_S
+    except ValueError as exc:
+        raise ConfigValidationError(f"{where}: resources.wait: {exc}") from exc
+    return StageResources(pool=pool, per=per, labels=labels, wait_s=wait_s)
+
+
 def parse_resources(raw: Any) -> dict[str, ResourcePool]:
     """The top-level ``resources:`` mapping (missing means no pools)."""
     if raw is None:

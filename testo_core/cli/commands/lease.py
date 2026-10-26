@@ -13,7 +13,6 @@ that dies without giving it back loses the key after the pool's ``lease_ttl``.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -30,9 +29,6 @@ app = typer.Typer(
     help="Take keys from a resource pool (resources: in testosterone.yaml) for parallel workers.",
     no_args_is_help=True,
 )
-
-_DURATION_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*([smh]?)\s*$")
-_UNITS = {"": 1.0, "s": 1.0, "m": 60.0, "h": 3600.0}
 
 _SERVER = typer.Option(
     None,
@@ -55,15 +51,12 @@ _WAIT = typer.Option(
 
 def parse_wait(raw: str) -> float | None:
     """``--wait`` in seconds; None waits forever."""
-    text = raw.strip().lower()
-    if text in ("forever", "inf", "none"):
-        return None
-    match = _DURATION_RE.match(text)
-    if not match:
-        raise typer.BadParameter(
-            f"{raw!r} is not a duration like 90s, 10m or 2h.", param_hint="--wait"
-        )
-    return float(match.group(1)) * _UNITS[match.group(2)]
+    from testo_core.resources.pools import parse_duration
+
+    try:
+        return parse_duration(raw)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--wait") from exc
 
 
 def _console(*, stderr: bool = False) -> Any:

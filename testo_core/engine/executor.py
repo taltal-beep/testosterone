@@ -168,6 +168,7 @@ def run_stage(
         target_repo = stage.target_repo.expanduser().resolve()
         return _run_resolved_stage(
             stage,
+            plan_name=plan_name,
             target_repo=target_repo,
             adapter=adapter,
             artifacts_root=artifacts_root,
@@ -203,6 +204,7 @@ def run_stage(
 def _run_resolved_stage(
     stage: Stage,
     *,
+    plan_name: str,
     target_repo: Path,
     adapter: FrameworkAdapter,
     artifacts_root: Path,
@@ -223,6 +225,88 @@ def _run_resolved_stage(
             quarantine=quarantine,
         )
 
+    held = None
+    resource_env: dict[str, str] = {}
+    if stage.resources is not None:
+        from testo_core.engine.stage_resources import prepare_stage_resources
+        from testo_core.resources.store import LeaseError
+
+        def log_resources(line: str) -> None:
+            text = f"[testo] resources: {line}"
+            _append_run_log(log_path, [text])
+            if on_chunk is not None:
+                on_chunk((text + "\n").encode())
+
+        try:
+            prepared = prepare_stage_resources(
+                stage,
+                plan_name=plan_name,
+                env=parent_env if parent_env is not None else os.environ,
+                log=log_resources,
+            )
+        except LeaseError as exc:
+            log_resources(str(exc))
+            now = time.time()
+            return StageResult(
+                stage_name=stage.name,
+                framework=stage.framework,
+                tier=stage.tier,
+                # Like a timeout: the environment, not the tests, stopped the stage (exit 3).
+                returncode=124,
+                started_at=now,
+                finished_at=now,
+                duration_s=0.0,
+                log_path=log_path,
+                artifacts_dir=stage_root,
+                command=(),
+                output_tail=f"[testo] resources: {exc}",
+                error=f"no key from resource pool: {exc}",
+                target_repo=target_repo,
+            )
+        stage, resource_env, held = prepared.stage, prepared.env, prepared.held
+    try:
+        return _run_process_stage(
+            stage,
+            target_repo=target_repo,
+            adapter=adapter,
+            artifacts_root=artifacts_root,
+            stage_root=stage_root,
+            results_dir=results_dir,
+            log_path=log_path,
+            parent_env=parent_env,
+            on_chunk=on_chunk,
+            tail_lines=tail_lines,
+            quarantine=quarantine,
+            resource_env=resource_env,
+        )
+    finally:
+        if held is not None:
+            held.release()
+            if held.lost.is_set():
+                _append_run_log(
+                    log_path,
+                    [
+                        f"[testo] resources: the lease on {held.lease.pool}/{held.id} was lost "
+                        "while the stage ran (it expired or was taken back)"
+                    ],
+                )
+
+
+def _run_process_stage(
+    stage: Stage,
+    *,
+    target_repo: Path,
+    adapter: FrameworkAdapter,
+    artifacts_root: Path,
+    stage_root: Path,
+    results_dir: Path,
+    log_path: Path,
+    parent_env: Mapping[str, str] | None,
+    on_chunk: Callable[[bytes], None] | None,
+    tail_lines: int,
+    quarantine: tuple[QuarantineRule, ...],
+    resource_env: Mapping[str, str],
+) -> StageResult:
     argv = adapter.build_argv(
         target_repo=target_repo,
         results_dir=results_dir,
@@ -242,6 +326,9 @@ def _run_resolved_stage(
         "TESTO_ARTIFACTS_ROOT",
         "TESTO_SHARED_ALLURE_RESULTS_DIR",
     }
+    # The stage's key (per: stage), or what its workers need to lease their own.
+    env.update(resource_env)
+    stage_keys |= set(resource_env)
     adapter_env = getattr(adapter, "extra_env", None)
     if adapter_env is not None:
         for key, value in adapter_env().items():
