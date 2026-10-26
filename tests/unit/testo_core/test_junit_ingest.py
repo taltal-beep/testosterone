@@ -232,3 +232,18 @@ def test_cli_ingest_rejects_unsafe_cycle_name(in_tmp: Path) -> None:
     _write(in_tmp / "ok.xml", PASSING)
     result = CliRunner().invoke(app, ["ingest", "ok.xml", "--cycle", "../x", "--no-persist"])
     assert result.exit_code == 2
+
+
+def test_report_patterns_turns_a_folder_into_its_files(tmp_path: Path) -> None:
+    (tmp_path / "allure-results").mkdir()
+    assert report_patterns(["allure-results/"], repo=tmp_path.resolve()) == ("allure-results/*",)
+
+
+def test_cli_ingest_reads_an_allure_results_folder(in_tmp: Path) -> None:
+    result = '{"name": "t", "fullName": "a.T.t", "status": "failed", "start": 1, "stop": 2}'
+    _write(in_tmp / "allure-results" / "u1-result.json", result)
+    _write(in_tmp / "allure-results" / "c1-container.json", '{"uuid": "c1"}')
+    out = CliRunner().invoke(
+        app, ["ingest", "allure-results", "--cycle", "web", "--no-persist", "--ci"]
+    )
+    assert out.exit_code == 1, out.output

@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # Command Reference
@@ -74,19 +74,20 @@ See [Architecture Overview § Exit code contract](../Architecture/Architecture%2
 
 ## `testo ingest`
 
-Record JUnit XML that another step already wrote (any runner, any language) as a run of a cycle. Nothing is executed: the files are parsed into the same run history as `testo run`, so Compare, trends, `testo flaky`, reporters and the PR comment work on them.
+Record test results that another step already wrote (any runner, any language) as a run of a cycle. Nothing is executed: the files are parsed into the same run history as `testo run`, so Compare, trends, `testo flaky`, reporters and the PR comment work on them.
 
 ```bash
 testo ingest 'reports/**/*.xml' --cycle web-unit          # record locally
 testo ingest junit.xml --cycle api --tier integration --ci
 testo ingest test-results/results.json --cycle web-e2e --stage e2e --tier e2e   # Playwright JSON
+testo ingest allure-results --cycle api                    # a folder: the files in it
 testo ingest 'reports/*.xml' --cycle web-unit \
   --server https://testo.example.com --token "$TESTO_API_TOKEN"   # team server
 ```
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `REPORTS...` | required | Files or quoted globs, relative to `--repo` (absolute paths must be inside it). A `.json` file is read as a Playwright JSON report (`--reporter=json`), keeping retries, flaky tests and attachments |
+| `REPORTS...` | required | Files, folders (their files) or quoted globs, relative to `--repo` (absolute paths must be inside it). Each file is recognised by its content; see the table below |
 | `--cycle` | required | Cycle name the run is recorded under: letters, digits, `.`, `_`, `-`. Reuse it so runs build a history |
 | `--stage` | `junit` | Stage name the tests are grouped under |
 | `--tier` | `unit` | Test-pyramid tier: `unit`, `integration`, `e2e` |
@@ -96,6 +97,27 @@ testo ingest 'reports/*.xml' --cycle web-unit \
 | `--no-persist` | off | Parse only, record nothing |
 | `--server` | `$TESTO_SERVER_URL` | Upload to a [team server](../Processes%20&%20Guides/Team%20Server.md) instead of recording locally |
 | `--token` | `$TESTO_API_TOKEN` | The server's API token |
+
+Files it reads, with the command that writes each one (no extra package needed except where noted):
+
+| Runner | Write results with | Read as |
+|--------|--------------------|---------|
+| pytest | `pytest --junitxml=junit.xml` (or [`pytest --testo`](#pytest---testo)) | JUnit XML |
+| Jest | `npx jest --json --outputFile=jest.json` | Jest JSON: `describe` blocks, retried tests flagged flaky, test files that failed to load |
+| Vitest | `npx vitest run --reporter=json --outputFile=vitest.json` | Jest-style JSON, labelled `vitest` |
+| Playwright | `npx playwright test --reporter=json` (`PLAYWRIGHT_JSON_OUTPUT_FILE=results.json`) | Playwright JSON: retries, flaky tests, traces |
+| Cypress, Mocha, WebdriverIO | their `junit` reporter | JUnit XML |
+| JUnit 4/5, TestNG, Kotest (Maven, Gradle) | built in: `target/surefire-reports/*.xml`, `build/test-results/**/*.xml` | JUnit XML |
+| .NET (xUnit, NUnit, MSTest) | `dotnet test --logger trx` | TRX: data rows one result each |
+| Go | `go test -json ./... > go-test.json` | `go test -json`: subtests, build failures as broken |
+| Rust | `cargo nextest run --profile ci` with JUnit output configured | JUnit XML |
+| PHPUnit, Pest | `--log-junit junit.xml` | JUnit XML |
+| RSpec, Minitest | `rspec_junit_formatter`, `minitest-reporters` | JUnit XML |
+| Robot Framework | `robot` (writes `output.xml`) | Robot `output.xml`: tags, failure messages |
+| GoogleTest, Catch2 | `--gtest_output=xml:gtest.xml`, `-r junit` | JUnit XML |
+| Anything with an Allure adapter | its `allure-results/` folder | Allure results, with their attachments |
+
+A file that is none of these is skipped with a note in the stage log. See [Runner Coverage - 2026-10-26](../Specs%20&%20ADRs/Runner%20Coverage%20-%202026-10-26.md).
 
 Exit codes follow `testo run`: **0** every test passed or was skipped, **1** a test failed or broke, **2** bad arguments or no file matched, **3** the server could not be reached or refused the upload (wrong token). With `--server`, the job's CI provenance (provider, pipeline, job, commit, branch, repository) is sent with the files. Under the hood this is a one-stage cycle with `equipment: junit` run through `CycleRunService`; see [Ingest and Team Server - 2026-10-22](../Specs%20&%20ADRs/Ingest%20and%20Team%20Server%20-%202026-10-22.md). For Playwright JSON (each retry as a step, flaky tests flagged, traces and screenshots copied from inside `--repo` as Allure attachments) see [Playwright JSON Import - 2026-10-22](../Specs%20&%20ADRs/Playwright%20JSON%20Import%20-%202026-10-22.md).
 

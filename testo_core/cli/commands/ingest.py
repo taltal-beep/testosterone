@@ -3,9 +3,10 @@
 The low-effort way in: keep your CI as it is, add one step after the tests,
 and every run lands in Testosterone's history (Compare, trends, ``testo flaky``,
 reporters, PR comment). Works for any runner that writes JUnit XML: pytest,
-Jest, Vitest, Playwright, ``go test``, JUnit5, Maestro, ... A ``.json`` file is
-read as a Playwright JSON report, which also keeps retries, flaky tests and
-attachments (traces, screenshots).
+JUnit5, PHPUnit, GoogleTest, Maestro, ... and also reads runners' own formats,
+recognised by content (see :mod:`testo_core.reporting.junit_import`):
+Playwright and Jest/Vitest JSON, .NET ``.trx``, ``go test -json``, Robot
+Framework ``output.xml`` and Allure results folders.
 
 With ``--server`` the files go to a shared Testosterone server instead, so
 every CI job of a team records into one history.
@@ -22,9 +23,10 @@ def ingest(
     reports: list[str] = typer.Argument(
         ...,
         help=(
-            "JUnit XML or Playwright JSON (.json) files, or glob patterns "
-            "(quote globs: 'reports/**/*.xml'), "
-            "relative to --repo or inside it."
+            "Result files, folders or glob patterns (quote globs: 'reports/**/*.xml'), "
+            "relative to --repo or inside it: JUnit XML, Playwright or Jest/Vitest JSON, "
+            ".NET .trx, go test -json output, Robot Framework output.xml, "
+            "or an allure-results folder."
         ),
     ),
     cycle: str = typer.Option(
@@ -72,7 +74,7 @@ def ingest(
         help="The server's API token (default: $TESTO_API_TOKEN).",
     ),
 ) -> None:
-    """Record JUnit XML (any runner) or Playwright JSON results as a run of a cycle."""
+    """Record test results from any runner (JUnit XML or a runner's own format) as a run of a cycle."""
     from testo_core.cli.runner import execute_ingest_command
     from testo_core.cli.ui.console import default_console, make_console
 

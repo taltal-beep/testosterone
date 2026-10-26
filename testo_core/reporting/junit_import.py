@@ -15,9 +15,17 @@ Status mapping (JUnit has no "broken" of its own):
     <skipped>            -> skipped
     none of the above    -> passed
 
-A ``.json`` file among the matches is read as a Playwright JSON report by
-:mod:`testo_core.reporting.playwright_import` instead, which keeps retries,
-flakiness and attachments (traces, screenshots) that JUnit loses.
+Other result files among the matches are recognised by their content, not
+their name, and read by their own importer, which keeps what JUnit loses:
+
+    Playwright JSON report         -> :mod:`~testo_core.reporting.playwright_import`
+    Jest / Vitest JSON report      -> :mod:`~testo_core.reporting.jest_import`
+    .NET TRX (``<TestRun>``)       -> :mod:`~testo_core.reporting.trx_import`
+    ``go test -json`` output       -> :mod:`~testo_core.reporting.gotest_import`
+    Robot Framework ``output.xml`` -> :mod:`~testo_core.reporting.robot_import`
+    Allure ``*-result.json``       -> :mod:`~testo_core.reporting.allure_passthrough`
+
+Any other XML is read as JUnit (which every other runner can write).
 
 A ``junit`` stage (``testo ingest``) runs no command at all: the executor calls
 this without ``not_before`` and derives the stage's returncode from ``failed``.
@@ -94,8 +102,7 @@ def _suites(root: ET.Element) -> list[ET.Element]:
     return list(root.iter("testsuite"))
 
 
-def _results_for_file(path: Path, *, tool: str, fallback_ms: int) -> list[dict]:
-    root = ET.parse(path).getroot()  # noqa: S314 — stage-owned file, expat ignores external entities
+def _results_for_root(root: ET.Element, *, path: Path, tool: str, fallback_ms: int) -> list[dict]:
     results: list[dict] = []
     for suite in _suites(root):
         suite_name = suite.get("name") or path.stem
@@ -131,6 +138,74 @@ def _results_for_file(path: Path, *, tool: str, fallback_ms: int) -> list[dict]:
     return results
 
 
+@dataclass(frozen=True)
+class _FileResults:
+    results: list[dict]
+    flaky: int = 0
+    attachments: int = 0
+    notes: tuple[str, ...] = ()
+
+
+def _results_for_any(
+    path: Path, *, tool: str, results_dir: Path, repo: Path
+) -> _FileResults | None:
+    """One result file's Allure results, by what the file is; ``None`` for files to skip quietly."""
+    from testo_core.reporting import allure_passthrough
+
+    if allure_passthrough.is_allure_side_file(path):
+        return None
+    fallback_ms = int(path.stat().st_mtime * 1000)
+    raw = path.read_bytes()
+    text = raw.decode("utf-8-sig", errors="replace")
+    head = text.lstrip()[:1]
+    if head == "<":
+        root = ET.fromstring(raw)  # noqa: S314 — stage-owned file, expat ignores external entities
+        from testo_core.reporting.robot_import import is_robot_root, robot_results_for_root
+        from testo_core.reporting.trx_import import is_trx_root, trx_results_for_root
+
+        if is_trx_root(root):
+            return _FileResults(trx_results_for_root(root, tool=tool, fallback_ms=fallback_ms))
+        if is_robot_root(root):
+            return _FileResults(robot_results_for_root(root, tool=tool, fallback_ms=fallback_ms))
+        return _FileResults(_results_for_root(root, path=path, tool=tool, fallback_ms=fallback_ms))
+    from testo_core.reporting.gotest_import import gotest_results_for_text, is_gotest_text
+    from testo_core.reporting.jest_import import is_jest_report, jest_results_for_report
+
+    if head not in ("{", "["):
+        # ``go test -json`` output can start with a build line ("go: downloading ...").
+        if is_gotest_text(text):
+            return _FileResults(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
+        raise ValueError("not a test result file (neither XML nor JSON)")
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        if is_gotest_text(text):
+            return _FileResults(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
+        raise ValueError(f"not valid JSON ({exc})") from exc
+    if allure_passthrough.is_allure_result(path, data):
+        result, copied = allure_passthrough.copy_allure_result(
+            path, data, results_dir=results_dir, tool=tool
+        )
+        return _FileResults([result], attachments=copied)
+    if is_jest_report(data):
+        return _FileResults(
+            jest_results_for_report(data, tool=tool, root=repo, fallback_ms=fallback_ms)
+        )
+    if isinstance(data, dict) and isinstance(data.get("suites"), list):
+        from testo_core.reporting.playwright_import import playwright_results_for_file
+
+        parsed = playwright_results_for_file(
+            path, tool=tool, results_dir=results_dir, attachments_root=repo
+        )
+        return _FileResults(parsed.results, parsed.flaky, parsed.attachments, parsed.notes)
+    if is_gotest_text(text):  # a single-event go test file is valid JSON too
+        return _FileResults(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
+    raise ValueError(
+        "not a known JSON report (Playwright, Jest/Vitest, go test -json or an Allure result)"
+    )
+
+
 def import_junit_reports(
     *,
     target_repo: Path,
@@ -140,7 +215,7 @@ def import_junit_reports(
     not_before: float | None = None,
     first_match_only: bool = False,
 ) -> JunitImportResult:
-    """Convert every JUnit XML (or Playwright JSON) matching ``patterns`` into Allure results.
+    """Convert every result file matching ``patterns`` (JUnit XML or another known format) into Allure results.
 
     ``first_match_only`` reads only the files of the first pattern that
     matches anything, for adapters that list one report in several formats
@@ -176,29 +251,22 @@ def import_junit_reports(
     errors: list[str] = []
     for path in files:
         try:
-            if path.suffix.lower() == ".json":
-                from testo_core.reporting.playwright_import import playwright_results_for_file
-
-                parsed = playwright_results_for_file(
-                    path, tool=tool, results_dir=results_dir, attachments_root=repo
-                )
-                results = parsed.results
-                flaky += parsed.flaky
-                attachments += parsed.attachments
-                errors += [f"{path.name}: {note}" for note in parsed.notes]
-            else:
-                results = _results_for_file(
-                    path, tool=tool, fallback_ms=int(path.stat().st_mtime * 1000)
-                )
-        except (ET.ParseError, OSError, ValueError) as exc:
+            parsed = _results_for_any(path, tool=tool, results_dir=results_dir, repo=repo)
+        except (ET.ParseError, OSError, ValueError, UnicodeDecodeError) as exc:
             errors.append(f"{path.name}: {exc}")
             continue
+        if parsed is None:  # an Allure folder's container, attachment or settings file
+            continue
+        results = parsed.results
+        flaky += parsed.flaky
+        attachments += parsed.attachments
+        errors += [f"{path.name}: {note}" for note in parsed.notes]
         for result in results:
             out = results_dir / f"{result['uuid']}-result.json"
             out.write_text(json.dumps(result), encoding="utf-8")
-            if result["status"] in ("failed", "broken"):
+            if result.get("status") in ("failed", "broken"):
                 failed += 1
-            duration_ms += result["stop"] - result["start"]
+            duration_ms += max(0, int(result.get("stop") or 0) - int(result.get("start") or 0))
         tests += len(results)
     return JunitImportResult(
         files=tuple(files),

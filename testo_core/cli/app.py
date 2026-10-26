@@ -74,7 +74,7 @@ def _register_commands() -> None:
     )(run_cmd.run)
     app.command(
         name="ingest",
-        help="Record JUnit XML (Jest, Go, JUnit5, ...) or Playwright JSON as a run of a cycle.",
+        help="Record test results (JUnit XML, Jest/Vitest, .trx, go test -json, Robot, Allure, ...) as a run of a cycle.",
         rich_help_panel="Run and report",
     )(ingest_mod.ingest)
     app.command(

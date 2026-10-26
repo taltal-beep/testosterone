@@ -81,6 +81,37 @@ def test_playwright_json_upload_is_recorded_next_to_junit() -> None:
     assert body["exit_code"] == 1
 
 
+def test_other_formats_and_allure_attachments_upload(tmp_path: Path) -> None:
+    trx = b"""<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010"><Results>
+<UnitTestResult testId="a" testName="Shop.CartTests.Adds" outcome="Passed" duration="00:00:00.01"/>
+</Results></TestRun>"""
+    allure = b"""{"name": "t", "fullName": "a.T.t", "status": "failed", "start": 1, "stop": 2,
+"attachments": [{"name": "shot", "source": "s1-attachment.png"}]}"""
+    resp = TestClient(create_app()).post(
+        "/api/v1/ingest",
+        data={"cycle": "mixed"},
+        files=[
+            ("files", ("results.trx", trx, "application/xml")),
+            ("files", ("u1-result.json", allure, "application/json")),
+            ("files", ("s1-attachment.png", b"PNG", "image/png")),
+        ],
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert (body["tests"], body["passed"], body["failed"]) == (2, 1, 1)
+    stored = list((tmp_path / "static" / "history").rglob("s1-attachment.png"))
+    assert stored and stored[0].read_bytes() == b"PNG"
+
+
+def test_stored_names_keep_safe_names_and_stay_unique() -> None:
+    used: set[str] = set()
+    first = junit_ingest._stored_name("../../u1-result.json", 0, used)
+    used.add(first)
+    assert first == "u1-result.json"
+    assert junit_ingest._stored_name("u1-result.json", 1, used) == "001-u1-result.json"
+    assert junit_ingest._stored_name("weird name.exe;rm", 2, set()) == "weird_name.xml"
+
+
 def test_upload_needs_the_token_when_one_is_set(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TESTO_API_TOKEN", "s3cret")
     client = TestClient(create_app())

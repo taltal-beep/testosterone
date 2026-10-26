@@ -120,6 +120,7 @@ nav:
       - Plugin API: Specs & ADRs/Plugin API - 2026-10-19.md
       - Playwright Adapter: Specs & ADRs/Playwright Adapter - 2026-10-19.md
       - Playwright JSON Import: Specs & ADRs/Playwright JSON Import - 2026-10-22.md
+      - Runner Coverage: Specs & ADRs/Runner Coverage - 2026-10-26.md
       - BehaveX Reports: Specs & ADRs/BehaveX Reports - 2026-10-21.md
       - Config JSON Schema: Specs & ADRs/Config JSON Schema - 2026-10-22.md
       - Flaky Test Quarantine: Specs & ADRs/Flaky Test Quarantine - 2026-10-22.md

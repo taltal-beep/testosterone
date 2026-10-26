@@ -1,4 +1,4 @@
-"""``POST /api/v1/ingest``: record uploaded JUnit XML as a run (``testo ingest --server``)."""
+"""``POST /api/v1/ingest``: record uploaded test result files (JUnit XML and the other formats junit_import reads) as a run (``testo ingest --server``)."""
 
 from __future__ import annotations
 
