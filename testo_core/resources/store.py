@@ -110,8 +110,9 @@ class LeaseStore:
         from testo_core.repository.models import ResourceItemRow, ResourceLease, ResourceWaiter
 
         self._engine = engine if engine is not None else get_engine()
-        for model in (ResourceItemRow, ResourceLease, ResourceWaiter):
-            _create_table(self._engine, model.__table__)  # type: ignore[attr-defined]
+        tables = (ResourceItemRow.__table__, ResourceLease.__table__, ResourceWaiter.__table__)  # type: ignore[attr-defined]
+        for table in tables:
+            _create_table(self._engine, table)
 
     # -- taking and giving back -------------------------------------------------
 
