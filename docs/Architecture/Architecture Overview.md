@@ -213,6 +213,8 @@ A `composite_backend()` factory fans out to both; individual backend failures ne
 
 Code that needs per-test data for a *run_id* (not a *report_id*) should extract from `CompletedRunView.snapshot_dir` (via `history.snapshots.snapshot_files_for_download()`), not attempt to resolve a `ReportArchive` row — there isn't one to resolve to. See `testo_core/services/run_snapshot_diff.py` for the pattern.
 
+Resource pool leases (`testo_core/resources/store.py`, tables `resource_item`, `resource_lease`, `resource_waiter`) live in the same database and are unrelated to runs: they say which parallel worker holds which key right now. See [Shared Resource Pools](../Processes%20&%20Guides/Shared%20Resource%20Pools.md).
+
 ## Related operational docs
 
 - CI: [CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md), [QA Strategies § CI and streaming output](../Testing%20Workflows/QA%20Strategies.md#ci-and-streaming-output)

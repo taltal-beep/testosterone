@@ -20,6 +20,7 @@ const PRIMARY_LINKS: NavLinkSpec[] = [
 
 const ADVANCED_LINKS: NavLinkSpec[] = [
   { to: "/quick-run", label: "Quick run", icon: Icons.BoltIcon },
+  { to: "/resources", label: "Resources", icon: Icons.KeyIcon },
   { to: "/try", label: "Try a file", icon: Icons.UploadIcon },
   { to: "/settings/ai", label: "AI settings", icon: Icons.SparkIcon }
 ];

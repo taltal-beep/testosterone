@@ -10,6 +10,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from testo_core.resources.pools import ResourcePool
 
 # Supported frameworks. Add new ones in :mod:`testo_core.frameworks` and append here.
 SUPPORTED_FRAMEWORKS: frozenset[str] = frozenset(
@@ -143,6 +147,8 @@ class TestosteroneConfig:
     cycles: dict[str, Plan] = field(default_factory=dict)
     reporters: tuple[ReporterSpec, ...] = ()
     source_path: Path | None = None
+    # Top-level ``resources:``: pools of keys parallel workers lease (testo_core/resources/).
+    resources: dict[str, ResourcePool] = field(default_factory=dict)
 
     @property
     def plans(self) -> dict[str, Plan]:

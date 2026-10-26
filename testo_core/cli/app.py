@@ -57,6 +57,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import flaky as flaky_mod
     from testo_core.cli.commands import ingest as ingest_mod
     from testo_core.cli.commands import init_cmd as init_cmd_mod
+    from testo_core.cli.commands import lease as lease_mod
     from testo_core.cli.commands import notify as notify_mod
     from testo_core.cli.commands import plans as cycles_cmd
     from testo_core.cli.commands import plugins as plugins_mod
@@ -125,6 +126,12 @@ def _register_commands() -> None:
         help="Deprecated alias for `testo cycles`.",
         hidden=True,
         rich_help_panel="Diagnostics",
+    )
+    app.add_typer(
+        lease_mod.app,
+        name="lease",
+        help="Give each parallel worker its own key from a resource pool (resources: in the config).",
+        rich_help_panel="Run and report",
     )
     app.add_typer(
         users_cmd.app,

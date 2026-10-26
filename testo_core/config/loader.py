@@ -35,6 +35,7 @@ from testo_core.config.sections import (
     parse_stage,
     validate_artifact_name,
 )
+from testo_core.resources.pools import parse_resources
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +138,14 @@ def _build_config(raw: dict[str, Any], *, source: Path) -> TestosteroneConfig:
         return _build_cycle_config(raw, config_dir=config_dir, source=source)
     if "runs" in raw:
         return _build_legacy_runs_config(raw, config_dir=config_dir, source=source)
+    if "resources" in raw:
+        # Only pools (for `testo lease`), no cycles yet.
+        return TestosteroneConfig(
+            version=int(raw.get("version", 1)),
+            defaults=parse_defaults(raw.get("defaults", {}), config_dir=config_dir),
+            source_path=source,
+            resources=parse_resources(raw.get("resources")),
+        )
     if {"test_type", "target_repo"}.issubset(raw):
         # Single legacy run, no `runs:` wrapper.
         return _build_legacy_runs_config({"runs": [raw]}, config_dir=config_dir, source=source)
@@ -177,7 +186,12 @@ def _build_cycle_config(
         cycles[cycle.name] = cycle
     reporters = parse_reporters(raw.get("reporters"), config_dir=config_dir)
     return TestosteroneConfig(
-        version=version, defaults=defaults, cycles=cycles, reporters=reporters, source_path=source
+        version=version,
+        defaults=defaults,
+        cycles=cycles,
+        reporters=reporters,
+        source_path=source,
+        resources=parse_resources(raw.get("resources")),
     )
 
 
@@ -231,4 +245,5 @@ def _build_legacy_runs_config(
         cycles={plan.name: plan},
         reporters=reporters,
         source_path=source,
+        resources=parse_resources(raw.get("resources")),
     )

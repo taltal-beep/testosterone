@@ -395,6 +395,39 @@ Accounts for a team server that runs with `TESTO_AUTH=accounts` ([Team Server §
 
 ---
 
+## `testo lease`
+
+Give each parallel worker its own key from a resource pool (`resources:` in `testosterone.yaml`), so no two workers, on this machine or on other laptops, use the same VM, device or account at once. Guide: [Shared Resource Pools](../Processes%20&%20Guides/Shared%20Resource%20Pools.md).
+
+```bash
+testo lease run flow-vms -- pytest tests/flows      # hold a key while the command runs
+testo lease run flow-vms -l win11 --wait 10m -- ./run_flow.sh
+LEASE=$(testo lease take flow-vms --ttl 2h)          # prints "<key> <lease id>"
+testo lease heartbeat "${LEASE#* }"; testo lease release "${LEASE#* }"
+testo lease list                                     # who holds what, how many wait
+```
+
+| Command | Effect |
+|---------|--------|
+| `testo lease run POOL [-l LABEL] [--wait 30m] [--note TEXT] -- CMD...` | Wait for a key, run `CMD` with `TESTO_RESOURCE_ID`, `TESTO_RESOURCE_POOL`, `TESTO_RESOURCE_LABELS`, `TESTO_RESOURCE_DATA`, `TESTO_RESOURCE_<NAME>` per data value and `TESTO_LEASE_ID` set, heartbeat while it runs, give the key back when it ends. Exits with `CMD`'s exit code |
+| `testo lease take POOL [-l LABEL] [--wait 30m] [--ttl DURATION] [--json]` | Take a key and print `<key> <lease id>` (or JSON with the env vars). Nothing heartbeats it: it lives `--ttl` (default the pool's `lease_ttl`) unless you call `heartbeat` |
+| `testo lease heartbeat LEASE_ID` | Keep a lease alive for another TTL. Exit `1` when it is gone |
+| `testo lease release LEASE_ID` | Give the key back |
+| `testo lease list [POOL] [--json]` | Each pool's keys: free, held (by whom, since when) or disabled, and how many requests wait |
+| `testo lease disable POOL KEY [--reason TEXT]` / `enable POOL KEY` | Take a broken key out of the pool, put it back |
+| `testo lease free POOL KEY` | Take a key back from its holder (needs `admin` on a server with accounts) |
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `-l`, `--label` | none | Only keys with this label; repeat for several |
+| `--wait` | `30m` | How long to wait for a free key: `90s`, `10m`, `2h`, `0` (try once) or `forever` |
+| `--server` | `$TESTO_SERVER_URL` | Team server that keeps the leases (token from `$TESTO_API_TOKEN`). Unset: this machine's run-history database |
+| `--config` | discovery | `testosterone.yaml` with the pools |
+
+Exit codes: `2` for an unknown pool, a bad config or no command after `--`; `3` when no key came free within `--wait`, the pool has no usable key (none match the labels, or all are disabled), or the server can't be reached; `1` when `heartbeat` or `disable`/`enable`/`free` finds nothing to act on.
+
+---
+
 ## `testo version`
 
 ```bash
@@ -442,6 +475,8 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `INFLUXDB_URL`, `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, `INFLUXDB_BUCKET` | Push run KPIs to InfluxDB after each run |
 | `PROMETHEUS_PUSHGATEWAY_URL`, `PROMETHEUS_JOB_NAME` | Push run KPIs to a Prometheus Pushgateway after each run |
 | `TESTO_SLACK_WEBHOOK_URL`, `TESTO_TEAMS_WEBHOOK_URL` | Webhooks for `testo notify` and the `slack` / `teams` reporters |
+| `TESTO_SERVER_URL`, `TESTO_API_TOKEN` | Team server for `testo lease` (and `pytest --testo-server`) |
+| `TESTO_LEASE_DB_URL` | Database for local leases when it isn't the run-history one |
 | Reporter tokens | e.g. `REPORTPORTAL_TOKEN`, `SLACK_WEBHOOK` via `${env:…}` in YAML |
 
 ---

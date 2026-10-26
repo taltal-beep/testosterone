@@ -61,6 +61,9 @@ function stubOverviewFetch(payload: Record<string, unknown>, attention?: Record<
       if (url.includes("/api/v1/dashboard/overview")) {
         return Promise.resolve({ ok: true, json: async () => payload });
       }
+      if (url.includes("/api/v1/project-health")) {
+        return Promise.resolve({ ok: true, json: async () => ({ score: 84, grade: "B", cycles: 1, runs_considered: 3, tests: 10, signals: [], by_cycle: [], findings: [] }) });
+      }
       if (attention && url.includes("/api/v1/dashboard/attention")) {
         return Promise.resolve({ ok: true, json: async () => attention });
       }
@@ -93,7 +96,10 @@ describe("DashboardPage", () => {
     renderDashboard();
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument());
-    expect(screen.getByTestId("health-trend")).toHaveTextContent("Better than last run");
+    // One health score in the app: the Project health page's, linked from here.
+    const health = await screen.findByRole("link", { name: "Project health: 84 out of 100, grade B. Open project health" });
+    expect(health).toHaveAttribute("href", "/health");
+    expect(screen.getByTestId("failed-trend")).toHaveTextContent("Better than last run");
     expect(screen.getByRole("link", { name: "Allure report" })).toHaveAttribute("href", "http://allure/run-1");
     // Without attention data the card steps aside rather than showing an error.
     expect(screen.queryByTestId("needs-attention")).not.toBeInTheDocument();
