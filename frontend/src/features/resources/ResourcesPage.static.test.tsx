@@ -28,7 +28,7 @@ const demo = {
           disabled_reason: "",
           disabled_by: null,
           lease: {
-            holder: { user: "dana", host: "dana-laptop", pid: 1, run_id: "", stage: "flows/checkout", worker: "gw0", note: "" },
+            holder: { user: "alice", host: "alice-laptop", pid: 1, run_id: "", stage: "flows/checkout", worker: "gw0", note: "" },
             taken_at: SNAPSHOT_AT - 420,
             heartbeat_at: SNAPSHOT_AT - 10,
             expires_at: SNAPSHOT_AT + 3600,

@@ -60,12 +60,12 @@ _TAKES: tuple[tuple[str, tuple[str, ...], Holder], ...] = (
     (
         "demo-flow-vms",
         ("win11",),
-        Holder(user="dana", host="dana-laptop", pid=4211, stage="flows/checkout", worker="gw0"),
+        Holder(user="alice", host="alice-laptop", pid=4211, stage="flows/checkout", worker="gw0"),
     ),
     (
         "demo-flow-vms",
         ("win11",),
-        Holder(user="dana", host="dana-laptop", pid=4212, stage="flows/checkout", worker="gw1"),
+        Holder(user="alice", host="alice-laptop", pid=4212, stage="flows/checkout", worker="gw1"),
     ),
     (
         "demo-flow-vms",
@@ -82,18 +82,18 @@ _TAKES: tuple[tuple[str, tuple[str, ...], Holder], ...] = (
     (
         "demo-phones",
         ("android",),
-        Holder(user="omer", host="omer-mac", pid=7730, stage="mobile/smoke", worker="main"),
+        Holder(user="bob", host="bob-mac", pid=7730, stage="mobile/smoke", worker="main"),
     ),
     ("demo-license-seats", (), Holder(user="ci", host="ci-runner-1", pid=120, stage="pr/ui")),
-    ("demo-license-seats", (), Holder(user="dana", host="dana-laptop", pid=4300, stage="pr/ui")),
-    ("demo-license-seats", (), Holder(user="omer", host="omer-mac", pid=7800, stage="pr/ui")),
+    ("demo-license-seats", (), Holder(user="alice", host="alice-laptop", pid=4300, stage="pr/ui")),
+    ("demo-license-seats", (), Holder(user="bob", host="bob-mac", pid=7800, stage="pr/ui")),
 )
 # A key that "broke" and was taken out of the pool.
-_DISABLED = ("demo-flow-vms", "demo-vm-05", "snapshot 'clean' is missing", "dana")
+_DISABLED = ("demo-flow-vms", "demo-vm-05", "snapshot 'clean' is missing", "alice")
 # People queued for a license seat (waiters drop out after about 30 s unless they keep asking).
 _WAITERS: tuple[Holder, ...] = (
     Holder(user="ci", host="ci-runner-2", pid=130, stage="pr/ui"),
-    Holder(user="noa", host="noa-laptop", pid=5150, stage="pr/ui"),
+    Holder(user="bob", host="bob-mac", pid=5150, stage="pr/ui"),
 )
 
 

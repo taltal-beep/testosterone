@@ -29,7 +29,7 @@ def test_seed_fills_the_pools_with_held_free_disabled_and_waiting_keys() -> None
     pools = {pool.name: pool for pool in store.status(now=now)}
     assert set(pools) == {p.name for p in DEMO_POOLS}
     vms = {item.item: item for item in pools["demo-flow-vms"].items}
-    assert vms["demo-vm-01"].lease is not None and vms["demo-vm-01"].lease.holder.user == "dana"
+    assert vms["demo-vm-01"].lease is not None and vms["demo-vm-01"].lease.holder.user == "alice"
     assert vms["demo-vm-05"].disabled and "snapshot" in vms["demo-vm-05"].disabled_reason
     assert pools["demo-flow-vms"].free == 2
     assert (pools["demo-license-seats"].free, pools["demo-license-seats"].waiting) == (0, 2)
