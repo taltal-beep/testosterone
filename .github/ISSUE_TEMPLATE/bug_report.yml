@@ -34,7 +34,7 @@ body:
     attributes:
       label: testo version
       description: Output of `testo --version`.
-      placeholder: testo 1.1.1
+      placeholder: testo 1.3.0
     validations:
       required: true
   - type: input

@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-19
-updated: 2026-10-22
+updated: 2026-10-25
 ---
 
 # Getting Started
@@ -45,7 +45,7 @@ testo doctor             # config, runners on PATH, database
 
 For autocomplete in VS Code and other editors, put the [`$schema` line](CLI%20Commands/Command%20Reference.md#editor-autocomplete) at the top of the file.
 
-`testo config init` writes a bigger starter file instead, but its `smoke-test` cycle selects `-m smoke` tests, so edit its `args` to match your suite.
+`testo config init` writes a starter file with a `smoke-test` cycle that runs `pytest -q tests`, plus commented-out marker-based pytest and BehaveX examples. Edit its `args` if your tests live outside `tests/`.
 
 ## 3. Run it
 
@@ -134,8 +134,17 @@ testo ingest 'reports/**/*.xml' --cycle web-unit
 
 The run gets the same history, `testo summary`, `testo flaky` and Compare as a `testo run`. For one history across every CI job and teammate, run the [Team Server](Processes%20&%20Guides/Team%20Server.md) and add `--server https://your-server --token "$TESTO_API_TOKEN"`. Details: [Command Reference § testo ingest](CLI%20Commands/Command%20Reference.md#testo-ingest).
 
+## Using pytest? One flag
+
+```bash
+pip install testo-core
+pytest --testo                       # or --testo-cycle api-unit to name the cycle
+```
+
+Every run is recorded like `testo ingest` would record it (the cycle defaults to the project folder's name), with the checkout's branch and commit, so `testo ui` shows what broke since the last run on your branch. Without the flag the plugin does nothing. Details: [Command Reference § pytest --testo](CLI%20Commands/Command%20Reference.md#pytest---testo).
+
 ## Next
 
-- **Web UI**: Dashboard, Runs, Compare and AI failure summaries. It runs from a checkout of the repository; see the README's [UI section](https://github.com/taltal-beep/testosterone#ui), or look at the [live demo](https://taltal-beep.github.io/testosterone/).
+- **Web UI**: Dashboard, Runs, Compare and AI failure summaries on the same history. `pip install 'testo-core[api]'`, then `testo ui` opens it on <http://127.0.0.1:8000> (releases after 1.2.0; before that it runs from a checkout, see the README's [UI section](https://github.com/taltal-beep/testosterone#ui)). Or look at the [live demo](https://taltal-beep.github.io/testosterone/).
 - **Using an AI coding assistant?** [Setup Prompts](Prompts%20&%20Snippets/Setup%20Prompts.md) are copy-paste prompts that do the steps above for you.
 - **How it works**: [System Diagram](Architecture/System%20Diagram.md).

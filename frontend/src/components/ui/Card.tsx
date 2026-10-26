@@ -13,7 +13,7 @@ export function Card({ title, actions, className, children, ...props }: CardProp
     >
       {(title || actions) && (
         <div className="mb-4 flex items-center justify-between gap-2">
-          {title ? <h3 className="text-base font-bold text-white">{title}</h3> : <span />}
+          {title ? <h2 className="text-base font-bold text-white">{title}</h2> : <span />}
           {actions}
         </div>
       )}

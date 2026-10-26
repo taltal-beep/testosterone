@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-10-22
+updated: 2026-10-25
 ---
 
 # CI Integrations
@@ -29,7 +29,12 @@ Run records written in CI include (when the provider exposes them):
 - `ci_pipeline_id`
 - `ci_job_id`
 - `ci_commit_sha`
-- `ci_ref_name`
+- `ci_ref_name`: the branch. On a GitHub `pull_request` event that is `GITHUB_HEAD_REF` (the PR's branch), not `GITHUB_REF_NAME` (`<number>/merge`)
+- `ci_base_ref`: a pull or merge request's target branch (`GITHUB_BASE_REF`, `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`, `BUILDKITE_PULL_REQUEST_BASE_BRANCH`, Jenkins `CHANGE_TARGET`, Azure `SYSTEM_PULLREQUEST_TARGETBRANCH`); unset on branch builds
+
+Runs also record `repository` (`owner/name`, from `GITHUB_REPOSITORY`, `CI_PROJECT_PATH`, `BUILDKITE_REPO` or `CIRCLE_PROJECT_REPONAME`). Runs outside CI record `git_branch` and `git_commit` from the target repository's checkout instead, and `repository` when its `origin` remote is on github.com. `testo ingest` sends the same fields with the upload.
+
+The PR comment and `testo report markdown` compare a pull request's run with the latest run of the same cycle on its `ci_base_ref` branch, so a parallel PR's run is never the baseline. With no run on that branch yet they fall back to the previous run, and say which one they used ("Since the last run on `main`" or "Since the previous run"). This needs history shared between jobs (a `database.url` or a team server); on a fresh runner there is nothing to compare with.
 
 ## GitHub Action
 
@@ -82,7 +87,7 @@ Tier selection is marker-driven and shared between local runs and GitHub Actions
 
 Reference CI definitions:
 
-- GitHub: `.github/workflows/ci.yml` (unified format → test → deploy pipeline; the fast-required gate lives in its `test` job), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`. Code review runs via a local pre-push hook (`.claude/settings.json`), not in CI.
+- GitHub: `.github/workflows/ci.yml` (unified format → test → deploy pipeline; the fast-required gate lives in its `test` job on Python 3.11, and `test_python_versions` runs the same suite on 3.12 and 3.13 without the coverage gate), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`. Code review runs via a local pre-push hook (`.claude/settings.json`), not in CI.
 
 All tier jobs upload diagnostics artifacts (`logs`, summary JSON, API responses, screenshots when present) on failure, and external suites run with `external-e2e` concurrency isolation.
 
@@ -92,7 +97,7 @@ What runs on Testosterone itself, as opposed to the wrappers above that run it i
 
 | Workflow | Runs on | What it does |
 |----------|---------|--------------|
-| `ci.yml` | pull request, push to `main`, release | Blocking gates: ruff lint and format, mypy on `testo_core` and `testo_api`; the fast pytest suite with the coverage gate; frontend typecheck, generated API types up to date, vitest and build; `CHANGELOG.md` touched; docs vault lint; the docs site with `mkdocs build --strict`; `examples/getting-started/` through the local GitHub Action, once with the PyPI release and once with this checkout (which also posts the PR comment); builds the sdist and wheel, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`). Builds the wheel on a release |
+| `ci.yml` | pull request, push to `main`, release | Blocking gates: ruff lint and format, mypy on `testo_core` and `testo_api`; the fast pytest suite with the coverage gate; frontend typecheck, ESLint, generated API types up to date, vitest and build; `CHANGELOG.md` touched; docs vault lint; the docs site with `mkdocs build --strict`; `examples/getting-started/` through the local GitHub Action, once with the PyPI release and once with this checkout (which also posts the PR comment); builds the sdist and wheel, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`). Builds the wheel on a release |
 | `commitlint.yml` | pull request | Conventional commit messages |
 | `changelog-on-main.yml` | push to `main` | Drafts a `CHANGELOG.md` [Unreleased] entry from the pushed commits with Claude and commits it to `main`; skips when its bot secrets are missing |
 | `pages-demo.yml` | push to `main`, nightly | Runs the self-test and fake-api cycles and publishes the read-only UI and the docs site to GitHub Pages ([GitLab Pages Demo](GitLab%20Pages%20Demo.md)) |

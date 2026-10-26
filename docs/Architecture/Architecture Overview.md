@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-10-22
+updated: 2026-10-26
 ---
 
 # Architecture Overview
@@ -22,7 +22,7 @@ flowchart TD
     TERM[Developer terminal] --> CLI["testo CLI (Typer)<br/>cli/runner.execute_plan_command"]
     CI[GitHub Action / GitLab template] -->|"testo run --ci"| CLI
     UI[React frontend] -->|HTTP + SSE| API["testo_api /api/v1"]
-    API --> MGR[CycleExecutionManager<br/>background thread per execution]
+    API --> MGR[CycleExecutionManager<br/>worker pool + run queue]
 
     CLI --> SVC
     MGR --> SVC
@@ -61,7 +61,8 @@ The CLI deliberately **defers imports** until a command runs so `testo --help` s
 
 ### `testo_core/config/`
 
-- **`loader.py`** — discovers `testosterone.yaml` (or `--config` path) and parses YAML.
+- **`loader.py`** — discovers `testosterone.yaml` (or `--config` path), reads it and picks its shape (`cycles:` or legacy `runs:`).
+- **`sections.py`** — parses each section (defaults, cycles, stages, triggers, quarantine, reporters) into the models below.
 - **`schema.py`** — `TestosteroneConfig`, `Plan` (cycle), `Stage`, `ReporterSpec`, triggers.
 - **`resolver.py`** — merges defaults, interpolates `${env:…}`, resolves stages per cycle.
 
@@ -90,7 +91,7 @@ Each **equipment** name maps to an adapter implementing `FrameworkAdapter`:
 - `playwright` → `PlaywrightAdapter`: `npx playwright test <args>` in the target repo, which must have `@playwright/test` installed. Adds `--reporter=list,json,html` and `--workers=N` unless `args` set them; the JSON report (`test-results/testo-results.json`, or `test-results/testo-junit.xml` when a stage picks its own `--reporter=junit`) is imported like a `command` stage's `junit_xml`, with retries, flaky tests and attachments ([Playwright JSON Import](../Specs%20&%20ADRs/Playwright%20JSON%20Import%20-%202026-10-22.md)), and Playwright's HTML report is kept as the run's native report. Default tier `e2e`.
 - `command` → `CommandAdapter`: any other runner (Jest, Maestro, `go test`, ...). `args` is the whole argv. The stage's `junit_xml` globs are converted into Allure results after it exits (`testo_core/reporting/junit_import.py`), so the stage counts in summaries, health % and every reporter. See [Command Adapter and JUnit Import - 2026-09-25](../Specs%20&%20ADRs/Command%20Adapter%20and%20JUnit%20Import%20-%202026-09-25.md).
 
-- `junit` → `JunitAdapter`: runs nothing (`runs_process = False`). The executor records the stage's `junit_xml` reports, whatever their age, and the returncode comes from the results. Used by `testo ingest` and `POST /api/v1/ingest`; see [Ingest and Team Server - 2026-10-22](../Specs%20&%20ADRs/Ingest%20and%20Team%20Server%20-%202026-10-22.md).
+- `junit` → `JunitAdapter`: runs nothing (`runs_process = False`). The executor records the stage's `junit_xml` reports, whatever their age, and the returncode comes from the results. Used by `testo ingest`, `pytest --testo` (`testo_core/pytest_plugin.py`, which calls the same ingest function) and `POST /api/v1/ingest`; see [Ingest and Team Server - 2026-10-22](../Specs%20&%20ADRs/Ingest%20and%20Team%20Server%20-%202026-10-22.md).
 
 Adapters build `argv`, set Allure output under `allure-results/<framework>/`, and run in `stage.target_repo` as cwd.
 
@@ -112,7 +113,7 @@ Optional per-cycle **selective execution**: Git diff or filesystem snapshot agai
 
 | Package | Purpose |
 |---------|---------|
-| `testo_api/` | FastAPI `/api/v1` — cycle discovery (`GET /cycles`, `GET /cycles/{cycle}`), cycle and ad-hoc executions with SSE, JUnit uploads (`POST /ingest`), runs, analytics, AI summaries, health probes. With `TESTO_UI_DIR` it also serves the built UI at `/` ([Team Server](../Processes%20&%20Guides/Team%20Server.md)) |
+| `testo_api/` | FastAPI `/api/v1` — cycle discovery (`GET /cycles`, `GET /cycles/{cycle}`: the config's cycles, `source: config`, then cycles that only have recorded runs, `source: history`, read-only; with no config file only the recorded ones), cycle and ad-hoc executions with SSE, JUnit uploads (`POST /ingest`), runs, analytics, AI summaries, health probes. It also serves the built UI at `/`: the one bundled in the wheel (`testo ui`), or `TESTO_UI_DIR` ([Team Server](../Processes%20&%20Guides/Team%20Server.md)) |
 | `frontend/` | React UI — cycles-first navigation plus Quick Run, see [Phase 5 UI Redesign - Cycles-First Navigation](../Specs%20&%20ADRs/Phase%205%20UI%20Redesign%20-%20Cycles-First%20Navigation.md) |
 | `testo_core/services/` | `cycle_run.py` (the run use case shared by CLI and API), dashboard, delta, AI failure analysis, report archive diff |
 
@@ -205,7 +206,7 @@ A `composite_backend()` factory fans out to both; individual backend failures ne
 
 **Two separate, unlinked id spaces** — easy to conflate, worth calling out explicitly (found while building per-test diff for the API, see [CLI-UI Parity - Pyramid, Graphs, Deep Diff - 2026-07-23](../Archive/CLI-UI%20Parity%20-%20Pyramid,%20Graphs,%20Deep%20Diff%20-%202026-07-23.md)):
 
-- **Run-history runs** (`RunRecord` / `CompletedRunView`, `testo_core/history/`): one row per `testo run --cycle` execution, keyed by `run_id`. This is what the dashboard, history, run detail, and delta/compare pages all use (`/api/v1/runs/{run_id}`, `/api/v1/analytics/delta`). Carries `stage_health`, `snapshot_dir` (the run's own raw artifact tree). For engine runs that is a per-run copy at `static/history/<run_id>/artifacts/`, made by `persistence/db_backend.py` after the run, because the next run of the same cycle overwrites `artifacts/<cycle>/`.
+- **Run-history runs** (`RunRecord` / `CompletedRunView`, `testo_core/history/`): one row per `testo run --cycle` execution, keyed by `run_id`. This is what the dashboard, history, run detail, and delta/compare pages all use (`/api/v1/runs/{run_id}`, `/api/v1/runs/{run_id}/failures` with each failure's marked cause from `services/triage.py` (table `failure_triage`, written through `/api/v1/triage`), `/api/v1/dashboard/attention` from `services/attention.py`, `/api/v1/project-health` from `services/project_health.py` with the optional AI review in `services/project_review.py`, `/api/v1/analytics/delta`, and per test `/api/v1/analytics/tests` and `/api/v1/analytics/test-history`, from `services/test_history.py`, with the last failure's attachments from `services/test_attachments.py`). Carries `stage_health`, `snapshot_dir` (the run's own raw artifact tree). For engine runs that is a per-run copy at `static/history/<run_id>/artifacts/`, made by `persistence/db_backend.py` after the run, because the next run of the same cycle overwrites `artifacts/<cycle>/`.
 - **Report archives** (`ReportArchive`, `testo_core/repository/report_archive_repository.py`): one row per `testo report list/open/diff` archive, a zipped Allure snapshot keyed by its own UUID (`report_id`), with **no `run_id` column linking it back** to the run that produced it. Populated separately by `CycleRunService` (`testo_core/services/cycle_run.py`) after each run, via `try_persist_cycle_report()`.
 
 Code that needs per-test data for a *run_id* (not a *report_id*) should extract from `CompletedRunView.snapshot_dir` (via `history.snapshots.snapshot_files_for_download()`), not attempt to resolve a `ReportArchive` row — there isn't one to resolve to. See `testo_core/services/run_snapshot_diff.py` for the pattern.

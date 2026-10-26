@@ -6,8 +6,9 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from testo_api.cycle_execution_manager import CycleExecutionManager, iter_execution_sse
+from testo_api.cycle_execution_manager import CycleExecutionManager
 from testo_api.dependencies import get_cycle_execution_manager
+from testo_api.execution_events import iter_execution_sse
 from testo_api.models import (
     AdhocExecutionRequest,
     CycleDetailResponse,
@@ -19,9 +20,12 @@ from testo_api.models import (
     CycleTriggerSummary,
     StageSummary,
 )
-from testo_core.config.errors import ConfigError, ConfigValidationError
+from testo_api.security import read_config_path
+from testo_core.config.errors import ConfigDiscoveryError, ConfigError, ConfigValidationError
 from testo_core.config.loader import discover_and_load
 from testo_core.config.schema import PARALLEL_FRAMEWORKS
+from testo_core.history.read_model import latest_run_per_cycle
+from testo_core.history.views import CompletedRunView
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +34,39 @@ router = APIRouter(prefix="/api/v1", tags=["cycles"])
 
 def _load_config(config_path: str | None = None):
     try:
-        return discover_and_load(
-            config_path=Path(config_path).expanduser().resolve() if config_path else None
-        )
+        return discover_and_load(config_path=read_config_path(config_path))
     except ConfigError as exc:
         raise HTTPException(status_code=503, detail=f"config error: {exc}") from exc
+
+
+def _load_config_for_reads(config_path: str | None = None):
+    """The config, or ``None`` when none is found: `testo ui` over ingested runs needs no YAML.
+
+    A ``config_path`` the caller named must exist, as before.
+    """
+    if config_path:
+        return _load_config(config_path)
+    try:
+        return discover_and_load()
+    except ConfigDiscoveryError:
+        return None
+    except ConfigError as exc:
+        raise HTTPException(status_code=503, detail=f"config error: {exc}") from exc
+
+
+_HISTORY_DESCRIPTION = (
+    "Recorded runs only: this cycle isn't in testosterone.yaml, so it can't be run from here."
+)
+
+
+def _history_summary(name: str, run: CompletedRunView) -> CycleSummary:
+    return CycleSummary(
+        name=name,
+        description=_HISTORY_DESCRIPTION,
+        stage_count=len(run.stage_health),
+        equipment=sorted({str(s.get("framework")) for s in run.stage_health if s.get("framework")}),
+        source="history",
+    )
 
 
 def _optional_path(raw: str | None) -> Path | None:
@@ -53,8 +85,9 @@ def _accepted(request: Request, execution_id: str) -> CycleExecutionAcceptedResp
 
 @router.get("/cycles", response_model=CycleListResponse)
 def list_cycles(config_path: str | None = None) -> CycleListResponse:
-    """List every cycle defined in the resolved configuration (UI parity with ``testo cycles list``)."""
-    cfg = _load_config(config_path)
+    """Every cycle in the config (as ``testo cycles list``), then cycles that only have recorded runs."""
+    cfg = _load_config_for_reads(config_path)
+    configured = cfg.cycles if cfg else {}
     items = [
         CycleSummary(
             name=cycle.name,
@@ -62,23 +95,46 @@ def list_cycles(config_path: str | None = None) -> CycleListResponse:
             stage_count=len(cycle.stages),
             equipment=sorted({stage.framework for stage in cycle.stages}),
         )
-        for cycle in cfg.cycles.values()
+        for cycle in configured.values()
+    ]
+    items += [
+        _history_summary(name, run)
+        for name, run in latest_run_per_cycle().items()
+        if name not in configured
     ]
     return CycleListResponse(
         items=items,
-        config_path=str(cfg.source_path) if cfg.source_path else None,
+        config_path=str(cfg.source_path) if cfg and cfg.source_path else None,
     )
 
 
 @router.get("/cycles/{cycle}", response_model=CycleDetailResponse)
 def get_cycle(cycle: str, config_path: str | None = None) -> CycleDetailResponse:
-    """Resolved view of one cycle (UI parity with ``testo cycles show <name>``)."""
-    cfg = _load_config(config_path)
-    plan = cfg.cycles.get(cycle)
+    """Resolved view of one cycle (as ``testo cycles show <name>``), or a recorded-only cycle."""
+    cfg = _load_config_for_reads(config_path)
+    configured = cfg.cycles if cfg else {}
+    plan = configured.get(cycle)
     if plan is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Unknown cycle: {cycle}. Available cycles: {', '.join(sorted(cfg.cycles))}",
+        recorded = latest_run_per_cycle()
+        run = recorded.get(cycle)
+        if run is None:
+            known = sorted({*configured, *recorded})
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unknown cycle: {cycle}. Available cycles: {', '.join(known) or '(none)'}",
+            )
+        return CycleDetailResponse(
+            name=cycle,
+            description=_HISTORY_DESCRIPTION,
+            stages=[
+                StageSummary(
+                    name=str(stage.get("name") or ""),
+                    equipment=str(stage.get("framework") or ""),
+                    target_repo=run.target_repo or "",
+                )
+                for stage in run.stage_health
+            ],
+            source="history",
         )
     return CycleDetailResponse(
         name=plan.name,

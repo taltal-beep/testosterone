@@ -113,7 +113,11 @@ class QuarantineRule:
 
 @dataclass(frozen=True)
 class Plan:
-    """A named sequence of stages executed in order by ``testo run --cycle <name>``."""
+    """A named list of stages run by ``testo run --cycle <name>``.
+
+    Stages run in order, one at a time, unless ``max_parallel_stages`` is above 1:
+    then up to that many independent stages run at once (see ``engine/orchestrator.py``).
+    """
 
     name: str
     description: str | None
@@ -121,6 +125,7 @@ class Plan:
     trigger: CycleTrigger | None = None
     # Top-level ``quarantine:`` entries followed by the cycle's own.
     quarantine: tuple[QuarantineRule, ...] = ()
+    max_parallel_stages: int = 1
 
 
 @dataclass(frozen=True)

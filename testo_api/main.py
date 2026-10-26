@@ -10,16 +10,30 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 
+from testo_api.report_origin import route_report_request
 from testo_api.routes.ai import router as ai_router
 from testo_api.routes.analytics import router as analytics_router
+from testo_api.routes.auth import router as auth_router
 from testo_api.routes.cycles import router as cycles_router
 from testo_api.routes.dashboard import router as dashboard_router
 from testo_api.routes.health import router as health_router
 from testo_api.routes.history import router as history_router
 from testo_api.routes.ingest import router as ingest_router
-from testo_api.security import cors_settings, guard_mutating_request, is_loopback_host
+from testo_api.routes.project_health import router as project_health_router
+from testo_api.routes.triage import router as triage_router
+from testo_api.security import (
+    accounts_enabled,
+    add_security_headers,
+    audit_write,
+    cors_settings,
+    guard_mutating_request,
+    guard_read_request,
+    is_loopback_host,
+)
 from testo_api.ui import SpaStaticFiles, ui_dir
+from testo_core import __version__
 from testo_core.paths import STATIC_HISTORY_ROOT
 
 logger = logging.getLogger(__name__)
@@ -38,13 +52,25 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     except Exception:
         # Broad on purpose: DB URL, driver and connection errors must not block API startup.
         logger.warning("orphaned-run cleanup skipped (DB unavailable?)", exc_info=True)
+
+    # With TESTO_RUN_QUEUE=db, runs that were still waiting when the last process
+    # stopped are queued again (no-op with the default in-memory queue).
+    from testo_api.dependencies import get_cycle_execution_manager
+
+    try:
+        n = get_cycle_execution_manager().recover_queued()
+        if n:
+            logger.warning("Re-queued %s run(s) left waiting by the previous process.", n)
+    except Exception:
+        # Broad on purpose: like the cleanup above, a DB problem must not block startup.
+        logger.warning("queued-run recovery skipped (DB unavailable?)", exc_info=True)
     yield
 
 
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Testosterone API",
-        version="1.1.1",
+        version=__version__,
         lifespan=_lifespan,
         dependencies=[Depends(guard_mutating_request)],
     )
@@ -59,12 +85,15 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(ai_router)
+    app.include_router(auth_router)
     app.include_router(cycles_router)
     app.include_router(history_router)
     app.include_router(analytics_router)
     app.include_router(dashboard_router)
     app.include_router(health_router)
     app.include_router(ingest_router)
+    app.include_router(project_health_router)
+    app.include_router(triage_router)
 
     STATIC_HISTORY_ROOT.mkdir(parents=True, exist_ok=True)
     app.mount("/history", StaticFiles(directory=STATIC_HISTORY_ROOT), name="history")
@@ -74,6 +103,31 @@ def create_app() -> FastAPI:
         # Last, so every API route and /history wins over the UI's catch-all.
         app.mount("/", SpaStaticFiles(directory=built_ui, html=True), name="ui")
 
+    # Innermost, so it sees the final status and the principal the guards found.
+    @app.middleware("http")
+    async def audit_writes(request: Request, call_next):  # type: ignore[no-redef]
+        response = await call_next(request)
+        if accounts_enabled() and request.method not in ("GET", "HEAD", "OPTIONS"):
+            await run_in_threadpool(audit_write, request, response.status_code)
+        return response
+
+    @app.middleware("http")
+    async def protect_reads(request: Request, call_next):  # type: ignore[no-redef]
+        # A middleware, not a dependency, so the static mounts are covered too. In a
+        # thread: with accounts on, checking the session reads the database.
+        refusal = await run_in_threadpool(route_report_request, request)
+        if refusal is None:
+            refusal = await run_in_threadpool(guard_read_request, request)
+        return refusal if refusal is not None else await call_next(request)
+
+    # Outside protect_reads, so its 401s and redirects get the headers too.
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):  # type: ignore[no-redef]
+        response = await call_next(request)
+        add_security_headers(request, response)
+        return response
+
+    # Added last so it runs first: protect_reads' 401 carries the request id.
     @app.middleware("http")
     async def attach_request_id(request: Request, call_next):  # type: ignore[no-redef]
         request.state.request_id = str(uuid4())
@@ -159,12 +213,48 @@ def run(argv: list[str] | None = None) -> int:
     host = os.environ.get("TESTO_API_HOST", "127.0.0.1")
     port = int(os.environ.get("TESTO_API_PORT", "8000"))
     reload = os.environ.get("TESTO_API_RELOAD", "0") in ("1", "true", "True")
-    if not is_loopback_host(host) and not os.environ.get("TESTO_API_TOKEN"):
+    if not is_loopback_host(host) and not os.environ.get("TESTO_API_TOKEN", "").strip():
+        if os.environ.get("TESTO_ALLOW_UNAUTHENTICATED", "0") not in ("1", "true", "True"):
+            sys.stderr.write(
+                f"Refusing to bind {host} without TESTO_API_TOKEN: anyone who can reach this "
+                "port could start runs, i.e. execute commands on this machine. Set "
+                "TESTO_API_TOKEN, bind 127.0.0.1, or set TESTO_ALLOW_UNAUTHENTICATED=1 "
+                "if the network is already trusted.\n"
+            )
+            return 2
         logger.warning(
-            "testo-api is binding %s without TESTO_API_TOKEN: anyone who can reach this "
-            "port can start runs, i.e. execute commands on this machine. Set "
-            "TESTO_API_TOKEN or bind 127.0.0.1.",
+            "testo-api is binding %s without TESTO_API_TOKEN (TESTO_ALLOW_UNAUTHENTICATED=1): "
+            "anyone who can reach this port can start runs.",
             host,
         )
-    uvicorn.run("testo_api.main:app", host=host, port=port, reload=reload)
+    if (
+        os.environ.get("TESTO_AUTH", "token").strip().lower() == "accounts"
+        and not os.environ.get("TESTO_API_TOKEN", "").strip()
+    ):
+        sys.stderr.write(
+            "TESTO_AUTH=accounts needs TESTO_API_TOKEN: it signs the session cookies and "
+            "stays the admin credential for CI.\n"
+        )
+        return 2
+    from testo_core.engine.backends import runner_kind
+
+    if runner_kind() == "container" and not (
+        os.environ.get("TESTO_RUNNER_URL", "").strip()
+        and os.environ.get("TESTO_RUNNER_TOKEN", "").strip()
+    ):
+        sys.stderr.write(
+            "TESTO_RUNNER=container needs TESTO_RUNNER_URL and TESTO_RUNNER_TOKEN: "
+            "the runner service that starts each stage in its own container.\n"
+        )
+        return 2
+    if (
+        os.environ.get("TESTO_PROTECT_READS", "0") in ("1", "true", "True")
+        and not os.environ.get("TESTO_API_TOKEN", "").strip()
+    ):
+        logger.warning(
+            "TESTO_PROTECT_READS has no effect without TESTO_API_TOKEN; reads stay open."
+        )
+    # A factory, so the app reads the environment as it is now: ``testo ui`` sets
+    # TESTO_CORS_ORIGINS after ``testo_api`` (and its module-level ``app``) was imported.
+    uvicorn.run("testo_api.main:create_app", factory=True, host=host, port=port, reload=reload)
     return 0

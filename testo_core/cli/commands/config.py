@@ -25,22 +25,26 @@ defaults:
 
 cycles:
   smoke-test:
-    description: Fast sanity sweep used by the PR gate.
+    description: Run the pytest suite in tests/.
     stages:
       - name: api
         equipment: pytest
-        args: ["-m", "smoke", "--maxfail=1"]
+        args: ["-q", "tests"]
+        # To select only tests marked smoke, replace args above with:
+        # args: ["-q", "tests", "-m", "smoke", "--maxfail=1"]
 
-  nightly-build:
-    description: Full suite executed on cron.
-    stages:
-      - name: api
-        equipment: pytest
-        args: ["-q"]
-      - name: ui-bdd
-        equipment: behavex
-        workers: 8
-        timeout_s: 1800
+  # Optional: enable after adding the feature file and its step definitions.
+  # nightly-build:
+  #   description: Full suite executed on cron.
+  #   stages:
+  #     - name: api
+  #       equipment: pytest
+  #       args: ["-q", "tests"]
+  #     - name: ui-bdd
+  #       equipment: behavex
+  #       args: ["features/smoke.feature"]
+  #       workers: 8
+  #       timeout_s: 1800
 """
 
 
@@ -119,7 +123,7 @@ def init(
     ),
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite an existing file."),
 ) -> None:
-    """Write a starter testosterone.yaml at ``path``."""
+    """Write a starter testosterone.yaml (--path, default ./testosterone.yaml)."""
     from testo_core.cli.ui.console import default_console
 
     console = default_console()

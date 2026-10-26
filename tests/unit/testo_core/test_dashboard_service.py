@@ -200,3 +200,18 @@ def test_dashboard_recent_runs_carry_cycle_name() -> None:
         run_sessions_loader=lambda limit: sessions, run_lookup=lambda _: None
     )
     assert service.get_recent_runs(limit=1)[0].cycle == "fake-api"
+
+
+@pytest.mark.parametrize(
+    ("current", "baseline", "direction"),
+    [(6430.0, 6520.0, "flat"), (1300.0, 1000.0, "up"), (700.0, 1000.0, "down")],
+)
+def test_duration_trend_ignores_timing_noise(
+    current: float, baseline: float, direction: str
+) -> None:
+    trend = DashboardService._build_trend(current=current, baseline=baseline, noise_floor_ms=100.0)
+    assert trend.direction == direction
+
+
+def test_count_trends_have_no_noise_floor() -> None:
+    assert DashboardService._build_trend(current=1.0, baseline=0.0).direction == "up"

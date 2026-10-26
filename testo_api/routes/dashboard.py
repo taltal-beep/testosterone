@@ -5,6 +5,9 @@ import time
 from fastapi import APIRouter, HTTPException
 
 from testo_api.models import (
+    AttentionFailingCycle,
+    AttentionTestItem,
+    DashboardAttentionResponse,
     DashboardDataFreshnessResponse,
     DashboardHeadlineKpis,
     DashboardOverviewResponse,
@@ -16,6 +19,7 @@ from testo_api.models import (
     DashboardRollupSummaryResponse,
     DashboardTrendIndicator,
 )
+from testo_core.services.attention import needs_attention
 from testo_core.services.dashboard_service import DashboardRecentRun, DashboardService
 
 router = APIRouter(prefix="/api/v1", tags=["dashboard"])
@@ -92,6 +96,19 @@ def get_dashboard_overview(recent_limit: int = 5) -> DashboardOverviewResponse:
             degraded=payload.data_freshness.degraded,
             notes=list(payload.data_freshness.notes),
         ),
+    )
+
+
+@router.get("/dashboard/attention", response_model=DashboardAttentionResponse)
+def get_dashboard_attention() -> DashboardAttentionResponse:
+    """Red cycles (most new failures first), newly flaky tests and tests that got slower."""
+    attention = needs_attention()
+    return DashboardAttentionResponse(
+        cycles=attention.cycles,
+        passing_cycles=attention.passing_cycles,
+        failing=[AttentionFailingCycle(**vars(c)) for c in attention.failing],
+        newly_flaky=[AttentionTestItem(**vars(t)) for t in attention.newly_flaky],
+        slower=[AttentionTestItem(**vars(t)) for t in attention.slower],
     )
 
 

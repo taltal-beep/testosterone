@@ -159,6 +159,12 @@ def build_json_schema() -> dict[str, Any]:
                 "$ref": "#/definitions/quarantine",
                 "description": "Added to the top-level quarantine list for this cycle.",
             },
+            "max_parallel_stages": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 1,
+                "description": "How many stages may run at once. 1 (the default) runs them in order.",
+            },
             "trigger": {
                 "type": "object",
                 "description": "Run the cycle only when files matching these globs changed.",

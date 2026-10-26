@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Start the team server (deploy/server/docker-compose.yml: server image + Postgres),
 # upload JUnit XML to it with `testo ingest --server`, and check the run, the
-# token and the UI. Needs Docker and a `testo` on PATH (this checkout, installed).
+# token, the read protection and /login, and the UI. Needs Docker and a `testo` on PATH (this checkout, installed).
 # Usage: scripts/team_server_smoke.sh   (TESTO_SERVER_PORT defaults to 8000;
 #        TESTO_SMOKE_NO_BUILD=1 uses an already built ghcr.io/taltal-beep/testo-server:1)
 set -euo pipefail
@@ -50,8 +50,17 @@ cat upload.ndjson
 test "$code" -eq 1  # a failed test makes the upload exit 1, like `testo run`
 grep -q '"tests":2' upload.ndjson
 
-runs="$(curl -fsS "$base/api/v1/runs")"
+# Reads are protected (TESTO_PROTECT_READS=1 in the compose file): no token, no runs,
+# and a browser asking for a page is sent to /login.
+test "$(curl -sS -o /dev/null -w '%{http_code}' "$base/api/v1/runs")" -eq 401
+curl -sS -o /dev/null -w '%{redirect_url}' -H 'Accept: text/html' "$base/runs/x" | grep -q '/login?next=%2Fruns%2Fx'
+
+runs="$(curl -fsS -H "Authorization: Bearer $TESTO_API_TOKEN" "$base/api/v1/runs")"
 echo "$runs" | python -c 'import json,sys; items=json.load(sys.stdin)["items"]; assert len(items) == 2, items; assert {i["cycle"] for i in items} == {"smoke"}'
-curl -fsS "$base/" | grep -q '<div id="root">'
-curl -fsS "$base/runs/anything" | grep -q '<div id="root">'
+
+# Signing in at /login gives a cookie that opens the UI.
+jar="$work/cookies.txt"
+curl -fsS -o /dev/null -c "$jar" --data-urlencode "token=$TESTO_API_TOKEN" -d next=/ "$base/api/v1/auth/login"
+curl -fsS -b "$jar" "$base/" | grep -q '<div id="root">'
+curl -fsS -b "$jar" "$base/runs/anything" | grep -q '<div id="root">'
 echo "team server smoke: ok"

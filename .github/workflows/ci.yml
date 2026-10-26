@@ -6,7 +6,9 @@ name: ci
 #   format               ruff lint + ruff format check + mypy on testo_core and testo_api (all blocking)
 #   test                 fast required pytest suite with the coverage gate (folds in
 #                        the old pr-fast workflow); uploads coverage.xml
-#   frontend             React dashboard: typecheck, generated API types up to date,
+#   test_python_versions the same suite on Python 3.12 and 3.13, the other versions
+#                        pyproject.toml lists (no coverage gate, not a required check)
+#   frontend             React dashboard: typecheck, ESLint, generated API types up to date,
 #                        vitest unit tests, production build
 #   changelog_required    PR-only: fails if non-doc changes don't touch CHANGELOG.md
 #                          (escape hatch: 'no-changelog' PR label)
@@ -50,7 +52,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       # mypy needs the real dependencies (SQLModel, Rich, FastAPI, ...) to
@@ -73,7 +75,7 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install dependencies
@@ -111,6 +113,27 @@ jobs:
             **/*api*.json
             **/*.png
 
+  test_python_versions:
+    name: test (python ${{ matrix.python }})
+    needs: format
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run fast required suite
+        run: python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1 --no-cov
+
   frontend:
     name: frontend (typecheck + vitest + build)
     runs-on: ubuntu-latest
@@ -136,6 +159,8 @@ jobs:
           }
       - name: Typecheck
         run: npm run typecheck
+      - name: Lint
+        run: npm run lint
       - name: Unit tests
         run: npm test
       - name: Production build
@@ -179,7 +204,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       # Rules live in docs/CLAUDE.md: frontmatter, no broken links, no
@@ -200,7 +225,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
@@ -216,7 +241,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - run: python -m pip install pytest
@@ -240,7 +265,7 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - run: python -m pip install pytest
@@ -267,7 +292,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - run: python -m pip install .
@@ -276,12 +301,17 @@ jobs:
   package:
     name: package (build + clean install)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Bundle the web UI
+        run: bash scripts/build_ui_bundle.sh
       - name: Build sdist and wheel
         run: |
           python -m pip install --upgrade pip build twine
@@ -299,7 +329,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Build distribution

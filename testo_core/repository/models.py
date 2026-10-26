@@ -34,7 +34,7 @@ class RunRecord(SQLModel, table=True):
       avoid clashing with SQLAlchemy's ``.metadata``.
     """
 
-    # Streamlit hot-reload can import this module multiple times within the same process,
+    # A reloader (``testo-api`` with TESTO_API_RELOAD=1) can import this module twice in one process,
     # reusing the same SQLAlchemy MetaData instance. Allow redefining the table safely.
     __table_args__ = {"extend_existing": True}
 
@@ -85,3 +85,78 @@ class ReportArchive(SQLModel, table=True):
         index=True,
         description="Wall time from plan_result.json duration_s when present.",
     )
+
+
+class QueuedRun(SQLModel, table=True):
+    """An API run waiting for a worker, kept only when ``TESTO_RUN_QUEUE=db``.
+
+    The row is deleted when a worker starts the run, so the table only ever holds
+    runs that have not started. ``request_json`` is ``testo_api.run_queue.RunRequest``.
+    """
+
+    __tablename__ = "queued_run"
+    __table_args__ = {"extend_existing": True}
+
+    id: str = Field(primary_key=True, max_length=64)
+    cycle: str = Field(index=True, max_length=512)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC), index=True)
+    request_json: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column("request_json", _METADATA_JSON_COL, nullable=False),
+    )
+
+
+class UserAccount(SQLModel, table=True):
+    """A team server account, used only when ``TESTO_AUTH=accounts``.
+
+    ``password_hash`` is ``scrypt$<n>$<r>$<p>$<salt hex>$<hash hex>``. Bumping
+    ``session_version`` signs the user out of every browser.
+    """
+
+    __tablename__ = "user_account"
+    __table_args__ = {"extend_existing": True}
+
+    username: str = Field(primary_key=True, max_length=64)
+    password_hash: str = Field(max_length=512)
+    role: str = Field(default="viewer", max_length=16)
+    session_version: int = Field(default=1)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))
+
+
+class AuditEvent(SQLModel, table=True):
+    """One write to the API by a signed-in user (``TESTO_AUTH=accounts``)."""
+
+    __tablename__ = "audit_event"
+    __table_args__ = {"extend_existing": True}
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC), index=True)
+    username: str = Field(index=True, max_length=64)
+    method: str = Field(max_length=8)
+    path: str = Field(max_length=1024)
+    status: int = Field(default=0)
+
+
+class FailureTriage(SQLModel, table=True):
+    """Why a failure happens, marked once per cycle and failure message.
+
+    ``signature`` is :func:`testo_core.services.run_failures.message_signature`
+    of the message, so later failures with the same message (numbers, ids and
+    quoted values aside) inherit the cause. See :mod:`testo_core.services.triage`.
+    """
+
+    __tablename__ = "failure_triage"
+    __table_args__ = {"extend_existing": True}
+
+    # sha256 of "<cycle>\n<signature>", so a cycle has one cause per message.
+    id: str = Field(primary_key=True, max_length=64)
+    cycle: str = Field(index=True, max_length=512)
+    signature: str = Field(max_length=1024)
+    cause: str = Field(max_length=32)
+    note: str = Field(default="", max_length=500)
+    # The failure it was marked on, so the UI can say where the cause came from.
+    example_message: str = Field(default="", max_length=1000)
+    run_id: str = Field(default="", max_length=64)
+    test_key: str = Field(default="", max_length=200)
+    marked_by: str | None = Field(default=None, max_length=64)
+    marked_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))

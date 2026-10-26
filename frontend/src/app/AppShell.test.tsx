@@ -49,7 +49,7 @@ describe("AppShell mobile menu", () => {
     const labels = within(panel)
       .getAllByRole("link")
       .map((link) => link.textContent);
-    expect(labels).toEqual(["Dashboard", "Cycles", "Runs", "Compare", "Quick Run", "AI Settings"]);
+    expect(labels).toEqual(["Dashboard", "Cycles", "Runs", "Compare", "Project health", "Quick run", "Try a file", "AI settings"]);
 
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -61,7 +61,7 @@ describe("AppShell mobile menu", () => {
     fireEvent.click(toggle);
     const panel = screen.getByRole("navigation", { name: "Main" });
 
-    fireEvent.click(within(panel).getByRole("link", { name: "Quick Run" }));
+    fireEvent.click(within(panel).getByRole("link", { name: "Quick run" }));
 
     expect(await screen.findByRole("heading", { name: "Quick Run page" })).toBeInTheDocument();
     expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -90,5 +90,40 @@ describe("AppShell mobile menu", () => {
     fireEvent.mouseDown(screen.getByRole("heading", { name: "Dashboard page" }));
 
     expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+});
+
+describe("AppShell user badge", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function stubMe(body: object) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) =>
+        Promise.resolve(
+          url.endsWith("/api/v1/auth/me")
+            ? { ok: true, status: 200, json: async () => body }
+            : { ok: false, status: 404, json: async () => ({}) }
+        )
+      )
+    );
+  }
+
+  it("shows who is signed in when the server has accounts", async () => {
+    stubMe({ auth_mode: "accounts", signed_in: true, username: "ada", role: "admin" });
+    renderShell();
+    const badges = await screen.findAllByTestId("user-badge");
+    expect(badges[0]).toHaveTextContent("ada · admin");
+    expect(within(badges[0]).getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+  });
+
+  it("stays hidden with the shared token", async () => {
+    stubMe({ auth_mode: "token", signed_in: true, username: "token", role: "admin" });
+    renderShell();
+    await screen.findAllByTestId("health-indicator");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByTestId("user-badge")).not.toBeInTheDocument();
   });
 });

@@ -38,13 +38,23 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/cycles.json                       GET /api/v1/cycles (cycles that ran)
     data/cycles/<name>.json                GET /api/v1/cycles/{name}
     data/flaky/<name>.json                 GET /api/v1/analytics/flaky?cycle={name}
+    data/tests/<name>.json                 GET /api/v1/analytics/tests?cycle={name}
+    data/test-history/<name>/<id>.json     GET /api/v1/analytics/test-history?cycle={name}&key={key}
+                                           (<id> is test_history.stable_id(key))
     data/runs.json                         GET /api/v1/runs
     data/runs/<run_id>/detail.json         GET /api/v1/runs/{id}
     data/runs/<run_id>/reports.json        GET /api/v1/runs/{id}/reports
     data/runs/<run_id>/pyramid.json        GET /api/v1/runs/{id}/pyramid
+    data/runs/<run_id>/failures.json       GET /api/v1/runs/{id}/failures
     data/runs/<run_id>/ai-summary.json     GET /api/v1/runs/{id}/ai-summary
     data/dashboard/overview.json           GET /api/v1/dashboard/overview
     data/dashboard/recent-runs.json        GET /api/v1/dashboard/runs/recent
+    data/dashboard/attention.json          GET /api/v1/dashboard/attention
+    data/project-health/all.json           GET /api/v1/project-health
+    data/project-health/cycles/<name>.json GET /api/v1/project-health?cycle={name}
+    data/project-health/skills.json        GET /api/v1/project-health/skills
+    data/project-health/ai-review.json     GET /api/v1/project-health/ai-review
+    data/project-health/ai-review/<name>.json  GET /api/v1/project-health/ai-review?cycle={name}
     data/delta/<current>__<baseline>/comparison.json
     data/delta/<current>__<baseline>/cases.json
 """
@@ -181,13 +191,14 @@ class Exporter:
             self._dump(f"/api/v1/runs/{run_id}", f"{base}/detail.json")
             self._dump(f"/api/v1/runs/{run_id}/reports", f"{base}/reports.json")
             self._dump(f"/api/v1/runs/{run_id}/pyramid", f"{base}/pyramid.json")
+            self._dump(f"/api/v1/runs/{run_id}/failures", f"{base}/failures.json")
             self._dump(f"/api/v1/runs/{run_id}/ai-summary", f"{base}/ai-summary.json")
         return items
 
     def generate_ai_summaries(self, run_ids: list[str]) -> None:
         """Generate (or reuse) the AI failure summary of each run, if a key is set.
 
-        Goes through the API like the UI's "Generate AI Summary" button does:
+        Goes through the API like the UI's "Generate AI summary" button does:
         enable the Anthropic provider with the key from the environment, then
         ask for each run's summary. The key itself is never written anywhere;
         only the summary text ends up in ``ai-summary.json``.
@@ -235,12 +246,37 @@ class Exporter:
             self._dump(
                 f"/api/v1/analytics/flaky?cycle={quote(name, safe='')}", f"flaky/{name}.json"
             )
+            self.export_tests(name)
+            query = f"?cycle={quote(name, safe='')}"
+            self._dump(f"/api/v1/project-health{query}", f"project-health/cycles/{name}.json")
+            self._dump(
+                f"/api/v1/project-health/ai-review{query}", f"project-health/ai-review/{name}.json"
+            )
+
+    def export_tests(self, cycle: str) -> None:
+        """The cycle's test list, and one history file per test for the per-test page."""
+        from testo_core.services.test_history import stable_id
+
+        listing = self._dump(
+            f"/api/v1/analytics/tests?cycle={quote(cycle, safe='')}", f"tests/{cycle}.json"
+        )
+        for item in (listing or {}).get("items", []):
+            key = str(item["key"])
+            self._dump(
+                f"/api/v1/analytics/test-history?cycle={quote(cycle, safe='')}"
+                f"&key={quote(key, safe='')}",
+                f"test-history/{cycle}/{stable_id(key)}.json",
+            )
 
     def export_dashboard(self) -> None:
         overview = self._get("/api/v1/dashboard/overview?recent_limit=6")
         if overview is not None:
             self._write("dashboard/overview.json", self._absolutize_report_links(overview))
         self._dump("/api/v1/dashboard/runs/recent?limit=8", "dashboard/recent-runs.json")
+        self._dump("/api/v1/dashboard/attention", "dashboard/attention.json")
+        self._dump("/api/v1/project-health", "project-health/all.json")
+        self._dump("/api/v1/project-health/skills", "project-health/skills.json")
+        self._dump("/api/v1/project-health/ai-review", "project-health/ai-review.json")
 
     def export_deltas(self, runs: list[dict[str, Any]]) -> list[list[str]]:
         """Export the run pairs the UI can ask for.

@@ -35,6 +35,13 @@ jobs:
             verify: >-
               --entrypoint python testo-server:scan -c
               "import testo_api.main, pathlib; assert pathlib.Path('/app/ui/index.html').is_file()"
+          # Starts each stage in a throwaway container (deploy/server/docker-compose.runner.yml).
+          - image: testo-runner-service
+            dockerfile: Dockerfile.testo-runner-service
+            # The service file loads and the docker client is in place.
+            verify: >-
+              --entrypoint python testo-runner-service:scan -c
+              "import runpy, shutil; runpy.run_path('/app/runner_service.py'); assert shutil.which('docker')"
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
       IMAGE_NAME: ${{ github.repository_owner }}/${{ matrix.image }}
@@ -75,7 +82,7 @@ jobs:
             type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
 
       - name: Scan Dockerfile with Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: config
           scan-ref: ${{ matrix.dockerfile }}
@@ -100,7 +107,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
       - name: Scan image with Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ matrix.image }}:scan
           exit-code: 1

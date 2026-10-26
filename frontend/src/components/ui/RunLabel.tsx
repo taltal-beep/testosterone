@@ -16,7 +16,7 @@ export function RunLabel({ run, linked = false, href, className }: RunLabelProps
   return (
     <span className={`inline-flex min-w-0 flex-wrap items-baseline gap-x-2 ${className ?? ""}`}>
       {linked ? (
-        <Link to={href ?? `/runs/${run.run_id}`} className="font-medium text-brand-300 hover:text-brand-400 hover:underline">
+        <Link to={href ?? `/runs/${run.run_id}`} className="-my-1 inline-block py-1 font-medium text-brand-300 hover:text-brand-400 hover:underline">
           {label}
         </Link>
       ) : (

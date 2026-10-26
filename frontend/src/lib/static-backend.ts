@@ -41,6 +41,16 @@ export const READ_ONLY_MESSAGE =
 export const AI_SUMMARY_SNAPSHOT_MESSAGE =
   "AI summaries are generated live when you run Testosterone locally; this snapshot was built without an API key.";
 
+/** FNV-1a (32-bit) of `key` as 8 hex digits; must match `test_history.stable_id` in Python. */
+export function stableId(key: string): string {
+  let hash = 0x811c9dc5;
+  for (const byte of new TextEncoder().encode(key)) {
+    hash ^= byte;
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
 /** Map one API request onto the file the export wrote for it, or null if there is none. */
 export function resolveStaticPath(pathname: string, search: URLSearchParams): string | null {
   const path = pathname.replace(/^.*\/api\/v1/, "");
@@ -51,6 +61,16 @@ export function resolveStaticPath(pathname: string, search: URLSearchParams): st
   if (path === "/runs") return "runs.json";
   if (path === "/dashboard/overview") return "dashboard/overview.json";
   if (path === "/dashboard/runs/recent") return "dashboard/recent-runs.json";
+  if (path === "/dashboard/attention") return "dashboard/attention.json";
+  if (path === "/project-health/skills") return "project-health/skills.json";
+  if (path === "/project-health") {
+    const name = search.get("cycle");
+    return name ? `project-health/cycles/${name}.json` : "project-health/all.json";
+  }
+  if (path === "/project-health/ai-review") {
+    const name = search.get("cycle");
+    return name ? `project-health/ai-review/${name}.json` : "project-health/ai-review.json";
+  }
 
   const cycle = /^\/cycles\/([^/]+)$/.exec(path);
   if (cycle) return `cycles/${decodeURIComponent(cycle[1])}.json`;
@@ -58,12 +78,23 @@ export function resolveStaticPath(pathname: string, search: URLSearchParams): st
   const run = /^\/runs\/([^/]+)$/.exec(path);
   if (run) return `runs/${run[1]}/detail.json`;
 
-  const runSub = /^\/runs\/([^/]+)\/(reports|pyramid|ai-summary)$/.exec(path);
+  const runSub = /^\/runs\/([^/]+)\/(reports|pyramid|failures|ai-summary)$/.exec(path);
   if (runSub) return `runs/${runSub[1]}/${runSub[2]}.json`;
 
   if (path === "/analytics/flaky") {
     const name = search.get("cycle");
     return name ? `flaky/${name}.json` : null;
+  }
+
+  if (path === "/analytics/tests") {
+    const name = search.get("cycle");
+    return name ? `tests/${name}.json` : null;
+  }
+
+  if (path === "/analytics/test-history") {
+    const name = search.get("cycle");
+    const key = search.get("key");
+    return name && key ? `test-history/${name}/${stableId(key)}.json` : null;
   }
 
   if (path === "/analytics/delta" || path === "/analytics/delta/cases") {

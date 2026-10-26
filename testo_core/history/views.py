@@ -38,6 +38,13 @@ class CompletedRunView:
     audit_json: str | None
     cycle: str | None = None
     stage_health: list[dict[str, Any]] = field(default_factory=list)
+    # Branch and commit the run tested (CI provenance, else the local checkout).
+    branch: str | None = None
+    commit: str | None = None
+    # A pull/merge request's target branch: the baseline its changes are judged against.
+    base_branch: str | None = None
+    # ``owner/name`` on the code host (CI variables, an upload, or a github.com ``origin``).
+    repository: str | None = None
 
 
 @dataclass(frozen=True)
@@ -56,6 +63,7 @@ class RunSessionView:
     status: RunStatus | None
     links_under_static: dict[str, str]
     cycle: str | None = None
+    branch: str | None = None
 
 
 def wall_duration_ms_from_metadata(md: dict[str, Any]) -> float:
@@ -119,4 +127,8 @@ def view_from_record(record: RunRecord) -> CompletedRunView | None:
         snapshot_dir=_optional_str(md, "snapshot_dir"),
         audit_json=_optional_str(md, "audit_json"),
         stage_health=[s for s in md.get("stages") or [] if isinstance(s, dict)],
+        branch=_optional_str(md, "ci_ref_name") or _optional_str(md, "git_branch"),
+        commit=_optional_str(md, "ci_commit_sha") or _optional_str(md, "git_commit"),
+        base_branch=_optional_str(md, "ci_base_ref"),
+        repository=_optional_str(md, "repository"),
     )

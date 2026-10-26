@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { FlakyTestsCard } from "./FlakyTestsCard";
@@ -9,7 +10,7 @@ function renderCard(payload: unknown) {
   vi.stubGlobal("fetch", fetchMock);
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <FlakyTestsCard cycle="fake-api" />
+      <MemoryRouter><FlakyTestsCard cycle="fake-api" /></MemoryRouter>
     </QueryClientProvider>
   );
   return fetchMock;
@@ -32,12 +33,19 @@ describe("FlakyTestsCard", () => {
           flips: 3,
           flip_rate: 1,
           last_status: "failed",
-          history: ["passed", "failed", "passed", "failed"]
+          history: ["passed", "failed", "passed", "failed"],
+          owners: ["@org/api"],
+          issue_url: "https://github.com/acme/shop/issues/new?title=Flaky+test%3A+test_flaky_route"
         }
       ]
     });
 
     await waitFor(() => expect(screen.getByText("test_flaky_route")).toBeInTheDocument());
+    expect(screen.getByText(/owned by @org\/api/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open an issue" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("github.com/acme/shop/issues/new")
+    );
     expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/analytics/flaky?cycle=fake-api");
     expect(screen.getByText("Flaky tests (1)")).toBeInTheDocument();
     expect(screen.getByText("3 flips in 4 runs")).toBeInTheDocument();

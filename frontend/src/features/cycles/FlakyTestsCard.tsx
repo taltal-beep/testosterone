@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 
 import { apiClient, type FlakyTestItem } from "../../lib/api-client";
 import { Badge, Card, Spinner } from "../../components/ui";
+import { testPath } from "../../lib/format";
 
 const DOT: Record<string, string> = {
   passed: "bg-success-500",
@@ -11,7 +13,7 @@ const DOT: Record<string, string> = {
 
 function History({ item }: { item: FlakyTestItem }) {
   return (
-    <span className="flex flex-wrap gap-0.5" aria-label={`History, oldest first: ${item.history.join(", ")}`}>
+    <span className="flex flex-wrap gap-0.5" role="img" aria-label={`History, oldest first: ${item.history.join(", ")}`}>
       {item.history.map((status, idx) => (
         <span
           // History is positional; the index is the identity.
@@ -59,15 +61,25 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
           {report.items.map((item) => (
             <li key={item.key} className="rounded-2xl border border-white/5 bg-ink-950/70 p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-sm text-ink-100">{item.name}</span>
+                <Link to={testPath(cycle, item.key)} className="font-mono text-sm text-brand-300 hover:underline">
+                  {item.name}
+                </Link>
                 <Badge tone="warn">
                   {item.flips} flips in {item.runs} runs
                 </Badge>
                 <Badge tone={item.last_status === "passed" ? "success" : "danger"}>last: {item.last_status}</Badge>
               </div>
-              <div className="mt-1 text-xs text-ink-400">{item.group}</div>
-              <div className="mt-2">
+              <div className="mt-1 text-xs text-ink-400">
+                {item.group}
+                {item.owners.length > 0 ? ` · owned by ${item.owners.join(", ")}` : ""}
+              </div>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                 <History item={item} />
+                {item.issue_url ? (
+                  <a href={item.issue_url} target="_blank" rel="noreferrer" className="text-xs text-brand-300 hover:underline">
+                    Open an issue
+                  </a>
+                ) : null}
               </div>
             </li>
           ))}

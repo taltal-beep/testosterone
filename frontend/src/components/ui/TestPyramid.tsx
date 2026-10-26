@@ -2,9 +2,9 @@ import type { PyramidShape } from "../../lib/api-client";
 
 const SHAPE_LABEL: Record<PyramidShape, string> = {
   healthy: "Healthy pyramid",
-  top_heavy: "Top-heavy (E2E > Unit)",
-  mid_bulge: "Integration-heavy (diamond risk)",
-  irregular: "Irregular tier mix"
+  top_heavy: "Top-heavy",
+  mid_bulge: "Integration-heavy",
+  irregular: "Mixed tiers"
 };
 
 const SHAPE_TONE: Record<PyramidShape, string> = {
@@ -35,7 +35,7 @@ export function TestPyramid({ unit, integration, e2e, shape, message }: TestPyra
   const tone = SHAPE_TONE[shape];
 
   if (total === 0) {
-    return <p className="text-sm text-ink-400">No tiered tests found (configure stage `tier:` in testosterone.yaml).</p>;
+    return <p className="text-sm text-ink-400">No tiered tests yet. Set <code className="font-mono">tier:</code> on a stage in testosterone.yaml.</p>;
   }
 
   return (
@@ -51,7 +51,8 @@ export function TestPyramid({ unit, integration, e2e, shape, message }: TestPyra
           return (
             <div key={key} className="flex items-center gap-3">
               <span className="w-20 shrink-0 text-xs text-ink-400">{label}</span>
-              <div className="h-4 flex-1 rounded bg-ink-800">
+              {/* Decorative: the count is the text beside it. */}
+              <div className="h-4 flex-1 rounded bg-ink-800" aria-hidden>
                 <div
                   className={`h-full rounded ${tone}`}
                   style={{ width: `${widthPct}%` }}

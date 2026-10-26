@@ -9,6 +9,7 @@ import pytest
 from testo_core.history.read_model import (
     get_run,
     get_run_metadata,
+    latest_run_per_cycle,
     list_recent_runs,
     list_run_sessions,
 )
@@ -126,6 +127,28 @@ def test_read_model_lists_and_gets_runs(sqlite_repo) -> None:
     assert get_run_metadata(run_id=run_id)["plan"] == "smoke"
     assert get_run(run_id="missing") is None
     assert get_run_metadata(run_id="missing") is None
+
+
+def test_latest_run_per_cycle_keeps_the_newest_of_each(sqlite_repo) -> None:
+    for plan in ("web", "api", "web"):
+        sqlite_repo.create_run(status=RunStatus.COMPLETED, metadata={"exit_code": 0, "plan": plan})
+    sqlite_repo.create_run(status=RunStatus.COMPLETED, metadata={"exit_code": 0})  # no cycle
+
+    latest = latest_run_per_cycle()
+
+    assert list(latest) == ["web", "api"]
+    assert latest["web"].run_id == next(
+        r.run_id for r in list_recent_runs(limit=5) if r.cycle == "web"
+    )
+
+
+def test_list_run_sessions_of_one_cycle(sqlite_repo) -> None:
+    for plan in ("web", "api", "web", "api"):
+        sqlite_repo.create_run(status=RunStatus.COMPLETED, metadata={"exit_code": 0, "plan": plan})
+
+    assert [s.cycle for s in list_run_sessions(limit=5, cycle="web")] == ["web", "web"]
+    assert len(list_run_sessions(limit=1, cycle="api")) == 1
+    assert list_run_sessions(limit=5, cycle="nope") == []
 
 
 def test_list_run_sessions_maps_report_layout(sqlite_repo, static_history: Path) -> None:

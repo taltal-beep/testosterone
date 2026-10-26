@@ -39,12 +39,12 @@ def watch(
         ...,
         "--cycle",
         "-c",
-        help="Cycle name to pass to ``testo run`` on each change batch.",
+        help="Cycle name to pass to testo run on each change batch.",
     ),
     config: Path | None = typer.Option(
         None,
         "--config",
-        help="Path to testosterone.yaml (passed through to ``testo run``).",
+        help="Path to testosterone.yaml (passed through to testo run).",
     ),
     debounce_ms: int = typer.Option(
         750,

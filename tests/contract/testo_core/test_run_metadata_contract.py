@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import ast
 import json
+import os
+import subprocess
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -27,6 +29,15 @@ from testo_core.repository.models import RunRecord, RunStatus
 
 # Read for runs from before v1.0's engine; nothing writes it today, so it reads as None.
 LEGACY_KEYS = {"audit_json"}
+# Written only in CI (CI provenance) or from a git checkout outside CI; see the provenance tests below.
+CONDITIONAL_KEYS = {
+    "ci_ref_name",
+    "ci_commit_sha",
+    "ci_base_ref",
+    "git_branch",
+    "git_commit",
+    "repository",
+}
 
 
 def _keys_read_by_views() -> set[str]:
@@ -114,7 +125,7 @@ def test_views_read_keys_are_found_by_the_ast_scan() -> None:
 def test_every_key_views_reads_is_written_by_persistence(sqlite_repo: None, tmp_path: Path) -> None:
     written = set((_persisted_record(tmp_path / "artifacts").metadata_ or {}).keys())
 
-    missing = _keys_read_by_views() - written - LEGACY_KEYS
+    missing = _keys_read_by_views() - written - LEGACY_KEYS - CONDITIONAL_KEYS
 
     assert not missing, (
         f"history/views.py reads {sorted(missing)} from run metadata, but DbBackend never "
@@ -162,3 +173,64 @@ def test_run_saved_before_target_repo_existed_reads_as_unknown() -> None:
 
     assert view is not None
     assert view.target_repo is None
+
+
+@pytest.mark.contract
+def test_pull_request_run_has_its_branch_and_target_in_its_view(
+    sqlite_repo: None, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for name, value in {
+        "GITHUB_ACTIONS": "true",
+        "GITHUB_SHA": "abc123",
+        "GITHUB_REF_NAME": "7/merge",
+        "GITHUB_HEAD_REF": "feature",
+        "GITHUB_BASE_REF": "main",
+        "GITHUB_REPOSITORY": "acme/shop",
+    }.items():
+        monkeypatch.setenv(name, value)
+    view = view_from_record(_persisted_record(tmp_path / "artifacts"))
+    assert view is not None
+    assert (view.branch, view.commit, view.base_branch) == ("feature", "abc123", "main")
+    assert view.repository == "acme/shop"
+
+
+@pytest.mark.contract
+def test_local_run_has_its_git_branch_in_its_view(
+    sqlite_repo: None, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+
+    from testo_core.services import ci_provenance
+
+    for name in (
+        "GITHUB_ACTIONS",
+        "GITLAB_CI",
+        "BUILDKITE",
+        "CIRCLECI",
+        "JENKINS_URL",
+        "TF_BUILD",
+        "CI",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    assert ci_provenance.detect_ci_provenance(dict(os.environ)) is None
+    subprocess.run(["git", "init", "-q", "-b", "trunk", str(tmp_path)], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.com",
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "init",
+        ],
+        check=True,
+    )
+    view = view_from_record(_persisted_record(tmp_path / "artifacts"))
+    assert view is not None
+    assert view.branch == "trunk"
+    assert view.base_branch is None

@@ -23,7 +23,14 @@ import threading
 from collections import deque
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
-from typing import IO
+from typing import Protocol
+
+
+class ByteReader(Protocol):
+    """A process's output stream: a pipe, or the runner service's stream."""
+
+    def read(self, size: int = -1, /) -> bytes: ...
+
 
 DEFAULT_RING_BYTES: int = 64 * 1024  # 64 KiB
 _READ_CHUNK_BYTES: int = 4096
@@ -114,7 +121,7 @@ class LogBuffer:
 
 
 def drain_stream_into_buffer(
-    stream: IO[bytes],
+    stream: ByteReader,
     buffer: LogBuffer,
     *,
     chunk_bytes: int = _READ_CHUNK_BYTES,

@@ -1,0 +1,234 @@
+"""The failing tests of one run, for the run page: what failed, since when, and why.
+
+Per-test outcomes come from each run's artifact snapshot (the Allure
+``*-result.json`` files), the same source Compare and flaky detection read, so
+this needs no schema change and works for engine and ingested runs alike.
+
+For each failing test it reports whether it is new against the run's baseline
+(the latest run on a pull request's target branch, else the run before on the
+same branch, as in the PR comment), how many runs in a row it has been failing
+on this branch (``failing_runs``), whether it is flaky in the cycle's recent
+history, and the first line of its failure message. Tests that
+fail with the same message are grouped, so ten tests that all hit
+``ConnectionRefusedError`` read as one cause, not ten. A cause someone marked
+for a message (:mod:`~testo_core.services.triage`) rides along on each test
+that fails with it.
+"""
+
+from __future__ import annotations
+
+import logging
+import re
+from dataclasses import dataclass, replace
+from typing import TYPE_CHECKING, Any
+
+from testo_core import paths
+from testo_core.history.read_model import get_run, list_recent_runs
+from testo_core.history.views import CompletedRunView
+from testo_core.services import flaky_service
+from testo_core.services.report_archive_diff import _load_cases
+from testo_core.services.rerun_commands import FailingCase, rerun_commands
+
+if TYPE_CHECKING:
+    from testo_core.services.triage import Triage
+
+logger = logging.getLogger(__name__)
+
+# Runs of the cycle (this one included) looked at for "failing since" and flakiness.
+DEFAULT_WINDOW = flaky_service.DEFAULT_WINDOW
+_SCAN_LIMIT = 500
+_FAILED = frozenset({"failed", "broken"})
+# Numbers, hex ids and quoted values vary between otherwise identical failures.
+_VOLATILE = re.compile(r"0x[0-9a-fA-F]+|\d+(?:\.\d+)?|'[^']*'|\"[^\"]*\"")
+
+
+@dataclass(frozen=True)
+class FailingTest:
+    key: str
+    name: str
+    full_name: str
+    group: str
+    stage: str
+    status: str
+    message: str
+    duration_ms: int | None
+    # Consecutive runs of the cycle on this run's branch, ending with this one, in which it failed.
+    failing_runs: int
+    # The oldest run of that streak (this run when ``failing_runs`` is 1).
+    failing_since_run_id: str
+    flaky: bool
+    # Not failing on the baseline run (or, with no baseline, not in the run before).
+    new: bool
+    # The cause someone marked for this message in this cycle (services/triage.py).
+    triage: Triage | None = None
+
+
+@dataclass(frozen=True)
+class FailureGroup:
+    message: str
+    count: int
+    keys: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class RunFailures:
+    run_id: str
+    runs_considered: int
+    tests: tuple[FailingTest, ...]
+    # Messages shared by two or more failing tests, largest group first.
+    groups: tuple[FailureGroup, ...]
+    baseline_run_id: str | None = None
+    baseline_branch: str | None = None
+    # Commands that rerun just these tests, one per runner that can name them.
+    rerun_commands: tuple[str, ...] = ()
+
+    @property
+    def new_failures(self) -> int:
+        return sum(1 for t in self.tests if t.new)
+
+
+def message_signature(message: str) -> str:
+    """``message`` with the parts that vary between runs (numbers, ids, quoted values) blanked."""
+    return _VOLATILE.sub("…", message).strip().lower()
+
+
+def _cases(run: CompletedRunView) -> dict[str, dict[str, Any]]:
+    if not run.snapshot_dir:
+        return {}
+    return _load_cases(paths.ORCHESTRATOR_ROOT / run.snapshot_dir)
+
+
+def _earlier_runs(run: CompletedRunView) -> list[CompletedRunView]:
+    """``run``'s cycle's runs before it, on any branch, newest first."""
+    if not run.cycle:
+        return []
+    return [
+        r
+        for r in list_recent_runs(limit=_SCAN_LIMIT)
+        if r.cycle == run.cycle and r.created_at < run.created_at and r.run_id != run.run_id
+    ]
+
+
+def _baseline(
+    run: CompletedRunView, earlier: list[CompletedRunView], lineage: list[CompletedRunView]
+) -> CompletedRunView | None:
+    """A pull request's target branch's latest run, else the run before on the same branch."""
+    target = run.base_branch
+    if target and target != run.branch:
+        on_target = next((r for r in earlier if r.branch == target), None)
+        if on_target is not None:
+            return on_target
+    return lineage[0] if lineage else None
+
+
+def _groups(tests: list[FailingTest]) -> tuple[FailureGroup, ...]:
+    by_sig: dict[str, list[FailingTest]] = {}
+    for test in tests:
+        if test.message:
+            by_sig.setdefault(message_signature(test.message), []).append(test)
+    groups = [
+        FailureGroup(
+            message=members[0].message, count=len(members), keys=tuple(t.key for t in members)
+        )
+        for members in by_sig.values()
+        if len(members) > 1
+    ]
+    groups.sort(key=lambda g: (-g.count, g.message))
+    return tuple(groups)
+
+
+def _with_triage(cycle: str | None, tests: list[FailingTest]) -> list[FailingTest]:
+    """``tests`` with the causes marked for their messages; unchanged if the store can't be read."""
+    if not cycle:
+        return tests
+    from testo_core.services.triage import TriageStore
+
+    try:
+        causes = TriageStore().for_messages(cycle, {t.message for t in tests})
+    except Exception:
+        # Broad on purpose: a missing cause must never hide the failing tests themselves.
+        logger.warning("could not read failure causes", exc_info=True)
+        return tests
+    return [replace(t, triage=causes[t.message]) if t.message in causes else t for t in tests]
+
+
+def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailures | None:
+    """``run_id``'s failing tests, newest breakages first; ``None`` if the run doesn't exist."""
+    run = get_run(run_id=run_id)
+    if run is None:
+        return None
+    window = max(2, int(window))
+    current = _cases(run)
+    failing = {k: c for k, c in current.items() if c["status"] in _FAILED}
+    if not failing:
+        return RunFailures(run_id=run.run_id, runs_considered=1, tests=(), groups=())
+
+    earlier = _earlier_runs(run)
+    # Streaks and flakiness follow this run's branch, so another branch's runs don't mix in.
+    # Runs that recorded no branch can't be told apart, so they stay in.
+    lineage = [r for r in earlier if r.branch in (run.branch, None)] if run.branch else earlier
+    earlier_cases = [(r, _cases(r)) for r in lineage[: window - 1]]
+    earlier_cases = [(r, c) for r, c in earlier_cases if c]
+    baseline = _baseline(run, earlier, lineage)
+    baseline_cases = _cases(baseline) if baseline is not None else {}
+
+    # Flaky over the same window, ending at this run (oldest first for flaky_service).
+    observations: dict[str, list[dict[str, Any]]] = {}
+    for _, cases in reversed(earlier_cases):
+        for key in failing:
+            if key in cases:
+                observations.setdefault(key, []).append(cases[key])
+    for key, case in failing.items():
+        observations.setdefault(key, []).append(case)
+
+    tests: list[FailingTest] = []
+    for key, case in failing.items():
+        streak, since = 1, run.run_id
+        for older, cases in earlier_cases:
+            prev = cases.get(key)
+            if prev is None or prev["status"] not in _FAILED:
+                break
+            streak, since = streak + 1, older.run_id
+        if baseline_cases:
+            on_baseline = baseline_cases.get(key)
+            new = on_baseline is None or on_baseline["status"] not in _FAILED
+        else:
+            new = streak == 1
+        tests.append(
+            FailingTest(
+                key=key[:200],
+                name=str(case["name"]),
+                full_name=str(case.get("full_name") or ""),
+                group=str(case.get("group") or ""),
+                stage=str(case.get("stage") or ""),
+                status=str(case["status"]),
+                message=str(case.get("message") or ""),
+                duration_ms=case.get("duration_ms"),
+                failing_runs=streak,
+                failing_since_run_id=since,
+                flaky=flaky_service.classify(key, observations.get(key, [])) is not None,
+                new=new,
+            )
+        )
+    tests = _with_triage(run.cycle, tests)
+    # New breakages first, then the longest-standing ones; ties by stage and name.
+    tests.sort(key=lambda t: (not t.new, -t.failing_runs, t.stage, t.name))
+    return RunFailures(
+        run_id=run.run_id,
+        runs_considered=1 + len(earlier_cases),
+        tests=tuple(tests),
+        groups=_groups(tests),
+        rerun_commands=tuple(
+            rerun_commands(
+                [FailingCase(t.name, t.full_name, t.group, t.stage) for t in tests],
+                {str(st.get("name")): str(st.get("framework") or "") for st in run.stage_health},
+            )
+        ),
+        baseline_run_id=baseline.run_id if baseline_cases and baseline else None,
+        # Named only when it is another branch (a PR's target), so the UI can say "new since main".
+        baseline_branch=(
+            baseline.branch
+            if baseline_cases and baseline and baseline.branch != run.branch
+            else None
+        ),
+    )

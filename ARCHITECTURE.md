@@ -64,7 +64,10 @@ flowchart TD
    `artifacts/<cycle>/events.ndjson`. The CLI renders events live (Rich panels or NDJSON with
    `--ci`); the API tails `events.ndjson` and forwards each line as an SSE message.
    The API keeps running executions plus the last `TESTO_MAX_FINISHED_EXECUTIONS` (default
-   200) finished ones in memory; older ones are only in the run history.
+   200) finished ones in memory; older ones are only in the run history. At most
+   `TESTO_MAX_CONCURRENT_RUNS` (default 2) execute at once; the rest wait in a FIFO queue
+   as `queued`, in memory or, with `TESTO_RUN_QUEUE=db`, also in the database so they
+   survive a restart (`testo_api/run_queue.py`). Stages run in order unless a cycle sets `max_parallel_stages`.
 5. **Persist.** `JsonBackend` writes `plan_result.json`; `DbBackend` writes a `RunRecord`
    (status, durations, per-stage health, failed cases + traceback + log tail when the run
    failed, CI provider/commit/ref when run in CI). Failures here never fail the run.
@@ -172,9 +175,17 @@ Testosterone is a **local developer tool**, and the API is a command runner by d
 The defaults assume one trusted user on one machine:
 
 - `testo-api` binds `127.0.0.1` (`TESTO_API_HOST`). Binding anything else without a token
-  logs a warning at startup.
-- `TESTO_API_TOKEN`, when set, requires `Authorization: Bearer <token>` on every mutating
-  request (constant-time compare, `401` otherwise). Reads stay open. The frontend sends
+  refuses to start (exit 2) unless `TESTO_ALLOW_UNAUTHENTICATED=1` says the network is
+  already trusted; then it logs a warning.
+- `TESTO_API_TOKEN`, when set, requires `Authorization: Bearer <token>` or the session cookie
+  from `/login` on every mutating request (constant-time compare, `401` otherwise). The
+  cookie is HttpOnly, `SameSite=Strict` and an HMAC of the token, never the token itself.
+  `TESTO_PROTECT_READS=1` extends that to every request, the `/history` report files and the
+  UI included (a middleware, since those are static mounts); browsers asking for a page are
+  sent to `/login`, and only health checks stay open. The team server turns it on. Otherwise
+  reads stay open, so the `?config_path=`
+  that read routes accept only loads files named `testosterone.yaml`, `testosterone.yml` or
+  `pyproject.toml` (`400` otherwise); an arbitrary path would let anyone probe the server's files. The frontend sends
   `localStorage["testo.apiToken"]` or the build-time `VITE_TESTO_API_TOKEN`, which ends up in
   the JS bundle, so only bake it into a UI served to the people who hold the token anyway.
 - CORS allows only the Vite dev/preview servers unless `TESTO_CORS_ORIGINS` lists origins;
@@ -182,15 +193,50 @@ The defaults assume one trusted user on one machine:
   stop a cross-site "simple" POST, so mutating requests whose `Origin` is not on that list
   get `403` even without a token. That is what keeps a random web page (or a DNS-rebinding
   one) in the developer's browser from starting runs on the localhost API.
+- Every response carries `X-Content-Type-Options: nosniff` and `frame-ancestors 'self'`. Report
+  files under `/history` share the API's origin, so report attachments (Allure's
+  `*-attachment.*` and `data/attachments/`, which include uploaded Playwright files) are served
+  with `Content-Security-Policy: sandbox`: an HTML attachment still displays but cannot run
+  script with the viewer's session. Report pages themselves are not sandboxed, since they need
+  script and their own origin to load their data. `TESTO_REPORTS_ORIGIN` (off by default) gives
+  them that origin: a second hostname for the same server that serves only `/history`. The API
+  host redirects report links there with a 60-second signed ticket, the reports host trades it
+  for its own HttpOnly cookie that can only read reports, and the API's Origin check refuses any
+  write a report page attempts (`testo_api/report_origin.py`).
+- Sessions are stateless: the `/login` cookie is an HMAC of the token, so signing out only
+  clears that browser's copy. A copied cookie keeps working until `TESTO_API_TOKEN` changes,
+  so rotate the token to sign everyone out.
+- The AI provider's `base_url` is free-form, so anyone with a write token can point it at any
+  host and the provider key is sent there. Treat the write token as able to read that key.
 
-A shared token is not multi-user security. Exposing the API to a team would need real
-authentication with per-user audit, an allow-list of repos and commands instead of free-form
-`args`/`extra_env`, and runs in sandboxed, disposable runners (containers with no host
-credentials) rather than as the API's own user.
+- `TESTO_AUTH=accounts` (off by default) replaces the shared token for people: each person
+  signs in at `/login` with a username and password (`scrypt`-hashed, managed with
+  `testo users`, no sign-up page). Roles are `viewer` (reads), `runner` (also starts runs and
+  uploads) and `admin` (also AI settings and the audit log at `GET /api/v1/audit`); every
+  write and sign-in attempt is recorded with its user. Reads are always protected in this
+  mode. The token stays an admin credential for CI and signs the session cookies, which carry
+  the account's session version, so a role or password change signs that person out
+  everywhere. After `TESTO_LOGIN_MAX_FAILURES` (default 5) failed sign-ins for one name in 15
+  minutes, or four times that from one address, further attempts get `429` without a password
+  check until the window slides (`testo_api/login_throttle.py`, per process).
+  See [Switchable Team Features](docs/Specs%20&%20ADRs/Switchable%20Team%20Features%20-%202026-10-24.md).
+
+Accounts give a team per-user access and an audit trail, but by default a `runner` can still
+run any command (`framework: command`, free-form `args`/`extra_env`) as the API's own user.
+`TESTO_RUNNER=container` (off by default) closes that: the executor hands each stage to the
+runner service (`testo_core/engine/backends/`), a separate container that alone holds the
+Docker socket and starts the stage with `docker run --rm` in a fresh container. The service,
+not the request, decides the image, the mounts (the stage's directory must be inside one), the
+commands allowed and the limits: no Linux capabilities, `no-new-privileges`, a process limit,
+optional memory, CPU and network limits. Only the stage's own variables travel with it, never
+the server's environment, so a test can't read `TESTO_API_TOKEN` or `DATABASE_URL`. A timeout,
+or the API going away, stops the container. See
+[Throwaway Stage Containers](docs/Specs%20&%20ADRs/Throwaway%20Stage%20Containers%20-%202026-10-24.md).
 
 ## Trade-offs and known limits
 
-- **Stages run sequentially.** A cycle is an ordered list; parallelism lives inside a stage
+- **Stages run one at a time by default.** A cycle is an ordered list (`max_parallel_stages`
+  opts in to running several at once); parallelism otherwise lives inside a stage
   and is per framework: `workers` becomes BehaveX `--parallel-processes`, while pytest
   stages pass xdist's `-n` in `args` and native Behave and `command` stages ignore it.
 - **One execution per cycle at a time.** A second request for a running cycle gets `409`

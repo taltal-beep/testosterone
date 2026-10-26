@@ -60,22 +60,41 @@ const ALL_CYCLES = "";
 const selectClass = "w-full min-w-0 max-w-full rounded-xl border border-ink-600 bg-ink-950/80 px-3 py-2 focus:border-brand-500 focus:outline-none text-sm text-ink-100";
 const labelClass = "grid min-w-0 gap-1 text-xs font-medium text-ink-300";
 
+/** The newest run and the run of its cycle before it: what someone opening Compare usually wants. */
+function latestPair(runs: RunListItem[]): { cycle: string; current: string; baseline: string } | null {
+  const [latest] = [...runs].sort((a, b) => b.created_at - a.created_at);
+  if (!latest) return null;
+  const cycle = runCycle(latest);
+  const previous = runs
+    .filter((run) => runCycle(run) === cycle && run.run_id !== latest.run_id && run.created_at <= latest.created_at)
+    .sort((a, b) => b.created_at - a.created_at)[0];
+  return previous ? { cycle, current: latest.run_id, baseline: previous.run_id } : null;
+}
+
 export function ComparePage() {
   const [searchParams] = useSearchParams();
-  const [currentRunId, setCurrentRunId] = useState(searchParams.get("current_run_id") ?? "");
-  const [baselineRunId, setBaselineRunId] = useState(searchParams.get("baseline_run_id") ?? "");
-  const [cycleFilter, setCycleFilter] = useState(ALL_CYCLES);
+  const [pickedCurrent, setPickedCurrent] = useState(searchParams.get("current_run_id") ?? "");
+  const [pickedBaseline, setPickedBaseline] = useState(searchParams.get("baseline_run_id") ?? "");
+  const [pickedCycle, setPickedCycle] = useState(ALL_CYCLES);
+  // Until someone picks, a bare /compare shows the latest run against the one before it.
+  const [pristine, setPristine] = useState(!pickedCurrent && !pickedBaseline);
   const runsQuery = useQuery({
     queryKey: ["runs"],
     queryFn: () => apiClient.listRuns()
   });
+
+  const options = useMemo(() => runsQuery.data?.items ?? [], [runsQuery.data?.items]);
+  const auto = useMemo(() => (pristine ? latestPair(options) : null), [pristine, options]);
+  const currentRunId = auto?.current ?? pickedCurrent;
+  const baselineRunId = auto?.baseline ?? pickedBaseline;
+  const cycleFilter = auto?.cycle ?? pickedCycle;
+
   const compareQuery = useQuery({
     queryKey: ["delta-comparison", currentRunId, baselineRunId],
     queryFn: () => apiClient.getDeltaComparison(currentRunId, baselineRunId),
     enabled: Boolean(currentRunId && baselineRunId && currentRunId !== baselineRunId)
   });
 
-  const options = useMemo(() => runsQuery.data?.items ?? [], [runsQuery.data?.items]);
   const runsById = useMemo(() => new Map(options.map((run) => [run.run_id, run])), [options]);
   const cycles = useMemo(() => [...new Set(options.map(runCycle))], [options]);
   const visibleRuns = useMemo(
@@ -84,26 +103,33 @@ export function ComparePage() {
   );
 
   if (runsQuery.isLoading) {
-    return <p className="text-sm text-ink-300">Loading runs for comparison...</p>;
+    return <p className="text-sm text-ink-300">Loading runs…</p>;
   }
   if (runsQuery.isError) {
-    return <p className="text-sm text-danger-400">Failed to load runs for comparison.</p>;
+    return <p className="text-sm text-danger-400">Couldn't load runs to compare. Check that the API is running, then reload.</p>;
   }
   if (options.length < 2) {
     return <p className="text-sm text-ink-300">At least two completed runs are required for comparison.</p>;
   }
 
+  // The first pick keeps what was shown automatically, then changes one thing.
+  const pick = (next: { current?: string; baseline?: string; cycle?: string }) => {
+    setPristine(false);
+    setPickedCurrent(next.current ?? currentRunId);
+    setPickedBaseline(next.baseline ?? baselineRunId);
+    setPickedCycle(next.cycle ?? cycleFilter);
+  };
+
   // Narrowing to one cycle compares its latest run (current) with the run before it (baseline).
   const selectCycle = (cycle: string) => {
-    setCycleFilter(cycle);
     if (cycle === ALL_CYCLES) {
+      pick({ cycle });
       return;
     }
     const [latest, previous] = options
       .filter((run) => runCycle(run) === cycle)
       .sort((a, b) => b.created_at - a.created_at);
-    setCurrentRunId(latest?.run_id ?? "");
-    setBaselineRunId(previous?.run_id ?? "");
+    pick({ cycle, current: latest?.run_id ?? "", baseline: previous?.run_id ?? "" });
   };
 
   const comparisonReady = Boolean(currentRunId && baselineRunId && currentRunId !== baselineRunId);
@@ -114,7 +140,7 @@ export function ComparePage() {
 
   return (
     <section className="space-y-4">
-      <PageHeader title="Run Comparison" subtitle="Pick a baseline and a current run to see what regressed and what improved." />
+      <PageHeader title="Compare runs" subtitle="Pick a baseline and a current run to see what regressed and what improved." />
 
       <div className="grid gap-4 glass-card p-4 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_minmax(0,1fr)]">
         <label className={labelClass}>
@@ -133,8 +159,8 @@ export function ComparePage() {
             ))}
           </select>
         </label>
-        <RunPicker label="Baseline run" value={baselineRunId} onChange={setBaselineRunId} runs={visibleRuns} />
-        <RunPicker label="Current run" value={currentRunId} onChange={setCurrentRunId} runs={visibleRuns} />
+        <RunPicker label="Baseline run" value={baselineRunId} onChange={(id) => pick({ baseline: id })} runs={visibleRuns} />
+        <RunPicker label="Current run" value={currentRunId} onChange={(id) => pick({ current: id })} runs={visibleRuns} />
       </div>
 
       {crossCycle && (
@@ -146,8 +172,8 @@ export function ComparePage() {
       )}
 
       {!comparisonReady && <p className="text-sm text-ink-400">Select two different runs to start comparison.</p>}
-      {comparisonReady && compareQuery.isLoading && <p className="text-sm text-ink-300">Loading delta comparison...</p>}
-      {comparisonReady && compareQuery.isError && <p className="text-sm text-danger-400">Failed to load delta comparison.</p>}
+      {comparisonReady && compareQuery.isLoading && <p className="text-sm text-ink-300">Comparing runs…</p>}
+      {comparisonReady && compareQuery.isError && <p className="text-sm text-danger-400">Couldn't compare these runs. One of them may have been cleaned up.</p>}
       {comparisonReady && payload && (
         <>
           <Card>
@@ -173,7 +199,7 @@ export function ComparePage() {
             </div>
           </Card>
 
-          <Card title="Outcome Mix">
+          <Card title="Outcome mix">
             <div className="space-y-3">
               <div>
                 <p className="mb-1 text-xs font-medium text-ink-400">Baseline · {runText(payload.comparison.baseline_run_id, baselineRun)}</p>
@@ -192,7 +218,7 @@ export function ComparePage() {
           </div>
 
           {(payload.stage_deltas ?? []).length > 0 && (
-            <Card title="Per-Stage Health">
+            <Card title="Per-stage health">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-ink-300">
                   <thead>
@@ -281,7 +307,7 @@ function RunPicker({
           <optgroup key={cycle} label={cycle}>
             {cycleRuns.map((run) => (
               <option key={run.run_id} value={run.run_id}>
-                {formatRunLabel(run)} · {shortRunId(run.run_id)}
+                {[formatRunLabel(run), run.branch, shortRunId(run.run_id)].filter(Boolean).join(" · ")}
               </option>
             ))}
           </optgroup>
@@ -334,9 +360,15 @@ function MetricTable<K extends string>({
                     <MetricChange metric={metric} />
                   </td>
                   <td className="hidden py-1.5 sm:table-cell">
-                    <Badge tone={badge.tone} title={metric.reason ?? undefined}>
-                      {badge.label}
-                    </Badge>
+                    {metric.reason === "within_noise" ? (
+                      <Badge tone="neutral" title="Under 5% (and under the metric's minimum in ms): normal timing jitter">
+                        Within noise
+                      </Badge>
+                    ) : (
+                      <Badge tone={badge.tone} title={metric.reason ?? undefined}>
+                        {badge.label}
+                      </Badge>
+                    )}
                   </td>
                 </tr>
               );
@@ -464,7 +496,7 @@ function TestLevelChanges({ currentRunId, baselineRunId }: { currentRunId: strin
           </div>
 
           {casesQuery.isLoading && <p className="text-sm text-ink-300">Loading test-level changes...</p>}
-          {casesQuery.isError && <p className="text-sm text-danger-400">Failed to load test-level changes.</p>}
+          {casesQuery.isError && <p className="text-sm text-danger-400">Couldn't load the test-level changes.</p>}
           {casesQuery.data && filtered.length === 0 && (
             <p className="text-sm text-ink-400">No matching test changes.</p>
           )}

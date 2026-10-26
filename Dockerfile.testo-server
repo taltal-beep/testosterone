@@ -41,12 +41,13 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     TESTO_HOME=/data \
     TESTO_UI_DIR=/app/ui \
     TESTO_API_HOST=0.0.0.0 \
+    TESTO_PROTECT_READS=1 \
     TESTO_API_PORT=8000
 
 COPY --from=builder /dist/*.whl /tmp/
 RUN WHEEL="$(ls /tmp/*.whl)" && python -m pip install "${WHEEL}[api,db]" && rm -f /tmp/*.whl && \
     useradd --create-home --uid 10001 testo && \
-    mkdir -p /data && chown testo:testo /data
+    mkdir -p /data/artifacts /repos && chown testo:testo /data /data/artifacts /repos
 COPY --from=ui /ui/dist /app/ui
 
 USER testo

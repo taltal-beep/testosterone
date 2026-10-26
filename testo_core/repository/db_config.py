@@ -107,7 +107,14 @@ def get_engine() -> Engine:
 def create_db_and_tables() -> None:
     """Create all registered SQLModel tables on the active engine (idempotent)."""
     # Import registers ``RunRecord`` on ``SQLModel.metadata``.
-    from testo_core.repository.models import ReportArchive, RunRecord  # noqa: F401
+    from testo_core.repository.models import (  # noqa: F401
+        AuditEvent,
+        FailureTriage,
+        QueuedRun,
+        ReportArchive,
+        RunRecord,
+        UserAccount,
+    )
 
     SQLModel.metadata.create_all(get_engine())
 

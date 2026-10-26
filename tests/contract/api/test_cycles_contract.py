@@ -6,6 +6,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from testo_api.main import create_app
+from testo_api.routes import cycles as cycles_routes
+from testo_core.history.views import CompletedRunView
+from testo_core.repository.models import RunStatus
 
 CONFIG_YAML = """\
 version: 1
@@ -43,6 +46,40 @@ def config_path(tmp_path: Path) -> Path:
 @pytest.fixture()
 def client() -> TestClient:
     return TestClient(create_app())
+
+
+def _recorded_run(cycle: str) -> CompletedRunView:
+    return CompletedRunView(
+        run_id=f"{cycle}-1",
+        status=RunStatus.COMPLETED,
+        created_at=1.0,
+        started_at=1.0,
+        finished_at=2.0,
+        test_kind="cycle",
+        returncode=1,
+        wall_duration_ms=1000.0,
+        metrics_duration_ms=None,
+        total_tests=5,
+        passed=1,
+        failed=4,
+        broken=0,
+        skipped=0,
+        avg_case_ms=None,
+        health_pct=20.0,
+        target_repo="/ci/checkout",
+        snapshot_dir=None,
+        audit_json=None,
+        cycle=cycle,
+        stage_health=[{"name": "junit", "framework": "junit"}],
+    )
+
+
+@pytest.fixture(autouse=True)
+def recorded(monkeypatch: pytest.MonkeyPatch) -> dict[str, CompletedRunView]:
+    """Cycles in run history; empty unless a test adds one (the shared test DB has others)."""
+    found: dict[str, CompletedRunView] = {}
+    monkeypatch.setattr(cycles_routes, "latest_run_per_cycle", lambda: found)
+    return found
 
 
 def test_list_cycles_returns_summaries(client: TestClient, config_path: Path) -> None:
@@ -86,8 +123,66 @@ def test_get_unknown_cycle_is_404_with_available_names(
 
 
 def test_missing_config_is_503(client: TestClient, tmp_path: Path) -> None:
-    resp = client.get("/api/v1/cycles", params={"config_path": str(tmp_path / "missing.yaml")})
+    resp = client.get("/api/v1/cycles", params={"config_path": str(tmp_path / "testosterone.yaml")})
     assert resp.status_code == 503
     error = resp.json()["error"]
     assert error["code"] == "infra_failure"
     assert "config error" in error["message"]
+
+
+def test_cycles_with_only_recorded_runs_are_listed_read_only(
+    client: TestClient, config_path: Path, recorded: dict[str, CompletedRunView]
+) -> None:
+    recorded["web"] = _recorded_run("web")
+    recorded["smoke"] = _recorded_run("smoke")  # in the config too: listed once, as config
+
+    items = client.get("/api/v1/cycles", params={"config_path": str(config_path)}).json()["items"]
+
+    assert [(i["name"], i["source"]) for i in items] == [
+        ("smoke", "config"),
+        ("full", "config"),
+        ("web", "history"),
+    ]
+    assert items[2]["equipment"] == ["junit"]
+    assert items[2]["stage_count"] == 1
+
+
+def test_recorded_cycle_has_a_detail_page(
+    client: TestClient, config_path: Path, recorded: dict[str, CompletedRunView]
+) -> None:
+    recorded["web"] = _recorded_run("web")
+
+    body = client.get("/api/v1/cycles/web", params={"config_path": str(config_path)}).json()
+
+    assert body["source"] == "history"
+    assert body["stages"] == [
+        {
+            "name": "junit",
+            "equipment": "junit",
+            "target_repo": "/ci/checkout",
+            "args": [],
+            "timeout_s": None,
+            "workers": None,
+        }
+    ]
+    assert body["trigger"] is None
+
+
+def test_no_config_still_lists_recorded_cycles(
+    client: TestClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    recorded: dict[str, CompletedRunView],
+) -> None:
+    # `testo ui` over ingested runs, in a directory with no testosterone.yaml.
+    monkeypatch.chdir(tmp_path)
+    recorded["web"] = _recorded_run("web")
+
+    body = client.get("/api/v1/cycles").json()
+
+    assert body["config_path"] is None
+    assert [i["name"] for i in body["items"]] == ["web"]
+    assert client.get("/api/v1/cycles/web").status_code == 200
+    assert client.get("/api/v1/cycles/nope").json()["error"]["message"] == (
+        "Unknown cycle: nope. Available cycles: web"
+    )

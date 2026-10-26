@@ -6,8 +6,8 @@ type: software
 authors:
   - alias: taltal-beep
 license: MIT
-version: 1.1.1
-date-released: "2026-10-19"
+version: 1.3.0
+date-released: "2026-10-25"
 repository-code: "https://github.com/taltal-beep/testosterone"
 url: "https://taltal-beep.github.io/testosterone/"
 keywords:

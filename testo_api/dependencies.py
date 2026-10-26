@@ -7,6 +7,7 @@ from testo_core.services.ai.integration_settings import (
     default_ai_settings_path,
 )
 from testo_core.services.failure_analysis_service import FailureAnalysisService
+from testo_core.services.project_review import ProjectReviewService
 
 _CYCLE_MANAGER = CycleExecutionManager()
 _AI_SETTINGS_PATH = default_ai_settings_path()
@@ -28,3 +29,10 @@ def get_ai_settings_store() -> InMemoryAiSettingsStore:
 
 def get_failure_analysis_service() -> FailureAnalysisService:
     return _FAILURE_ANALYSIS_SERVICE
+
+
+_PROJECT_REVIEW_SERVICE = ProjectReviewService(settings_store=_AI_SETTINGS_STORE)
+
+
+def get_project_review_service() -> ProjectReviewService:
+    return _PROJECT_REVIEW_SERVICE

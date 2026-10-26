@@ -3,6 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query
 
 from testo_api.models import (
+    AttachmentItem,
+    CycleTestsResponse,
     DeltaCaseChange,
     DeltaCaseChangesResponse,
     DeltaComparisonMeta,
@@ -15,6 +17,9 @@ from testo_api.models import (
     DeltaStatusSummaryResponse,
     FlakyTestItem,
     FlakyTestsResponse,
+    TestHistoryResponse,
+    TestPointItem,
+    TestSummaryItem,
 )
 from testo_core.history.read_model import get_run
 from testo_core.services.delta_models import MetricDelta
@@ -26,6 +31,9 @@ from testo_core.services.delta_service import (
 )
 from testo_core.services.flaky_service import DEFAULT_WINDOW, find_flaky_tests
 from testo_core.services.run_snapshot_diff import diff_run_snapshots
+from testo_core.services.test_attachments import attachments_for
+from testo_core.services.test_history import cycle_source, list_cycle_tests, load_test_history
+from testo_core.services.test_ownership import issue_url, owners_for
 
 router = APIRouter(prefix="/api/v1", tags=["analytics"])
 
@@ -153,6 +161,8 @@ def get_flaky_tests(
     UI parity with ``testo flaky --cycle``; see ``testo_core/services/flaky_service.py``.
     """
     report = find_flaky_tests(cycle=cycle, window=window)
+    checkout, repository = cycle_source(cycle)
+    owners = {t.key: owners_for(checkout, t.full_name, t.group) for t in report.flaky}
     return FlakyTestsResponse(
         cycle=report.cycle,
         window=report.window,
@@ -170,7 +180,64 @@ def get_flaky_tests(
                 flip_rate=t.flip_rate,
                 last_status=t.last_status,
                 history=list(t.history),
+                owners=list(owners[t.key]),
+                issue_url=issue_url(
+                    repository,
+                    cycle=cycle,
+                    test_name=t.name,
+                    full_name=t.full_name,
+                    owners=owners[t.key],
+                ),
             )
             for t in report.flaky
         ],
+    )
+
+
+@router.get("/analytics/tests", response_model=CycleTestsResponse)
+def get_cycle_tests(
+    cycle: str,
+    q: str | None = Query(None, max_length=200, description="Match in name, full name or group."),
+    window: int = Query(DEFAULT_WINDOW, ge=1, le=200),
+) -> CycleTestsResponse:
+    """Every test in a cycle's last runs: outcomes, flaky or not, durations and slowdowns."""
+    found = list_cycle_tests(cycle, window=window, query=q)
+    return CycleTestsResponse(
+        cycle=found.cycle,
+        runs_considered=found.runs_considered,
+        items=[TestSummaryItem(**vars(t)) for t in found.tests],
+    )
+
+
+@router.get("/analytics/test-history", response_model=TestHistoryResponse)
+def get_test_history(
+    cycle: str,
+    key: str = Query(..., max_length=500),
+    window: int = Query(DEFAULT_WINDOW, ge=1, le=200),
+) -> TestHistoryResponse:
+    """One test in each of a cycle's last runs, newest first, with its last failure."""
+    history = load_test_history(cycle, key, window=window)
+    if history is None:
+        raise HTTPException(status_code=404, detail=f"No run of {cycle} has the test {key}")
+    last = history.last_failure
+    summary = history.summary
+    checkout, repository = cycle_source(cycle)
+    owners = owners_for(checkout, summary.full_name, summary.group)
+    failed_run = get_run(run_id=last.run_id) if last else None
+    attachments = attachments_for(failed_run, key) if failed_run else ()
+    return TestHistoryResponse(
+        cycle=history.cycle,
+        test=TestSummaryItem(**vars(history.summary)),
+        points=[TestPointItem(**vars(p)) for p in history.points],
+        last_failure=TestPointItem(**vars(last)) if last else None,
+        last_failure_attachments=[AttachmentItem(**vars(a)) for a in attachments],
+        owners=list(owners),
+        issue_url=issue_url(
+            repository,
+            cycle=cycle,
+            test_name=summary.name,
+            full_name=summary.full_name,
+            message=last.message if last else "",
+            owners=owners,
+        ),
     )

@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling>=1.27.0", "hatch-fancy-pypi-readme>=24.1.0"]
+requires = ["hatchling>=1.27.0", "hatch-fancy-pypi-readme>=25.1.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "testo-core"
-version = "1.1.1"
+version = "1.3.0"
 description = "See what broke, what's flaky and what got slower on every run: test history, run-to-run diffs and flaky detection for pytest, Playwright, Jest or any JUnit-writing runner."
 dynamic = ["readme"]
 requires-python = ">=3.11"
@@ -46,9 +46,9 @@ classifiers = [
 dependencies = [
     "python-dotenv>=1.0.0",
     "sqlmodel>=0.0.24",
-    "requests>=2.32.0",
+    "requests>=2.34.2",
     "allure-pytest>=2.15.0",
-    "allure-python-commons>=2.15.0",
+    "allure-python-commons>=2.16.2",
     "PyYAML>=6.0.0",
     "typer>=0.12.0",
     "rich>=13.7.0",
@@ -59,12 +59,17 @@ dependencies = [
 [project.scripts]
 testo = "testo_core.cli.app:main"
 testo-api = "testo_api.main:run"
+testo-runner-service = "testo_core.engine.backends.runner_service:main"
+
+# `pytest --testo` records the session as a run; inert without the flag.
+[project.entry-points.pytest11]
+testo = "testo_core.pytest_plugin"
 
 [project.optional-dependencies]
 # Behave and BehaveX stages (`equipment: behave` / `behavex`) and their Allure formatter.
 # Optional since 1.2: pytest, Playwright, `command` and `testo ingest` don't need them.
 bdd = [
-    "behave>=1.3.0,<2",
+    "behave>=1.3.3,<2",
     "behavex>=4.6.0",
     "allure-behave>=2.15.0",
 ]
@@ -87,7 +92,7 @@ metrics = [
 ]
 # The docs site (mkdocs.yml). Material 9.x pins MkDocs below 2.0.
 docs = [
-    "mkdocs-material>=9.7,<10",
+    "mkdocs-material>=9.7.7,<10",
 ]
 dev = [
     "pytest>=9.0.0",
@@ -148,9 +153,13 @@ include = [
     "/LICENSE",
     "/pytest.ini",
 ]
+# The built UI is gitignored, so it has to be named to reach the sdist (and the
+# wheel built from it). Present only after scripts/build_ui_bundle.sh.
+artifacts = ["/testo_api/ui_dist"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["testo_core", "testo_api"]
+artifacts = ["testo_api/ui_dist"]
 
 [tool.ruff]
 target-version = "py311"

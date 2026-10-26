@@ -124,6 +124,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/test-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Test History
+         * @description One test in each of a cycle's last runs, newest first, with its last failure.
+         */
+        get: operations["get_test_history_api_v1_analytics_test_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Cycle Tests
+         * @description Every test in a cycle's last runs: outcomes, flaky or not, durations and slowdowns.
+         */
+        get: operations["get_cycle_tests_api_v1_analytics_tests_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Audit Log
+         * @description Recent writes and sign-ins, newest first (admins, ``TESTO_AUTH=accounts`` only).
+         */
+        get: operations["audit_log_api_v1_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who Am I
+         * @description Who this browser or token is signed in as (``auth_mode`` is ``token`` or ``accounts``).
+         */
+        get: operations["who_am_i_api_v1_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cycle-executions/{execution_id}": {
         parameters: {
             query?: never;
@@ -167,7 +247,7 @@ export interface paths {
         };
         /**
          * List Cycles
-         * @description List every cycle defined in the resolved configuration (UI parity with ``testo cycles list``).
+         * @description Every cycle in the config (as ``testo cycles list``), then cycles that only have recorded runs.
          */
         get: operations["list_cycles_api_v1_cycles_get"];
         put?: never;
@@ -187,7 +267,7 @@ export interface paths {
         };
         /**
          * Get Cycle
-         * @description Resolved view of one cycle (UI parity with ``testo cycles show <name>``).
+         * @description Resolved view of one cycle (as ``testo cycles show <name>``), or a recorded-only cycle.
          */
         get: operations["get_cycle_api_v1_cycles__cycle__get"];
         put?: never;
@@ -209,6 +289,26 @@ export interface paths {
         put?: never;
         /** Create Cycle Execution */
         post: operations["create_cycle_execution_api_v1_cycles__cycle__executions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Attention
+         * @description Red cycles (most new failures first), newly flaky tests and tests that got slower.
+         */
+        get: operations["get_dashboard_attention_api_v1_dashboard_attention_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -307,6 +407,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/project-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Project Health
+         * @description The project under test's test health score: every cycle, or ``cycle`` alone.
+         */
+        get: operations["get_project_health_api_v1_project_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/project-health/ai-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Project Review
+         * @description The last AI review of the scope, if any; ``stale`` when newer runs came in.
+         */
+        get: operations["get_project_review_api_v1_project_health_ai_review_get"];
+        put?: never;
+        /**
+         * Generate Project Review
+         * @description Ask the configured AI provider to review the project with the chosen skills.
+         */
+        post: operations["generate_project_review_api_v1_project_health_ai_review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/project-health/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Review Skills
+         * @description The review skills the AI review can use, each with what it checks and reads.
+         */
+        get: operations["list_review_skills_api_v1_project_health_skills_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs": {
         parameters: {
             query?: never;
@@ -314,7 +478,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Runs */
+        /**
+         * List Runs
+         * @description Recent runs, newest first; ``cycle`` keeps only that cycle's.
+         */
         get: operations["list_runs_api_v1_runs_get"];
         put?: never;
         post?: never;
@@ -375,6 +542,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{run_id}/failures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Failures
+         * @description The run's failing tests: message, stage, how long each has been failing, flaky or not.
+         */
+        get: operations["get_run_failures_api_v1_runs__run_id__failures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{run_id}/pyramid": {
         parameters: {
             query?: never;
@@ -407,6 +594,34 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/triage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Triage
+         * @description Every marked cause, newest first, optionally only one cycle's.
+         */
+        get: operations["list_triage_api_v1_triage_get"];
+        /**
+         * Mark Triage
+         * @description Set the cause of a failure message in a cycle; replaces an earlier one for the same message.
+         */
+        put: operations["mark_triage_api_v1_triage_put"];
+        post?: never;
+        /**
+         * Clear Triage
+         * @description Forget a cause; failures with that message show no cause again.
+         */
+        delete: operations["clear_triage_api_v1_triage_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -515,7 +730,7 @@ export interface components {
             max_output_tokens?: number;
             /**
              * Model
-             * @default gpt-4o-mini
+             * @default gpt-4.1-mini
              */
             model?: string;
             /**
@@ -568,8 +783,72 @@ export interface components {
             /** Summary Text */
             summary_text: string | null;
         };
+        /** AttachmentItem */
+        AttachmentItem: {
+            /** Content Type */
+            content_type: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "video" | "trace" | "text" | "file";
+            /** Name */
+            name: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Url */
+            url: string;
+        };
+        /** AttentionFailingCycle */
+        AttentionFailingCycle: {
+            /** Branch */
+            branch: string | null;
+            /** Created At */
+            created_at: number;
+            /** Cycle */
+            cycle: string;
+            /** Failed Tests */
+            failed_tests: number;
+            /** Failing Runs */
+            failing_runs: number;
+            /** New Failures */
+            new_failures: number;
+            /** Run Id */
+            run_id: string;
+        };
+        /** AttentionTestItem */
+        AttentionTestItem: {
+            /** Cycle */
+            cycle: string;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Slowdown Ms */
+            slowdown_ms: number | null;
+            /** Slowdown Pct */
+            slowdown_pct: number | null;
+        };
+        /** AuditEntryResponse */
+        AuditEntryResponse: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Method */
+            method: string;
+            /** Path */
+            path: string;
+            /** Status */
+            status: number;
+            /** Username */
+            username: string;
+        };
         /** Body_ingest_reports_api_v1_ingest_post */
         Body_ingest_reports_api_v1_ingest_post: {
+            /** Ci Base Ref */
+            ci_base_ref?: string | null;
             /** Ci Commit Sha */
             ci_commit_sha?: string | null;
             /** Ci Job Id */
@@ -603,6 +882,12 @@ export interface components {
             description: string | null;
             /** Name */
             name: string;
+            /**
+             * Source
+             * @default config
+             * @enum {string}
+             */
+            source: "config" | "history";
             /** Stages */
             stages: components["schemas"]["StageSummary"][];
             trigger: components["schemas"]["CycleTriggerSummary"] | null;
@@ -682,6 +967,31 @@ export interface components {
              */
             status: "queued" | "running" | "completed" | "failed";
         };
+        /** CycleHealthItem */
+        CycleHealthItem: {
+            /** Created At */
+            created_at: number;
+            /** Cycle */
+            cycle: string;
+            /** Failing */
+            failing: number;
+            /** Flaky */
+            flaky: number;
+            /** Green Runs */
+            green_runs: number;
+            /** Passed Latest */
+            passed_latest: boolean;
+            /** Run Id */
+            run_id: string;
+            /** Runs */
+            runs: number;
+            /** Score */
+            score: number | null;
+            /** Slower */
+            slower: number;
+            /** Tests */
+            tests: number;
+        };
         /** CycleListResponse */
         CycleListResponse: {
             /** Config Path */
@@ -697,8 +1007,23 @@ export interface components {
             equipment: string[];
             /** Name */
             name: string;
+            /**
+             * Source
+             * @default config
+             * @enum {string}
+             */
+            source: "config" | "history";
             /** Stage Count */
             stage_count: number;
+        };
+        /** CycleTestsResponse */
+        CycleTestsResponse: {
+            /** Cycle */
+            cycle: string;
+            /** Items */
+            items: components["schemas"]["TestSummaryItem"][];
+            /** Runs Considered */
+            runs_considered: number;
         };
         /** CycleTriggerSummary */
         CycleTriggerSummary: {
@@ -706,6 +1031,22 @@ export interface components {
             paths: string[];
             /** Since Ref */
             since_ref: string | null;
+        };
+        /**
+         * DashboardAttentionResponse
+         * @description What needs someone now: red cycles, tests that just turned flaky, tests that got slower.
+         */
+        DashboardAttentionResponse: {
+            /** Cycles */
+            cycles: number;
+            /** Failing */
+            failing: components["schemas"]["AttentionFailingCycle"][];
+            /** Newly Flaky */
+            newly_flaky: components["schemas"]["AttentionTestItem"][];
+            /** Passing Cycles */
+            passing_cycles: number;
+            /** Slower */
+            slower: components["schemas"]["AttentionTestItem"][];
         };
         /** DashboardDataFreshnessResponse */
         DashboardDataFreshnessResponse: {
@@ -958,6 +1299,43 @@ export interface components {
             /** Unknown */
             unknown: string[];
         };
+        /** FailingTestItem */
+        FailingTestItem: {
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Failing Runs */
+            failing_runs: number;
+            /** Failing Since Run Id */
+            failing_since_run_id: string;
+            /** Flaky */
+            flaky: boolean;
+            /** Full Name */
+            full_name: string;
+            /** Group */
+            group: string;
+            /** Key */
+            key: string;
+            /** Message */
+            message: string;
+            /** Name */
+            name: string;
+            /** New */
+            new: boolean;
+            /** Stage */
+            stage: string;
+            /** Status */
+            status: string;
+            triage: components["schemas"]["TriageItem"] | null;
+        };
+        /** FailureGroupItem */
+        FailureGroupItem: {
+            /** Count */
+            count: number;
+            /** Keys */
+            keys: string[];
+            /** Message */
+            message: string;
+        };
         /** FlakyTestItem */
         FlakyTestItem: {
             /** Failed */
@@ -970,12 +1348,16 @@ export interface components {
             group: string;
             /** History */
             history: string[];
+            /** Issue Url */
+            issue_url: string | null;
             /** Key */
             key: string;
             /** Last Status */
             last_status: string;
             /** Name */
             name: string;
+            /** Owners */
+            owners: string[];
             /** Passed */
             passed: number;
             /** Runs */
@@ -1002,10 +1384,35 @@ export interface components {
              */
             force_refresh?: boolean;
         };
+        /** GenerateProjectReviewRequest */
+        GenerateProjectReviewRequest: {
+            /** Cycle */
+            cycle?: string | null;
+            /** Skills */
+            skills: string[];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HealthFindingItem */
+        HealthFindingItem: {
+            /** Cycle */
+            cycle: string;
+            /** Detail */
+            detail: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "red_cycle" | "flaky" | "slower" | "quarantined" | "skipped";
+            /** Run Id */
+            run_id: string | null;
+            /** Test Key */
+            test_key: string | null;
+            /** Title */
+            title: string;
         };
         /** HealthLiveResponse */
         HealthLiveResponse: {
@@ -1026,6 +1433,21 @@ export interface components {
              * @enum {string}
              */
             status: "ready" | "degraded";
+        };
+        /** HealthSignalItem */
+        HealthSignalItem: {
+            /** How */
+            how: string;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Score */
+            score: number | null;
+            /** Value */
+            value: string;
+            /** Weight */
+            weight: number;
         };
         /**
          * IngestResponse
@@ -1049,6 +1471,74 @@ export interface components {
             /** Tests */
             tests: number;
         };
+        /**
+         * ProjectHealthResponse
+         * @description A repeatable 0-100 score of the project under test, from its recorded runs.
+         */
+        ProjectHealthResponse: {
+            /** By Cycle */
+            by_cycle: components["schemas"]["CycleHealthItem"][];
+            /** Cycles */
+            cycles: number;
+            /** Findings */
+            findings: components["schemas"]["HealthFindingItem"][];
+            /** Grade */
+            grade: string | null;
+            /** Latest Run At */
+            latest_run_at: number | null;
+            /** Runs Considered */
+            runs_considered: number;
+            /** Scope */
+            scope: string | null;
+            /** Score */
+            score: number | null;
+            /** Signals */
+            signals: components["schemas"]["HealthSignalItem"][];
+            /** Tests */
+            tests: number;
+        };
+        /**
+         * ProjectReviewResponse
+         * @description An AI estimate of the project's tests, one result per enabled review skill.
+         */
+        ProjectReviewResponse: {
+            /** Based On Run Id */
+            based_on_run_id: string | null;
+            /** Context Stats */
+            context_stats: {
+                [key: string]: number;
+            };
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Generated At */
+            generated_at: number | null;
+            /** Grade */
+            grade: string | null;
+            /** Model */
+            model: string | null;
+            /** Provider */
+            provider: string | null;
+            /** Scope */
+            scope: string | null;
+            /** Score */
+            score: number | null;
+            /** Skills */
+            skills: components["schemas"]["SkillResultItem"][];
+            /**
+             * Stale
+             * @default false
+             */
+            stale: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "not_generated" | "failed";
+            /** Summary */
+            summary: string | null;
+        };
         /** ReadinessCheck */
         ReadinessCheck: {
             /** Detail */
@@ -1059,14 +1549,56 @@ export interface components {
              */
             status: "ok" | "degraded";
         };
+        /** ReviewFindingItem */
+        ReviewFindingItem: {
+            /** Detail */
+            detail: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "high" | "medium" | "low";
+            /** Title */
+            title: string;
+        };
+        /** ReviewSkillItem */
+        ReviewSkillItem: {
+            /** Category */
+            category: string;
+            /** Checks */
+            checks: string[];
+            /** Default On */
+            default_on: boolean;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Reads */
+            reads: string[];
+            /** Summary */
+            summary: string;
+            /** Tagline */
+            tagline: string;
+        };
+        /** ReviewSkillsResponse */
+        ReviewSkillsResponse: {
+            /** Items */
+            items: components["schemas"]["ReviewSkillItem"][];
+        };
         /** RunDetail */
         RunDetail: {
             /** Audit Json */
             audit_json: string | null;
             /** Avg Case Ms */
             avg_case_ms: number | null;
+            /** Base Branch */
+            base_branch: string | null;
+            /** Branch */
+            branch: string | null;
             /** Broken */
             broken: number | null;
+            /** Commit */
+            commit: string | null;
             /** Created At */
             created_at: number;
             /** Cycle */
@@ -1081,6 +1613,8 @@ export interface components {
             metrics_duration_ms: number | null;
             /** Passed */
             passed: number | null;
+            /** Repository */
+            repository: string | null;
             /** Returncode */
             returncode: number;
             /** Run Id */
@@ -1116,8 +1650,29 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /** RunFailuresResponse */
+        RunFailuresResponse: {
+            /** Baseline Branch */
+            baseline_branch: string | null;
+            /** Baseline Run Id */
+            baseline_run_id: string | null;
+            /** Groups */
+            groups: components["schemas"]["FailureGroupItem"][];
+            /** New Failures */
+            new_failures: number;
+            /** Rerun Commands */
+            rerun_commands: string[];
+            /** Run Id */
+            run_id: string;
+            /** Runs Considered */
+            runs_considered: number;
+            /** Tests */
+            tests: components["schemas"]["FailingTestItem"][];
+        };
         /** RunListItem */
         RunListItem: {
+            /** Branch */
+            branch: string | null;
             /** Broken */
             broken: number | null;
             /** Created At */
@@ -1179,6 +1734,19 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /** SkillResultItem */
+        SkillResultItem: {
+            /** Findings */
+            findings: components["schemas"]["ReviewFindingItem"][];
+            /** Name */
+            name: string;
+            /** Score */
+            score: number | null;
+            /** Skill Id */
+            skill_id: string;
+            /** Summary */
+            summary: string;
+        };
         /** StageHealth */
         StageHealth: {
             /** Broken */
@@ -1213,6 +1781,143 @@ export interface components {
             /** Workers */
             workers: number | null;
         };
+        /** TestHistoryResponse */
+        TestHistoryResponse: {
+            /** Cycle */
+            cycle: string;
+            /** Issue Url */
+            issue_url: string | null;
+            last_failure: components["schemas"]["TestPointItem"] | null;
+            /** Last Failure Attachments */
+            last_failure_attachments: components["schemas"]["AttachmentItem"][];
+            /** Owners */
+            owners: string[];
+            /** Points */
+            points: components["schemas"]["TestPointItem"][];
+            test: components["schemas"]["TestSummaryItem"];
+        };
+        /** TestPointItem */
+        TestPointItem: {
+            /** Branch */
+            branch: string | null;
+            /** Created At */
+            created_at: number;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Flip Rate */
+            flip_rate: number | null;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string;
+        };
+        /**
+         * TestSummaryItem
+         * @description One test across a cycle's recent runs (``testo_core/services/test_history.py``).
+         */
+        TestSummaryItem: {
+            /** Failed */
+            failed: number;
+            /** Flaky */
+            flaky: boolean;
+            /** Full Name */
+            full_name: string;
+            /** Group */
+            group: string;
+            /** Key */
+            key: string;
+            /** Last Duration Ms */
+            last_duration_ms: number | null;
+            /** Last Status */
+            last_status: string;
+            /** Median Duration Ms */
+            median_duration_ms: number | null;
+            /** Name */
+            name: string;
+            /** Passed */
+            passed: number;
+            /** Runs */
+            runs: number;
+            /** Slowdown Ms */
+            slowdown_ms: number | null;
+            /** Slowdown Pct */
+            slowdown_pct: number | null;
+            /** Stage */
+            stage: string;
+        };
+        /** TriageItem */
+        TriageItem: {
+            /**
+             * Cause
+             * @enum {string}
+             */
+            cause: "product_bug" | "test_bug" | "environment" | "flaky" | "other";
+            /** Cycle */
+            cycle: string;
+            /**
+             * Example Message
+             * @default
+             */
+            example_message: string;
+            /** Marked At */
+            marked_at: number;
+            /** Marked By */
+            marked_by: string | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /**
+             * Run Id
+             * @default
+             */
+            run_id: string;
+            /** Signature */
+            signature: string;
+            /**
+             * Test Key
+             * @default
+             */
+            test_key: string;
+        };
+        /** TriageListResponse */
+        TriageListResponse: {
+            /** Causes */
+            causes: components["schemas"]["TriageItem"][];
+        };
+        /** TriageRequest */
+        TriageRequest: {
+            /**
+             * Cause
+             * @enum {string}
+             */
+            cause: "product_bug" | "test_bug" | "environment" | "flaky" | "other";
+            /** Cycle */
+            cycle: string;
+            /** Message */
+            message: string;
+            /**
+             * Note
+             * @default
+             */
+            note?: string;
+            /**
+             * Run Id
+             * @default
+             */
+            run_id?: string;
+            /**
+             * Test Key
+             * @default
+             */
+            test_key?: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -1225,6 +1930,17 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** WhoAmIResponse */
+        WhoAmIResponse: {
+            /** Auth Mode */
+            auth_mode: string;
+            /** Role */
+            role?: string | null;
+            /** Signed In */
+            signed_in: boolean;
+            /** Username */
+            username?: string | null;
         };
     };
     responses: never;
@@ -1417,6 +2133,124 @@ export interface operations {
             };
         };
     };
+    get_test_history_api_v1_analytics_test_history_get: {
+        parameters: {
+            query: {
+                cycle: string;
+                key: string;
+                window?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestHistoryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cycle_tests_api_v1_analytics_tests_get: {
+        parameters: {
+            query: {
+                cycle: string;
+                /** @description Match in name, full name or group. */
+                q?: string | null;
+                window?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleTestsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    audit_log_api_v1_audit_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEntryResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    who_am_i_api_v1_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhoAmIResponse"];
+                };
+            };
+        };
+    };
     get_cycle_execution_api_v1_cycle_executions__execution_id__get: {
         parameters: {
             query?: never;
@@ -1578,6 +2412,26 @@ export interface operations {
             };
         };
     };
+    get_dashboard_attention_api_v1_dashboard_attention_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardAttentionResponse"];
+                };
+            };
+        };
+    };
     get_dashboard_overview_api_v1_dashboard_overview_get: {
         parameters: {
             query?: {
@@ -1713,10 +2567,126 @@ export interface operations {
             };
         };
     };
+    get_project_health_api_v1_project_health_get: {
+        parameters: {
+            query?: {
+                cycle?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectHealthResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_project_review_api_v1_project_health_ai_review_get: {
+        parameters: {
+            query?: {
+                cycle?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectReviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_project_review_api_v1_project_health_ai_review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateProjectReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectReviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_review_skills_api_v1_project_health_skills_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewSkillsResponse"];
+                };
+            };
+        };
+    };
     list_runs_api_v1_runs_get: {
         parameters: {
             query?: {
                 limit?: number;
+                cycle?: string | null;
             };
             header?: never;
             path?: never;
@@ -1841,6 +2811,37 @@ export interface operations {
             };
         };
     };
+    get_run_failures_api_v1_runs__run_id__failures_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunFailuresResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_run_pyramid_api_v1_runs__run_id__pyramid_get: {
         parameters: {
             query?: {
@@ -1893,6 +2894,100 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RunReportsResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_triage_api_v1_triage_get: {
+        parameters: {
+            query?: {
+                cycle?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TriageListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_triage_api_v1_triage_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TriageRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TriageItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_triage_api_v1_triage_delete: {
+        parameters: {
+            query: {
+                cycle: string;
+                signature: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

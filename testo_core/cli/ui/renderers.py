@@ -60,6 +60,9 @@ class BufferedRenderer:
             self._console.rule(f"[title]Cycle:[/] {event.plan.name}", style="title")
         elif isinstance(event, StageStarted):
             label = f"[{event.stage_index}/{event.stage_count}] {event.stage.name} ({event.stage.framework})"
+            # Parallel stages start before the previous one finishes; the spinner
+            # follows the newest stage rather than stacking live displays.
+            self._close_progress()
             self._progress_ctx = stage_progress(self._console, label=label)
             self._progress = self._progress_ctx.__enter__()
         elif isinstance(event, StageFinished):

@@ -31,6 +31,9 @@ class CycleSummary(ApiModel):
     description: str | None = None
     stage_count: int
     equipment: list[str] = Field(default_factory=list)
+    # "config": defined in testosterone.yaml, so it can be run from here.
+    # "history": only recorded (``testo ingest``, CI, another machine); read-only.
+    source: Literal["config", "history"] = "config"
 
 
 class CycleListResponse(ApiModel):
@@ -48,6 +51,7 @@ class CycleDetailResponse(ApiModel):
     description: str | None = None
     stages: list[StageSummary]
     trigger: CycleTriggerSummary | None = None
+    source: Literal["config", "history"] = "config"
 
 
 class CycleExecutionRequest(ApiModel):
@@ -130,6 +134,7 @@ class RunListItem(ApiModel):
     skipped: int | None = None
     broken: int | None = None
     links_under_static: dict[str, str] = Field(default_factory=dict)
+    branch: str | None = None
 
 
 class RunListResponse(ApiModel):
@@ -170,6 +175,11 @@ class RunDetail(ApiModel):
     snapshot_dir: str | None = None
     audit_json: str | None = None
     stage_health: list[StageHealth] = Field(default_factory=list)
+    # What the run tested, when recorded (CI provenance or the local checkout).
+    branch: str | None = None
+    commit: str | None = None
+    base_branch: str | None = None
+    repository: str | None = None
 
 
 class RunDetailResponse(ApiModel):
@@ -190,6 +200,72 @@ class RunPyramidResponse(ApiModel):
     e2e: int
     shape: Literal["healthy", "top_heavy", "mid_bulge", "irregular"]
     message: str
+
+
+class TriageItem(ApiModel):
+    cycle: str
+    # The failure message with numbers, ids and quoted values blanked: what later failures match on.
+    signature: str
+    cause: Literal["product_bug", "test_bug", "environment", "flaky", "other"]
+    note: str = ""
+    # The failure it was marked on.
+    example_message: str = ""
+    run_id: str = ""
+    test_key: str = ""
+    marked_by: str | None = None
+    marked_at: float
+
+
+class TriageRequest(ApiModel):
+    cycle: str = Field(min_length=1, max_length=512)
+    message: str = Field(min_length=1, max_length=4000)
+    cause: Literal["product_bug", "test_bug", "environment", "flaky", "other"]
+    note: str = Field(default="", max_length=500)
+    run_id: str = Field(default="", max_length=64)
+    test_key: str = Field(default="", max_length=200)
+
+
+class TriageListResponse(ApiModel):
+    causes: list[TriageItem]
+
+
+class FailingTestItem(ApiModel):
+    key: str
+    name: str
+    full_name: str
+    group: str
+    stage: str
+    status: str
+    message: str
+    duration_ms: int | None = None
+    failing_runs: int
+    failing_since_run_id: str
+    flaky: bool
+    # Broke in this run: passing (or absent) on the baseline run, or, with none, in the run before.
+    new: bool
+    # The cause marked for this message in this cycle, on this failure or an earlier one like it.
+    triage: TriageItem | None = None
+
+
+class FailureGroupItem(ApiModel):
+    message: str
+    count: int
+    keys: list[str]
+
+
+class RunFailuresResponse(ApiModel):
+    run_id: str
+    runs_considered: int
+    new_failures: int
+    # The run "new" is judged against: the latest run on the PR's target branch,
+    # else the run before on the same branch. ``baseline_branch`` is set only in
+    # the first case (the target branch's name).
+    baseline_run_id: str | None = None
+    baseline_branch: str | None = None
+    # Commands that rerun just these tests (pytest node ids, Playwright --grep, Behave --name).
+    rerun_commands: list[str] = Field(default_factory=list)
+    tests: list[FailingTestItem]
+    groups: list[FailureGroupItem]
 
 
 class DeltaMetricNode(ApiModel):
@@ -285,6 +361,9 @@ class FlakyTestItem(ApiModel):
     flip_rate: float
     last_status: str
     history: list[str] = Field(default_factory=list)
+    # CODEOWNERS owners of the test's file, and GitHub's new-issue form prefilled for it.
+    owners: list[str] = Field(default_factory=list)
+    issue_url: str | None = None
 
 
 class FlakyTestsResponse(ApiModel):
@@ -293,6 +372,64 @@ class FlakyTestsResponse(ApiModel):
     runs_analyzed: int
     tests_analyzed: int
     items: list[FlakyTestItem] = Field(default_factory=list)
+
+
+class TestSummaryItem(ApiModel):
+    """One test across a cycle's recent runs (``testo_core/services/test_history.py``)."""
+
+    key: str
+    name: str
+    full_name: str
+    group: str
+    stage: str
+    runs: int
+    passed: int
+    failed: int
+    last_status: str
+    flaky: bool
+    last_duration_ms: int | None = None
+    median_duration_ms: int | None = None
+    # Recent median minus the earlier one, only when that is more than timing noise.
+    slowdown_ms: int | None = None
+    slowdown_pct: float | None = None
+
+
+class CycleTestsResponse(ApiModel):
+    cycle: str
+    runs_considered: int
+    items: list[TestSummaryItem] = Field(default_factory=list)
+
+
+class TestPointItem(ApiModel):
+    run_id: str
+    created_at: float
+    status: str
+    duration_ms: int | None = None
+    message: str = ""
+    branch: str | None = None
+    # Rolling flip rate (0-1) over the runs ending here; null until two passed or failed.
+    flip_rate: float | None = None
+
+
+class AttachmentItem(ApiModel):
+    name: str
+    content_type: str
+    kind: Literal["image", "video", "trace", "text", "file"]
+    # Relative to the API root (``history/<run_id>/...``), like report links.
+    url: str
+    size_bytes: int
+
+
+class TestHistoryResponse(ApiModel):
+    cycle: str
+    test: TestSummaryItem
+    # Newest first.
+    points: list[TestPointItem] = Field(default_factory=list)
+    last_failure: TestPointItem | None = None
+    # Screenshots, videos, traces the last failing run kept for this test.
+    last_failure_attachments: list[AttachmentItem] = Field(default_factory=list)
+    owners: list[str] = Field(default_factory=list)
+    issue_url: str | None = None
 
 
 class DashboardHeadlineKpis(ApiModel):
@@ -370,6 +507,34 @@ class DashboardRecentRunsResponse(ApiModel):
     generated_at: float
 
 
+class AttentionFailingCycle(ApiModel):
+    cycle: str
+    run_id: str
+    created_at: float
+    branch: str | None = None
+    failed_tests: int
+    new_failures: int
+    failing_runs: int
+
+
+class AttentionTestItem(ApiModel):
+    cycle: str
+    key: str
+    name: str
+    slowdown_ms: int | None = None
+    slowdown_pct: float | None = None
+
+
+class DashboardAttentionResponse(ApiModel):
+    """What needs someone now: red cycles, tests that just turned flaky, tests that got slower."""
+
+    cycles: int
+    passing_cycles: int
+    failing: list[AttentionFailingCycle] = Field(default_factory=list)
+    newly_flaky: list[AttentionTestItem] = Field(default_factory=list)
+    slower: list[AttentionTestItem] = Field(default_factory=list)
+
+
 class HealthLiveResponse(ApiModel):
     status: Literal["ok"]
 
@@ -387,7 +552,7 @@ class HealthReadyResponse(ApiModel):
 class AiConfigUpdateRequest(ApiModel):
     enabled: bool = False
     provider: Literal["openai", "anthropic", "openai_compatible"] = "openai"
-    model: str = "gpt-4o-mini"
+    model: str = "gpt-4.1-mini"
     api_key_source: Literal["env", "runtime_input"] = "env"
     api_key_env_var: str | None = None
     api_key_input: str | None = None
@@ -442,3 +607,103 @@ class IngestResponse(ApiModel):
     failed: int
     skipped: int
     run_url: str | None = None
+
+
+class HealthSignalItem(ApiModel):
+    key: str
+    name: str
+    score: int | None = None
+    weight: int
+    value: str
+    how: str
+
+
+class CycleHealthItem(ApiModel):
+    cycle: str
+    run_id: str
+    created_at: float
+    passed_latest: bool
+    tests: int
+    failing: int
+    flaky: int
+    slower: int
+    green_runs: int
+    runs: int
+    score: int | None = None
+
+
+class HealthFindingItem(ApiModel):
+    kind: Literal["red_cycle", "flaky", "slower", "quarantined", "skipped"]
+    cycle: str
+    title: str
+    detail: str
+    test_key: str | None = None
+    run_id: str | None = None
+
+
+class ProjectHealthResponse(ApiModel):
+    """A repeatable 0-100 score of the project under test, from its recorded runs."""
+
+    scope: str | None = None
+    score: int | None = None
+    grade: str | None = None
+    cycles: int
+    runs_considered: int
+    tests: int
+    latest_run_at: float | None = None
+    signals: list[HealthSignalItem] = Field(default_factory=list)
+    by_cycle: list[CycleHealthItem] = Field(default_factory=list)
+    findings: list[HealthFindingItem] = Field(default_factory=list)
+
+
+class ReviewSkillItem(ApiModel):
+    id: str
+    name: str
+    category: str
+    tagline: str
+    summary: str
+    checks: list[str] = Field(default_factory=list)
+    reads: list[str] = Field(default_factory=list)
+    default_on: bool
+
+
+class ReviewSkillsResponse(ApiModel):
+    items: list[ReviewSkillItem]
+
+
+class ReviewFindingItem(ApiModel):
+    severity: Literal["high", "medium", "low"]
+    title: str
+    detail: str
+
+
+class SkillResultItem(ApiModel):
+    skill_id: str
+    name: str
+    score: int | None = None
+    summary: str
+    findings: list[ReviewFindingItem] = Field(default_factory=list)
+
+
+class ProjectReviewResponse(ApiModel):
+    """An AI estimate of the project's tests, one result per enabled review skill."""
+
+    scope: str | None = None
+    status: Literal["available", "not_generated", "failed"]
+    score: int | None = None
+    grade: str | None = None
+    summary: str | None = None
+    skills: list[SkillResultItem] = Field(default_factory=list)
+    provider: str | None = None
+    model: str | None = None
+    generated_at: float | None = None
+    based_on_run_id: str | None = None
+    stale: bool = False
+    error_code: str | None = None
+    error_message: str | None = None
+    context_stats: dict[str, int] = Field(default_factory=dict)
+
+
+class GenerateProjectReviewRequest(ApiModel):
+    cycle: str | None = Field(None, max_length=200)
+    skills: list[str] = Field(..., max_length=20)

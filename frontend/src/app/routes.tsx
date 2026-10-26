@@ -7,8 +7,11 @@ import { CycleDetailPage } from "../features/cycles/CycleDetailPage";
 import { CyclesPage } from "../features/cycles/CyclesPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { QuickRunPage } from "../features/execution/QuickRunPage";
+import { ProjectHealthPage } from "../features/health/ProjectHealthPage";
 import { HistoryPage } from "../features/history/HistoryPage";
 import { RunDetailPage } from "../features/run-detail/RunDetailPage";
+import { TestPage } from "../features/tests/TestPage";
+import { TryPage } from "../features/try/TryPage";
 import { AIIntegrationSettingsPage } from "../features/settings/AIIntegrationSettingsPage";
 
 export const routes = [
@@ -29,6 +32,10 @@ export const routes = [
         element: <CycleDetailPage />
       },
       {
+        path: "cycles/:name/test",
+        element: <TestPage />
+      },
+      {
         path: "runs",
         element: <HistoryPage />
       },
@@ -41,8 +48,16 @@ export const routes = [
         element: <ComparePage />
       },
       {
+        path: "health",
+        element: <ProjectHealthPage />
+      },
+      {
         path: "quick-run",
         element: <QuickRunPage />
+      },
+      {
+        path: "try",
+        element: <TryPage />
       },
       {
         path: "settings/ai",

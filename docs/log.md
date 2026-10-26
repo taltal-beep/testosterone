@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-10-22
+updated: 2026-10-25
 ---
 
 # Vault log
@@ -76,3 +76,31 @@ Added [Playwright JSON Import - 2026-10-22](Specs%20&%20ADRs/Playwright%20JSON%2
 ## 2026-10-22: config JSON Schema
 
 Added [Config JSON Schema - 2026-10-22](Specs%20&%20ADRs/Config%20JSON%20Schema%20-%202026-10-22.md) and an editor autocomplete section in [Command Reference](CLI%20Commands/Command%20Reference.md#editor-autocomplete).
+
+## 2026-10-24: project review
+
+Added [Project Review](project-review.md), a whole-repo scorecard and verdict, linked from [Index](Index.md).
+
+## 2026-10-24: switchable team features
+
+Added [Switchable Team Features - 2026-10-24](Specs%20&%20ADRs/Switchable%20Team%20Features%20-%202026-10-24.md) to Specs & ADRs (the `TESTO_RUN_QUEUE` and `TESTO_AUTH` switches).
+
+## 2026-10-24: throwaway stage containers
+
+Added [Throwaway Stage Containers - 2026-10-24](Specs%20&%20ADRs/Throwaway%20Stage%20Containers%20-%202026-10-24.md) to Specs & ADRs (the `TESTO_RUNNER` switch and the runner service).
+
+## 2026-10-24: product review
+
+Added [Product Review](product-review.md) next to the code-side Project Review, and pointed the [Product Roadmap](Roadmap%20&%20Strategy/Product%20Roadmap.md)'s next steps at its Now / Next / Later roadmap.
+
+## 2026-10-25: product roadmap work
+
+Added [Product Roadmap Work - 2026-10-25](Specs%20&%20ADRs/Product%20Roadmap%20Work%20-%202026-10-25.md) to Specs & ADRs (decisions behind each roadmap item from the Product Review).
+
+## 2026-10-25: comparison page
+
+Added [Compared With Other Tools](Compared%20With%20Other%20Tools.md), a user-facing guide next to Getting Started (in the docs site nav and the Index), from the Product Review's competitive position.
+
+## 2026-10-26: project health
+
+Added [Project Health - 2026-10-26](Specs%20&%20ADRs/Project%20Health%20-%202026-10-26.md) to Specs & ADRs (the test health score and the test-only AI review checks).

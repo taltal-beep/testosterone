@@ -89,6 +89,7 @@ extra:
 nav:
   - Home: Index.md
   - Getting Started: Getting Started.md
+  - Compared With Other Tools: Compared With Other Tools.md
   - Using Testosterone:
       - Command Reference: CLI Commands/Command Reference.md
       - Troubleshooting and Error Codes: CLI Commands/Troubleshooting and Error Codes.md
@@ -110,6 +111,7 @@ nav:
       - Changelog Policy: changelog_automation_policy.md
   - Decisions:
       - Specs & ADRs: Specs & ADRs/README.md
+      - Scale Runs and Stages: Specs & ADRs/Scale Runs and Stages - 2026-10-24.md
       - Ingest and Team Server: Specs & ADRs/Ingest and Team Server - 2026-10-22.md
       - UI Restyle: Specs & ADRs/UI Restyle - 2026-10-19.md
       - Open Source Features: Specs & ADRs/Open Source Features - 2026-10-19.md
@@ -133,8 +135,11 @@ nav:
       - Phase 3 Unified Dashboard Plan: Specs & ADRs/Phase 3 Unified Dashboard Plan.md
       - Phase 4 BYOK and Failure Analysis: Specs & ADRs/Phase 4 BYOK and Failure Analysis.md
       - Phase 5 UI Redesign: Specs & ADRs/Phase 5 UI Redesign - Cycles-First Navigation.md
+      - Product Roadmap Work: Specs & ADRs/Product Roadmap Work - 2026-10-25.md
       - Product Roadmap: Roadmap & Strategy/Product Roadmap.md
       - Technical Debt Tracker: Testing Workflows/Technical Debt Tracker.md
+      - Project Review: project-review.md
+      - Product Review: product-review.md
   - Contributing:
       - Agent Context Guide: Prompts & Snippets/Agent Context Guide.md
       - Vault Schema: CLAUDE.md

@@ -249,7 +249,7 @@
             "type": "integer"
           },
           "model": {
-            "default": "gpt-4o-mini",
+            "default": "gpt-4.1-mini",
             "title": "Model",
             "type": "string"
           },
@@ -391,8 +391,190 @@
         "title": "AiSummaryResponse",
         "type": "object"
       },
+      "AttachmentItem": {
+        "properties": {
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "image",
+              "video",
+              "trace",
+              "text",
+              "file"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "content_type",
+          "kind",
+          "url",
+          "size_bytes"
+        ],
+        "title": "AttachmentItem",
+        "type": "object"
+      },
+      "AttentionFailingCycle": {
+        "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "failed_tests": {
+            "title": "Failed Tests",
+            "type": "integer"
+          },
+          "failing_runs": {
+            "title": "Failing Runs",
+            "type": "integer"
+          },
+          "new_failures": {
+            "title": "New Failures",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "run_id",
+          "created_at",
+          "branch",
+          "failed_tests",
+          "new_failures",
+          "failing_runs"
+        ],
+        "title": "AttentionFailingCycle",
+        "type": "object"
+      },
+      "AttentionTestItem": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slowdown_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slowdown Ms"
+          },
+          "slowdown_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slowdown Pct"
+          }
+        },
+        "required": [
+          "cycle",
+          "key",
+          "name",
+          "slowdown_ms",
+          "slowdown_pct"
+        ],
+        "title": "AttentionTestItem",
+        "type": "object"
+      },
+      "AuditEntryResponse": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "integer"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "username",
+          "method",
+          "path",
+          "status"
+        ],
+        "title": "AuditEntryResponse",
+        "type": "object"
+      },
       "Body_ingest_reports_api_v1_ingest_post": {
         "properties": {
+          "ci_base_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci Base Ref"
+          },
           "ci_commit_sha": {
             "anyOf": [
               {
@@ -506,6 +688,15 @@
             "title": "Name",
             "type": "string"
           },
+          "source": {
+            "default": "config",
+            "enum": [
+              "config",
+              "history"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
           "stages": {
             "items": {
               "$ref": "#/components/schemas/StageSummary"
@@ -528,7 +719,8 @@
           "name",
           "description",
           "stages",
-          "trigger"
+          "trigger",
+          "source"
         ],
         "title": "CycleDetailResponse",
         "type": "object"
@@ -725,6 +917,76 @@
         "title": "CycleExecutionStatusResponse",
         "type": "object"
       },
+      "CycleHealthItem": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "failing": {
+            "title": "Failing",
+            "type": "integer"
+          },
+          "flaky": {
+            "title": "Flaky",
+            "type": "integer"
+          },
+          "green_runs": {
+            "title": "Green Runs",
+            "type": "integer"
+          },
+          "passed_latest": {
+            "title": "Passed Latest",
+            "type": "boolean"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "slower": {
+            "title": "Slower",
+            "type": "integer"
+          },
+          "tests": {
+            "title": "Tests",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cycle",
+          "run_id",
+          "created_at",
+          "passed_latest",
+          "tests",
+          "failing",
+          "flaky",
+          "slower",
+          "green_runs",
+          "runs",
+          "score"
+        ],
+        "title": "CycleHealthItem",
+        "type": "object"
+      },
       "CycleListResponse": {
         "properties": {
           "config_path": {
@@ -777,6 +1039,15 @@
             "title": "Name",
             "type": "string"
           },
+          "source": {
+            "default": "config",
+            "enum": [
+              "config",
+              "history"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
           "stage_count": {
             "title": "Stage Count",
             "type": "integer"
@@ -786,9 +1057,36 @@
           "name",
           "description",
           "stage_count",
-          "equipment"
+          "equipment",
+          "source"
         ],
         "title": "CycleSummary",
+        "type": "object"
+      },
+      "CycleTestsResponse": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TestSummaryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "runs_considered": {
+            "title": "Runs Considered",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cycle",
+          "runs_considered",
+          "items"
+        ],
+        "title": "CycleTestsResponse",
         "type": "object"
       },
       "CycleTriggerSummary": {
@@ -817,6 +1115,49 @@
           "since_ref"
         ],
         "title": "CycleTriggerSummary",
+        "type": "object"
+      },
+      "DashboardAttentionResponse": {
+        "description": "What needs someone now: red cycles, tests that just turned flaky, tests that got slower.",
+        "properties": {
+          "cycles": {
+            "title": "Cycles",
+            "type": "integer"
+          },
+          "failing": {
+            "items": {
+              "$ref": "#/components/schemas/AttentionFailingCycle"
+            },
+            "title": "Failing",
+            "type": "array"
+          },
+          "newly_flaky": {
+            "items": {
+              "$ref": "#/components/schemas/AttentionTestItem"
+            },
+            "title": "Newly Flaky",
+            "type": "array"
+          },
+          "passing_cycles": {
+            "title": "Passing Cycles",
+            "type": "integer"
+          },
+          "slower": {
+            "items": {
+              "$ref": "#/components/schemas/AttentionTestItem"
+            },
+            "title": "Slower",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cycles",
+          "passing_cycles",
+          "failing",
+          "newly_flaky",
+          "slower"
+        ],
+        "title": "DashboardAttentionResponse",
         "type": "object"
       },
       "DashboardDataFreshnessResponse": {
@@ -1738,6 +2079,118 @@
         "title": "DeltaStatusSummaryResponse",
         "type": "object"
       },
+      "FailingTestItem": {
+        "properties": {
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "failing_runs": {
+            "title": "Failing Runs",
+            "type": "integer"
+          },
+          "failing_since_run_id": {
+            "title": "Failing Since Run Id",
+            "type": "string"
+          },
+          "flaky": {
+            "title": "Flaky",
+            "type": "boolean"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "new": {
+            "title": "New",
+            "type": "boolean"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "triage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TriageItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "full_name",
+          "group",
+          "stage",
+          "status",
+          "message",
+          "duration_ms",
+          "failing_runs",
+          "failing_since_run_id",
+          "flaky",
+          "new",
+          "triage"
+        ],
+        "title": "FailingTestItem",
+        "type": "object"
+      },
+      "FailureGroupItem": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Keys",
+            "type": "array"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "count",
+          "keys"
+        ],
+        "title": "FailureGroupItem",
+        "type": "object"
+      },
       "FlakyTestItem": {
         "properties": {
           "failed": {
@@ -1763,6 +2216,17 @@
             "title": "History",
             "type": "array"
           },
+          "issue_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Url"
+          },
           "key": {
             "title": "Key",
             "type": "string"
@@ -1774,6 +2238,13 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "owners": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Owners",
+            "type": "array"
           },
           "passed": {
             "title": "Passed",
@@ -1794,7 +2265,9 @@
           "flips",
           "flip_rate",
           "last_status",
-          "history"
+          "history",
+          "owners",
+          "issue_url"
         ],
         "title": "FlakyTestItem",
         "type": "object"
@@ -1846,6 +2319,35 @@
         "title": "GenerateAiSummaryRequest",
         "type": "object"
       },
+      "GenerateProjectReviewRequest": {
+        "properties": {
+          "cycle": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Skills",
+            "type": "array"
+          }
+        },
+        "required": [
+          "skills"
+        ],
+        "title": "GenerateProjectReviewRequest",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1857,6 +2359,65 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthFindingItem": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "red_cycle",
+              "flaky",
+              "slower",
+              "quarantined",
+              "skipped"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "test_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Test Key"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "cycle",
+          "title",
+          "detail",
+          "test_key",
+          "run_id"
+        ],
+        "title": "HealthFindingItem",
         "type": "object"
       },
       "HealthLiveResponse": {
@@ -1896,6 +2457,51 @@
           "checks"
         ],
         "title": "HealthReadyResponse",
+        "type": "object"
+      },
+      "HealthSignalItem": {
+        "properties": {
+          "how": {
+            "title": "How",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "score",
+          "weight",
+          "value",
+          "how"
+        ],
+        "title": "HealthSignalItem",
         "type": "object"
       },
       "IngestResponse": {
@@ -1961,6 +2567,263 @@
         "title": "IngestResponse",
         "type": "object"
       },
+      "ProjectHealthResponse": {
+        "description": "A repeatable 0-100 score of the project under test, from its recorded runs.",
+        "properties": {
+          "by_cycle": {
+            "items": {
+              "$ref": "#/components/schemas/CycleHealthItem"
+            },
+            "title": "By Cycle",
+            "type": "array"
+          },
+          "cycles": {
+            "title": "Cycles",
+            "type": "integer"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/HealthFindingItem"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade"
+          },
+          "latest_run_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Run At"
+          },
+          "runs_considered": {
+            "title": "Runs Considered",
+            "type": "integer"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/HealthSignalItem"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "tests": {
+            "title": "Tests",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scope",
+          "score",
+          "grade",
+          "cycles",
+          "runs_considered",
+          "tests",
+          "latest_run_at",
+          "signals",
+          "by_cycle",
+          "findings"
+        ],
+        "title": "ProjectHealthResponse",
+        "type": "object"
+      },
+      "ProjectReviewResponse": {
+        "description": "An AI estimate of the project's tests, one result per enabled review skill.",
+        "properties": {
+          "based_on_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Based On Run Id"
+          },
+          "context_stats": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Context Stats",
+            "type": "object"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/SkillResultItem"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "stale": {
+            "default": false,
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "not_generated",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "scope",
+          "status",
+          "score",
+          "grade",
+          "summary",
+          "skills",
+          "provider",
+          "model",
+          "generated_at",
+          "based_on_run_id",
+          "stale",
+          "error_code",
+          "error_message",
+          "context_stats"
+        ],
+        "title": "ProjectReviewResponse",
+        "type": "object"
+      },
       "ReadinessCheck": {
         "properties": {
           "detail": {
@@ -1990,6 +2853,104 @@
         "title": "ReadinessCheck",
         "type": "object"
       },
+      "ReviewFindingItem": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "severity",
+          "title",
+          "detail"
+        ],
+        "title": "ReviewFindingItem",
+        "type": "object"
+      },
+      "ReviewSkillItem": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "checks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "default_on": {
+            "title": "Default On",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reads": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reads",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "tagline": {
+            "title": "Tagline",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "tagline",
+          "summary",
+          "checks",
+          "reads",
+          "default_on"
+        ],
+        "title": "ReviewSkillItem",
+        "type": "object"
+      },
+      "ReviewSkillsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewSkillItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReviewSkillsResponse",
+        "type": "object"
+      },
       "RunDetail": {
         "properties": {
           "audit_json": {
@@ -2014,6 +2975,28 @@
             ],
             "title": "Avg Case Ms"
           },
+          "base_branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Branch"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
           "broken": {
             "anyOf": [
               {
@@ -2024,6 +3007,17 @@
               }
             ],
             "title": "Broken"
+          },
+          "commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit"
           },
           "created_at": {
             "title": "Created At",
@@ -2087,6 +3081,17 @@
               }
             ],
             "title": "Passed"
+          },
+          "repository": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repository"
           },
           "returncode": {
             "title": "Returncode",
@@ -2192,7 +3197,11 @@
           "target_repo",
           "snapshot_dir",
           "audit_json",
-          "stage_health"
+          "stage_health",
+          "branch",
+          "commit",
+          "base_branch",
+          "repository"
         ],
         "title": "RunDetail",
         "type": "object"
@@ -2235,8 +3244,90 @@
         "title": "RunDetailResponse",
         "type": "object"
       },
+      "RunFailuresResponse": {
+        "properties": {
+          "baseline_branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Branch"
+          },
+          "baseline_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Run Id"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/FailureGroupItem"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "new_failures": {
+            "title": "New Failures",
+            "type": "integer"
+          },
+          "rerun_commands": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rerun Commands",
+            "type": "array"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "runs_considered": {
+            "title": "Runs Considered",
+            "type": "integer"
+          },
+          "tests": {
+            "items": {
+              "$ref": "#/components/schemas/FailingTestItem"
+            },
+            "title": "Tests",
+            "type": "array"
+          }
+        },
+        "required": [
+          "run_id",
+          "runs_considered",
+          "new_failures",
+          "baseline_run_id",
+          "baseline_branch",
+          "rerun_commands",
+          "tests",
+          "groups"
+        ],
+        "title": "RunFailuresResponse",
+        "type": "object"
+      },
       "RunListItem": {
         "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
           "broken": {
             "anyOf": [
               {
@@ -2357,7 +3448,8 @@
           "failed",
           "skipped",
           "broken",
-          "links_under_static"
+          "links_under_static",
+          "branch"
         ],
         "title": "RunListItem",
         "type": "object"
@@ -2463,6 +3555,49 @@
           "artifact_links"
         ],
         "title": "RunReportsResponse",
+        "type": "object"
+      },
+      "SkillResultItem": {
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewFindingItem"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "skill_id": {
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id",
+          "name",
+          "score",
+          "summary",
+          "findings"
+        ],
+        "title": "SkillResultItem",
         "type": "object"
       },
       "StageHealth": {
@@ -2617,6 +3752,381 @@
         "title": "StageSummary",
         "type": "object"
       },
+      "TestHistoryResponse": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "issue_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Url"
+          },
+          "last_failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TestPointItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_failure_attachments": {
+            "items": {
+              "$ref": "#/components/schemas/AttachmentItem"
+            },
+            "title": "Last Failure Attachments",
+            "type": "array"
+          },
+          "owners": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Owners",
+            "type": "array"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/TestPointItem"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "test": {
+            "$ref": "#/components/schemas/TestSummaryItem"
+          }
+        },
+        "required": [
+          "cycle",
+          "test",
+          "points",
+          "last_failure",
+          "last_failure_attachments",
+          "owners",
+          "issue_url"
+        ],
+        "title": "TestHistoryResponse",
+        "type": "object"
+      },
+      "TestPointItem": {
+        "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "flip_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flip Rate"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "created_at",
+          "status",
+          "duration_ms",
+          "message",
+          "branch",
+          "flip_rate"
+        ],
+        "title": "TestPointItem",
+        "type": "object"
+      },
+      "TestSummaryItem": {
+        "description": "One test across a cycle's recent runs (``testo_core/services/test_history.py``).",
+        "properties": {
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "flaky": {
+            "title": "Flaky",
+            "type": "boolean"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "last_duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Duration Ms"
+          },
+          "last_status": {
+            "title": "Last Status",
+            "type": "string"
+          },
+          "median_duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Duration Ms"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "integer"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "slowdown_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slowdown Ms"
+          },
+          "slowdown_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slowdown Pct"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "full_name",
+          "group",
+          "stage",
+          "runs",
+          "passed",
+          "failed",
+          "last_status",
+          "flaky",
+          "last_duration_ms",
+          "median_duration_ms",
+          "slowdown_ms",
+          "slowdown_pct"
+        ],
+        "title": "TestSummaryItem",
+        "type": "object"
+      },
+      "TriageItem": {
+        "properties": {
+          "cause": {
+            "enum": [
+              "product_bug",
+              "test_bug",
+              "environment",
+              "flaky",
+              "other"
+            ],
+            "title": "Cause",
+            "type": "string"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "example_message": {
+            "default": "",
+            "title": "Example Message",
+            "type": "string"
+          },
+          "marked_at": {
+            "title": "Marked At",
+            "type": "number"
+          },
+          "marked_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marked By"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "run_id": {
+            "default": "",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "signature": {
+            "title": "Signature",
+            "type": "string"
+          },
+          "test_key": {
+            "default": "",
+            "title": "Test Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "signature",
+          "cause",
+          "note",
+          "example_message",
+          "run_id",
+          "test_key",
+          "marked_by",
+          "marked_at"
+        ],
+        "title": "TriageItem",
+        "type": "object"
+      },
+      "TriageListResponse": {
+        "properties": {
+          "causes": {
+            "items": {
+              "$ref": "#/components/schemas/TriageItem"
+            },
+            "title": "Causes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "causes"
+        ],
+        "title": "TriageListResponse",
+        "type": "object"
+      },
+      "TriageRequest": {
+        "properties": {
+          "cause": {
+            "enum": [
+              "product_bug",
+              "test_bug",
+              "environment",
+              "flaky",
+              "other"
+            ],
+            "title": "Cause",
+            "type": "string"
+          },
+          "cycle": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Cycle",
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Note",
+            "type": "string"
+          },
+          "run_id": {
+            "default": "",
+            "maxLength": 64,
+            "title": "Run Id",
+            "type": "string"
+          },
+          "test_key": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Test Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "message",
+          "cause"
+        ],
+        "title": "TriageRequest",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -2656,12 +4166,52 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "WhoAmIResponse": {
+        "properties": {
+          "auth_mode": {
+            "title": "Auth Mode",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "signed_in": {
+            "title": "Signed In",
+            "type": "boolean"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "auth_mode",
+          "signed_in"
+        ],
+        "title": "WhoAmIResponse",
+        "type": "object"
       }
     }
   },
   "info": {
     "title": "Testosterone API",
-    "version": "1.1.1"
+    "version": "1.3.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -2927,6 +4477,217 @@
         ]
       }
     },
+    "/api/v1/analytics/test-history": {
+      "get": {
+        "description": "One test in each of a cycle's last runs, newest first, with its last failure.",
+        "operationId": "get_test_history_api_v1_analytics_test_history_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": true,
+            "schema": {
+              "title": "Cycle",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "maxLength": 500,
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Window",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestHistoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Test History",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/tests": {
+      "get": {
+        "description": "Every test in a cycle's last runs: outcomes, flaky or not, durations and slowdowns.",
+        "operationId": "get_cycle_tests_api_v1_analytics_tests_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": true,
+            "schema": {
+              "title": "Cycle",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Match in name, full name or group.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Match in name, full name or group.",
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Window",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleTestsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cycle Tests",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/audit": {
+      "get": {
+        "description": "Recent writes and sign-ins, newest first (admins, ``TESTO_AUTH=accounts`` only).",
+        "operationId": "audit_log_api_v1_audit_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AuditEntryResponse"
+                  },
+                  "title": "Response Audit Log Api V1 Audit Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Audit Log",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "description": "Who this browser or token is signed in as (``auth_mode`` is ``token`` or ``accounts``).",
+        "operationId": "who_am_i_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhoAmIResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Who Am I",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/cycle-executions/{execution_id}": {
       "get": {
         "operationId": "get_cycle_execution_api_v1_cycle_executions__execution_id__get",
@@ -3011,7 +4772,7 @@
     },
     "/api/v1/cycles": {
       "get": {
-        "description": "List every cycle defined in the resolved configuration (UI parity with ``testo cycles list``).",
+        "description": "Every cycle in the config (as ``testo cycles list``), then cycles that only have recorded runs.",
         "operationId": "list_cycles_api_v1_cycles_get",
         "parameters": [
           {
@@ -3061,7 +4822,7 @@
     },
     "/api/v1/cycles/{cycle}": {
       "get": {
-        "description": "Resolved view of one cycle (UI parity with ``testo cycles show <name>``).",
+        "description": "Resolved view of one cycle (as ``testo cycles show <name>``), or a recorded-only cycle.",
         "operationId": "get_cycle_api_v1_cycles__cycle__get",
         "parameters": [
           {
@@ -3167,6 +4928,28 @@
         "summary": "Create Cycle Execution",
         "tags": [
           "cycles"
+        ]
+      }
+    },
+    "/api/v1/dashboard/attention": {
+      "get": {
+        "description": "Red cycles (most new failures first), newly flaky tests and tests that got slower.",
+        "operationId": "get_dashboard_attention_api_v1_dashboard_attention_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardAttentionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Dashboard Attention",
+        "tags": [
+          "dashboard"
         ]
       }
     },
@@ -3340,8 +5123,171 @@
         ]
       }
     },
+    "/api/v1/project-health": {
+      "get": {
+        "description": "The project under test's test health score: every cycle, or ``cycle`` alone.",
+        "operationId": "get_project_health_api_v1_project_health_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectHealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Project Health",
+        "tags": [
+          "project-health"
+        ]
+      }
+    },
+    "/api/v1/project-health/ai-review": {
+      "get": {
+        "description": "The last AI review of the scope, if any; ``stale`` when newer runs came in.",
+        "operationId": "get_project_review_api_v1_project_health_ai_review_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectReviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Project Review",
+        "tags": [
+          "project-health"
+        ]
+      },
+      "post": {
+        "description": "Ask the configured AI provider to review the project with the chosen skills.",
+        "operationId": "generate_project_review_api_v1_project_health_ai_review_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateProjectReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectReviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate Project Review",
+        "tags": [
+          "project-health"
+        ]
+      }
+    },
+    "/api/v1/project-health/skills": {
+      "get": {
+        "description": "The review skills the AI review can use, each with what it checks and reads.",
+        "operationId": "list_review_skills_api_v1_project_health_skills_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewSkillsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Review Skills",
+        "tags": [
+          "project-health"
+        ]
+      }
+    },
     "/api/v1/runs": {
       "get": {
+        "description": "Recent runs, newest first; ``cycle`` keeps only that cycle's.",
         "operationId": "list_runs_api_v1_runs_get",
         "parameters": [
           {
@@ -3352,6 +5298,22 @@
               "default": 30,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cycle"
             }
           }
         ],
@@ -3519,6 +5481,49 @@
         ]
       }
     },
+    "/api/v1/runs/{run_id}/failures": {
+      "get": {
+        "description": "The run's failing tests: message, stage, how long each has been failing, flaky or not.",
+        "operationId": "get_run_failures_api_v1_runs__run_id__failures_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunFailuresResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run Failures",
+        "tags": [
+          "history"
+        ]
+      }
+    },
     "/api/v1/runs/{run_id}/pyramid": {
       "get": {
         "description": "Unit/integration/e2e tier composition for a run (UI/API parity with ``testo report pyramid``).",
@@ -3617,6 +5622,139 @@
         "summary": "Get Run Reports",
         "tags": [
           "history"
+        ]
+      }
+    },
+    "/api/v1/triage": {
+      "delete": {
+        "description": "Forget a cause; failures with that message show no cause again.",
+        "operationId": "clear_triage_api_v1_triage_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": true,
+            "schema": {
+              "title": "Cycle",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signature",
+            "required": true,
+            "schema": {
+              "title": "Signature",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Clear Triage",
+        "tags": [
+          "triage"
+        ]
+      },
+      "get": {
+        "description": "Every marked cause, newest first, optionally only one cycle's.",
+        "operationId": "list_triage_api_v1_triage_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriageListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Triage",
+        "tags": [
+          "triage"
+        ]
+      },
+      "put": {
+        "description": "Set the cause of a failure message in a cycle; replaces an earlier one for the same message.",
+        "operationId": "mark_triage_api_v1_triage_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TriageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriageItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Triage",
+        "tags": [
+          "triage"
         ]
       }
     }

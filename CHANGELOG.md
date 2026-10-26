@@ -9,6 +9,68 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- A Project health page (`/health`): a 0-100 test health score for the project you test, from pass rate, green builds, flaky tests, tests that got slower, skipped and quarantined tests and the test pyramid, with what to fix first and a score per cycle. An optional AI review scores the tests with checks you switch on and off (why tests are flaky, related failures, test strategy gaps, test debt, slow tests, test churn, test names), each expandable to what it checks and reads. It uses your AI provider, never reads source code and is labelled an AI estimate. New endpoints `GET /api/v1/project-health`, `GET /api/v1/project-health/skills` and `GET`/`POST /api/v1/project-health/ai-review`
+- A cycle's run history: the cycle page has a "Recent runs" card (pass rate, one square per run, the latest three), and Runs filters by cycle (`/runs?cycle=web`, backed by `GET /api/v1/runs?cycle=`) with the same pass-rate line
+- Docs: "Compared with other tools", where Testosterone fits next to Allure, ReportPortal, Currents, Trunk and Datadog, and when to pick one of them instead
+- Triage memory: on a failed run's page, "Mark the cause" of a failing test (bug in the product, bug in the test, environment, flaky, other, plus a note). Later failures in the same cycle with the same message (numbers, ids and quoted values aside) show that cause too, with where it was marked. New table `failure_triage`, endpoints `GET`/`PUT`/`DELETE /api/v1/triage`, and a `triage` field on each test of `GET /api/v1/runs/{run_id}/failures`
+- "Flakiness over time" on the test page: the share of outcome changes over the five runs ending at each run, and how it compares with five runs before. Test-history points add `flip_rate`
+- The test page shows what the last failing run kept: screenshots and videos in place, the Playwright trace as a download with the command that opens it. `GET /api/v1/analytics/test-history` adds `last_failure_attachments`
+- `pytest --testo` (or `--testo-cycle NAME`): a pytest plugin, installed with testo-core and inert without the flag, that records each session as a run the way `testo ingest` does, with the checkout's branch and commit. `--testo-server` uploads to a team server instead
+- The dashboard leads with "Needs attention": red cycles (failing and new-failure counts, red for how many runs), tests that just started flaking and tests that got slower, each linking to its page. New endpoint `GET /api/v1/dashboard/attention`. The rollup and quick-links cards and the KPI icons are gone, and the no-runs page explains `testo ingest`, `testo config init` / `testo run` and the try-it page
+- The run page has a "Rerun these tests" command per runner (pytest node ids, `npx playwright test --grep`, `behave --name`) with a Copy button, from the new `rerun_commands` field of `GET /api/v1/runs/{run_id}/failures`
+- Compare opens on the latest run against the one before it in its cycle, and each run in the pickers shows its branch (`GET /api/v1/runs` adds `branch`)
+- The run page shows the branch, pull request target and commit the run tested (linked on GitHub), and `GET /api/v1/runs/{run_id}` returns them
+- Cycles recorded with `testo ingest` (or by another machine) have a cycle page: `GET /api/v1/cycles` lists them after the config's cycles with `source: "history"`, and their page shows the test search, slowest tests and flaky card without a Run panel. `testo ui` in a folder with no `testosterone.yaml` lists recorded cycles instead of an error
+- Docs: second pass of the product review ([docs/product-review.md](docs/product-review.md)): 6.5 to 7.5, what a 10 needs in each area, and new findings, chiefly that cycles created by `testo ingest` have no cycle page
+- A try-it page (`/try`, "Try a file" under Tools, also on the static demo): drop JUnit XML files, or use the sample, and see the run the way Testosterone shows one (verdict, failing tests with shared causes grouped, slowest tests), read in the browser with nothing uploaded
+
+### Changed
+- The test page's duration chart shows its scale (longest run and zero); slowdown percentages read the same on the dashboard and the cycle page; the dashboard says "All 3 cycles are red." when none passed; Runs says "Every recorded run" instead of "archived cycle run"
+- Charts have text alternatives: the test page's duration chart reads its values, and the flaky card's outcome strip is announced
+- UI accessibility and copy: the skip link is inside a landmark; the demo notice's close button, the demo badge and list links meet the 24 px target size; "Generate AI summary"; trends read "Better than last run" / "Worse than last run" / "No change"; the test pyramid uses plain labels and sentences (also in the API's pyramid `message`); health shows whole-number percentages. The default OpenAI model is `gpt-4.1-mini`. `testo config init --help` and `testo config-db --help` no longer show broken markup
+- A failing test is "New" on the run page when it isn't failing on the run's baseline: the latest run on a pull request's target branch, else the run before on the same branch, as in the PR comment. The card says "new since main" and marks tests that also fail on main; streaks follow the run's own branch. `GET /api/v1/runs/{run_id}/failures` adds `new`, `baseline_run_id` and `baseline_branch`
+
+## [1.3.0] - 2026-10-25
+
+### Added
+- Flaky tests and the per-test page show the test's owners from CODEOWNERS and an "Open an issue" link (GitHub's new-issue form, prefilled with the test, cycle, last failure and owners). Runs record their `repository` (`owner/name`) from CI variables or a github.com `origin` remote
+- A page for each test (`/cycles/<cycle>/test?key=`): pass rate, flaky or not, last failure, duration per run and every run with its branch. The cycle page can search its tests and lists the slowest tests and the ones that got slower. New endpoints `GET /api/v1/analytics/tests` and `GET /api/v1/analytics/test-history`
+- Pull request comments and `testo report markdown` compare a PR's run with the latest run on its target branch (new `--baseline-branch` overrides), not with whichever run came before, and say which baseline they used. Runs record the PR's target branch (`ci_base_ref`, also accepted by `testo ingest`), the PR's own branch on GitHub, and the local git branch and commit outside CI
+- `testo ui`: the web UI ships inside the wheel, so `pip install 'testo-core[api]' && testo ui` opens the dashboard on this machine's run history (http://127.0.0.1:8000) with no checkout or Node. `testo-api` also serves the bundled UI when `TESTO_UI_DIR` isn't set
+- UI accessibility and copy pass: stronger primary-button contrast, a visible keyboard focus ring, a skip link, h1 → h2 headings, a 44px mobile menu button, AI settings fits a phone, load errors say what to check, sentence-case titles, "Advanced" is now "Tools" with a plain Docs link, and the dashboard hides unknown trends and missing reports. `testo --help` has the README's tagline and no RST double backticks
+- The run page leads with its failing tests: each with its failure message, stage, "New" or "Failing for N runs", and a flaky badge, and failures that share a message are grouped ("2 tests: ConnectionRefusedError ..."). A one-line verdict sits under the title; the run id, exit code (now explained, e.g. "1 (tests failed)") and duration moved to a Details card. New endpoint `GET /api/v1/runs/{run_id}/failures`
+- Compare and the dashboard ignore timing noise: a duration change under 5% of the baseline, or under 100 ms (5 ms for the per-test average), is "Within noise" instead of a red regression or a green improvement
+- Docs: a product review ([docs/product-review.md](docs/product-review.md)) scoring positioning, onboarding, the red-build workflow, design, accessibility and copy against Allure, ReportPortal, Currents and Trunk, with a Now / Next / Later roadmap
+- Opt-in throwaway containers for runs started on a team server: with `TESTO_RUNNER=container` each stage runs in a fresh container started by a separate runner service (`testo-runner-service`, `Dockerfile.testo-runner-service`, `deploy/server/docker-compose.runner.yml`), with no Linux capabilities, a process limit, fixed mounts and only the stage's own variables. The API never gets the Docker socket. Default `host` (unchanged)
+- Sign-in throttling with `TESTO_AUTH=accounts`: after `TESTO_LOGIN_MAX_FAILURES` (default 5) wrong passwords for a name in 15 minutes, or four times that from one address, `/login` answers `429` until the window slides
+- `TESTO_REPORTS_ORIGIN` serves report pages from a second hostname, so script in a report can't act with the viewer's session on the API's origin. Off by default
+- Per-user accounts for the team server, off by default: with `TESTO_AUTH=accounts` people sign in with their own username and password, roles `viewer` / `runner` / `admin` decide who can start runs or change settings, every write and sign-in is in an audit log (`GET /api/v1/audit`), and `testo users` manages accounts. The UI shows who is signed in. The API token keeps working as an admin for CI
+- `TESTO_RUN_QUEUE=db` keeps API runs that are waiting for a worker in the database, and the server queues them again on startup, so a restart or upgrade no longer drops them. Default `memory` (unchanged)
+- Opt-in parallel stages: a cycle with `max_parallel_stages: N` runs up to N stages at once (default `1`, unchanged). Events and the renderer stay on one thread, results keep config order, `fail_fast` starts no new stages after a failure, and stage names must be unique in a parallel cycle
+- The API runs at most `TESTO_MAX_CONCURRENT_RUNS` executions at once (default `2`) on a fixed worker pool; further runs wait as `queued` instead of each starting its own thread
+- Team server sign-in: `TESTO_PROTECT_READS=1` makes every read (API, `/history` report files, the UI, the live run stream) need the API token, and a `/login` page trades the token for an HttpOnly session cookie that also authorizes writes. On in `deploy/server/docker-compose.yml`; the UI it serves redirects to `/login` when the session is missing. Off by default elsewhere, so local use is unchanged
+- Frontend lint: ESLint with `typescript-eslint` and the React hook rules (`frontend/eslint.config.js`, `npm --prefix frontend run lint`), blocking in CI's `frontend` job
+- Unit tests for the TestBeats and ReportPortal reporter payloads, the Anthropic provider, and the `testo config` and `testo report` commands (coverage 80% to 83%)
+- Frontend tests for the loading, error and empty states of the run detail and Compare pages
+
+- Unit tests for the Allure report wrapper, the local report server, the Behave adapter's argument building, the BehaveX-to-Allure export and `testo watch`'s debounced re-runs (each module now at 92% or more; total coverage 84% to 86%)
+### Changed
+- Internal split of the three largest modules: run event streaming moved to `testo_api/execution_events.py`, config section parsing to `testo_core/config/sections.py`, and `testo report list` / `open` to `testo_core/cli/commands/report_archive.py`. No behaviour change
+- The release workflow's "Verify install from PyPI" step retries for up to five minutes instead of one 30-second wait, so a slow PyPI index no longer marks a published release as failed
+- The `testo-server` image sets `TESTO_PROTECT_READS=1`, so a plain `docker run` protects reads too, not only `deploy/server/docker-compose.yml`. Set it to `0` to open reads on a trusted network
+- Frontend on React 19 (`react`, `react-dom` and their types together), `@testing-library/jest-dom` 7 and the latest TanStack Query and PostCSS patches; replaces Dependabot #132, #133 and #135, which bumped `react` without `react-dom`
+- The pixel mascot's frame source moved from `testo_core/mascot/` to `scripts/mascot/`, so it no longer ships in the wheel; the UI animations are unchanged. Play it with `python -m scripts.mascot flex`, regenerate the frontend frames with `python -m scripts.mascot.export_ts`
+- Frontend toolchain: Vite 8 (Rolldown) and Vitest 5, replacing Vite 5 and Vitest 2; clears the six dev-only `npm audit` advisories (esbuild dev server, Vitest mocker, tinypool). `vite.config.ts` takes `defineConfig` from `vitest/config`, and the `EventSource` test mocks are constructor functions, which Vitest 4+ requires
+
+### Fixed
+- An API run that raised `SystemExit` (say, a reporter plugin calling `sys.exit()`) took its worker thread down for good, shrinking the pool until queued runs never started; the worker now survives it and dead workers are replaced
+- The API sends `X-Content-Type-Options: nosniff` and `frame-ancestors 'self'` on every response, and serves report attachments under `/history` with `Content-Security-Policy: sandbox`, so an uploaded HTML attachment can no longer run script on the team server's origin
+- `test_python_build_module_available` skips when `build` is not installed, and the pytest rootdir test runs `python -P -m pytest` with the suite's own interpreter, so a contributor's first local run is green
+- `testo config init` generates a `smoke-test` cycle that runs ordinary pytest tests in `tests/` without a marker filter. Marker-based pytest and BehaveX configurations remain as commented-out examples, so a new pytest project does not require smoke markers or BDD features (#100, thanks @evidentart)
+
+## [1.2.0] - 2026-10-24
+
+### Added
 - `testo ingest`: record JUnit XML that any runner already wrote (Jest, Vitest, `go test`, JUnit5, ...) as a run of a cycle, with no `testosterone.yaml` needed. Ingested runs get the same history, Compare, `testo flaky`, reporters and PR comment as `testo run`. Backed by a new `equipment: junit` that runs no process and fails the stage when a test failed or no report matched
 - Team server: `POST /api/v1/ingest` records uploaded JUnit XML, and `testo ingest --server URL --token` uploads with the CI job's provenance (provider, pipeline, job, commit, branch, repository). The API serves the built web UI when `TESTO_UI_DIR` is set. New `testo-server` Docker image (`Dockerfile.testo-server`, published with `testo-runner`) and `deploy/server/docker-compose.yml` with Postgres. Guide: `docs/Processes & Guides/Team Server.md`
 - Playwright JSON reports: `testo ingest results.json` (and any `junit_xml` glob that matches a `.json` file) reads Playwright's `json` reporter output, keeping what JUnit loses: every retry as a step with its own error, flaky tests (passed on retry) flagged, and traces, screenshots, videos and `testInfo.attach()` files copied as Allure attachments. `testo ingest --server` uploads `.json` reports too. See `docs/Specs & ADRs/Playwright JSON Import - 2026-10-22.md`
@@ -21,11 +83,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Docs site: the `docs/` vault built with MkDocs Material (`mkdocs.yml`, `scripts/mkdocs_hooks.py`, `[docs]` extra) and published at <https://taltal-beep.github.io/testosterone/docs/> by the Pages demo workflow. A new `docs_site` CI job builds it with `--strict`
 - JSON Schema for `testosterone.yaml` (`schema/testosterone.schema.json`, generated by `scripts/export_config_schema.py` and checked in CI) so VS Code and other editors autocomplete and validate the config. `testo config init` and `testo init` add the `# yaml-language-server: $schema=...` line
 - Flaky test quarantine: a `quarantine:` list in `testosterone.yaml` (top-level and per cycle; test name globs, optional `reason` and `owner`). A stage that exits `1` passes when every failed test is quarantined; the failures are still reported everywhere and recorded per stage as `quarantined` (CLI summary, `--ci` NDJSON, run record, `testo report markdown`). `testo flaky` marks quarantined tests, prints a snippet for the rest, and `--fail-on-flaky` ignores quarantined ones (`testo_core/engine/quarantine.py`)
+- `docs/project-review.md`: a whole-repo review scorecard (architecture, code quality, tests, security, docs, CI) with findings and a remediation plan, linked from the docs index and site nav
 - `docs/Getting Started.md`: from `pip install testo-core` to a regression in `testo summary` and the GitHub Action, with the same project in `examples/getting-started/`. A new `getting_started` CI job runs that example through the GitHub Action
 
 - Alerts where developers look: `slack` and `teams` reporters and a `testo notify --to slack|teams` command post a run's failing tests, new regressions, newly flaky tests and fixes to an incoming webhook (URL from `TESTO_SLACK_WEBHOOK_URL` / `TESTO_TEAMS_WEBHOOK_URL` or a `${env:…}` option; `--when failure|change|always`). `testo report annotations` prints failing tests as GitHub `::error` annotations on their file and line, and `testo flaky --new` lists tests the latest run made flaky. The GitHub Action gains `annotations` (on by default), `slack-webhook`, `teams-webhook`, `notify-when` and `flaky-issues` (opens one issue per newly flaky test)
 
 ### Changed
+- `testo-api` refuses to start on a non-loopback host without `TESTO_API_TOKEN` (exit 2) instead of only warning; set `TESTO_ALLOW_UNAUTHENTICATED=1` to start anyway on a trusted network
+- The `?config_path=` on read routes (`GET /api/v1/cycles`, `/cycles/{cycle}`, `/runs/{run_id}/pyramid`) only loads files named `testosterone.yaml`, `testosterone.yml` or `pyproject.toml` and returns `400` for anything else. Reads need no token, so an arbitrary path let anyone probe the server's files and read fragments of them in parse errors
+- The API reports the installed package version instead of a hard-coded one
+- CI: a `test (python 3.12)` / `test (python 3.13)` job runs the fast suite on the other Python versions `pyproject.toml` lists; BehaveX tests skip without the `bdd` extra
+- CI: `trivy-action` and `claude-code-base-action` pinned to commit SHAs instead of `@master` / `@beta`; `commitlint`, `pr-heavy` and `release-gate` workflows get a read-only `permissions:` block
 - AI settings (never the key) are saved to `artifacts/ai_settings.json` and survive an API restart (`TESTO_AI_SETTINGS_PATH` moves it; empty keeps them in memory). The settings page resets the model when the provider changes, names the missing environment variable and refuses a key pasted as a variable name. The summary prompt asks for a short plain-text `What failed` / `Likely cause` / `Next steps` reply, and the Run Details card shows provider errors in words
 - `equipment: playwright` uses Playwright's `json` reporter instead of `junit` (`--reporter=list,json,html`, written to `test-results/testo-results.json`), so `testo run` gets the same retries, flaky flags and traces. A stage that sets its own `--reporter=junit` is still imported from `test-results/testo-junit.xml`
 - **Behave and BehaveX are now an extra.** `pip install testo-core` no longer installs `behave`, `behavex` and `allure-behave` (35 packages instead of 47). **Migration:** if a cycle has `behave` or `behavex` stages, install `testo-core[bdd]`; in the GitHub Action pass `package: "testo-core[bdd]"`, and in the GitLab template set `TESTO_PACKAGE: "testo-core[bdd]"` (new variable). The `testo-runner` image and the `dev` extra include it. Without it a Behave stage fails with exit 3 and the stage error names the extra, which the CLI stage panel now shows (the `--ci` stream keeps it in the artifact event mirror, as before)
@@ -40,6 +108,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fixed
 - BehaveX stages get BehaveX's own HTML report again. The adapter passed BehaveX's Allure `--formatter`, and BehaveX skips `report.html` whenever a formatter is set, so the report Testo showed was re-rendered afterwards without scenario logs. BehaveX now runs plain and the executor converts its `report.json` to Allure results after the stage (`testo_core/reporting/behavex_allure.py`). A `--formatter` in a stage's `args` is still passed through
 - New run-history records include the repository used by a run when its attempted stages have one resolved target; runs using multiple repositories leave it unknown.
+
+### Removed
+- Unused report helpers left from the Streamlit UI (removed in v1.1): `start_report_server`, `start_static_server`, `ReportServer`, `url_for`, `sync_all_reports_to_static` and `collect_behavex_native_report` in `testo_core/reporting/report_generator.py`, and a stray `actionlint_py` tarball at the repo root
 
 ## [1.1.1] - 2026-10-19
 
@@ -280,7 +351,10 @@ First public release. Published to PyPI (`testo-core`), GHCR (`testo-runner`), a
 
 ---
 
-[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/taltal-beep/testosterone/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/taltal-beep/testosterone/compare/v1.1.1...v1.2.0
+[1.1.1]: https://github.com/taltal-beep/testosterone/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/taltal-beep/testosterone/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/taltal-beep/testosterone/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/taltal-beep/testosterone/releases/tag/v0.1.0

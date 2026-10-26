@@ -49,6 +49,14 @@ class RunSummary:
     previous: CompletedRunView | None
     failing: tuple[str, ...]
     changes: tuple[CaseChange, ...]
+    # The branch ``previous`` was taken from; ``None`` means simply the run before.
+    baseline_branch: str | None = None
+
+    @property
+    def baseline_label(self) -> str:
+        if self.baseline_branch:
+            return f"the last run on `{_escape(self.baseline_branch)}`"
+        return "the previous run"
 
 
 def _cases(run: CompletedRunView | None) -> dict[str, dict[str, Any]]:
@@ -61,8 +69,30 @@ def _cycle_runs(cycle: str) -> list[CompletedRunView]:
     return [r for r in list_recent_runs(limit=_SCAN_LIMIT) if r.cycle == cycle]
 
 
-def load_run_summary(*, cycle: str | None = None, run_id: str | None = None) -> RunSummary | None:
-    """The given run (or ``cycle``'s latest) with its failures and changes since the run before."""
+def pick_baseline(
+    run: CompletedRunView, older: list[CompletedRunView], branch: str | None
+) -> tuple[CompletedRunView | None, str | None]:
+    """The run to compare ``run`` with, newest first in ``older``, and the branch it came from.
+
+    A pull request is judged against its target branch (``branch``, else the
+    run's recorded ``base_branch``), so a parallel PR's run never becomes the
+    baseline. Without a branch, or with no run on it yet, it is the run before.
+    """
+    target = branch or run.base_branch
+    if target and target != run.branch:
+        on_target = next((r for r in older if r.branch == target), None)
+        if on_target is not None:
+            return on_target, target
+    return (older[0] if older else None), None
+
+
+def load_run_summary(
+    *,
+    cycle: str | None = None,
+    run_id: str | None = None,
+    baseline_branch: str | None = None,
+) -> RunSummary | None:
+    """The given run (or ``cycle``'s latest) with its failures and changes since its baseline."""
     if run_id:
         run = get_run(run_id=run_id)
         if run is None:
@@ -72,17 +102,17 @@ def load_run_summary(*, cycle: str | None = None, run_id: str | None = None) -> 
             if run.cycle
             else []
         )
-        previous = older[0] if older else None
     elif cycle:
         runs = _cycle_runs(cycle)
         if not runs:
             return None
-        run, previous = runs[0], (runs[1] if len(runs) > 1 else None)
+        run, older = runs[0], runs[1:]
     else:
         recent = list_recent_runs(limit=1)
         if not recent:
             return None
-        return load_run_summary(run_id=recent[0].run_id)
+        return load_run_summary(run_id=recent[0].run_id, baseline_branch=baseline_branch)
+    previous, from_branch = pick_baseline(run, older, baseline_branch)
 
     current_cases = _cases(run)
     failing = tuple(
@@ -98,7 +128,13 @@ def load_run_summary(*, cycle: str | None = None, run_id: str | None = None) -> 
                     key=lambda c: (_CHANGE_ORDER.get(c.kind, 9), c.name),
                 )
             )
-    return RunSummary(run=run, previous=previous, failing=failing, changes=changes)
+    return RunSummary(
+        run=run,
+        previous=previous,
+        failing=failing,
+        changes=changes,
+        baseline_branch=from_branch,
+    )
 
 
 def _seconds(ms: float | None) -> str:
@@ -171,7 +207,7 @@ def render_markdown(summary: RunSummary, *, run_url: str | None = None) -> str:
     if summary.previous is None:
         lines.append("_First recorded run of this cycle, so there is nothing to compare with yet._")
     elif not summary.changes:
-        lines.append("No test changed outcome since the previous run.")
+        lines.append(f"No test changed outcome since {summary.baseline_label}.")
     else:
         kinds: list[str] = [c.kind for c in summary.changes]
         tally = ", ".join(
@@ -180,7 +216,7 @@ def render_markdown(summary: RunSummary, *, run_url: str | None = None) -> str:
             if (n := kinds.count(k))
         )
         lines += [
-            f"**Since the previous run:** {tally}",
+            f"**Since {summary.baseline_label}:** {tally}",
             "",
             "| Change | Test | Before | After |",
             "|---|---|---|---|",

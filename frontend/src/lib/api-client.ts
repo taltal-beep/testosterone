@@ -24,6 +24,11 @@ export type StageHealth = Schemas["StageHealth"];
 export type RunDetailResponse = Schemas["RunDetailResponse"];
 export type RunReportsResponse = Schemas["RunReportsResponse"];
 export type RunPyramidResponse = Schemas["RunPyramidResponse"];
+export type RunFailuresResponse = Schemas["RunFailuresResponse"];
+export type FailingTestItem = Schemas["FailingTestItem"];
+export type TriageItem = Schemas["TriageItem"];
+export type TriageRequest = Schemas["TriageRequest"];
+export type TriageCause = TriageItem["cause"];
 export type PyramidShape = RunPyramidResponse["shape"];
 
 export type DeltaMetricNode = Schemas["DeltaMetricNode"];
@@ -35,6 +40,11 @@ export type CaseChangeKind = DeltaCaseChange["kind"];
 export type DeltaCaseChangesResponse = Schemas["DeltaCaseChangesResponse"];
 export type FlakyTestItem = Schemas["FlakyTestItem"];
 export type FlakyTestsResponse = Schemas["FlakyTestsResponse"];
+export type TestSummaryItem = Schemas["TestSummaryItem"];
+export type CycleTestsResponse = Schemas["CycleTestsResponse"];
+export type TestPointItem = Schemas["TestPointItem"];
+export type TestHistoryResponse = Schemas["TestHistoryResponse"];
+export type AttachmentItem = Schemas["AttachmentItem"];
 
 export type AiConfigStatus = Schemas["AiConfigStatusResponse"];
 export type UpdateAiConfigRequest = Schemas["AiConfigUpdateRequest"];
@@ -43,13 +53,24 @@ export type AiSummaryResponse = Schemas["AiSummaryResponse"];
 export type DashboardTrendIndicator = Schemas["DashboardTrendIndicator"];
 export type DashboardOverviewResponse = Schemas["DashboardOverviewResponse"];
 export type DashboardRecentRunsResponse = Schemas["DashboardRecentRunsResponse"];
+export type DashboardAttentionResponse = Schemas["DashboardAttentionResponse"];
+
+export type ProjectHealthResponse = Schemas["ProjectHealthResponse"];
+export type HealthSignalItem = Schemas["HealthSignalItem"];
+export type HealthFindingItem = Schemas["HealthFindingItem"];
+export type ReviewSkillItem = Schemas["ReviewSkillItem"];
+export type ReviewSkillsResponse = Schemas["ReviewSkillsResponse"];
+export type ProjectReviewResponse = Schemas["ProjectReviewResponse"];
+export type SkillResultItem = Schemas["SkillResultItem"];
 
 export type HealthReadyResponse = Schemas["HealthReadyResponse"];
+export type WhoAmI = Schemas["WhoAmIResponse"];
 
 export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 // Only needed when the API runs with TESTO_API_TOKEN (it then rejects writes without
 // it). Set at build time, or at runtime with localStorage.setItem("testo.apiToken", …).
+// The UI a team server serves needs neither: signing in at /login sets a session cookie.
 function apiToken(): string | null {
   if (import.meta.env.VITE_TESTO_API_TOKEN) return import.meta.env.VITE_TESTO_API_TOKEN;
   try {
@@ -69,6 +90,11 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     }
   });
+  if (resp.status === 401 && API_BASE === "" && !token) {
+    // Served by a team server that protects reads (TESTO_PROTECT_READS): the session
+    // cookie is missing or stale, so sign in and come back here.
+    window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+  }
   if (!resp.ok) {
     // The API answers errors with {error: {code, message}}; surfacing that message
     // beats "API error 405" in the UI (and tells visitors of the read-only static
@@ -76,6 +102,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const body = (await resp.json().catch(() => null)) as { error?: { message?: string } } | null;
     throw new Error(body?.error?.message ?? `API error ${resp.status}`);
   }
+  if (resp.status === 204) return undefined as T;
   return (await resp.json()) as T;
 }
 
@@ -85,6 +112,13 @@ export const apiClient = {
       method: "POST",
       body: JSON.stringify(payload)
     });
+  },
+  markTriage(payload: TriageRequest): Promise<TriageItem> {
+    return api<TriageItem>("/api/v1/triage", { method: "PUT", body: JSON.stringify(payload) });
+  },
+  clearTriage(cycle: string, signature: string): Promise<void> {
+    const query = new URLSearchParams({ cycle, signature });
+    return api<void>(`/api/v1/triage?${query}`, { method: "DELETE" });
   },
   createAdhocExecution(payload: AdhocExecutionRequest): Promise<CycleExecutionAccepted> {
     return api<CycleExecutionAccepted>("/api/v1/adhoc-executions", {
@@ -108,14 +142,23 @@ export const apiClient = {
     });
     return (await resp.json()) as HealthReadyResponse;
   },
-  listRuns(): Promise<RunListResponse> {
-    return api<RunListResponse>("/api/v1/runs");
+  getWhoAmI(): Promise<WhoAmI> {
+    return api<WhoAmI>("/api/v1/auth/me");
+  },
+  async listRuns(cycle?: string): Promise<RunListResponse> {
+    if (!cycle) return api<RunListResponse>("/api/v1/runs");
+    const data = await api<RunListResponse>(`/api/v1/runs?${new URLSearchParams({ cycle })}`);
+    // The static build answers every /runs request with the full list; keep only this cycle's.
+    return { ...data, items: data.items.filter((run) => run.cycle === cycle) };
   },
   getRun(runId: string): Promise<RunDetailResponse> {
     return api<RunDetailResponse>(`/api/v1/runs/${runId}`);
   },
   getRunReports(runId: string): Promise<RunReportsResponse> {
     return api<RunReportsResponse>(`/api/v1/runs/${runId}/reports`);
+  },
+  getRunFailures(runId: string): Promise<RunFailuresResponse> {
+    return api<RunFailuresResponse>(`/api/v1/runs/${runId}/failures`);
   },
   getRunPyramid(runId: string): Promise<RunPyramidResponse> {
     return api<RunPyramidResponse>(`/api/v1/runs/${runId}/pyramid`);
@@ -138,11 +181,39 @@ export const apiClient = {
     const params = new URLSearchParams({ cycle });
     return api<FlakyTestsResponse>(`/api/v1/analytics/flaky?${params.toString()}`);
   },
+  getCycleTests(cycle: string): Promise<CycleTestsResponse> {
+    const params = new URLSearchParams({ cycle });
+    return api<CycleTestsResponse>(`/api/v1/analytics/tests?${params.toString()}`);
+  },
+  getTestHistory(cycle: string, key: string): Promise<TestHistoryResponse> {
+    const params = new URLSearchParams({ cycle, key });
+    return api<TestHistoryResponse>(`/api/v1/analytics/test-history?${params.toString()}`);
+  },
   getDashboardOverview(recentLimit = 5): Promise<DashboardOverviewResponse> {
     return api<DashboardOverviewResponse>(`/api/v1/dashboard/overview?recent_limit=${recentLimit}`);
   },
   getDashboardRecentRuns(limit = 10): Promise<DashboardRecentRunsResponse> {
     return api<DashboardRecentRunsResponse>(`/api/v1/dashboard/runs/recent?limit=${limit}`);
+  },
+  getDashboardAttention(): Promise<DashboardAttentionResponse> {
+    return api<DashboardAttentionResponse>("/api/v1/dashboard/attention");
+  },
+  getProjectHealth(cycle?: string): Promise<ProjectHealthResponse> {
+    const query = cycle ? `?${new URLSearchParams({ cycle })}` : "";
+    return api<ProjectHealthResponse>(`/api/v1/project-health${query}`);
+  },
+  listReviewSkills(): Promise<ReviewSkillsResponse> {
+    return api<ReviewSkillsResponse>("/api/v1/project-health/skills");
+  },
+  getProjectReview(cycle?: string): Promise<ProjectReviewResponse> {
+    const query = cycle ? `?${new URLSearchParams({ cycle })}` : "";
+    return api<ProjectReviewResponse>(`/api/v1/project-health/ai-review${query}`);
+  },
+  generateProjectReview(cycle: string | undefined, skills: string[]): Promise<ProjectReviewResponse> {
+    return api<ProjectReviewResponse>("/api/v1/project-health/ai-review", {
+      method: "POST",
+      body: JSON.stringify({ cycle: cycle ?? null, skills })
+    });
   },
   getAiConfigStatus(): Promise<AiConfigStatus> {
     return api<AiConfigStatus>("/api/v1/ai/config/status");

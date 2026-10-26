@@ -164,10 +164,15 @@ def test_target_inside_another_pytest_project_keeps_its_own_rootdir(tmp_path: Pa
         stage_args=("-q", "-p", "no:cacheprovider", "tests"),
         workers=1,
     )
-    # Run the console script as the engine does: ``python -m pytest`` would put
-    # the cwd on sys.path and hide a wrong rootdir.
-    pytest_bin = Path(sys.executable).with_name("pytest")
+    # ``-P`` keeps the cwd off sys.path, as the engine's console script does;
+    # plain ``python -m pytest`` would put it there and hide a wrong rootdir.
+    # Using this interpreter, not a ``pytest`` found on PATH, keeps the plugins
+    # (allure-pytest for ``--alluredir``) the ones this suite runs with.
     proc = subprocess.run(
-        [str(pytest_bin), *argv[1:]], cwd=target, capture_output=True, text=True, timeout=60
+        [sys.executable, "-P", "-m", "pytest", *argv[1:]],
+        cwd=target,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr

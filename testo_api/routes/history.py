@@ -1,30 +1,36 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
 from testo_api.models import (
+    FailingTestItem,
+    FailureGroupItem,
     RunDetail,
     RunDetailResponse,
+    RunFailuresResponse,
     RunListItem,
     RunListResponse,
     RunPyramidResponse,
     RunReportsResponse,
     StageHealth,
 )
+from testo_api.routes.triage import triage_item
+from testo_api.security import read_config_path
 from testo_core.config.errors import ConfigError
 from testo_core.config.loader import discover_and_load
 from testo_core.history.read_model import get_run, list_run_sessions
 from testo_core.history.snapshots import snapshot_files_for_download
+from testo_core.services.run_failures import load_run_failures
 
 router = APIRouter(prefix="/api/v1", tags=["history"])
 
 
 @router.get("/runs", response_model=RunListResponse)
-def list_runs(limit: int = 30) -> RunListResponse:
-    sessions = list_run_sessions(limit=limit)
+def list_runs(limit: int = 30, cycle: str | None = None) -> RunListResponse:
+    """Recent runs, newest first; ``cycle`` keeps only that cycle's."""
+    sessions = list_run_sessions(limit=limit, cycle=cycle or None)
     items = [
         RunListItem(
             run_id=s.run_id,
@@ -39,6 +45,7 @@ def list_runs(limit: int = 30) -> RunListResponse:
             skipped=s.skipped,
             broken=s.broken,
             links_under_static=s.links_under_static,
+            branch=s.branch,
         )
         for s in sessions
     ]
@@ -72,6 +79,10 @@ def get_run_detail(run_id: str) -> RunDetailResponse:
             target_repo=record.target_repo,
             snapshot_dir=record.snapshot_dir,
             audit_json=record.audit_json,
+            branch=record.branch,
+            commit=record.commit,
+            base_branch=record.base_branch,
+            repository=record.repository,
             stage_health=[
                 StageHealth(
                     name=str(s.get("name")),
@@ -114,6 +125,30 @@ def get_run_reports(run_id: str) -> RunReportsResponse:
     )
 
 
+@router.get("/runs/{run_id}/failures", response_model=RunFailuresResponse)
+def get_run_failures(run_id: str) -> RunFailuresResponse:
+    """The run's failing tests: message, stage, how long each has been failing, flaky or not."""
+    failures = load_run_failures(run_id)
+    if failures is None:
+        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+    return RunFailuresResponse(
+        run_id=failures.run_id,
+        runs_considered=failures.runs_considered,
+        new_failures=failures.new_failures,
+        baseline_run_id=failures.baseline_run_id,
+        baseline_branch=failures.baseline_branch,
+        rerun_commands=list(failures.rerun_commands),
+        tests=[
+            FailingTestItem(**{**vars(t), "triage": triage_item(t.triage) if t.triage else None})
+            for t in failures.tests
+        ],
+        groups=[
+            FailureGroupItem(message=g.message, count=g.count, keys=list(g.keys))
+            for g in failures.groups
+        ],
+    )
+
+
 @router.get("/runs/{run_id}/pyramid", response_model=RunPyramidResponse)
 def get_run_pyramid(run_id: str, config_path: str | None = None) -> RunPyramidResponse:
     """Unit/integration/e2e tier composition for a run (UI/API parity with ``testo report pyramid``)."""
@@ -129,9 +164,7 @@ def get_run_pyramid(run_id: str, config_path: str | None = None) -> RunPyramidRe
     stages: tuple = ()
     if record.cycle and run_needs_config_tiers(record):
         try:
-            cfg = discover_and_load(
-                config_path=Path(config_path).expanduser().resolve() if config_path else None
-            )
+            cfg = discover_and_load(config_path=read_config_path(config_path))
         except ConfigError as exc:
             raise HTTPException(status_code=503, detail=f"config error: {exc}") from exc
         plan = cfg.cycles.get(record.cycle)

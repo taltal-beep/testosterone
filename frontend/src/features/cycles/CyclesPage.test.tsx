@@ -27,13 +27,22 @@ describe("CyclesPage", () => {
               name: "sample-pytests",
               description: "Pytest suite for the sample target repo.",
               stage_count: 1,
-              equipment: ["pytest"]
+              equipment: ["pytest"],
+              source: "config"
             },
             {
               name: "sample-all-frameworks",
               description: "Run pytest, native Behave, then BehaveX.",
               stage_count: 3,
-              equipment: ["behave", "behavex", "pytest"]
+              equipment: ["behave", "behavex", "pytest"],
+              source: "config"
+            },
+            {
+              name: "web",
+              description: "Recorded runs only.",
+              stage_count: 1,
+              equipment: ["junit"],
+              source: "history"
             }
           ],
           config_path: "/repo/testosterone.yaml"
@@ -47,11 +56,14 @@ describe("CyclesPage", () => {
     expect(screen.getByRole("link", { name: "sample-pytests" })).toHaveAttribute("href", "/cycles/sample-pytests");
     expect(screen.getByText("3 stages")).toBeInTheDocument();
     expect(screen.getByText("behavex")).toBeInTheDocument();
+    // The recorded-only cycle opens like the others but has nothing to run.
+    expect(screen.getByRole("link", { name: "web" })).toHaveAttribute("href", "/cycles/web");
+    expect(screen.getByText("Recorded")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Run" })).toHaveLength(2);
     expect(screen.getByText(/Defined in \/repo\/testosterone.yaml/)).toBeInTheDocument();
   });
 
-  it("shows the shrug empty state when no config is found", async () => {
+  it("says what to check when cycles can't be loaded", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({}) })
@@ -59,7 +71,19 @@ describe("CyclesPage", () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText("No testosterone.yaml found")).toBeInTheDocument());
-    expect(screen.getByText(/testo config init/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Couldn't load cycles")).toBeInTheDocument());
+    expect(screen.getByText(/testo config validate/)).toBeInTheDocument();
+  });
+
+  it("points at testo ingest when there are no cycles at all", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [], config_path: null }) })
+    );
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText("No cycles yet")).toBeInTheDocument());
+    expect(screen.getByText(/testo ingest/)).toBeInTheDocument();
   });
 });

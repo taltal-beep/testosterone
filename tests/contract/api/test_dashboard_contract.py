@@ -134,3 +134,45 @@ def test_dashboard_endpoint_validation_errors_follow_error_envelope(monkeypatch)
     payload = resp.json()
     assert payload["error"]["code"] == "invalid_input"
     assert payload["request_id"]
+
+
+def test_dashboard_attention_contract(monkeypatch) -> None:  # noqa: ANN001
+    from testo_core.services.attention import Attention, AttentionTest, FailingCycle
+
+    monkeypatch.setattr(
+        "testo_api.routes.dashboard.needs_attention",
+        lambda: Attention(
+            cycles=2,
+            passing_cycles=1,
+            failing=(
+                FailingCycle(
+                    cycle="web",
+                    run_id="run-9",
+                    created_at=1.0,
+                    branch="main",
+                    failed_tests=4,
+                    new_failures=1,
+                    failing_runs=3,
+                ),
+            ),
+            newly_flaky=(AttentionTest(cycle="web", key="k1", name="test_checkout"),),
+            slower=(
+                AttentionTest(
+                    cycle="api", key="k2", name="test_search", slowdown_ms=1500, slowdown_pct=50.0
+                ),
+            ),
+        ),
+    )
+    payload = TestClient(create_app()).get("/api/v1/dashboard/attention").json()
+    assert (payload["cycles"], payload["passing_cycles"]) == (2, 1)
+    assert payload["failing"][0] == {
+        "cycle": "web",
+        "run_id": "run-9",
+        "created_at": 1.0,
+        "branch": "main",
+        "failed_tests": 4,
+        "new_failures": 1,
+        "failing_runs": 3,
+    }
+    assert payload["newly_flaky"][0]["slowdown_ms"] is None
+    assert payload["slower"][0]["slowdown_pct"] == 50.0
