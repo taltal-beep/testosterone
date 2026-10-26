@@ -629,6 +629,8 @@ class ResourceLeaseInfo(ApiModel):
     heartbeat_at: float
     expires_at: float
     ttl_s: float
+    # Past expires_at the key stays out of the pool this many more seconds.
+    reuse_delay_s: float = 0.0
 
 
 class ResourceLeaseItem(ResourceLeaseInfo):
@@ -639,6 +641,8 @@ class ResourceLeaseItem(ResourceLeaseInfo):
     item: str
     labels: list[str] = Field(default_factory=list)
     data: dict[str, str] = Field(default_factory=dict)
+    # The previous holder reset the key (its on_release worked).
+    clean: bool = False
 
 
 class ResourceItemStatus(ApiModel):
@@ -649,6 +653,8 @@ class ResourceItemStatus(ApiModel):
     disabled_reason: str = ""
     disabled_by: str | None = None
     lease: ResourceLeaseInfo | None = None
+    # Its last lease ended with a successful on_release; cleared when it is taken.
+    clean: bool = False
 
 
 class ResourcePoolStatus(ApiModel):

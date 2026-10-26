@@ -49,4 +49,4 @@ The owner asked for a general answer, not a VM feature: the system under test al
 
 ## Next
 
-Phases 2 (stage `resources:`, `workers: auto`, the pytest options and `testo_resource` fixture) and 3 (shards by time) are done. Later, not started: per-stage CPU and memory limits in the container runner.
+Phases 2 (stage `resources:`, `workers: auto`, the pytest options and `testo_resource` fixture) and 3 (shards by time) are done. Later, not started: per-stage CPU and memory limits in the container runner. Key checks, clean releases and the reuse delay: [Resource Lifecycle Hooks - 2026-10-26](Resource%20Lifecycle%20Hooks%20-%202026-10-26.md).

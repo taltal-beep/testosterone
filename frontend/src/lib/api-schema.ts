@@ -583,7 +583,7 @@ export interface paths {
         post?: never;
         /**
          * Release Lease
-         * @description Give a key back.
+         * @description Give a key back. ``clean=true``: the holder reset it, so the next taker may skip a reset.
          */
         delete: operations["release_lease_api_v1_resources_leases__lease_id__delete"];
         options?: never;
@@ -1805,6 +1805,11 @@ export interface components {
         };
         /** ResourceItemStatus */
         ResourceItemStatus: {
+            /**
+             * Clean
+             * @default false
+             */
+            clean: boolean;
             /** Data */
             data: {
                 [key: string]: string;
@@ -1837,6 +1842,11 @@ export interface components {
             /** Heartbeat At */
             heartbeat_at: number;
             holder: components["schemas"]["ResourceHolder-Output"];
+            /**
+             * Reuse Delay S
+             * @default 0
+             */
+            reuse_delay_s: number;
             /** Taken At */
             taken_at: number;
             /** Ttl S */
@@ -1847,6 +1857,11 @@ export interface components {
          * @description A lease as its holder sees it: ``lease_id`` keeps it alive and gives it back.
          */
         ResourceLeaseItem: {
+            /**
+             * Clean
+             * @default false
+             */
+            clean: boolean;
             /** Data */
             data: {
                 [key: string]: string;
@@ -1864,6 +1879,11 @@ export interface components {
             lease_id: string;
             /** Pool */
             pool: string;
+            /**
+             * Reuse Delay S
+             * @default 0
+             */
+            reuse_delay_s: number;
             /** Taken At */
             taken_at: number;
             /** Ttl S */
@@ -3213,7 +3233,9 @@ export interface operations {
     };
     release_lease_api_v1_resources_leases__lease_id__delete: {
         parameters: {
-            query?: never;
+            query?: {
+                clean?: boolean;
+            };
             header?: never;
             path: {
                 lease_id: string;

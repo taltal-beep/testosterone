@@ -112,3 +112,7 @@ Added [Project Health - 2026-10-26](Specs%20&%20ADRs/Project%20Health%20-%202026
 ## 2026-10-26: runner coverage
 
 Added [Runner Coverage - 2026-10-26](Specs%20&%20ADRs/Runner%20Coverage%20-%202026-10-26.md) to Specs & ADRs (result files recognised by content: Jest/Vitest JSON, TRX, `go test -json`, Robot `output.xml`, Allure folders).
+
+## 2026-10-26: resource lifecycle hooks
+
+Added [Resource Lifecycle Hooks - 2026-10-26](Specs%20&%20ADRs/Resource%20Lifecycle%20Hooks%20-%202026-10-26.md) to Specs & ADRs (`on_check`, clean releases, `reuse_delay`), linked from its README and the docs site menu.

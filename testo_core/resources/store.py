@@ -8,7 +8,12 @@ A lease is a lock with an owner and an expiry time:
   to one team server.
 - **Heartbeat**: the holder pushes ``expires_at`` forward every few seconds. When
   a process dies (crash, ``kill -9``, a laptop that sleeps) the heartbeats stop,
-  and the next take after ``expires_at`` deletes the row. No stale locks.
+  and the first take after ``expires_at`` plus the pool's ``reuse_delay`` deletes
+  the row. No stale locks. The delay gives a holder that was only frozen time to
+  find out (its next heartbeat is refused) before someone else gets the key.
+- **Clean or not**: a key given back after a successful ``on_release`` is marked
+  clean; the next taker sees that in :attr:`Lease.clean` (``TESTO_RESOURCE_CLEAN``)
+  and may skip its own reset. A lease that expired or was taken back never is.
 - **Fair queue**: a request that finds nothing free waits in ``resource_waiter``.
   A key goes to the oldest waiter that can use it; a later waiter only goes first
   when the ones ahead want other keys.
@@ -33,6 +38,8 @@ WAITER_TTL_S: Final[float] = 30.0
 # Keys not described by any client for this long, and free, drop off the Resources page.
 FORGET_AFTER_S: Final[float] = 7 * 24 * 3600.0
 _RESEEN_AFTER_S: Final[float] = 3600.0
+# (database URL, table) pairs whose columns are known to be up to date.
+_COLUMNS_CHECKED: set[tuple[str, str]] = set()
 
 
 @dataclass(frozen=True)
@@ -60,6 +67,13 @@ class Lease:
     ttl_s: float
     labels: tuple[str, ...] = ()
     data: tuple[tuple[str, str], ...] = ()
+    # The previous holder gave the key back after a successful on_release.
+    clean: bool = False
+    reuse_delay_s: float = 0.0
+
+    def expired(self, now: float) -> bool:
+        """Heartbeats stopped; the key comes free at ``expires_at + reuse_delay_s``."""
+        return self.expires_at < now
 
 
 @dataclass(frozen=True)
@@ -84,6 +98,7 @@ class ItemStatus:
     disabled_reason: str
     disabled_by: str | None
     lease: Lease | None
+    clean: bool = False
 
 
 @dataclass(frozen=True)
@@ -141,7 +156,8 @@ class LeaseStore:
         with Session(self._engine) as session:
             session.exec(
                 delete(ResourceLease).where(
-                    col(ResourceLease.pool) == pool.name, col(ResourceLease.expires_at) < now
+                    col(ResourceLease.pool) == pool.name,
+                    col(ResourceLease.expires_at) + col(ResourceLease.reuse_delay_s) < now,
                 )
             )
             session.exec(
@@ -223,6 +239,7 @@ class LeaseStore:
                 heartbeat_at=now,
                 expires_at=now + pool.lease_ttl_s,
                 ttl_s=pool.lease_ttl_s,
+                reuse_delay_s=pool.reuse_delay,
             )
             with Session(self._engine) as session:
                 session.add(row)
@@ -233,8 +250,15 @@ class LeaseStore:
                     continue
                 if waiter_id:
                     session.exec(delete(ResourceWaiter).where(col(ResourceWaiter.id) == waiter_id))
-                    session.commit()
-                return TakeResult(lease=_lease(row, item), ahead=ahead, free=len(free) - 1)
+                # Whether the last holder left it clean; from now on it is in use.
+                item_row = session.get(ResourceItemRow, (pool.name, item.id))
+                clean = bool(item_row is not None and item_row.clean)
+                if item_row is not None and item_row.clean:
+                    item_row.clean = False
+                    session.add(item_row)
+                session.commit()
+                lease = _lease(row, item, clean=clean)
+                return TakeResult(lease=lease, ahead=ahead, free=len(free) - 1)
         return TakeResult(lease=None, ahead=ahead, free=0, reason="busy")
 
     def heartbeat(self, lease_id: str, *, now: float | None = None) -> Lease | None:
@@ -259,18 +283,30 @@ class LeaseStore:
             session.refresh(row)
             return _lease(row, None)
 
-    def release(self, lease_id: str) -> bool:
-        """Give a key back; False if the lease was already gone."""
-        from sqlmodel import Session, col, delete
+    def release(self, lease_id: str, *, clean: bool = False) -> bool:
+        """Give a key back; False if the lease was already gone.
 
-        from testo_core.repository.models import ResourceLease
+        ``clean=True`` says the holder reset the key (its ``on_release`` worked), so
+        the next taker can skip a reset. Both happen in one transaction: nobody can
+        take the key between the release and the mark.
+        """
+        from sqlmodel import Session, col, select
+
+        from testo_core.repository.models import ResourceItemRow, ResourceLease
 
         with Session(self._engine) as session:
-            result = session.exec(
-                delete(ResourceLease).where(col(ResourceLease.lease_id) == lease_id)
-            )
+            row = session.exec(
+                select(ResourceLease).where(col(ResourceLease.lease_id) == lease_id)
+            ).first()
+            if row is None:
+                return False
+            item_row = session.get(ResourceItemRow, (row.pool, row.item))
+            if item_row is not None and item_row.clean != clean:
+                item_row.clean = clean
+                session.add(item_row)
+            session.delete(row)
             session.commit()
-            return bool(result.rowcount)
+            return True
 
     def leave(self, waiter_id: str) -> None:
         """Stop waiting (gave up, or got a key some other way)."""
@@ -347,7 +383,10 @@ class LeaseStore:
             self._register(p, now=now)
         with Session(self._engine) as session:
             items_q = select(ResourceItemRow)
-            leases_q = select(ResourceLease).where(col(ResourceLease.expires_at) >= now)
+            # A lease past expires_at still keeps its key until its reuse delay is over.
+            leases_q = select(ResourceLease).where(
+                col(ResourceLease.expires_at) + col(ResourceLease.reuse_delay_s) >= now
+            )
             waiters_q = select(ResourceWaiter).where(
                 col(ResourceWaiter.heartbeat_at) >= now - WAITER_TTL_S
             )
@@ -378,6 +417,7 @@ class LeaseStore:
                     lease=_lease(lease_row, ResourceItem(row.item, labels, data))
                     if lease_row
                     else None,
+                    clean=bool(row.clean),
                 )
             )
         return [
@@ -433,9 +473,44 @@ def _create_table(engine: Any, table: Any) -> None:
     except DatabaseError:
         if not inspect(engine).has_table(table.name):
             raise
+    _add_missing_columns(engine, table)
 
 
-def _lease(row: Any, item: ResourceItem | None) -> Lease:
+def _add_missing_columns(engine: Any, table: Any) -> None:
+    """Add columns these tables gained after a database first created them (no migrations here)."""
+    from sqlalchemy import inspect, text
+    from sqlalchemy.exc import DatabaseError
+
+    checked = (str(engine.url), table.name)
+    if checked in _COLUMNS_CHECKED:
+        return
+    have = {c["name"] for c in inspect(engine).get_columns(table.name)}
+    for column in table.columns:
+        if column.name in have:
+            continue
+        default = column.default.arg if column.default is not None else None
+        if isinstance(default, bool):
+            literal = "true" if default else "false"
+        elif isinstance(default, (int, float)):
+            literal = repr(default)
+        else:
+            literal = "''"
+        kind = column.type.compile(dialect=engine.dialect)
+        try:
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        f"ALTER TABLE {table.name} ADD COLUMN {column.name} {kind} "
+                        f"NOT NULL DEFAULT {literal}"
+                    )
+                )
+        except DatabaseError:  # another worker added it first
+            if column.name not in {c["name"] for c in inspect(engine).get_columns(table.name)}:
+                raise
+    _COLUMNS_CHECKED.add(checked)
+
+
+def _lease(row: Any, item: ResourceItem | None, *, clean: bool = False) -> Lease:
     return Lease(
         lease_id=row.lease_id,
         pool=row.pool,
@@ -455,6 +530,8 @@ def _lease(row: Any, item: ResourceItem | None) -> Lease:
         ttl_s=row.ttl_s,
         labels=item.labels if item else (),
         data=item.data if item else (),
+        clean=clean,
+        reuse_delay_s=float(row.reuse_delay_s or 0.0),
     )
 
 

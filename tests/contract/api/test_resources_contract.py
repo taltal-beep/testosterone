@@ -166,3 +166,25 @@ def test_the_cli_client_speaks_this_api(
 
     with pytest.raises(LeaseError, match="answered 401"):
         RemoteLeases("https://testo.example", "wrong").take(pool, holder=default_holder())
+
+
+def test_a_clean_release_reaches_the_next_taker(client: TestClient) -> None:
+    first = _take(client, labels=["win"])["lease"]
+    assert first["clean"] is False
+    path = f"/api/v1/resources/leases/{first['lease_id']}"
+    assert client.delete(f"{path}?clean=true", headers=_AUTH).status_code == 204
+    win = next(
+        i
+        for i in client.get("/api/v1/resources").json()["pools"][0]["items"]
+        if i["item"] == "vm-2"
+    )
+    assert win["clean"] is True
+    second = _take(client, labels=["win"])["lease"]
+    assert second["clean"] is True
+    # Taken again, so no longer known to be clean.
+    win = next(
+        i
+        for i in client.get("/api/v1/resources").json()["pools"][0]["items"]
+        if i["item"] == "vm-2"
+    )
+    assert win["clean"] is False and win["lease"]["reuse_delay_s"] == pytest.approx(40.0)

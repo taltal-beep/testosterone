@@ -186,6 +186,9 @@ class ResourceItemRow(SQLModel, table=True):
     disabled_by: str | None = Field(default=None, max_length=64)
     # Epoch seconds, like the lease times: comparable on every dialect.
     seen_at: float = Field(default=0.0)
+    # The last lease ended with a successful on_release (or ``release --clean``),
+    # so the key is known to be reset. Cleared when someone takes it.
+    clean: bool = Field(default=False)
 
 
 class ResourceLease(SQLModel, table=True):
@@ -193,8 +196,8 @@ class ResourceLease(SQLModel, table=True):
 
     The primary key is the key itself, which is what makes two holders impossible:
     a second insert for the same key fails on every database, across processes and
-    machines. ``expires_at`` moves forward with each heartbeat; a row past it is
-    deleted by the next take.
+    machines. ``expires_at`` moves forward with each heartbeat; a row past
+    ``expires_at + reuse_delay_s`` is deleted by the next take.
     """
 
     __tablename__ = "resource_lease"
@@ -214,6 +217,7 @@ class ResourceLease(SQLModel, table=True):
     heartbeat_at: float = Field(default=0.0)
     expires_at: float = Field(default=0.0, index=True)
     ttl_s: float = Field(default=120.0)
+    reuse_delay_s: float = Field(default=0.0)
 
 
 class ResourceWaiter(SQLModel, table=True):

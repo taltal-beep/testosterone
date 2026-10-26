@@ -2988,6 +2988,11 @@
       },
       "ResourceItemStatus": {
         "properties": {
+          "clean": {
+            "default": false,
+            "title": "Clean",
+            "type": "boolean"
+          },
           "data": {
             "additionalProperties": {
               "type": "string"
@@ -3045,7 +3050,8 @@
           "disabled",
           "disabled_reason",
           "disabled_by",
-          "lease"
+          "lease",
+          "clean"
         ],
         "title": "ResourceItemStatus",
         "type": "object"
@@ -3064,6 +3070,11 @@
           "holder": {
             "$ref": "#/components/schemas/ResourceHolder-Output"
           },
+          "reuse_delay_s": {
+            "default": 0.0,
+            "title": "Reuse Delay S",
+            "type": "number"
+          },
           "taken_at": {
             "title": "Taken At",
             "type": "number"
@@ -3078,7 +3089,8 @@
           "taken_at",
           "heartbeat_at",
           "expires_at",
-          "ttl_s"
+          "ttl_s",
+          "reuse_delay_s"
         ],
         "title": "ResourceLeaseInfo",
         "type": "object"
@@ -3086,6 +3098,11 @@
       "ResourceLeaseItem": {
         "description": "A lease as its holder sees it: ``lease_id`` keeps it alive and gives it back.",
         "properties": {
+          "clean": {
+            "default": false,
+            "title": "Clean",
+            "type": "boolean"
+          },
           "data": {
             "additionalProperties": {
               "type": "string"
@@ -3123,6 +3140,11 @@
             "title": "Pool",
             "type": "string"
           },
+          "reuse_delay_s": {
+            "default": 0.0,
+            "title": "Reuse Delay S",
+            "type": "number"
+          },
           "taken_at": {
             "title": "Taken At",
             "type": "number"
@@ -3138,11 +3160,13 @@
           "heartbeat_at",
           "expires_at",
           "ttl_s",
+          "reuse_delay_s",
           "lease_id",
           "pool",
           "item",
           "labels",
-          "data"
+          "data",
+          "clean"
         ],
         "title": "ResourceLeaseItem",
         "type": "object"
@@ -5918,7 +5942,7 @@
     },
     "/api/v1/resources/leases/{lease_id}": {
       "delete": {
-        "description": "Give a key back.",
+        "description": "Give a key back. ``clean=true``: the holder reset it, so the next taker may skip a reset.",
         "operationId": "release_lease_api_v1_resources_leases__lease_id__delete",
         "parameters": [
           {
@@ -5929,6 +5953,16 @@
               "pattern": "^[0-9a-f]{32}$",
               "title": "Lease Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "clean",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Clean",
+              "type": "boolean"
             }
           }
         ],

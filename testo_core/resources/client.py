@@ -9,9 +9,13 @@ Where the leases live:
   on one machine.
 
 :func:`acquire` waits in the pool's fair queue, runs the pool's optional
-``on_take`` command, and returns a :class:`HeldLease` that heartbeats in a
-background thread until it is released. If a hook fails, the key is taken out
-of the pool and another one is tried.
+``on_take`` and then ``on_check`` commands, and returns a :class:`HeldLease` that
+heartbeats in a background thread until it is released. If a hook fails, the key
+is taken out of the pool and another one is tried.
+
+Hooks are the user's own code; Testosterone only runs them. Each one should be
+safe to run again on a key in any state ("already reset" is success), because a
+crash can stop any of them halfway.
 """
 
 from __future__ import annotations
@@ -69,7 +73,7 @@ class LeaseBackend(Protocol):
 
     def heartbeat(self, lease_id: str) -> Lease | None: ...
 
-    def release(self, lease_id: str) -> bool: ...
+    def release(self, lease_id: str, *, clean: bool = False) -> bool: ...
 
     def leave(self, waiter_id: str) -> None: ...
 
@@ -132,6 +136,8 @@ def lease_env(lease: Lease) -> dict[str, str]:
         "TESTO_RESOURCE_POOL": lease.pool,
         "TESTO_RESOURCE_LABELS": ",".join(lease.labels),
         "TESTO_RESOURCE_DATA": json.dumps(dict(lease.data), sort_keys=True),
+        # 1: the last holder reset this key (its on_release worked), so on_take may skip a reset.
+        "TESTO_RESOURCE_CLEAN": "1" if lease.clean else "0",
         "TESTO_LEASE_ID": lease.lease_id,
     }
     for key, value in lease.data:
@@ -186,18 +192,20 @@ class HeldLease:
                 logger.warning("lease heartbeat for %s failed", self.lease.item, exc_info=True)
 
     def release(self) -> None:
-        """Run ``on_release``, then give the key back. Safe to call twice."""
+        """Run ``on_release``, then give the key back (clean if it worked). Safe to call twice."""
         if self._stop.is_set():
             return
         self._stop.set()
         if self._thread is not None:
             self._thread.join(timeout=5.0)
+        clean = False
         if self.pool.on_release and not self.lost.is_set():
             problem = run_hook(self.pool.on_release, self.lease, timeout_s=self.pool.hook_timeout_s)
             if problem:
                 _disable_quietly(self.backend, self.lease, f"on_release failed: {problem}")
+            clean = problem is None
         try:
-            self.backend.release(self.lease.lease_id)
+            self.backend.release(self.lease.lease_id, clean=clean)
         except Exception:  # noqa: BLE001 — the TTL frees it anyway
             logger.warning("could not release %s; it frees itself after its TTL", self.lease.item)
 
@@ -235,13 +243,9 @@ def acquire(
             result = backend.take(pool, labels=wanted, holder=holder, waiter_id=waiter_id)
             if result.lease is not None:
                 lease = _with_item(pool, result.lease)
-                problem = (
-                    run_hook(pool.on_take, lease, timeout_s=pool.hook_timeout_s)
-                    if pool.on_take
-                    else None
-                )
+                problem = _prepare(pool, lease)
                 if problem:
-                    _disable_quietly(backend, lease, f"on_take failed: {problem}")
+                    _disable_quietly(backend, lease, problem)
                     backend.release(lease.lease_id)
                     continue
                 held = HeldLease(backend, pool, lease)
@@ -272,6 +276,16 @@ def acquire(
                 backend.leave(waiter_id)
             except Exception:  # noqa: BLE001 — the waiter row expires anyway
                 logger.debug("could not leave the queue", exc_info=True)
+
+
+def _prepare(pool: ResourcePool, lease: Lease) -> str | None:
+    """Run ``on_take`` (reset), then ``on_check`` (is it usable?); why the key is unusable, or None."""
+    for name, command in (("on_take", pool.on_take), ("on_check", pool.on_check)):
+        if command:
+            problem = run_hook(command, lease, timeout_s=pool.hook_timeout_s)
+            if problem:
+                return f"{name} failed: {problem}"
+    return None
 
 
 def run_hook(command: str, lease: Lease, *, timeout_s: float) -> str | None:
@@ -377,8 +391,9 @@ class RemoteLeases:
         status, body = self._call("POST", f"/leases/{lease_id}/heartbeat", ok=(200, 404))
         return _lease_from_json(body) if status == 200 else None
 
-    def release(self, lease_id: str) -> bool:
-        status, _ = self._call("DELETE", f"/leases/{lease_id}", ok=(204, 404))
+    def release(self, lease_id: str, *, clean: bool = False) -> bool:
+        path = f"/leases/{lease_id}" + ("?clean=true" if clean else "")
+        status, _ = self._call("DELETE", path, ok=(204, 404))
         return status == 204
 
     def leave(self, waiter_id: str) -> None:
@@ -467,6 +482,8 @@ def _lease_from_json(data: Mapping[str, Any]) -> Lease:
         ttl_s=float(data.get("ttl_s") or 0),
         labels=tuple(data.get("labels") or ()),
         data=tuple((str(k), str(v)) for k, v in (data.get("data") or {}).items()),
+        clean=bool(data.get("clean")),
+        reuse_delay_s=float(data.get("reuse_delay_s") or 0),
     )
 
 
@@ -483,6 +500,7 @@ def _pool_from_json(data: Mapping[str, Any]) -> PoolStatus:
             lease=_lease_from_json({**i["lease"], "pool": data["name"], "item": i["item"]})
             if i.get("lease")
             else None,
+            clean=bool(i.get("clean")),
         )
         for i in data.get("items", [])
     )
