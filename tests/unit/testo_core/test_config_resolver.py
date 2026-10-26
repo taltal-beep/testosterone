@@ -9,6 +9,7 @@ import pytest
 
 from testo_core.config.resolver import resolve_stages_for_plan
 from testo_core.config.schema import Plan, Stage
+from testo_core.resources.pools import ResourceItem, ResourcePool, StageResources
 from testo_core.services.cycle_run import apply_workers_override
 
 pytestmark = [pytest.mark.unit, pytest.mark.tier_fast]
@@ -27,6 +28,10 @@ def _stage() -> Stage:
         extra_env=(("NODE_ENV", "${env:MODE:-test}"),),
         tier="e2e",
         junit_xml=("reports/*.xml",),
+        resources=StageResources(
+            pool=ResourcePool(name="vms", items=(ResourceItem(id="vm-1"),)), per="test"
+        ),
+        workers_auto=True,
     )
 
 
@@ -58,7 +63,7 @@ def test_workers_override_changes_only_workers() -> None:
 
     (overridden,) = apply_workers_override(_plan(stage), [stage], 7).stages
 
-    assert overridden == dataclasses.replace(stage, workers=7)
+    assert overridden == dataclasses.replace(stage, workers=7, workers_auto=False)
 
 
 def test_fixture_covers_every_stage_field() -> None:

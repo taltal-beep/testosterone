@@ -11,15 +11,25 @@ Recording never changes pytest's outcome: a problem is a warning line in the
 summary. Under pytest-xdist only the controller records. This module is
 imported by every pytest run on a machine with testo-core installed, so it
 imports nothing of testo-core until a run is actually recorded.
+
+It also hands out keys from a resource pool (``testo_core/resources/``): with
+``--testo-resource POOL``, or inside a stage with ``resources:`` (which sets
+``TESTO_RESOURCE_SPEC``), each test process (each pytest-xdist worker, never
+the controller) holds its own key for the session, or each test gets one
+(``per: test``). The key is in ``TESTO_RESOURCE_ID`` and the ``testo_resource``
+fixture.
 """
 
 from __future__ import annotations
 
 import io
+import json
 import os
 import shutil
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -29,6 +39,8 @@ _RECORD_ENV = "TESTO_RECORD"
 _NOTHING_RAN = frozenset({2, 3, 4, 5})
 _TEMP_DIR = pytest.StashKey[Path]()
 _SUMMARY = pytest.StashKey[str]()
+_RESOURCE_REQUEST = pytest.StashKey["dict[str, Any] | None"]()
+_SPEC_ENV = "TESTO_RESOURCE_SPEC"
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -58,6 +70,32 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help="Upload to this Testosterone server instead of recording locally "
         "(default: $TESTO_SERVER_URL). The token comes from $TESTO_API_TOKEN.",
     )
+    group.addoption(
+        "--testo-resource",
+        default=None,
+        metavar="POOL",
+        help="Give each test process its own key from this pool ('resources:' in "
+        "testosterone.yaml), in $TESTO_RESOURCE_ID and the testo_resource fixture.",
+    )
+    group.addoption(
+        "--testo-resource-label",
+        action="append",
+        default=[],
+        metavar="LABEL",
+        help="Only keys with this label (repeat for several).",
+    )
+    group.addoption(
+        "--testo-resource-per",
+        default="worker",
+        choices=("worker", "test"),
+        help="Hold one key per test process (default), or take one for each test.",
+    )
+    group.addoption(
+        "--testo-resource-wait",
+        default="30m",
+        metavar="DURATION",
+        help="How long to wait for a free key: 90s, 10m, 2h or forever (default: 30m).",
+    )
 
 
 def _enabled(config: pytest.Config) -> bool:
@@ -72,6 +110,7 @@ def _enabled(config: pytest.Config) -> bool:
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_configure(config: pytest.Config) -> None:
+    config.stash[_RESOURCE_REQUEST] = _resource_request(config)
     # Before pytest's junitxml plugin reads the option, so it writes the report for us.
     if not _enabled(config) or config.option.xmlpath:
         return
@@ -153,3 +192,114 @@ def pytest_terminal_summary(
     line = config.stash.get(_SUMMARY, None)
     if line:
         terminalreporter.write_line(line)
+
+
+# -- resource pools ---------------------------------------------------------------
+
+
+def _resource_request(config: pytest.Config) -> dict[str, Any] | None:
+    """Which pool this session leases from: ``--testo-resource``, else a stage's ``TESTO_RESOURCE_SPEC``."""
+    pool = config.getoption("testo_resource")
+    if pool:
+        return {
+            "pool": pool,
+            "labels": list(config.getoption("testo_resource_label") or []),
+            "per": config.getoption("testo_resource_per"),
+            "wait": config.getoption("testo_resource_wait"),
+        }
+    raw = os.environ.get(_SPEC_ENV)
+    if not raw:
+        return None
+    try:
+        sent = json.loads(raw)
+    except ValueError:
+        return None
+    if not isinstance(sent, dict) or sent.get("per") not in ("worker", "test"):
+        return None  # per: stage, the stage already holds the key
+    return sent
+
+
+def _is_xdist_controller(config: pytest.Config) -> bool:
+    """The process that only hands tests to pytest-xdist workers (it runs none itself)."""
+    return not hasattr(config, "workerinput") and getattr(config.option, "dist", "no") != "no"
+
+
+def _take_key(config: pytest.Config, request: dict[str, Any]) -> Any:
+    from testo_core.config.errors import ConfigError
+    from testo_core.resources.client import acquire, backend_from_env, default_holder, find_pool
+    from testo_core.resources.pools import parse_duration, parse_pool
+    from testo_core.resources.store import LeaseError
+
+    try:
+        spec = request.get("spec")
+        pool = (
+            parse_pool(request["pool"], spec)
+            if isinstance(spec, dict)
+            else find_pool(request["pool"])
+        )
+        wait = request.get("wait")
+        wait_s = wait if isinstance(wait, (int, float)) or wait is None else parse_duration(wait)
+        return acquire(
+            backend_from_env(),
+            pool,
+            labels=request.get("labels") or (),
+            holder=default_holder(
+                stage=str(request.get("stage") or ""),
+                worker=os.environ.get("PYTEST_XDIST_WORKER", "main"),
+                note="pytest",
+            ),
+            wait_s=wait_s,
+        )
+    except (ConfigError, LeaseError, ValueError) as exc:
+        pytest.fail(f"testo: no key from pool {request.get('pool')!r}: {exc}", pytrace=False)
+
+
+def _held(config: pytest.Config, request: dict[str, Any]) -> Iterator[Any]:
+    """Take a key, expose it in the environment while it is held, give it back."""
+    held = _take_key(config, request)
+    saved = {key: os.environ.get(key) for key in held.env()}
+    os.environ.update(held.env())
+    try:
+        yield held
+    finally:
+        held.release()
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _testo_worker_key(request: pytest.FixtureRequest) -> Iterator[Any]:
+    """``per: worker``: this test process's key, taken before its first test."""
+    config = request.config
+    wanted = config.stash.get(_RESOURCE_REQUEST, None)
+    if wanted is None or wanted.get("per") != "worker" or _is_xdist_controller(config):
+        yield None
+        return
+    yield from _held(config, wanted)
+
+
+@pytest.fixture(autouse=True)
+def _testo_test_key(request: pytest.FixtureRequest) -> Iterator[Any]:
+    """``per: test``: a key for this test only, so the pool's ``on_take`` runs before each test."""
+    config = request.config
+    wanted = config.stash.get(_RESOURCE_REQUEST, None)
+    if wanted is None or wanted.get("per") != "test":
+        yield None
+        return
+    yield from _held(config, wanted)
+
+
+@pytest.fixture
+def testo_resource(_testo_worker_key: Any, _testo_test_key: Any) -> Any:
+    """The key this test holds: ``.id``, ``.data`` (a dict), ``.env()`` and ``.lease``."""
+    held = _testo_test_key or _testo_worker_key
+    if held is None:
+        pytest.fail(
+            "testo_resource needs a pool: run pytest with --testo-resource POOL, or from a "
+            "testosterone.yaml stage with 'resources:'.",
+            pytrace=False,
+        )
+    return held

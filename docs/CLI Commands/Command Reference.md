@@ -451,6 +451,10 @@ testo-core installs a pytest plugin (entry point `pytest11`, `testo_core/pytest_
 | `--testo-cycle NAME` | Cycle to record under; implies `--testo`. Default: the rootdir's name |
 | `--testo-tier unit\|integration\|e2e` | Pyramid tier of the tests (default `unit`) |
 | `--testo-server URL` | Upload to a [team server](../Processes%20&%20Guides/Team%20Server.md) instead (default `$TESTO_SERVER_URL`, token from `$TESTO_API_TOKEN`) |
+| `--testo-resource POOL` | Give each worker its own key from this [resource pool](../Processes%20&%20Guides/Shared%20Resource%20Pools.md#use-a-pool-in-a-cycle) (from `testosterone.yaml`, or `$TESTO_RESOURCE_SPEC` set by a stage's `resources:`). Tests read it from the variables or the `testo_resource` fixture |
+| `--testo-resource-per worker\|test` | One key per worker (default) or a fresh one per test |
+| `--testo-resource-label LABEL` | Only keys with this label (repeat for more) |
+| `--testo-resource-wait DURATION` | How long to wait for a key (default `30m`); then the test fails |
 
 The session's JUnit XML (yours if `--junitxml` is set, else a temporary file in a `.testo-*` folder of the rootdir, removed afterwards) is recorded through the same path as `testo ingest`, into a `pytest` stage, and the run writes `artifacts/` like `testo ingest` does. One line in pytest's summary says where it went. Recording never changes pytest's exit code: a problem is reported on that line instead. Nothing is recorded when no tests ran, or on a pytest-xdist worker (the controller records).
 
