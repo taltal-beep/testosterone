@@ -9,7 +9,7 @@ import {
 } from "../../lib/api-client";
 import { Badge, Button, Card, EmptyState, PageHeader, Spinner } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
-import { IS_STATIC_BUILD } from "../../lib/static-backend";
+import { IS_STATIC_BUILD, loadManifest } from "../../lib/static-backend";
 
 const EXAMPLE = `resources:
   flow-vms:
@@ -148,7 +148,14 @@ export function ResourcesPage() {
   const query = useQuery({
     queryKey: ["resources"],
     queryFn: () => apiClient.listResources(),
-    refetchInterval: 5_000
+    refetchInterval: IS_STATIC_BUILD ? false : 5_000
+  });
+  // The demo site is a snapshot: times are "ago" from when it was taken, not from now.
+  const manifest = useQuery({
+    queryKey: ["static-manifest"],
+    queryFn: loadManifest,
+    enabled: IS_STATIC_BUILD,
+    staleTime: Infinity
   });
 
   if (query.isLoading) {
@@ -163,13 +170,20 @@ export function ResourcesPage() {
   }
 
   const pools = query.data?.pools ?? [];
-  const now = query.dataUpdatedAt / 1000;
+  const snapshotAt = manifest.data?.generated_at ?? null;
+  const now = snapshotAt ?? query.dataUpdatedAt / 1000;
   return (
     <section>
       <PageHeader
         title="Resources"
         subtitle="Keys that parallel workers share, like VMs, devices or test accounts. Each worker gets its own."
       />
+      {IS_STATIC_BUILD && pools.length > 0 ? (
+        <p className="mb-4 text-sm text-ink-300" data-testid="resources-snapshot-note">
+          These pools and holders are made up (<code>testo lease demo</code>), as they were
+          {snapshotAt ? ` on ${new Date(snapshotAt * 1000).toUTCString()}` : " when this demo was built"}.
+        </p>
+      ) : null}
       {pools.length === 0 ? (
         <EmptyState
           mascot={<MuscleShrug />}
@@ -179,6 +193,9 @@ export function ResourcesPage() {
               <p>
                 List your keys under <code>resources:</code> in testosterone.yaml, then run each worker with{" "}
                 <code>testo lease run POOL -- your-command</code>. It gets its key in <code>TESTO_RESOURCE_ID</code>.
+              </p>
+              <p className="mt-2">
+                Just looking? <code>testo lease demo</code> fills this page with made-up pools and holders.
               </p>
               <pre className="mt-3 overflow-x-auto rounded-xl bg-ink-950/80 p-3 text-left text-xs text-ink-200">{EXAMPLE}</pre>
             </>

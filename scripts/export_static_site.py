@@ -41,6 +41,8 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/tests/<name>.json                 GET /api/v1/analytics/tests?cycle={name}
     data/test-history/<name>/<id>.json     GET /api/v1/analytics/test-history?cycle={name}&key={key}
                                            (<id> is test_history.stable_id(key))
+    data/resources.json                    GET /api/v1/resources (with --demo-resources:
+                                           made-up pools from testo_core/resources/demo.py)
     data/runs.json                         GET /api/v1/runs
     data/runs/<run_id>/detail.json         GET /api/v1/runs/{id}
     data/runs/<run_id>/reports.json        GET /api/v1/runs/{id}/reports
@@ -120,7 +122,15 @@ def _ran_cycles_only(listing: dict[str, Any], runs: list[dict[str, Any]]) -> dic
 class Exporter:
     """Writes one JSON file per read-only endpoint the UI calls."""
 
-    def __init__(self, *, out_dir: Path, site_url: str, run_limit: int, delta_pairs: int) -> None:
+    def __init__(
+        self,
+        *,
+        out_dir: Path,
+        site_url: str,
+        run_limit: int,
+        delta_pairs: int,
+        demo_resources: bool = False,
+    ) -> None:
         from fastapi.testclient import TestClient
 
         # The export switches AI on for its own run; keep that out of the local settings file.
@@ -132,6 +142,7 @@ class Exporter:
         self.site_url = site_url.rstrip("/")
         self.run_limit = run_limit
         self.delta_pairs = delta_pairs
+        self.demo_resources = demo_resources
         self.client = TestClient(create_app())
         self.written: list[str] = []
         self.skipped: list[str] = []
@@ -313,7 +324,20 @@ class Exporter:
     def export_misc(self) -> None:
         self._dump("/api/v1/health/ready", "health.json")
         self._dump("/api/v1/ai/config/status", "ai-config.json")
+        if self.demo_resources:
+            self.seed_demo_resources()
         self._dump("/api/v1/resources", "resources.json")
+
+    def seed_demo_resources(self) -> None:
+        """Made-up pools and leases (``testo lease demo``), so the Resources page has content.
+
+        The demo's runs never lease keys, so without this the page would be empty.
+        """
+        from testo_core.resources.demo import seed_demo
+        from testo_core.resources.store import LeaseStore
+
+        result = seed_demo(LeaseStore())
+        print(f"[export] demo resources: {result.held} held, {result.waiting} waiting")
 
     # --- report HTML --------------------------------------------------------
 
@@ -415,6 +439,12 @@ def main(argv: list[str] | None = None) -> int:
         default=os.getenv("CI_PAGES_URL", ""),
         help="Public base URL of the published site; used to absolutize report links.",
     )
+    parser.add_argument(
+        "--demo-resources",
+        action="store_true",
+        help="Fill the history database with made-up resource pools first (testo lease demo), "
+        "so the Resources page shows something. Only for a throwaway demo database.",
+    )
     args = parser.parse_args(argv)
 
     out_dir = Path(args.out).expanduser().resolve()
@@ -423,6 +453,7 @@ def main(argv: list[str] | None = None) -> int:
         site_url=args.site_url,
         run_limit=max(1, args.runs),
         delta_pairs=max(0, args.delta_pairs),
+        demo_resources=args.demo_resources,
     )
     return exporter.run()
 

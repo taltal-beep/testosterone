@@ -173,6 +173,7 @@ Keys are made outside test runs: create the VMs, accounts or databases once with
 The **Resources** page in the UI (under Tools) shows every pool, each key's holder, when it was taken and its last heartbeat, and how many requests wait. A key whose holder stopped heartbeating shows as **Expired** with when it is free again. It refreshes every few seconds. From there, or with `testo lease`, you can:
 
 - **Disable** a broken key so nobody gets it (`testo lease disable flow-vms vm-02 --reason "snapshot broken"`), and put it back (`testo lease enable`). Keys whose hooks failed show up here, disabled, with the reason.
+- **Try it without real pools:** `testo lease demo` adds made-up pools, holders, a disabled key and a short queue to this machine's database, and `testo lease demo --clear` gives the keys back. The [live demo](https://taltal-beep.github.io/testosterone/) shows the same made-up pools.
 - **Take a key back** from its holder (`testo lease free`; an admin on a server with accounts). The holder's next heartbeat finds it gone, and `testo lease run` warns that the lease was lost.
 
 ## How it works
