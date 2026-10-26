@@ -18,6 +18,12 @@ It also hands out keys from a resource pool (``testo_core/resources/``): with
 the controller) holds its own key for the session, or each test gets one
 (``per: test``). The key is in ``TESTO_RESOURCE_ID`` and the ``testo_resource``
 fixture.
+
+And it splits a suite into shards of about equal time: ``--testo-shard I/N``
+(or ``TESTO_SHARD=I/N``) runs only shard I of N, from the test times in the
+cycle's history (``testo_core/services/test_split.py``). Under pytest-xdist the
+controller loads the times once and hands them to its workers, so all of them
+pick the same tests.
 """
 
 from __future__ import annotations
@@ -41,6 +47,11 @@ _TEMP_DIR = pytest.StashKey[Path]()
 _SUMMARY = pytest.StashKey[str]()
 _RESOURCE_REQUEST = pytest.StashKey["dict[str, Any] | None"]()
 _SPEC_ENV = "TESTO_RESOURCE_SPEC"
+_SHARD_ENV = "TESTO_SHARD"
+_SHARD = pytest.StashKey["tuple[int, int] | None"]()
+_SHARD_TIMINGS = pytest.StashKey["dict[str, float]"]()
+_SHARD_SUMMARY = pytest.StashKey[str]()
+_WORKER_TIMINGS = "testo_shard_timings"
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -96,6 +107,20 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         metavar="DURATION",
         help="How long to wait for a free key: 90s, 10m, 2h or forever (default: 30m).",
     )
+    group.addoption(
+        "--testo-shard",
+        default=None,
+        metavar="I/N",
+        help="Run only shard I of N, split so shards take about the same time "
+        "(default: $TESTO_SHARD).",
+    )
+    group.addoption(
+        "--testo-timings",
+        default=None,
+        metavar="CYCLE",
+        help="Cycle whose test times --testo-shard uses (default: $TESTO_CYCLE, set by "
+        "`testo run`, else the rootdir's name).",
+    )
 
 
 def _enabled(config: pytest.Config) -> bool:
@@ -111,6 +136,7 @@ def _enabled(config: pytest.Config) -> bool:
 @pytest.hookimpl(tryfirst=True)
 def pytest_configure(config: pytest.Config) -> None:
     config.stash[_RESOURCE_REQUEST] = _resource_request(config)
+    _configure_shard(config)
     # Before pytest's junitxml plugin reads the option, so it writes the report for us.
     if not _enabled(config) or config.option.xmlpath:
         return
@@ -189,9 +215,10 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
 def pytest_terminal_summary(
     terminalreporter: pytest.TerminalReporter, config: pytest.Config
 ) -> None:
-    line = config.stash.get(_SUMMARY, None)
-    if line:
-        terminalreporter.write_line(line)
+    for key in (_SHARD_SUMMARY, _SUMMARY):
+        line = config.stash.get(key, None)
+        if line:
+            terminalreporter.write_line(line)
 
 
 # -- resource pools ---------------------------------------------------------------
@@ -303,3 +330,91 @@ def testo_resource(_testo_worker_key: Any, _testo_test_key: Any) -> Any:
             pytrace=False,
         )
     return held
+
+
+# -- shards -----------------------------------------------------------------------
+
+
+def _configure_shard(config: pytest.Config) -> None:
+    raw = config.getoption("testo_shard") or os.environ.get(_SHARD_ENV) or ""
+    if not raw.strip():
+        config.stash[_SHARD] = None
+        return
+    from testo_core.services.test_split import (
+        SplitError,
+        load_test_times,
+        parse_shard,
+        timings_index,
+    )
+
+    try:
+        shard = parse_shard(raw)
+    except SplitError as exc:
+        raise pytest.UsageError(f"--testo-shard: {exc}") from exc
+    config.stash[_SHARD] = shard
+    workerinput = getattr(config, "workerinput", None)
+    if workerinput is not None and _WORKER_TIMINGS in workerinput:
+        # The controller's times, so every worker keeps the same tests.
+        config.stash[_SHARD_TIMINGS] = dict(json.loads(workerinput[_WORKER_TIMINGS]))
+        return
+    cycle = (
+        config.getoption("testo_timings")
+        or os.environ.get("TESTO_CYCLE")
+        or config.rootpath.name
+        or "pytest"
+    ).strip()
+    server = config.getoption("testo_server") or os.environ.get("TESTO_SERVER_URL") or None
+    try:
+        times = load_test_times(cycle, server=server, token=os.environ.get("TESTO_API_TOKEN"))
+    except Exception as exc:  # noqa: BLE001 - a shard must not guess: another shard may know
+        raise pytest.UsageError(
+            f"--testo-shard: could not load the test times of cycle {cycle!r}: {exc}"
+        ) from exc
+    config.stash[_SHARD_TIMINGS] = timings_index(times)
+    if _is_xdist_controller(config):  # the workers collect and pick the tests
+        timed = sum(1 for t in times if t.median_ms is not None)
+        config.stash[_SHARD_SUMMARY] = (
+            f"testo: shard {shard[0]}/{shard[1]} of cycle {cycle!r} (times known for {timed} tests)"
+        )
+
+
+@pytest.hookimpl(optionalhook=True)
+def pytest_configure_node(node: Any) -> None:
+    """pytest-xdist: hand the controller's test times to each worker."""
+    timings = node.config.stash.get(_SHARD_TIMINGS, None)
+    if timings is not None:
+        node.workerinput[_WORKER_TIMINGS] = json.dumps(timings)
+
+
+@pytest.hookimpl(trylast=True)  # after -k / -m, so the shards split what will run
+def pytest_collection_modifyitems(
+    session: pytest.Session, config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    shard = config.stash.get(_SHARD, None)
+    if shard is None:
+        return
+    from testo_core.services.test_split import nodeid_names, plan_split
+
+    index, count = shard
+    timings: dict[str, float] = (
+        config.stash[_SHARD_TIMINGS] if _SHARD_TIMINGS in config.stash else {}
+    )
+    plan = plan_split(
+        [item.nodeid for item in items],
+        timings,
+        count,
+        names_for=nodeid_names,
+    )
+    mine = plan.shard(index)
+    keep = set(mine.tests)
+    selected = [item for item in items if item.nodeid in keep]
+    deselected = [item for item in items if item.nodeid not in keep]
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = selected
+    if not hasattr(config, "workerinput"):
+        about = f", about {mine.estimate_ms / 1000:.1f}s" if plan.timed else ""
+        config.stash[_SHARD_SUMMARY] = (
+            f"testo: shard {index}/{count} ran {len(selected)} of {plan.total} tests{about} "
+            f"(times known for {plan.timed} tests)"
+        )

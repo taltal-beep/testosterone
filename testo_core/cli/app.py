@@ -63,6 +63,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import plugins as plugins_mod
     from testo_core.cli.commands import report as report_cmd
     from testo_core.cli.commands import run as run_cmd
+    from testo_core.cli.commands import split as split_mod
     from testo_core.cli.commands import ui_cmd
     from testo_core.cli.commands import users as users_cmd
     from testo_core.cli.commands import version as version_cmd
@@ -83,6 +84,11 @@ def _register_commands() -> None:
         help="Open the web UI on this machine's run history (http://127.0.0.1:8000).",
         rich_help_panel="Run and report",
     )(ui_cmd.ui)
+    app.command(
+        name="split",
+        help="Split a cycle's tests into shards of about equal time (CI matrix, pool keys).",
+        rich_help_panel="Run and report",
+    )(split_mod.split)
     app.command(
         name="notify",
         help="Send a recorded run to Slack or Teams (webhook URLs from the environment).",
