@@ -245,10 +245,11 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m pip install pytest
-      # The local copy of the action; it installs testo-core from PyPI, so this
-      # checks the guide against the published release.
+      # The local copy of the action (the root one, as listed on the Marketplace);
+      # it installs testo-core from PyPI, so this checks the guide against the
+      # published release.
       - id: testo
-        uses: ./integrations/github-action
+        uses: ./
         with:
           config-path: examples/getting-started/testosterone.yaml
           cycle: unit

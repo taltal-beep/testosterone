@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-07-01
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # Publishing to PyPI
@@ -30,6 +30,7 @@ updated: 2026-10-25
 2. The `publish.yml` workflow triggers automatically. Its one job waits for the `pypi` environment's reviewer, then checks out the tag, builds the web UI into `testo_api/ui_dist/` (`scripts/build_ui_bundle.sh`, so `testo ui` works from the wheel), builds the package, checks the tag matches the package version, runs `twine check --strict`, installs the wheel with no extras and runs a cycle (`scripts/package_smoke.sh`), publishes with `pypa/gh-action-pypi-publish` over OIDC (no API token), and verifies `pip install`, retrying for up to five minutes while PyPI's index catches up with the upload.
 3. To publish an existing tag whose automatic run failed (for example after fixing the trusted publisher), run the workflow by hand from the Actions tab with that tag as input. PyPI refuses a version that was already uploaded.
 4. The same Release also triggers `docker-publish.yml` (runner image to GHCR; the first push creates a private package, so set its visibility to public once) and `artifactory-publish.yml` (skipped while `ARTIFACTORY_URL` is unset).
+5. To list the GitHub Action on the Marketplace, tick "Publish this Action to the GitHub Marketplace" on the Release form (category Testing). It lists the root `action.yml`. The account owner accepts the Marketplace Developer Agreement once, and publishing needs two-factor login; after that, each Release with the box ticked updates the listing.
 
 The `package` job in `ci.yml` runs the UI bundle, the build and the clean-install check (which also fails if the wheel has no UI) on every pull request, so a release should not be the first time they run.
 

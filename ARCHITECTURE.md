@@ -120,7 +120,7 @@ progress for both run panels comes from one hook, `features/execution/useCycleEx
 
 ### CI wrappers
 
-`integrations/github-action/` (composite action) and `ci/gitlab/testo.gitlab-ci.yml` both run
+`action.yml` at the root (composite action, listed on the Marketplace; its script lives in `integrations/github-action/`) and `ci/gitlab/testo.gitlab-ci.yml` both run
 `testo run --ci` and keep the NDJSON stream plus the final `plan_finished` event as artifacts.
 `Dockerfile.testo-runner` packages the CLI as a runner image (`ENTRYPOINT ["testo"]`).
 

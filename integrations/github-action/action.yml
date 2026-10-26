@@ -1,5 +1,8 @@
-name: Testosterone Run
-description: Run a Testosterone cycle via `testo run --ci`.
+name: Testosterone Test History
+description: Run your tests or read JUnit XML, keep their history, and show what broke, what's flaky and what got slower.
+branding:
+  icon: activity
+  color: blue
 inputs:
   config-path:
     description: Path to testosterone.yaml (empty = discovery from the workspace root).
