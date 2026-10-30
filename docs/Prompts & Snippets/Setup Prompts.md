@@ -107,7 +107,7 @@ branch.
   and upload testo-output.ndjson, testo-summary.json and artifacts/ with
   actions/upload-artifact.
 - Leave a comment in the workflow: this can become
-  `uses: taltal-beep/testosterone/integrations/github-action@v1` with `cycle: smoke`.
+  `uses: taltal-beep/testosterone@v1` with `cycle: smoke`.
 
 Reference: https://github.com/taltal-beep/testosterone/blob/main/docs/Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md
 ```

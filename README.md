@@ -31,22 +31,25 @@ read-only static site.
 
 ## What's new
 
-New in 1.3.0:
+New in 1.4.0:
 
-- **See what failed first.** A failed run's page opens with its failing tests: the message, the
-  stage, "New" or "Failing for 3 runs", a flaky badge, and failures that share a cause grouped.
-- **`testo ui`.** `pip install 'testo-core[api]' && testo ui` opens the dashboard on this
-  machine's run history. The UI ships in the wheel: no checkout, no Node.
-- **A page per test.** Pass rate, last failure, duration per run and every run with its branch.
-  The cycle page searches tests and lists the slowest ones and the ones that got slower.
-- **Pull request comments judged against `main`.** A PR's run is compared with the latest run on
-  its target branch, not with another PR's run (`testo report markdown --baseline-branch`).
-- **Owners and issues for flaky tests.** Owners come from your CODEOWNERS file, with an
-  "Open an issue" link prefilled with the test, its last failure and its owners.
-- **Less noise.** A run that is a few milliseconds slower is no longer a regression.
-- **Team server, all opt-in:** per-user accounts and an audit log (`TESTO_AUTH=accounts`), a queue
-  that survives restarts (`TESTO_RUN_QUEUE=db`), parallel stages (`max_parallel_stages`), and each
-  stage in a throwaway container (`TESTO_RUNNER=container`).
+- **Bring your runner's own results.** `testo ingest` reads Jest, Vitest, .NET TRX, `go test -json`,
+  Robot Framework, Allure, RSpec, k6 and Xcode results as they are, with no JUnit reporter to add.
+  New `jest`, `vitest` and `cypress` stages, and "Rerun these tests" for many more runners.
+- **`pytest --testo`.** A pytest plugin that records each session as a run, with no config file.
+- **Needs attention first.** The dashboard leads with red cycles, new failures and tests that just
+  turned flaky, and a Project health page (`/health`) gives the tests one 0-100 score.
+- **Triage memory.** Mark why a test failed once, and later failures with the same message show it.
+- **More on the test page.** Screenshots, videos and the Playwright trace from the last failure,
+  and how flaky the test has been over time. Each cycle shows its recent runs.
+- **Resource pools.** Give each parallel worker its own VM, device or test account
+  (`resources:` and `testo lease`), and split tests into shards of equal time (`pytest --testo-shard`).
+- **`testo badge`** for your README, a try-it page that reads a JUnit file in the browser, and the
+  GitHub Action at a shorter path: `uses: taltal-beep/testosterone@v1`.
+
+New in 1.3.0: failing tests first on the run page, `testo ui`, a page per test, pull request
+comments judged against the target branch, owners and issue links for flaky tests, less timing
+noise, and opt-in team-server accounts, queue, parallel stages and runner containers.
 
 New in 1.2.0: `testo ingest` for any runner's JUnit XML, the team server, a lighter install
 (Behave moved to the `bdd` extra), flaky test detection, pull request comments, plugins and
@@ -240,7 +243,7 @@ Interactive docs at `http://127.0.0.1:8000/docs` while `testo-api` runs.
 GitHub Actions:
 
 ```yaml
-- uses: taltal-beep/testosterone/integrations/github-action@v1
+- uses: taltal-beep/testosterone@v1
   with:
     cycle: smoke          # optional: config-path, ci-mode, persist, python-version
     comment-on-pr: "true" # results as a pull request comment (needs pull-requests: write)

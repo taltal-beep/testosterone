@@ -8,6 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-30
+
 ### Added
 - The GitHub Action at the repository root, ready for the GitHub Marketplace: `uses: taltal-beep/testosterone@v1` (name "Testosterone Test History", with an icon). `taltal-beep/testosterone/integrations/github-action@v1` keeps working; a test keeps the two copies the same
 - `testo badge`: a README badge for a cycle's latest run ("tests | 412 passed · 2 flaky", green, yellow or red), as an SVG or a shields.io endpoint JSON. A team server serves it live at `GET /api/v1/badge.svg` and `GET /api/v1/badge.json` (`?cycle=`)
@@ -364,7 +366,8 @@ First public release. Published to PyPI (`testo-core`), GHCR (`testo-runner`), a
 
 ---
 
-[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/taltal-beep/testosterone/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/taltal-beep/testosterone/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/taltal-beep/testosterone/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/taltal-beep/testosterone/compare/v1.1.0...v1.1.1

@@ -47,4 +47,4 @@ def test_wrapper_uses_testo_run_ci_command_shape() -> None:
 
 def test_github_fixture_is_one_line_consumer() -> None:
     workflow = Path("tests/fixtures/ci/github_workflow_minimal.yml").read_text(encoding="utf-8")
-    assert "uses: taltal-beep/testosterone/integrations/github-action@v1" in workflow
+    assert "uses: taltal-beep/testosterone@v1" in workflow
