@@ -36,6 +36,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - A try-it page (`/try`, "Try a file" under Tools, also on the static demo): drop JUnit XML files, or use the sample, and see the run the way Testosterone shows one (verdict, failing tests with shared causes grouped, slowest tests), read in the browser with nothing uploaded
 
 ### Changed
+- Claude Code on the web sessions install `.[dev]` into `.venv` at startup (`.claude/hooks/session-start.sh`), since the container's system pip can't build csscompressor
 - One health score: the dashboard's Health card now shows the Project health score (same number as `/health`) and opens that page. A run's own pass percentage is labelled "Pass rate" on the run page and in Compare, and "passed" in the dashboard's recent runs
 - The test page's duration chart shows its scale (longest run and zero); slowdown percentages read the same on the dashboard and the cycle page; the dashboard says "All 3 cycles are red." when none passed; Runs says "Every recorded run" instead of "archived cycle run"
 - Charts have text alternatives: the test page's duration chart reads its values, and the flaky card's outcome strip is announced
