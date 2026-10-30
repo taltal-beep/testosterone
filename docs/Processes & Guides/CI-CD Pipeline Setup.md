@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-10-26
+updated: 2026-10-30
 ---
 
 # CI Integrations
@@ -38,14 +38,14 @@ The PR comment and `testo report markdown` compare a pull request's run with the
 
 ## GitHub Action
 
-The action is `action.yml` at the repository root, the copy the GitHub Marketplace lists (`uses: taltal-beep/testosterone@v1` from the first release that has it, after 1.3.0); `integrations/github-action/action.yml` is the same action at its older path and keeps working, and `tests/contract/ci/test_action_copies.py` fails if the two differ. Source lives under `integrations/github-action/` (inputs: `config-path`, `cycle`, `ci-mode`, `persist`, `python-version`, `package`, `job-summary`, `comment-on-pr`, `annotations`, `slack-webhook`, `teams-webhook`, `notify-when`, `flaky-issues`, `github-token`; outputs: `exit_code`, `status`, `summary_json`, `summary_path`).
+The action is `action.yml` at the repository root, the copy the GitHub Marketplace lists (`uses: taltal-beep/testosterone@v1`, from 1.4.0); `integrations/github-action/action.yml` is the same action at its older path and keeps working, and `tests/contract/ci/test_action_copies.py` fails if the two differ. Source lives under `integrations/github-action/` (inputs: `config-path`, `cycle`, `ci-mode`, `persist`, `python-version`, `package`, `job-summary`, `comment-on-pr`, `annotations`, `slack-webhook`, `teams-webhook`, `notify-when`, `flaky-issues`, `github-token`; outputs: `exit_code`, `status`, `summary_json`, `summary_path`).
 
 ```yaml
 permissions:
   contents: read
   pull-requests: write        # only for comment-on-pr
 steps:
-  - uses: taltal-beep/testosterone/integrations/github-action@v1
+  - uses: taltal-beep/testosterone@v1
     with:
       cycle: smoke
       comment-on-pr: "true"

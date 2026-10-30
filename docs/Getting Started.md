@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-19
-updated: 2026-10-26
+updated: 2026-10-30
 ---
 
 # Getting Started
@@ -93,7 +93,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install pytest            # your project's test dependencies
-      - uses: taltal-beep/testosterone/integrations/github-action@v1
+      - uses: taltal-beep/testosterone@v1
         with:
           cycle: unit
           python-version: "3.11"         # same Python as above, so it sees your dependencies

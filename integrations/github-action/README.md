@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: taltal-beep/testosterone/integrations/github-action@v1
+      - uses: taltal-beep/testosterone@v1
         with:
           cycle: sample-pytests
           comment-on-pr: "true"
