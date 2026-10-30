@@ -112,6 +112,7 @@ def create_db_and_tables() -> None:
         FailureTriage,
         QueuedRun,
         ReportArchive,
+        ResourceAction,
         ResourceItemRow,
         ResourceLease,
         ResourceWaiter,

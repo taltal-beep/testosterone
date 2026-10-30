@@ -52,7 +52,10 @@ _POOL_KEYS: Final[frozenset[str]] = frozenset(
         "provider",
     }
 )
-_PROVIDER_KEYS: Final[frozenset[str]] = frozenset({"list"})
+_PROVIDER_KEYS: Final[frozenset[str]] = frozenset(
+    {"list", "create", "destroy", "allow", "max_items", "name_prefix"}
+)
+PROVIDER_VERBS: Final[tuple[str, ...]] = ("create", "destroy")
 _ITEM_KEYS: Final[frozenset[str]] = frozenset({"id", "labels", "data"})
 
 
@@ -78,6 +81,18 @@ class ResourceProvider:
 
     # Prints the keys that exist right now, one per line. Read-only by contract.
     list: str | None = None
+    # Make or remove the key in $TESTO_RESOURCE_ID. Run only by `testo pool add`,
+    # `remove` and `sweep` with --apply, and only for verbs listed in ``allow``.
+    create: str | None = None
+    destroy: str | None = None
+    allow: tuple[str, ...] = ()
+    # Hard cap on keys that exist (the pool's items plus what ``list`` shows).
+    max_items: int | None = None
+    # Keys made or removed through the provider must start with this.
+    name_prefix: str | None = None
+
+    def allows(self, verb: str) -> bool:
+        return verb in self.allow
 
 
 @dataclass(frozen=True)
@@ -280,7 +295,46 @@ def _parse_provider(raw: Any, *, where: str) -> ResourceProvider | None:
         raise ConfigValidationError(
             f"{where} has unknown key(s) {unknown}; allowed: {sorted(_PROVIDER_KEYS)}"
         )
-    return ResourceProvider(list=_command(raw.get("list"), f"{where}.list"))
+    allow_raw = raw.get("allow")
+    if allow_raw is None:
+        allow: tuple[str, ...] = ()
+    elif isinstance(allow_raw, list) and all(v in PROVIDER_VERBS for v in allow_raw):
+        allow = tuple(dict.fromkeys(allow_raw))
+    else:
+        raise ConfigValidationError(
+            f"{where}.allow must be a list of {', '.join(PROVIDER_VERBS)} (got {allow_raw!r})."
+        )
+    max_items_raw = raw.get("max_items")
+    prefix_raw = raw.get("name_prefix")
+    provider = ResourceProvider(
+        list=_command(raw.get("list"), f"{where}.list"),
+        create=_command(raw.get("create"), f"{where}.create"),
+        destroy=_command(raw.get("destroy"), f"{where}.destroy"),
+        allow=allow,
+        max_items=(
+            None
+            if max_items_raw is None
+            else _whole_number(max_items_raw, f"{where}.max_items", minimum=1)
+        ),
+        name_prefix=None if prefix_raw is None else str(prefix_raw).strip(),
+    )
+    if provider.name_prefix is not None:
+        check_name(provider.name_prefix, kind=f"{where}.name_prefix")
+    # Each allowed verb needs its command and the limits that keep it safe.
+    for verb in allow:
+        needs = {
+            verb: getattr(provider, verb),
+            "list": provider.list,
+            "name_prefix": provider.name_prefix,
+        }
+        if verb == "create":
+            needs["max_items"] = provider.max_items
+        missing = [key for key, value in needs.items() if value is None]
+        if missing:
+            raise ConfigValidationError(
+                f"{where}.allow has {verb!r}, which also needs {', '.join(missing)}."
+            )
+    return provider
 
 
 def check_name(value: str, *, kind: str) -> None:

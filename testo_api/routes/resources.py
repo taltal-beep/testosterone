@@ -9,9 +9,14 @@ from someone else (``/items/release``) needs ``admin``.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Path, Request, Response
+import time
+
+from fastapi import APIRouter, HTTPException, Path, Query, Request, Response
 
 from testo_api.models import (
+    ResourceActionItem,
+    ResourceActionRequest,
+    ResourceActionsResponse,
     ResourceHolder,
     ResourceItemRequest,
     ResourceItemStatus,
@@ -25,7 +30,7 @@ from testo_api.models import (
 from testo_api.security import TOKEN_PRINCIPAL, current_principal
 from testo_core.config.errors import ConfigValidationError
 from testo_core.resources.pools import parse_labels, parse_pool
-from testo_core.resources.store import Holder, Lease, LeaseStore, PoolStatus
+from testo_core.resources.store import Holder, Lease, LeaseStore, PoolStatus, ProviderAction
 
 router = APIRouter(prefix="/api/v1/resources", tags=["resources"])
 
@@ -182,4 +187,47 @@ def force_release_item(body: ResourceItemRequest) -> Response:
     """Take a key back from whoever holds it (admin). Their next heartbeat finds it gone."""
     if not LeaseStore().force_release(body.pool, body.item):
         raise HTTPException(status_code=404, detail="Nobody holds that key.")
+    return Response(status_code=204)
+
+
+@router.get("/actions", response_model=ResourceActionsResponse)
+def list_actions(
+    pool: str | None = None, limit: int = Query(default=50, ge=1, le=500)
+) -> ResourceActionsResponse:
+    """Provider commands people ran (``testo pool add/remove/sweep --apply``), newest first."""
+    return ResourceActionsResponse(
+        actions=[
+            ResourceActionItem(
+                pool=a.pool,
+                item=a.item,
+                verb=a.verb,  # type: ignore[arg-type]  # only create/destroy are recorded
+                user=a.user,
+                host=a.host,
+                command=a.command,
+                ok=a.ok,
+                detail=a.detail,
+                at=a.at,
+            )
+            for a in LeaseStore().actions(pool, limit=limit)
+        ]
+    )
+
+
+@router.post("/actions", status_code=204)
+def record_action(body: ResourceActionRequest, request: Request) -> Response:
+    """Log a provider command a client ran. The server never runs one itself."""
+    LeaseStore().record_action(
+        ProviderAction(
+            pool=body.pool,
+            item=body.item,
+            verb=body.verb,
+            user=_account(request) or body.user,
+            host=body.host,
+            command=body.command,
+            ok=body.ok,
+            detail=body.detail,
+            # The server's clock, like every lease time.
+            at=time.time(),
+        )
+    )
     return Response(status_code=204)

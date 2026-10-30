@@ -188,3 +188,46 @@ def test_a_clean_release_reaches_the_next_taker(client: TestClient) -> None:
         if i["item"] == "vm-2"
     )
     assert win["clean"] is False and win["lease"]["reuse_delay_s"] == pytest.approx(40.0)
+
+
+def test_the_server_keeps_the_provider_log_and_never_runs_it(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from testo_core.resources.store import ProviderAction
+
+    action = {"pool": "vms", "item": "testo-vm-1", "verb": "create", "ok": True}
+    assert client.post("/api/v1/resources/actions", json=action).status_code == 401
+    assert (
+        client.post(
+            "/api/v1/resources/actions", json={**action, "verb": "reboot"}, headers=_AUTH
+        ).status_code
+        == 422
+    )
+
+    def through_app(method: str, url: str, **kwargs: object) -> object:
+        kwargs.pop("timeout", None)
+        return client.request(method, url.removeprefix("https://testo.example"), **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(requests, "request", through_app)
+    remote = RemoteLeases("https://testo.example", _TOKEN)
+    remote.record_action(
+        ProviderAction(
+            pool="vms",
+            item="testo-vm-1",
+            verb="destroy",
+            user="dana",
+            host="laptop-7",
+            command="./vms.sh delete",
+            ok=False,
+            detail="exit 1: not found",
+        )
+    )
+    [logged] = remote.actions("vms")
+    assert (logged.verb, logged.user, logged.ok, logged.detail) == (
+        "destroy",
+        "dana",
+        False,
+        "exit 1: not found",
+    )
+    assert logged.at > 0  # the server's clock
+    assert client.get("/api/v1/resources/actions?pool=other").json() == {"actions": []}

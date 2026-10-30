@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   apiClient,
+  type ResourceActionItem,
   type ResourceItemStatus,
   type ResourceLeaseInfo,
   type ResourcePoolStatus
@@ -143,12 +144,44 @@ function PoolCard({ pool, now }: { pool: ResourcePoolStatus; now: number }) {
   );
 }
 
+/** Create and destroy commands people ran with `testo pool ... --apply`. Testosterone never runs them itself. */
+function ProviderLog({ actions, now }: { actions: ResourceActionItem[]; now: number }) {
+  return (
+    <Card
+      title="Provider commands"
+      actions={<span className="text-xs text-ink-300">Run by people with testo pool, newest first</span>}
+    >
+      <ul className="-mx-5 -mb-5 divide-y divide-white/5" data-testid="provider-log">
+        {actions.map((a, i) => (
+          <li key={`${a.at}-${a.item}-${i}`} className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
+            <Badge tone={a.ok ? "success" : "danger"}>{a.verb}</Badge>
+            <span className="font-mono font-semibold text-white">
+              {a.pool}/{a.item}
+            </span>
+            <span className="text-xs text-ink-300">
+              {[a.user, a.host ? `@${a.host}` : ""].filter(Boolean).join(" ") || "someone"} · {ago(a.at, now)}
+              {a.ok ? "" : ` · failed: ${a.detail || "no details"}`}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 /** Every resource pool, who holds each key, and how many requests wait (refreshes every 5 seconds). */
 export function ResourcesPage() {
   const query = useQuery({
     queryKey: ["resources"],
     queryFn: () => apiClient.listResources(),
     refetchInterval: IS_STATIC_BUILD ? false : 5_000
+  });
+  // The demo site has no provider log to show.
+  const actions = useQuery({
+    queryKey: ["resource-actions"],
+    queryFn: () => apiClient.listResourceActions(),
+    enabled: !IS_STATIC_BUILD,
+    refetchInterval: 30_000
   });
   // The demo site is a snapshot: times are "ago" from when it was taken, not from now.
   const manifest = useQuery({
@@ -206,6 +239,7 @@ export function ResourcesPage() {
           {pools.map((pool) => (
             <PoolCard key={pool.name} pool={pool} now={now} />
           ))}
+          {actions.data?.actions?.length ? <ProviderLog actions={actions.data.actions} now={now} /> : null}
         </div>
       )}
     </section>
