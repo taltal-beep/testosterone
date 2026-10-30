@@ -14,6 +14,8 @@ makes sure two workers never hold the same one at the same time (see
         max_per_user: 2         # optional
         on_take: "my-tool revert $TESTO_RESOURCE_ID"     # optional, your own command
         on_check: "my-tool ping $TESTO_RESOURCE_ID"      # optional: exit 0 = usable
+        provider:                                         # optional, your own commands
+          list: "my-tool list-vms"                        # prints the keys that exist, one per line
       seats:
         count: 3                # keys seat-1, seat-2, seat-3
 
@@ -47,8 +49,10 @@ _POOL_KEYS: Final[frozenset[str]] = frozenset(
         "on_check",
         "on_release",
         "hook_timeout",
+        "provider",
     }
 )
+_PROVIDER_KEYS: Final[frozenset[str]] = frozenset({"list"})
 _ITEM_KEYS: Final[frozenset[str]] = frozenset({"id", "labels", "data"})
 
 
@@ -62,6 +66,18 @@ class ResourceItem:
 
     def has_labels(self, wanted: Iterable[str]) -> bool:
         return set(wanted) <= set(self.labels)
+
+
+@dataclass(frozen=True)
+class ResourceProvider:
+    """A pool's ``provider:``: the user's own commands that look at the real keys.
+
+    Only ``testo pool`` runs them, when a person types it; leases, runs, stages
+    and the team server never do (see :mod:`testo_core.resources.provider`).
+    """
+
+    # Prints the keys that exist right now, one per line. Read-only by contract.
+    list: str | None = None
 
 
 @dataclass(frozen=True)
@@ -79,6 +95,7 @@ class ResourcePool:
     on_check: str | None = None
     on_release: str | None = None
     hook_timeout_s: float = DEFAULT_HOOK_TIMEOUT_S
+    provider: ResourceProvider | None = None
 
     @property
     def reuse_delay(self) -> float:
@@ -92,7 +109,11 @@ class ResourcePool:
         return next((item for item in self.items if item.id == item_id), None)
 
     def to_json(self, *, hooks: bool = True) -> dict[str, Any]:
-        """The pool as JSON. ``hooks=False`` leaves out the commands (a server never runs them)."""
+        """The pool as JSON. ``hooks=False`` leaves out the commands (a server never runs them).
+
+        ``provider`` is never included: it only runs from ``testo pool`` on the config
+        author's machine, so it doesn't travel to a server or to a stage's workers.
+        """
         data: dict[str, Any] = {
             "items": [
                 {"id": item.id, "labels": list(item.labels), "data": dict(item.data)}
@@ -245,7 +266,21 @@ def parse_pool(name: str, raw: Any) -> ResourcePool:
         hook_timeout_s=_seconds(
             raw.get("hook_timeout"), f"{where}.hook_timeout", DEFAULT_HOOK_TIMEOUT_S
         ),
+        provider=_parse_provider(raw.get("provider"), where=f"{where}.provider"),
     )
+
+
+def _parse_provider(raw: Any, *, where: str) -> ResourceProvider | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, Mapping):
+        raise ConfigValidationError(f"{where} must be a mapping of verbs to your commands.")
+    unknown = sorted(str(k) for k in raw if k not in _PROVIDER_KEYS)
+    if unknown:
+        raise ConfigValidationError(
+            f"{where} has unknown key(s) {unknown}; allowed: {sorted(_PROVIDER_KEYS)}"
+        )
+    return ResourceProvider(list=_command(raw.get("list"), f"{where}.list"))
 
 
 def check_name(value: str, *, kind: str) -> None:

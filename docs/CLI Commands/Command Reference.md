@@ -457,6 +457,18 @@ Exit codes: `2` for an unknown pool, a bad config or no command after `--`; `3` 
 
 ---
 
+## `testo pool`
+
+Compare resource pools with the keys that really exist, using the pool's own `provider.list` command. Read-only: it never creates, deletes, disables or leases a key. Guide: [Shared Resource Pools](../Processes%20&%20Guides/Shared%20Resource%20Pools.md#compare-the-pool-with-what-really-exists).
+
+| Command | Effect |
+|---------|--------|
+| `testo pool status [POOL] [--check] [--json]` | For each pool: which keys `provider.list` shows (`yes`, `missing`, or `?` without a list command), which listed keys aren't in the pool, and each key's lease state. `--check` runs `on_check` on every free key that exists |
+
+Flags `--server` and `--config` as for `testo lease`. Exit codes: `0` every pool matches; `1` a key is missing, not in the pool, or fails its check; `2` an unknown pool or a bad config; `3` a `provider.list` command failed or the lease server can't be reached.
+
+---
+
 ## `testo split`
 
 Split a cycle's tests into shards that take about the same time, from each test's median time over the cycle's recent runs (longest test first, each to the shard with the least time so far). For CI matrix jobs, or one shard per key of a pool. Guide: [Shared Resource Pools § Split tests by time](../Processes%20&%20Guides/Shared%20Resource%20Pools.md#split-tests-by-time).

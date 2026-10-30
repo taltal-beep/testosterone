@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-30
 ---
 
 # Shared Resource Pools
@@ -31,6 +31,8 @@ resources:
     on_check: "./vm-ready.sh $TESTO_RESOURCE_ID"     # optional: exit 0 if the key is usable
     on_release: "my-cleanup $TESTO_RESOURCE_ID"      # optional
     hook_timeout: 300                                # seconds, for each hook
+    provider:                                        # optional: your own commands for `testo pool`
+      list: "./vms.sh list"                          # prints the VMs that exist, one per line
   license-seats:
     count: 3                                         # keys license-seats-1 ... license-seats-3
 ```
@@ -46,6 +48,7 @@ resources:
 | `on_check` | none | Shell command run after `on_take`: exit `0` if the key is usable. If it fails, the key is disabled and another key is tried |
 | `on_release` | none | Shell command run before a key is given back. If it works, the key is marked clean for the next taker (`TESTO_RESOURCE_CLEAN=1`). If it fails, the key is disabled |
 | `hook_timeout` | `300` | Seconds each hook may take; longer counts as a failure |
+| `provider.list` | none | Shell command that prints the keys that really exist, one per line (blank lines and `#` lines skipped). Only `testo pool status` runs it, when you type it ([below](#compare-the-pool-with-what-really-exists)). Never sent to a server or to a stage's workers |
 
 ## Give each worker its own key
 
@@ -175,6 +178,23 @@ The **Resources** page in the UI (under Tools) shows every pool, each key's hold
 - **Disable** a broken key so nobody gets it (`testo lease disable flow-vms vm-02 --reason "snapshot broken"`), and put it back (`testo lease enable`). Keys whose hooks failed show up here, disabled, with the reason.
 - **Try it without real pools:** `testo lease demo` adds made-up pools, holders, a disabled key and a short queue to this machine's database, and `testo lease demo --clear` gives the keys back. The [live demo](https://taltal-beep.github.io/testosterone/) shows the same made-up pools.
 - **Take a key back** from its holder (`testo lease free`; an admin on a server with accounts). The holder's next heartbeat finds it gone, and `testo lease run` warns that the lease was lost.
+
+## Compare the pool with what really exists
+
+Testosterone never creates or deletes a VM, or any key, on its own. To see whether the pool still matches your real VMs, give it a read-only `provider.list` command and run:
+
+```bash
+testo pool status              # every pool: missing keys, VMs outside the pool
+testo pool status flow-vms --check   # also run on_check on each free key
+```
+
+| Column | Meaning |
+|--------|---------|
+| exists | `yes` when `provider.list` printed the key, `missing` when it didn't, `?` when the pool has no `provider.list`. Lines `provider.list` printed that the pool doesn't have show as `not in pool` (leftovers, or VMs to add to `items`) |
+| lease | `free`, `held` or `disabled`, as in `testo lease list` |
+| check | With `--check`: `ok`, or why `on_check` failed. A key someone holds, or one `provider.list` doesn't show, is skipped, so a check never disturbs a running test |
+
+It only reads: it never disables a key, takes a lease or changes your VMs. Fix what it finds with your own scripts and `items`. Exit `0` when every pool matches, `1` when a key is missing, not in the pool or fails its check, `3` when a `provider.list` command fails or the lease server can't be reached. A CI schedule can run it to warn about leftovers. Why it works this way: [Human-Run Resource Provider - 2026-10-30](../Specs%20&%20ADRs/Human-Run%20Resource%20Provider%20-%202026-10-30.md).
 
 ## How it works
 
