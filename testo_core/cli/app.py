@@ -62,6 +62,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import notify as notify_mod
     from testo_core.cli.commands import plans as cycles_cmd
     from testo_core.cli.commands import plugins as plugins_mod
+    from testo_core.cli.commands import pool as pool_mod
     from testo_core.cli.commands import report as report_cmd
     from testo_core.cli.commands import run as run_cmd
     from testo_core.cli.commands import split as split_mod
@@ -143,6 +144,12 @@ def _register_commands() -> None:
         lease_mod.app,
         name="lease",
         help="Give each parallel worker its own key from a resource pool (resources: in the config).",
+        rich_help_panel="Run and report",
+    )
+    app.add_typer(
+        pool_mod.app,
+        name="pool",
+        help="Compare resource pools with the keys that really exist (read-only, your own commands).",
         rich_help_panel="Run and report",
     )
     app.add_typer(

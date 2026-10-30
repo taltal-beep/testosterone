@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-10-26
+updated: 2026-10-30
 ---
 
 # Command Reference
@@ -454,6 +454,18 @@ testo lease list                                     # who holds what, how many 
 | `--config` | discovery | `testosterone.yaml` with the pools |
 
 Exit codes: `2` for an unknown pool, a bad config or no command after `--`; `3` when no key came free within `--wait`, the pool has no usable key (none match the labels, or all are disabled), or the server can't be reached; `1` when `heartbeat` or `disable`/`enable`/`free` finds nothing to act on.
+
+---
+
+## `testo pool`
+
+Compare resource pools with the keys that really exist, using the pool's own `provider.list` command. Read-only: it never creates, deletes, disables or leases a key. Guide: [Shared Resource Pools](../Processes%20&%20Guides/Shared%20Resource%20Pools.md#compare-the-pool-with-what-really-exists).
+
+| Command | Effect |
+|---------|--------|
+| `testo pool status [POOL] [--check] [--json]` | For each pool: which keys `provider.list` shows (`yes`, `missing`, or `?` without a list command), which listed keys aren't in the pool, and each key's lease state. `--check` runs `on_check` on every free key that exists |
+
+Flags `--server` and `--config` as for `testo lease`. Exit codes: `0` every pool matches; `1` a key is missing, not in the pool, or fails its check; `2` an unknown pool or a bad config; `3` a `provider.list` command failed or the lease server can't be reached.
 
 ---
 

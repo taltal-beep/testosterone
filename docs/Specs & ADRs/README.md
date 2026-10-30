@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-10-26
+updated: 2026-10-30
 ---
 
 # Specs & ADRs
@@ -30,6 +30,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Quarantining flaky tests so they don't fail the run | [Flaky Test Quarantine - 2026-10-22](Flaky%20Test%20Quarantine%20-%202026-10-22.md) |
 | Pools of keys (VMs, devices, accounts) leased to parallel workers | [Resource Pools and Leases - 2026-10-26](Resource%20Pools%20and%20Leases%20-%202026-10-26.md) |
 | Checking keys, clean releases and a delay before reusing an expired key | [Resource Lifecycle Hooks - 2026-10-26](Resource%20Lifecycle%20Hooks%20-%202026-10-26.md) |
+| A provider of your own commands that never creates or deletes VMs on its own | [Human-Run Resource Provider - 2026-10-30](Human-Run%20Resource%20Provider%20-%202026-10-30.md) |
 | Playwright JSON reports: retries, flaky tests, traces | [Playwright JSON Import - 2026-10-22](Playwright%20JSON%20Import%20-%202026-10-22.md) |
 | Reading Jest/Vitest, .NET, Go, Robot, RSpec, k6, XCTest, Android and Allure results in their own formats | [Runner Coverage - 2026-10-26](Runner%20Coverage%20-%202026-10-26.md) |
 | Slack and Teams alerts, failure annotations on the diff, flaky test issues | [Alerts Where Developers Look - 2026-10-22](Alerts%20Where%20Developers%20Look%20-%202026-10-22.md) |

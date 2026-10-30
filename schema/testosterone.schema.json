@@ -525,6 +525,18 @@
           "type": "number",
           "exclusiveMinimum": 0,
           "default": 300.0
+        },
+        "provider": {
+          "type": "object",
+          "description": "Your own commands that look at the real keys. Only `testo pool`, typed by a person, runs them; Testosterone never creates or deletes keys.",
+          "properties": {
+            "list": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Prints the keys that exist, one per line (read-only)."
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

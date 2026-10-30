@@ -302,6 +302,18 @@ def build_json_schema() -> dict[str, Any]:
                 "exclusiveMinimum": 0,
                 "default": DEFAULT_HOOK_TIMEOUT_S,
             },
+            "provider": {
+                "type": "object",
+                "description": "Your own commands that look at the real keys. Only `testo pool`, "
+                "typed by a person, runs them; Testosterone never creates or deletes keys.",
+                "properties": {
+                    "list": {
+                        **command,
+                        "description": "Prints the keys that exist, one per line (read-only).",
+                    },
+                },
+                "additionalProperties": False,
+            },
         },
         "additionalProperties": False,
     }

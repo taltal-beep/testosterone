@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- `testo pool status`: compare each resource pool with the keys that really exist. A pool's new `provider.list` is your own read-only command that prints them; the report shows keys that are missing, VMs outside the pool (leftovers) and, with `--check`, free keys that fail `on_check`. Exits `1` when something needs a look. Testosterone never creates or deletes a key on its own: only `testo pool`, typed by a person, runs provider commands, and a test checks that runs, leases, stages and the API never reach them
+
 ## [1.4.0] - 2026-10-30
 
 ### Added
