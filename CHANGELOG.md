@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- OpenTelemetry export: a run, its stages and its tests as one trace over OTLP, so test runs show up in Datadog, Grafana Tempo, Honeycomb, Jaeger or any other OTLP backend. Tests keep their real start and stop times; failures are error spans with the message. The `otel` reporter sends it after `testo run`, and `testo otel --cycle/--run-id` sends any recorded run (`--dry-run` prints the spans). Configured with the standard `OTEL_EXPORTER_OTLP_*` variables; off unless configured. Needs the new `[otel]` extra (`pip install 'testo-core[otel]'`)
+
 ## [1.4.0] - 2026-10-30
 
 ### Added

@@ -60,6 +60,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import init_cmd as init_cmd_mod
     from testo_core.cli.commands import lease as lease_mod
     from testo_core.cli.commands import notify as notify_mod
+    from testo_core.cli.commands import otel as otel_mod
     from testo_core.cli.commands import plans as cycles_cmd
     from testo_core.cli.commands import plugins as plugins_mod
     from testo_core.cli.commands import report as report_cmd
@@ -95,6 +96,11 @@ def _register_commands() -> None:
         help="Send a recorded run to Slack or Teams (webhook URLs from the environment).",
         rich_help_panel="Run and report",
     )(notify_mod.notify)
+    app.command(
+        name="otel",
+        help="Send a recorded run to an OpenTelemetry collector as a trace (OTLP).",
+        rich_help_panel="Run and report",
+    )(otel_mod.otel)
     app.command(
         name="badge",
         help="Write a README badge for a cycle's latest run (SVG, or shields.io JSON).",

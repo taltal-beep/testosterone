@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-10-26
+updated: 2026-10-30
 ---
 
 # Command Reference
@@ -17,7 +17,7 @@ testo --help
 
 Help is grouped into panels: **Run and report**, **Config**, **Diagnostics**, **Maintenance**, **About**.
 
-Extras: `pip install testo-core` is the CLI with pytest, Playwright, `command` and `junit` stages. Add `[bdd]` for `behave` and `behavex` stages (Behave, BehaveX and Allure-Behave), `[api]` for the REST API and UI backend, `[db]` for Postgres or MySQL, `[metrics]` for InfluxDB. A `behave` stage without the extra fails with exit `3` and `executable not found: behave (... pip install 'testo-core[bdd]')`.
+Extras: `pip install testo-core` is the CLI with pytest, Playwright, `command` and `junit` stages. Add `[bdd]` for `behave` and `behavex` stages (Behave, BehaveX and Allure-Behave), `[api]` for the REST API and UI backend, `[db]` for Postgres or MySQL, `[metrics]` for InfluxDB, `[otel]` for [OpenTelemetry export](#testo-otel). A `behave` stage without the extra fails with exit `3` and `executable not found: behave (... pip install 'testo-core[bdd]')`.
 
 ---
 
@@ -317,6 +317,30 @@ Exit `0` when sent or when there is nothing to report, `2` for a bad flag, a mis
 
 ---
 
+## `testo otel`
+
+Send a recorded run to an OpenTelemetry collector as one trace: a span for the run, one per stage and one per test, with the tests' real start and stop times. Failed tests, red stages and red runs are error spans. Datadog, Grafana Tempo, Honeycomb, Jaeger and any other OTLP backend show it. Needs `pip install 'testo-core[otel]'`.
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp.example:4318
+export OTEL_EXPORTER_OTLP_HEADERS="api-key=$OTLP_KEY"   # from a secret, never on the command line
+testo otel --cycle nightly                               # the cycle's latest run
+testo otel --run-id 3f2c... --service-name shop-tests
+testo otel --cycle nightly --dry-run                     # print the spans as JSON, send nothing
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--cycle` / `--run-id` | latest run | Which recorded run to send |
+| `--endpoint` | `$OTEL_EXPORTER_OTLP_ENDPOINT`, else `localhost` | OTLP endpoint; a base URL gets `/v1/traces` added for HTTP |
+| `--protocol` | `$OTEL_EXPORTER_OTLP_PROTOCOL`, else `http/protobuf` | `http/protobuf` or `grpc` (`grpc` needs `opentelemetry-exporter-otlp-proto-grpc`) |
+| `--service-name` | `$OTEL_SERVICE_NAME`, else `testosterone` | The trace's `service.name` |
+| `--dry-run` | off | Print the spans as JSON instead of sending (no extra needed) |
+
+Headers come only from `OTEL_EXPORTER_OTLP_HEADERS` (or `OTEL_EXPORTER_OTLP_TRACES_HEADERS`). Exit `0` when sent, `2` for no recorded run, a bad `--protocol` or a missing `[otel]` extra, `3` when the endpoint refuses the spans or can't be reached. The `otel` [reporter](#reporter-types-reporters----reporter) sends the same trace right after `testo run`. Span names and attributes: [OpenTelemetry Export - 2026-10-30](../Specs%20&%20ADRs/OpenTelemetry%20Export%20-%202026-10-30.md).
+
+---
+
 ## `testo badge`
 
 A README badge for a cycle's latest run: **tests | 412 passed · 2 flaky**. Green when everything passed, yellow when the cycle has flaky tests (`testo flaky`'s window), red when a test failed or broke, grey with no run.
@@ -534,6 +558,7 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `INFLUXDB_URL`, `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, `INFLUXDB_BUCKET` | Push run KPIs to InfluxDB after each run |
 | `PROMETHEUS_PUSHGATEWAY_URL`, `PROMETHEUS_JOB_NAME` | Push run KPIs to a Prometheus Pushgateway after each run |
 | `TESTO_SLACK_WEBHOOK_URL`, `TESTO_TEAMS_WEBHOOK_URL` | Webhooks for `testo notify` and the `slack` / `teams` reporters |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_SERVICE_NAME` | Where `testo otel` and the `otel` reporter send traces (the standard OpenTelemetry variables, `*_TRACES_*` forms too) |
 | `TESTO_SERVER_URL`, `TESTO_API_TOKEN` | Team server for `testo lease` (and `pytest --testo-server`) |
 | `TESTO_LEASE_DB_URL` | Database for local leases when it isn't the run-history one |
 | `TESTO_SHARD` | `I/N`: run only that shard of a pytest session ([`--testo-shard`](#pytest---testo)) |
@@ -544,7 +569,7 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 
 ## Reporter types (`reporters:` / `--reporter`)
 
-Supported: `allure`, `extent`, `reportportal`, `slack`, `teams`, `testbeats`, plus any installed [reporter plugin](#plugins). Configured in root `testosterone.yaml`; outputs often under `reports/` (see repo `testosterone.yaml` for examples).
+Supported: `allure`, `extent`, `otel`, `reportportal`, `slack`, `teams`, `testbeats`, plus any installed [reporter plugin](#plugins). Configured in root `testosterone.yaml`; outputs often under `reports/` (see repo `testosterone.yaml` for examples).
 
 `slack` and `teams` post the [`testo notify`](#testo-notify) message for the run that just finished. They need a recorded run (not `--no-persist`):
 
@@ -555,6 +580,17 @@ reporters:
     when: failure                        # failure | change | always
     title: Nightly API tests             # default: the cycle name
     report_url: ${env:CI_JOB_URL}        # optional "View run" link
+```
+
+`otel` sends the [`testo otel`](#testo-otel) trace for the run that just finished (recorded runs only, `[otel]` extra). Options left out fall back to the `OTEL_*` variables:
+
+```yaml
+reporters:
+  - type: otel
+    endpoint: https://otlp.example:4318   # default: $OTEL_EXPORTER_OTLP_ENDPOINT
+    headers: ${env:OTLP_HEADERS}          # "key=value,..."; default: $OTEL_EXPORTER_OTLP_HEADERS
+    protocol: http/protobuf               # or grpc
+    service_name: shop-tests              # default: $OTEL_SERVICE_NAME or testosterone
 ```
 
 `testbeats` posts counts only, to the `slack_webhook` / `teams_webhook` options.

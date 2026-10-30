@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-30
 ---
 
 # Compared with other tools
@@ -33,7 +33,7 @@ Features and prices of the other tools change often. This page describes them as
 - **You need test case management or manual testing.** That's Allure TestOps, Testmo and similar tools. Testosterone only knows about tests that ran.
 - **You want failures sorted automatically, with ML, across a large organisation.** ReportPortal's auto-analysis learns from past decisions. Testosterone remembers a cause someone marked and applies it to failures with the same message, which is simpler and easier to predict, but it doesn't guess.
 - **You run Playwright or Cypress at scale and want CI load balancing.** Currents splits and orders specs across machines and streams results live. Testosterone records what ran; it doesn't schedule specs across CI machines.
-- **Your team already lives in Datadog.** Datadog Test Optimization links tests to traces, deploys and test impact analysis. Testosterone has no equivalent.
+- **Your team already lives in Datadog.** Datadog Test Optimization links tests to traces, deploys and test impact analysis. Testosterone can send each run to Datadog as an OpenTelemetry trace ([`testo otel`](CLI%20Commands/Command%20Reference.md#testo-otel)), but has no test impact analysis.
 
 ## When Testosterone fits
 

@@ -15,6 +15,7 @@ from testo_core.reporting.reporters.alert_reporter import SlackReporter, TeamsRe
 from testo_core.reporting.reporters.allure_reporter import AllureReporter
 from testo_core.reporting.reporters.base import BaseReporter, ReportContext, ReporterResult
 from testo_core.reporting.reporters.extent_reporter import ExtentReporter
+from testo_core.reporting.reporters.otel_reporter import OtelReporter
 from testo_core.reporting.reporters.reportportal_reporter import ReportPortalReporter
 from testo_core.reporting.reporters.testbeats_reporter import TestBeatsReporter
 
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 _REPORTER_REGISTRY: dict[str, type[BaseReporter]] = {
     "allure": AllureReporter,
     "extent": ExtentReporter,
+    "otel": OtelReporter,
     "reportportal": ReportPortalReporter,
     "slack": SlackReporter,
     "teams": TeamsReporter,

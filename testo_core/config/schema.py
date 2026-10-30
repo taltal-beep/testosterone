@@ -49,7 +49,7 @@ DEFAULT_TIER_BY_FRAMEWORK: dict[str, str] = {
 
 # Supported post-run reporters. Add new ones in :mod:`testo_core.reporting.reporters` and append here.
 SUPPORTED_REPORTER_TYPES: frozenset[str] = frozenset(
-    {"allure", "extent", "reportportal", "slack", "teams", "testbeats"}
+    {"allure", "extent", "otel", "reportportal", "slack", "teams", "testbeats"}
 )
 
 

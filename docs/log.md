@@ -120,3 +120,7 @@ Added [Resource Lifecycle Hooks - 2026-10-26](Specs%20&%20ADRs/Resource%20Lifecy
 ## 2026-10-26: qualflare follow-ups
 
 Added [Qualflare Follow-ups - 2026-10-26](Specs%20&%20ADRs/Qualflare%20Follow-ups%20-%202026-10-26.md) to Specs & ADRs (README badge, asking about your tests, Jira issues from failures), linked from its README and the docs site menu.
+
+## 2026-10-30: opentelemetry export
+
+Added [OpenTelemetry Export - 2026-10-30](Specs%20&%20ADRs/OpenTelemetry%20Export%20-%202026-10-30.md) to Specs & ADRs (runs as OTLP traces, the `otel` reporter and `testo otel`), linked from its README and the docs site menu.
