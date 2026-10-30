@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from testo_core.config.affected import AffectedConfig
+
 if TYPE_CHECKING:
     from testo_core.resources.pools import ResourcePool, StageResources
 
@@ -153,6 +155,8 @@ class TestosteroneConfig:
     source_path: Path | None = None
     # Top-level ``resources:``: pools of keys parallel workers lease (testo_core/resources/).
     resources: dict[str, ResourcePool] = field(default_factory=dict)
+    # Top-level ``affected:``: how changed files map to tests (`testo affected`).
+    affected: AffectedConfig = field(default_factory=AffectedConfig)
 
     @property
     def plans(self) -> dict[str, Plan]:

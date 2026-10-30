@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-10-26
+updated: 2026-10-30
 ---
 
 # Vault log
@@ -120,3 +120,7 @@ Added [Resource Lifecycle Hooks - 2026-10-26](Specs%20&%20ADRs/Resource%20Lifecy
 ## 2026-10-26: qualflare follow-ups
 
 Added [Qualflare Follow-ups - 2026-10-26](Specs%20&%20ADRs/Qualflare%20Follow-ups%20-%202026-10-26.md) to Specs & ADRs (README badge, asking about your tests, Jira issues from failures), linked from its README and the docs site menu.
+
+## 2026-10-30: affected test selection
+
+Added [Affected Test Selection - 2026-10-30](Specs%20&%20ADRs/Affected%20Test%20Selection%20-%202026-10-30.md) to Specs & ADRs (`testo affected`, `pytest --testo-affected`, the `affected:` section), linked from its README and the docs site menu.

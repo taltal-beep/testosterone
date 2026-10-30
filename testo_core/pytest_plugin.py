@@ -24,6 +24,11 @@ And it splits a suite into shards of about equal time: ``--testo-shard I/N``
 cycle's history (``testo_core/services/test_split.py``). Under pytest-xdist the
 controller loads the times once and hands them to its workers, so all of them
 pick the same tests.
+
+And it runs only the tests a change can affect: ``--testo-affected`` (or
+``TESTO_AFFECTED=1``) diffs against the baseline branch and deselects the rest
+(``testo_core/services/affected_tests.py``). Anything it can't map to tests
+runs the whole suite, and the summary says why.
 """
 
 from __future__ import annotations
@@ -52,6 +57,12 @@ _SHARD = pytest.StashKey["tuple[int, int] | None"]()
 _SHARD_TIMINGS = pytest.StashKey["dict[str, float]"]()
 _SHARD_SUMMARY = pytest.StashKey[str]()
 _WORKER_TIMINGS = "testo_shard_timings"
+_AFFECTED_ENV = "TESTO_AFFECTED"
+# (file, node id under the file or None for the whole file) pairs to keep; None runs all.
+_AFFECTED = pytest.StashKey["frozenset[tuple[Path, str | None]] | None"]()
+_AFFECTED_NOTHING = pytest.StashKey[bool]()
+_AFFECTED_SUMMARY = pytest.StashKey["list[str]"]()
+_AFFECTED_SHOWN = 20
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -115,6 +126,20 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "(default: $TESTO_SHARD).",
     )
     group.addoption(
+        "--testo-affected",
+        action="store_true",
+        default=False,
+        help="Run only the tests the changes since the baseline branch can affect "
+        "('affected:' in testosterone.yaml; also $TESTO_AFFECTED=1). Unmapped changes run all.",
+    )
+    group.addoption(
+        "--testo-affected-base",
+        default=None,
+        metavar="REF",
+        help="Branch or commit --testo-affected diffs against (default: affected.base, else "
+        "the pull request's target branch in CI, else origin/main).",
+    )
+    group.addoption(
         "--testo-timings",
         default=None,
         metavar="CYCLE",
@@ -137,6 +162,7 @@ def _enabled(config: pytest.Config) -> bool:
 def pytest_configure(config: pytest.Config) -> None:
     config.stash[_RESOURCE_REQUEST] = _resource_request(config)
     _configure_shard(config)
+    _configure_affected(config)
     # Before pytest's junitxml plugin reads the option, so it writes the report for us.
     if not _enabled(config) or config.option.xmlpath:
         return
@@ -197,6 +223,9 @@ def _record(config: pytest.Config, xml: Path) -> str:
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     # trylast: after pytest's junitxml plugin has written the report.
     config = session.config
+    if int(exitstatus) == 5 and config.stash.get(_AFFECTED_NOTHING, False):
+        # No test needed to run: a pass, not pytest's "no tests collected".
+        session.exitstatus = 0
     if not _enabled(config):
         return
     temp = config.stash.get(_TEMP_DIR, None)
@@ -215,6 +244,8 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
 def pytest_terminal_summary(
     terminalreporter: pytest.TerminalReporter, config: pytest.Config
 ) -> None:
+    for affected_line in config.stash.get(_AFFECTED_SUMMARY, []):
+        terminalreporter.write_line(affected_line)
     for key in (_SHARD_SUMMARY, _SUMMARY):
         line = config.stash.get(key, None)
         if line:
@@ -390,6 +421,7 @@ def pytest_configure_node(node: Any) -> None:
 def pytest_collection_modifyitems(
     session: pytest.Session, config: pytest.Config, items: list[pytest.Item]
 ) -> None:
+    _keep_affected(config, items)
     shard = config.stash.get(_SHARD, None)
     if shard is None:
         return
@@ -418,3 +450,97 @@ def pytest_collection_modifyitems(
             f"testo: shard {index}/{count} ran {len(selected)} of {plan.total} tests{about} "
             f"(times known for {plan.timed} tests)"
         )
+
+
+# -- affected tests ---------------------------------------------------------------
+
+
+def _configure_affected(config: pytest.Config) -> None:
+    config.stash[_AFFECTED] = None
+    on = config.getoption("testo_affected") or os.environ.get(
+        _AFFECTED_ENV, ""
+    ).strip().lower() in ("1", "true", "yes")
+    if not on:
+        return
+    from testo_core.config.errors import ConfigDiscoveryError, ConfigError
+    from testo_core.config.loader import discover_and_load
+    from testo_core.config.schema import Defaults, TestosteroneConfig
+    from testo_core.services.affected_tests import AffectedError, compute
+
+    try:
+        try:
+            cfg = discover_and_load(cwd=config.rootpath)
+        except ConfigDiscoveryError:
+            cfg = TestosteroneConfig(version=1, defaults=Defaults())
+        selection, root = compute(
+            config.rootpath,
+            cfg.affected,
+            base=config.getoption("testo_affected_base"),
+            env=dict(os.environ),
+        )
+    except (ConfigError, AffectedError) as exc:
+        raise pytest.UsageError(f"--testo-affected: {exc}") from exc
+    lines: list[str] = []
+    if selection.run_all:
+        lines.append("testo: affected tests: running everything, because")
+        lines.extend(f"  - {reason}" for reason in selection.run_all_reasons)
+    else:
+        keep: set[tuple[Path, str | None]] = set()
+        for test in selection.tests:
+            file_part, sep, rest = test.partition("::")
+            keep.add(((root / file_part).resolve(), rest if sep else None))
+        config.stash[_AFFECTED] = frozenset(keep)
+        against = f" against {selection.base}" if selection.base else ""
+        lines.append(
+            f"testo: affected tests: {len(selection.tests)} picked from "
+            f"{len(selection.changed)} changed file(s){against}"
+        )
+        for test, reasons in list(selection.tests.items())[:_AFFECTED_SHOWN]:
+            lines.append(f"  {test}  <- {'; '.join(reasons)}")
+        if len(selection.tests) > _AFFECTED_SHOWN:
+            lines.append(f"  ... and {len(selection.tests) - _AFFECTED_SHOWN} more")
+        if selection.nothing_to_run:
+            lines.append("  no test needs to run:")
+            lines.extend(f"  - {d.path}: {d.reason}" for d in selection.files)
+    if not hasattr(config, "workerinput"):
+        config.stash[_AFFECTED_SUMMARY] = lines
+
+
+def _matches(item: pytest.Item, file: Path, name: str | None) -> bool:
+    if Path(str(item.path)).resolve() != file:
+        return False
+    if name is None:
+        return True
+    rest = item.nodeid.partition("::")[2]
+    return rest == name or rest.startswith(name + "::") or rest.startswith(name + "[")
+
+
+def _keep_affected(config: pytest.Config, items: list[pytest.Item]) -> None:
+    keep = config.stash.get(_AFFECTED, None)
+    if keep is None:
+        return
+    found: set[tuple[Path, str | None]] = set()
+    selected: list[pytest.Item] = []
+    deselected: list[pytest.Item] = []
+    for item in items:
+        hits = {entry for entry in keep if _matches(item, *entry)}
+        found |= hits
+        (selected if hits else deselected).append(item)
+    # A picked Python test that wasn't collected may have been renamed since the
+    # coverage report or rule was written: its replacement is unknown, so run all.
+    lost = sorted(
+        f"{file.name}::{name}" if name else file.name
+        for file, name in keep - found
+        if file.suffix == ".py" and (name is not None or file.is_file())
+    )
+    summary = config.stash.get(_AFFECTED_SUMMARY, None)
+    if lost:
+        if summary is not None:
+            summary.append(
+                f"  picked but not collected ({', '.join(lost[:5])}), so running everything"
+            )
+        return
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = selected
+    config.stash[_AFFECTED_NOTHING] = not selected

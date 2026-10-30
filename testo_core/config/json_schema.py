@@ -32,6 +32,11 @@ _KEY_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._@:-]{0,127}$"
 _NAME_PATTERN = r"^(?![/\\])(?![A-Za-z]:)(?!.*(^|[/\\])\.\.([/\\]|$)).+$"
 
 
+_GLOBS: dict[str, Any] = {
+    "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}],
+}
+
+
 def _open_enum(values: frozenset[str], description: str) -> dict[str, Any]:
     """Suggest the built-in values but accept any string (plugins add their own)."""
     return {
@@ -346,6 +351,51 @@ def build_json_schema() -> dict[str, Any]:
                 "description": "Pools of keys parallel workers lease (`testo lease`).",
                 "propertyNames": {"pattern": _KEY_PATTERN},
                 "additionalProperties": {"$ref": "#/definitions/resource_pool"},
+            },
+            "affected": {
+                "type": "object",
+                "description": "How changed files map to tests, for `testo affected` and "
+                "`pytest --testo-affected`. Anything not mapped runs every test.",
+                "properties": {
+                    "base": {
+                        "type": "string",
+                        "description": "Branch or commit to diff against. Default: the pull "
+                        "request's target branch in CI, else origin/main.",
+                    },
+                    "coverage": {
+                        "type": "string",
+                        "description": "coverage.py JSON with test contexts (`pytest --cov "
+                        "--cov-context=test`, then `coverage json --show-contexts`), relative "
+                        "to this file.",
+                    },
+                    "run_all_when": dict(
+                        _GLOBS,
+                        description="Files whose change runs every test (added to conftest.py, "
+                        "pyproject.toml, lockfiles and this file).",
+                    ),
+                    "ignore": dict(_GLOBS, description="Files whose change needs no test."),
+                    "test_files": dict(
+                        _GLOBS,
+                        description="Names of test files (a changed one runs). Default: "
+                        "test_*.py, *_test.py, *.test.*, *.spec.*, *_test.go, *_spec.rb, *.feature.",
+                    ),
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["changed", "tests"],
+                            "properties": {
+                                "changed": dict(_GLOBS, description="Globs of changed files."),
+                                "tests": dict(
+                                    _GLOBS,
+                                    description="Globs of test files, or pytest node ids, to run.",
+                                ),
+                            },
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "additionalProperties": False,
             },
             "cycles": {
                 "type": "object",

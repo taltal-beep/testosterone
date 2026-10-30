@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- Affected-test selection, off unless asked: `testo affected` lists the tests the changes since the baseline branch can affect, each with why it was picked (`--json`, or `--list` for any runner's command line), and `pytest --testo-affected` runs only those. Changed files map to tests through `affected.rules` globs in `testosterone.yaml`, changed test files, and a coverage.py report with test contexts; a change nothing maps, a lockfile or `conftest.py`, or a git problem runs everything and says why
+
 ## [1.4.0] - 2026-10-30
 
 ### Added

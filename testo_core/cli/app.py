@@ -49,6 +49,7 @@ def _register_commands() -> None:
     Each handler does its own deferred imports (engine, frameworks, DB), so
     only the lightweight Typer + Rich surface is loaded here.
     """
+    from testo_core.cli.commands import affected as affected_mod
     from testo_core.cli.commands import badge as badge_mod
     from testo_core.cli.commands import clean as clean_mod
     from testo_core.cli.commands import config as config_cmd
@@ -90,6 +91,11 @@ def _register_commands() -> None:
         help="Split a cycle's tests into shards of about equal time (CI matrix, pool keys).",
         rich_help_panel="Run and report",
     )(split_mod.split)
+    app.command(
+        name="affected",
+        help="Pick the tests a change can affect, with why; anything unmapped runs all.",
+        rich_help_panel="Run and report",
+    )(affected_mod.affected)
     app.command(
         name="notify",
         help="Send a recorded run to Slack or Teams (webhook URLs from the environment).",
