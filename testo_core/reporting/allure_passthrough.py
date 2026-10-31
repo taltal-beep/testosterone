@@ -11,6 +11,7 @@ out without a warning; fixtures in containers are not shown.
 
 from __future__ import annotations
 
+import re
 import shutil
 import uuid
 from pathlib import Path
@@ -21,10 +22,17 @@ _SIDE_FILES = frozenset(
 )
 
 
+# Allure adapters name attachments ``<uuid>-attachment.<ext>`` (or ``<uuid>-attachment``).
+_ATTACHMENT = re.compile(r"^.+-attachment(\.[A-Za-z0-9]+)*$")
+
+
 def is_allure_side_file(path: Path) -> bool:
-    """An Allure results folder's file that is not a test result (skipped quietly)."""
+    """An Allure results folder's file that is not a test result (skipped quietly).
+
+    Only Allure's own names: ``my-attachment-tests.xml`` is still read as a report.
+    """
     name = path.name
-    return name.endswith("-container.json") or "-attachment" in name or name in _SIDE_FILES
+    return name.endswith("-container.json") or bool(_ATTACHMENT.match(name)) or name in _SIDE_FILES
 
 
 def is_allure_result(path: Path, data: Any) -> bool:
