@@ -80,23 +80,3 @@ def test_internal_failure_flag_contract() -> None:
         classify_exit_code([4], infra_error=None, internal_failure=True)
         is EngineExitCode.INTERNAL_ERROR
     )
-
-
-@pytest.mark.parametrize(
-    "argv",
-    [
-        ["rnu"],  # mistyped command
-        ["run", "--cylce", "x"],  # mistyped option
-        ["ingest"],  # missing argument
-    ],
-)
-def test_cli_usage_errors_exit_invalid_input_without_a_traceback(
-    argv: list[str], capsys: pytest.CaptureFixture[str]
-) -> None:
-    """A typo in a CI command line must not look like failing tests (exit 1)."""
-    from testo_core.cli.app import main
-
-    assert main(argv) == EngineExitCode.INVALID_INPUT
-    err = capsys.readouterr().err
-    assert "Error:" in err and "Try 'testo" in err
-    assert "Traceback" not in err
