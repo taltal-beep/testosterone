@@ -7,6 +7,7 @@ export function NotFoundPage() {
   return (
     <EmptyState
       mascot={<MuscleShrug />}
+      headingLevel="h1"
       title="Page not found"
       message="There is nothing at this address."
       action={
