@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-31
 ---
 
 # Runner Coverage - 2026-10-26
@@ -26,7 +26,7 @@ A coverage review (2026-10-26) estimated that Testosterone supported about 23% o
 | Allure `*-result.json` | any Allure adapter | `allure_passthrough.py` |
 
 - **Identity.** Each importer builds a stable `fullName`: `file › describe › title` for Jest/Vitest (paths relative to the repo, or to the report's common folder when made elsewhere), `Namespace.Class.Method` for TRX, `package.Test/subtest` for Go, Robot's long name. These are also the names the runners' own "run only this test" options take, which later rerun commands rely on.
-- **What JUnit lost.** A Jest test that passed on retry is flaky; a test file that failed to load is one `broken` result; TRX data rows are one result each; a failed Go package with no failing test (build error) is one `broken` result; a Go parent test counts only when it failed on its own, so a failing subtest is not counted twice; Robot tags become Allure tags.
+- **What JUnit lost.** A Jest test that passed on retry is flaky; a test file that failed to load is one `broken` result; TRX data rows are one result each; a failed Go package with no failing test (build error) is one `broken` result; a Go parent test counts only when it failed on its own, so a failing subtest is not counted twice; Robot tags become Allure tags. Failures outside any test are never dropped (added 2026-10-31): a Jest/Vitest file whose hook threw while its tests passed or skipped, a Playwright spec that fails to load (top-level `errors`), a Go test that never finished, a Go 1.24+ build failure (`build-output` events), a TRX run whose host crashed (`RunInfo outcome="Error"`) and a JUnit suite that claims failures no case carries each become one `broken` result; `testo ingest` fails when every matching file was unreadable.
 - **Allure folders.** `testo ingest allure-results/` (a folder argument stands for its files) copies each result with the attachments it names, from the same folder only. Containers and the folder's settings files are skipped without a warning.
 - **Server uploads.** `POST /api/v1/ingest` keeps a file's safe name and suffix (an Allure result names its attachments by file name) and reads every stored file by content.
 - **Native JavaScript stages.** New equipment `jest`, `vitest` (`frameworks/jest_adapter.py`) and `cypress` (`frameworks/cypress_adapter.py`) run the runner through `npx` and add the report Testosterone reads, like `playwright` does: Jest's `--json --outputFile`, Vitest's `json` reporter (and `vitest run`, never watch mode), Cypress's built-in `junit` reporter. Jest and Vitest take `--maxWorkers` from `workers`; Cypress can't parallelise without its cloud, so `workers` warns there. A stage that sets its own reporter keeps it.
