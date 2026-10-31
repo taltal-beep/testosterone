@@ -1,12 +1,17 @@
 import type { ReactNode } from "react";
 
+import { usePageTitle } from "../../lib/usePageTitle";
+
 export interface PageHeaderProps {
   title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
+  /** The browser tab's title, when `title` isn't plain text. */
+  documentTitle?: string;
 }
 
-export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, actions, documentTitle }: PageHeaderProps) {
+  usePageTitle(documentTitle ?? (typeof title === "string" ? title : undefined));
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>

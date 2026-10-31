@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
@@ -39,10 +40,14 @@ describe("QuickRunPage", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
+    const queryClient = new QueryClient();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
     render(
-      <MemoryRouter>
-        <QuickRunPage />
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <QuickRunPage />
+        </MemoryRouter>
+      </QueryClientProvider>
     );
     fireEvent.change(screen.getByDisplayValue("pytest"), { target: { value: "behave" } });
     fireEvent.change(screen.getByDisplayValue("-q"), { target: { value: "features/smoke.feature" } });
@@ -78,6 +83,8 @@ describe("QuickRunPage", () => {
     });
 
     await waitFor(() => expect(screen.getByTestId("run-outcome")).toHaveTextContent("Run passed."));
+    // The finished run shows up in the lists on screen without a reload.
+    expect(invalidate).toHaveBeenCalled();
     expect(screen.getByText("1.5s")).toBeInTheDocument();
   });
 });

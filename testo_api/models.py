@@ -192,6 +192,9 @@ class RunReportsResponse(ApiModel):
     allure_server_url: str | None = None
     static_links: dict[str, str] = Field(default_factory=dict)
     artifact_links: list[str] = Field(default_factory=list)
+    # URL prefix (relative to the API root) the artifact_links are served under, or
+    # None when the run's files aren't served (snapshot outside static/history/).
+    artifacts_url: str | None = None
 
 
 class RunPyramidResponse(ApiModel):

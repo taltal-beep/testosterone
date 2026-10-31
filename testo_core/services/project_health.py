@@ -228,6 +228,11 @@ def _signals(data: list[_CycleData]) -> list[HealthSignal]:
     ]
 
 
+def _duration(ms: int) -> str:
+    """``850 ms``, ``13.9 s``: how the UI writes durations."""
+    return f"{ms} ms" if ms < 1000 else f"{ms / 1000:.1f} s"
+
+
 def _findings(data: list[_CycleData]) -> list[HealthFinding]:
     """Red cycles first, then flaky, slower, quarantined and skipped tests."""
     found: list[HealthFinding] = []
@@ -239,7 +244,11 @@ def _findings(data: list[_CycleData]) -> list[HealthFinding]:
                     kind="red_cycle",
                     cycle=d.run.cycle or "",
                     title=f"{d.run.cycle} is red",
-                    detail=f"{failing} test{'s' if failing != 1 else ''} failing in the latest run.",
+                    detail=(
+                        f"{failing} test{'s' if failing != 1 else ''} failing in the latest run."
+                        if failing
+                        else "No test failed: a stage failed outside its tests. Its log says why."
+                    ),
                     run_id=d.run.run_id,
                 )
             )
@@ -262,8 +271,8 @@ def _findings(data: list[_CycleData]) -> list[HealthFinding]:
             kind="slower",
             cycle=d.run.cycle or "",
             title=t.name,
-            detail=f"Got slower by {t.slowdown_ms} ms"
-            + (f" (+{t.slowdown_pct}%)." if t.slowdown_pct is not None else "."),
+            detail=f"Got slower by {_duration(t.slowdown_ms or 0)}"
+            + (f" (+{round(t.slowdown_pct)}%)." if t.slowdown_pct is not None else "."),
             test_key=t.key,
         )
         for d, t in slower[:MAX_FINDINGS]

@@ -2264,6 +2264,8 @@ export interface components {
             allure_server_url: string | null;
             /** Artifact Links */
             artifact_links: string[];
+            /** Artifacts Url */
+            artifacts_url: string | null;
             /** Static Links */
             static_links: {
                 [key: string]: string;
