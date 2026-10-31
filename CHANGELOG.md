@@ -12,8 +12,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Python 3.14 is tested in CI and listed in the package classifiers
 
 ### Fixed
+- A red run is no longer recorded as green when the failure is outside any single test. `testo ingest` (and `junit_xml` imports) now record a `broken` result for: a Go 1.24+ build failure (`build-output` events, which made the whole `go test -json` file unreadable before), a Go test that never finished (timeout or crash), a Jest/Vitest file whose `beforeAll`/`afterAll` hook threw while its tests show passed or skipped, a Playwright spec that fails to load or a failing `globalSetup` (top-level `errors`), a TRX run whose test host crashed (`RunInfo outcome="Error"`), and a JUnit `<testsuite>` that claims failures or errors no `<testcase>` carries. `testo ingest` also exits 1 when every matching file was unreadable (truncated, empty, not a report) instead of recording a passing run with 0 tests
 - A mistyped command or option (`testo rnu`, `--cylce`) or a missing argument prints the usual usage message and exits `2`, as documented. It printed a traceback and exited `1`, which CI reads as failing tests
 - Database engines are closed when the engine cache is reset, and `testo doctor` / `testo config-db` close their connection probe, so no SQLite or Postgres connections are left open (the test suite showed 110 "unclosed database" warnings)
+
+### Changed
+- Docs: an architecture review (`docs/Specs & ADRs/Architecture Review - 2026-10-31.md`) ranks the codebase's structural pressure points and proposes next steps; linked from the docs site menu
 
 ## [1.5.0] - 2026-10-31
 
