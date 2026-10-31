@@ -16,6 +16,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Uploaded Allure attachments can no longer run script on the API's origin: `testo ingest` stores each one under a `<uuid>-attachment` name, and every file under a raw `allure-results/` folder is served in a CSP sandbox. Before, an upload with an attachment named `page.html` was served as a normal page
 
 ### Changed
+- `testo run` warns, before a pytest stage fails with `unrecognized arguments: --alluredir`, when the `pytest` on PATH can't load allure-pytest (typical after `pipx install testo-core` or `uv tool install`) and says how to fix it
 - The PyPI page's Documentation link goes to the docs site instead of the GitHub wiki, and README links to guides open the rendered docs site pages
 
 ### Added

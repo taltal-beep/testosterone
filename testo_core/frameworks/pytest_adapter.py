@@ -40,18 +40,39 @@ def _pytest_interpreter() -> str | None:
     return parts[0]
 
 
-def xdist_available() -> bool:
-    """True when the ``pytest`` the stage runs can load pytest-xdist."""
+def _pytest_can_import(module: str) -> bool | None:
+    """Whether the ``pytest`` the stage runs can import ``module``; None when unknown."""
     python = _pytest_interpreter()
     if python is None:
-        return False
+        return None
     try:
         proc = subprocess.run(  # noqa: S603 - fixed argv, no user input
-            [python, "-c", "import xdist"], capture_output=True, timeout=30, check=False
+            [python, "-c", f"import {module}"], capture_output=True, timeout=30, check=False
         )
     except (OSError, subprocess.TimeoutExpired):
-        return False
+        return None
     return proc.returncode == 0
+
+
+def xdist_available() -> bool:
+    """True when the ``pytest`` the stage runs can load pytest-xdist."""
+    return bool(_pytest_can_import("xdist"))
+
+
+def warn_if_allure_missing() -> None:
+    """Explain the ``unrecognized arguments: --alluredir`` that follows otherwise.
+
+    ``testo`` installed with pipx or ``uv tool`` lives in its own environment, while
+    the stage runs the ``pytest`` on PATH, which then has no allure-pytest plugin.
+    """
+    if _pytest_can_import("allure_pytest") is False:
+        logger.warning(
+            "pytest: the pytest on PATH (%s) can't load allure-pytest, so it will reject "
+            "--alluredir. Install it next to your tests: %s -m pip install allure-pytest "
+            "(or install testo-core in the same environment as pytest).",
+            shutil.which("pytest"),
+            _pytest_interpreter(),
+        )
 
 
 def _args_choose_xdist(args: list[str]) -> bool:
@@ -113,6 +134,7 @@ class PytestAdapter:
         # after ``--alluredir`` counts as one. With results under testosterone's
         # ``artifacts/``, a target inside the checkout would get testosterone's
         # rootdir and ``pytest.ini`` instead of its own.
+        warn_if_allure_missing()
         argv.append(f"--alluredir={results_dir.resolve()}")
         return argv
 
