@@ -94,7 +94,7 @@ docker compose -f docker-compose.yml -f docker-compose.runner.yml up -d    # add
 `deploy/server/docker-compose.runner.yml` sets `TESTO_RUNNER=container` on the server and adds a `runner` service, the only container with the Docker socket. For every stage it runs `docker run --rm` with:
 
 - the `testo_repos` (`/repos`) and `testo_artifacts` (`/data/artifacts`) volumes, at the same paths as in the server; put the repositories your cycles test under `/repos`,
-- only the stage's own variables (its `env:` and what Testosterone sets), never the server's token or database URL,
+- only the stage's own variables (its `env:` and what Testosterone sets), never the server's token or database URL; `${env:...}` in a stage's `args` and `env:` can't read them either (any `TESTO_*`, `DATABASE_URL`, `POSTGRES_*` or `*_API_KEY` / `*_TOKEN` / `*_SECRET` / `*_PASSWORD` / `*_DB_URL` variable of the server resolves as unset),
 - no Linux capabilities, no privilege escalation and at most 512 processes,
 - the commands in `TESTO_RUNNER_ALLOWED_COMMANDS` only.
 

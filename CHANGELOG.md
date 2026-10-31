@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Security
+- With `TESTO_RUNNER=container`, `${env:...}` in a stage's `args` or `env:` no longer reads the server's own secrets (`TESTO_*`, `DATABASE_URL`, `POSTGRES_*`, `*_API_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`, `*_DB_URL`). Before, a runner could copy `TESTO_API_TOKEN` (the admin credential) into a throwaway container with `${env:TESTO_API_TOKEN}`
 - The development `docker-compose.yml` publishes Postgres (default password `admin`) on `127.0.0.1` only, not on every network interface
 - The GitHub Action passes its inputs to the shell as environment variables instead of pasting them into the script, so an input built from a branch name or PR title can't run commands
 - A token-less API (the local default and `testo ui`) answers only requests addressed to `localhost`, `127.0.0.1` or `::1`, so a web page using DNS rebinding can no longer read runs, logs and reports from it. `TESTO_ALLOWED_HOSTS` adds names; a token or `TESTO_ALLOW_UNAUTHENTICATED=1` lifts the check
