@@ -8,7 +8,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Security
+- The GitHub Action pins `actions/setup-python` to a commit SHA, and the publish and commitlint workflows pin their third-party actions the same way
+- Accounts: removing a user and adding the same name again no longer revives the old person's session cookies (cookies now carry the account's creation time). Existing account sessions sign in again once after the upgrade
+- Failure evidence redaction (before storage and before an AI provider sees it) now also catches GitHub, GitLab, npm, Slack, AWS and Google tokens, JWTs, `Basic` credentials, passwords in URLs (`scheme://user:***@host`), `password=` values, quoted JSON keys and private key blocks, and masks `password`, `DATABASE_URL`, `privateKey` and `cookie` fields
+- AI provider requests no longer follow HTTP redirects, which resent the `Authorization` / `x-api-key` header to the redirect's host
+- With `TESTO_RUNNER=container`, `${env:...}` in a stage's `args` or `env:` no longer reads the server's own secrets (`TESTO_*`, `DATABASE_URL`, `POSTGRES_*`, `*_API_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`, `*_DB_URL`). Before, a runner could copy `TESTO_API_TOKEN` (the admin credential) into a throwaway container with `${env:TESTO_API_TOKEN}`
+- The development `docker-compose.yml` publishes Postgres (default password `admin`) on `127.0.0.1` only, not on every network interface
+- The GitHub Action passes its inputs to the shell as environment variables instead of pasting them into the script, so an input built from a branch name or PR title can't run commands
+- A token-less API (the local default and `testo ui`) answers only requests addressed to `localhost`, `127.0.0.1` or `::1`, so a web page using DNS rebinding can no longer read runs, logs and reports from it. `TESTO_ALLOWED_HOSTS` adds names; a token or `TESTO_ALLOW_UNAUTHENTICATED=1` lifts the check
+- `TESTO_CORS_ORIGINS=*` no longer lets any web page start runs on a token-less API; `*` waives the Origin check only when a token is required anyway
+- Uploaded Allure attachments can no longer run script on the API's origin: `testo ingest` stores each one under a `<uuid>-attachment` name, and every file under a raw `allure-results/` folder is served in a CSP sandbox. Before, an upload with an attachment named `page.html` was served as a normal page
+
 ### Changed
+- `testo run` warns, before a pytest stage fails with `unrecognized arguments: --alluredir`, when the `pytest` on PATH can't load allure-pytest (typical after `pipx install testo-core` or `uv tool install`) and says how to fix it
 - Docs: an architecture review (`docs/Specs & ADRs/Architecture Review - 2026-10-31.md`) ranks the codebase's structural pressure points and proposes next steps; linked from the docs site menu
 
 ## [1.5.0] - 2026-10-31
