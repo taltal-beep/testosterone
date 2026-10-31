@@ -220,6 +220,28 @@ class ResourceLease(SQLModel, table=True):
     reuse_delay_s: float = Field(default=0.0)
 
 
+class ResourceAction(SQLModel, table=True):
+    """One provider command a person ran with ``testo pool add/remove/sweep --apply``.
+
+    Testosterone never runs ``create`` or ``destroy`` on its own; this log says who
+    did, from which machine, and how it went. Dry runs are not logged.
+    """
+
+    __tablename__ = "resource_action"
+    __table_args__ = {"extend_existing": True}
+
+    id: int | None = Field(default=None, primary_key=True)
+    at: float = Field(default=0.0, index=True)
+    pool: str = Field(index=True, max_length=128)
+    item: str = Field(max_length=128)
+    verb: str = Field(max_length=16)  # create | destroy
+    user: str = Field(default="", max_length=64)
+    host: str = Field(default="", max_length=255)
+    command: str = Field(default="", max_length=500)
+    ok: bool = Field(default=False)
+    detail: str = Field(default="", max_length=500)
+
+
 class ResourceWaiter(SQLModel, table=True):
     """A request waiting for a key, so keys go out first come, first served.
 

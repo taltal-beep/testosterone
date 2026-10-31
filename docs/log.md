@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 
 # Vault log
@@ -128,3 +128,11 @@ Added [Affected Test Selection - 2026-10-30](Specs%20&%20ADRs/Affected%20Test%20
 ## 2026-10-30: human-run resource provider
 
 Added [Human-Run Resource Provider - 2026-10-30](Specs%20&%20ADRs/Human-Run%20Resource%20Provider%20-%202026-10-30.md) to Specs & ADRs (`provider.list`, `testo pool status`; Testosterone never creates or deletes keys on its own), linked from its README and the docs site menu.
+
+## 2026-10-30: opentelemetry export
+
+Added [OpenTelemetry Export - 2026-10-30](Specs%20&%20ADRs/OpenTelemetry%20Export%20-%202026-10-30.md) to Specs & ADRs (runs as OTLP traces, the `otel` reporter and `testo otel`), linked from its README and the docs site menu.
+
+## 2026-10-31: architecture review
+
+Added [Architecture Review - 2026-10-31](Specs%20&%20ADRs/Architecture%20Review%20-%202026-10-31.md) to Specs & ADRs (ranked findings on the read side, migrations and layering, with proposals), linked from its README, the Index and the docs site menu.

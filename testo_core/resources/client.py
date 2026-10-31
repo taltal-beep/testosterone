@@ -30,6 +30,7 @@ import subprocess
 import threading
 import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Final, Protocol
 
@@ -41,6 +42,7 @@ from testo_core.resources.store import (
     LeaseError,
     LeaseStore,
     PoolStatus,
+    ProviderAction,
     TakeResult,
 )
 
@@ -88,6 +90,10 @@ class LeaseBackend(Protocol):
     def status(
         self, pool: str | None = None, *, pools: Sequence[ResourcePool] = ()
     ) -> list[PoolStatus]: ...
+
+    def record_action(self, action: ProviderAction) -> None: ...
+
+    def actions(self, pool: str | None = None, *, limit: int = 50) -> list[ProviderAction]: ...
 
 
 def backend_from_env(
@@ -432,6 +438,15 @@ class RemoteLeases:
         del pools
         _, body = self._call("GET", "" if pool is None else f"?pool={pool}")
         return [_pool_from_json(p) for p in body.get("pools", [])]
+
+    def record_action(self, action: ProviderAction) -> None:
+        body = {k: v for k, v in asdict(action).items() if k != "at"}  # the server's clock
+        self._call("POST", "/actions", body, ok=(204,))
+
+    def actions(self, pool: str | None = None, *, limit: int = 50) -> list[ProviderAction]:
+        query = f"?limit={limit}" + (f"&pool={pool}" if pool else "")
+        _, body = self._call("GET", f"/actions{query}")
+        return [ProviderAction(**a) for a in body.get("actions", [])]
 
 
 def count_available(

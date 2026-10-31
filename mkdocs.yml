@@ -8,7 +8,7 @@
 # See docs/Specs & ADRs/Docs Site - 2026-10-19.md
 
 site_name: Testosterone
-site_description: One YAML file to run your whole test cycle, then see what changed since the last run.
+site_description: See what broke, what's flaky and what got slower on every run. Test history, run-to-run diffs and flaky detection for any test runner.
 site_url: https://taltal-beep.github.io/testosterone/docs/
 repo_url: https://github.com/taltal-beep/testosterone
 repo_name: taltal-beep/testosterone
@@ -112,6 +112,7 @@ nav:
       - Changelog Policy: changelog_automation_policy.md
   - Decisions:
       - Specs & ADRs: Specs & ADRs/README.md
+      - Architecture Review: Specs & ADRs/Architecture Review - 2026-10-31.md
       - Affected Test Selection: Specs & ADRs/Affected Test Selection - 2026-10-30.md
       - Resource Pools and Leases: Specs & ADRs/Resource Pools and Leases - 2026-10-26.md
       - Resource Lifecycle Hooks: Specs & ADRs/Resource Lifecycle Hooks - 2026-10-26.md
@@ -131,6 +132,7 @@ nav:
       - Config JSON Schema: Specs & ADRs/Config JSON Schema - 2026-10-22.md
       - Flaky Test Quarantine: Specs & ADRs/Flaky Test Quarantine - 2026-10-22.md
       - Alerts Where Developers Look: Specs & ADRs/Alerts Where Developers Look - 2026-10-22.md
+      - OpenTelemetry Export: Specs & ADRs/OpenTelemetry Export - 2026-10-30.md
       - Docs Vault and Wiki Sync: Specs & ADRs/Docs Vault and Wiki Sync - 2026-10-07.md
       - Interview Readiness Fixes: Specs & ADRs/Interview Readiness Fixes - 2026-10-07.md
       - Architecture Consolidation: Specs & ADRs/Architecture Consolidation - 2026-10-06.md
