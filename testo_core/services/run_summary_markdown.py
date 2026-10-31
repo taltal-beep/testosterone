@@ -201,7 +201,7 @@ def render_markdown(summary: RunSummary, *, run_url: str | None = None) -> str:
             f"in {_seconds(run.wall_duration_ms)}"
         )
     if run.health_pct is not None:
-        headline += f" · health {run.health_pct:.1f}%"
+        headline += f" · pass rate {run.health_pct:.1f}%"
     lines += [headline, ""]
 
     if run.stage_health:
