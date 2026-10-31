@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Security
+- The development `docker-compose.yml` publishes Postgres (default password `admin`) on `127.0.0.1` only, not on every network interface
 - The GitHub Action passes its inputs to the shell as environment variables instead of pasting them into the script, so an input built from a branch name or PR title can't run commands
 - A token-less API (the local default and `testo ui`) answers only requests addressed to `localhost`, `127.0.0.1` or `::1`, so a web page using DNS rebinding can no longer read runs, logs and reports from it. `TESTO_ALLOWED_HOSTS` adds names; a token or `TESTO_ALLOW_UNAUTHENTICATED=1` lifts the check
 - `TESTO_CORS_ORIGINS=*` no longer lets any web page start runs on a token-less API; `*` waives the Origin check only when a token is required anyway
