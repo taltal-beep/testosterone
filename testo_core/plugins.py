@@ -130,7 +130,11 @@ def load_framework(name: str) -> FrameworkAdapter:
     factory = _load("framework", name)
     if not callable(factory):
         raise PluginError(f"framework plugin {name!r} is not a class or factory")
-    adapter = factory()
+    try:
+        adapter = factory()
+    except Exception as exc:
+        # Broad on purpose, like the import: a third-party constructor's failure is the plugin's.
+        raise PluginError(f"framework plugin {name!r} failed to start: {exc}") from exc
     missing = [m for m in _ADAPTER_METHODS if not callable(getattr(adapter, m, None))]
     if missing:
         raise PluginError(
