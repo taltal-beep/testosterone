@@ -144,3 +144,7 @@ Added [Feature Gaps and Quick Wins - 2026-10-31](Roadmap%20&%20Strategy/Feature%
 ## 2026-10-31: ui design review
 
 Added [UI Design Review - 2026-10-31](Specs%20&%20ADRs/UI%20Design%20Review%20-%202026-10-31.md) to Specs & ADRs with annotated screenshots under `assets/ui-review-2026-10-31/`, linked from its README, the Index and the docs site menu.
+
+## 2026-10-31: engineering health review
+
+Added [Engineering Health Review - 2026-10-31](Specs%20&%20ADRs/Engineering%20Health%20Review%20-%202026-10-31.md) to Specs & ADRs (tests, CI, docs accuracy, dependencies), linked from its README, the Index and the docs site menu.
