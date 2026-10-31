@@ -68,21 +68,42 @@ class ReporterFactory:
         *,
         config_reporters: tuple[ReporterSpec, ...],
         overrides: Sequence[str] | None = None,
+        failures: list[ReporterResult] | None = None,
     ) -> list[BaseReporter]:
+        """The active reporters, built.
+
+        With ``failures``, a plugin reporter that fails to import or to construct
+        is left out and recorded there, so one broken plugin doesn't turn off
+        the others (Slack, Teams, Allure, ...). Without it, that raises
+        :class:`~testo_core.plugins.PluginError`. An unknown type always raises.
+        """
         active = resolve_active_reporter_specs(config_reporters, overrides=overrides)
 
         reporters: list[BaseReporter] = []
         for spec in active:
             cls = _REPORTER_REGISTRY.get(spec.type)
-            if cls is None:
-                supported = plugins.reporter_types()
-                if spec.type not in supported:
-                    raise ValueError(
-                        f"unsupported reporter type {spec.type!r}; supported: {sorted(supported)}"
-                    )
-                cls = plugins.load_reporter(spec.type)
             opts = _interpolate_options(dict(spec.options))
-            reporters.append(cls(options=opts))
+            if cls is not None:
+                reporters.append(cls(options=opts))
+                continue
+            supported = plugins.reporter_types()
+            if spec.type not in supported:
+                raise ValueError(
+                    f"unsupported reporter type {spec.type!r}; supported: {sorted(supported)}"
+                )
+            try:
+                cls = plugins.load_reporter(spec.type)
+                try:
+                    reporters.append(cls(options=opts))
+                except Exception as exc:  # noqa: BLE001 — third-party constructor
+                    raise plugins.PluginError(
+                        f"reporter plugin {spec.type!r} failed to start: {exc}"
+                    ) from exc
+            except plugins.PluginError as exc:
+                if failures is None:
+                    raise
+                logger.warning("reporter plugin %s skipped", spec.type, exc_info=True)
+                failures.append(ReporterResult(ok=False, message=str(exc)))
         return reporters
 
     @staticmethod

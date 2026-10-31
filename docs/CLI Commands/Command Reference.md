@@ -124,7 +124,7 @@ Files it reads, with the command that writes each one (no extra package needed e
 
 A file that is none of these is skipped with a note in the stage log. See [Runner Coverage - 2026-10-26](../Specs%20&%20ADRs/Runner%20Coverage%20-%202026-10-26.md).
 
-Exit codes follow `testo run`: **0** every test passed or was skipped, **1** a test failed or broke, or files matched but none could be read, **2** bad arguments or no file matched, **3** the server could not be reached or refused the upload (wrong token). With `--server`, the job's CI provenance (provider, pipeline, job, commit, branch, repository) is sent with the files. Under the hood this is a one-stage cycle with `equipment: junit` run through `CycleRunService`; see [Ingest and Team Server - 2026-10-22](../Specs%20&%20ADRs/Ingest%20and%20Team%20Server%20-%202026-10-22.md). For Playwright JSON (each retry as a step, flaky tests flagged, traces and screenshots copied from inside `--repo` as Allure attachments) see [Playwright JSON Import - 2026-10-22](../Specs%20&%20ADRs/Playwright%20JSON%20Import%20-%202026-10-22.md).
+Exit codes follow `testo run`: **0** every test passed or was skipped, **1** a test failed or broke, or every matching file was unreadable (truncated, empty, not a report), **2** bad arguments or no file matched, **3** the server could not be reached or refused the upload (wrong token). With `--server`, the job's CI provenance (provider, pipeline, job, commit, branch, repository) is sent with the files. Under the hood this is a one-stage cycle with `equipment: junit` run through `CycleRunService`; see [Ingest and Team Server - 2026-10-22](../Specs%20&%20ADRs/Ingest%20and%20Team%20Server%20-%202026-10-22.md). For Playwright JSON (each retry as a step, flaky tests flagged, traces and screenshots copied from inside `--repo` as Allure attachments) see [Playwright JSON Import - 2026-10-22](../Specs%20&%20ADRs/Playwright%20JSON%20Import%20-%202026-10-22.md).
 
 ---
 
@@ -403,7 +403,7 @@ testo clean --yes
 testo clean -y --docker
 ```
 
-Without `--yes` / `-y`: refuses with exit **2**.
+Without `--yes` / `-y`: refuses with exit **2**. It also refuses (exit **2**, nothing deleted) when the artifacts root or `--temp-dir` is the filesystem root, your home folder, the current folder, the config's folder, a parent of any of them, or a folder holding `.git`, `testosterone.yaml` or `pyproject.toml`, so `artifacts_root: .` can't delete the project.
 
 ---
 

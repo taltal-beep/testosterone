@@ -94,3 +94,42 @@ def test_clean_docker_prune_failure_exits_infra_failure(
     result = runner.invoke(app, ["clean", "--yes", "--docker"])
     assert result.exit_code == int(EngineExitCode.INFRA_FAILURE)
     assert "docker prune exited 1" in result.stdout
+
+
+@pytest.mark.parametrize("root", [".", "..", "src/.."])
+def test_clean_refuses_an_artifacts_root_that_is_the_project(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, root: str
+) -> None:
+    project = tmp_path / "project"
+    (project / "src").mkdir(parents=True)
+    (project / "src" / "app.py").write_text("x = 1\n", encoding="utf-8")
+    monkeypatch.chdir(project)
+    cfg = project / "testosterone.yaml"
+    cfg.write_text(
+        f"defaults: {{artifacts_root: '{root}'}}\n"
+        "cycles:\n  c:\n    stages:\n      - {name: s, equipment: pytest}\n",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(app, ["clean", "--yes", "--config", str(cfg)])
+
+    assert result.exit_code == int(EngineExitCode.INVALID_INPUT), result.stdout
+    assert "Refusing to delete" in result.stdout
+    assert (project / "src" / "app.py").exists()
+    assert cfg.exists()
+
+
+def test_clean_refuses_a_temp_dir_that_holds_a_project(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    other = tmp_path / "other-repo"
+    (other / ".git").mkdir(parents=True)
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+
+    result = runner.invoke(app, ["clean", "--yes", "--temp-dir", str(other)])
+
+    assert result.exit_code == int(EngineExitCode.INVALID_INPUT), result.stdout
+    assert other.exists()
+    assert artifacts.exists()  # nothing is deleted when one target is refused

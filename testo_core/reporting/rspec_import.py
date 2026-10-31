@@ -90,7 +90,10 @@ def rspec_results_for_report(
         clock += duration
 
     summary: dict[str, Any] = data["summary"] if isinstance(data.get("summary"), dict) else {}
-    outside = int(summary.get("errors_outside_of_examples_count") or 0)
+    try:
+        outside = int(summary.get("errors_outside_of_examples_count") or 0)
+    except (TypeError, ValueError):
+        outside = 0
     if outside:
         messages = [str(m) for m in data.get("messages") or []]
         results.append(
