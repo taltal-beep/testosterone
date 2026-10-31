@@ -224,8 +224,10 @@ def report_patterns(reports: list[str], *, repo: Path) -> tuple[str, ...]:
 def matching_reports(patterns: tuple[str, ...], *, repo: Path) -> list[Path]:
     """Files under *repo* that *patterns* match (what the ``junit`` stage will read)."""
     found: list[Path] = []
+    from testo_core.reporting.junit_import import report_paths
+
     for pattern in patterns:
-        for match in sorted(repo.glob(pattern)):
+        for match in report_paths(repo, pattern):
             resolved = match.resolve()
             if resolved.is_file() and repo in resolved.parents and resolved not in found:
                 found.append(resolved)
