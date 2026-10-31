@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Fixed
+- Plugins: one reporter plugin that fails to import or to start no longer turns off every reporter (Slack, Teams, Allure, ...); it is reported as a failed reporter and the others run. A plugin adapter or reporter whose constructor raises is now a clear `PluginError` instead of a traceback that changed `testo run`'s exit code after the cycle finished
+- Affected-test selection: a rule's folder glob (`tests/payments/**`) picks only test files, so `__init__.py` and helpers no longer make `pytest --testo-affected` run everything; test files with non-ASCII names are no longer missed (git quoted their paths)
 - A red run is no longer recorded as green when the failure is outside any single test. `testo ingest` (and `junit_xml` imports) now record a `broken` result for: a Go 1.24+ build failure (`build-output` events, which made the whole `go test -json` file unreadable before), a Go test that never finished (timeout or crash), a Jest/Vitest file whose `beforeAll`/`afterAll` hook threw while its tests show passed or skipped, a Playwright spec that fails to load or a failing `globalSetup` (top-level `errors`), a TRX run whose test host crashed (`RunInfo outcome="Error"`), and a JUnit `<testsuite>` that claims failures or errors no `<testcase>` carries. `testo ingest` also exits 1 when every matching file was unreadable (truncated, empty, not a report) instead of recording a passing run with 0 tests
 
 ### Changed
