@@ -346,3 +346,39 @@ def test_report_pages_are_not_sandboxed() -> None:
     # Allure's index.html needs script and its own origin to load data/*.json.
     resp = _client().get("/history/run-1/allure/index.html")
     assert resp.headers["Content-Security-Policy"] == "frame-ancestors 'self'"
+
+
+def test_wildcard_origins_do_not_let_any_page_write_without_a_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TESTO_CORS_ORIGINS", "*")
+    manager = _FakeManager()
+    resp = _client(manager).post(
+        _ADHOC, json={"framework": "pytest"}, headers={"Origin": "https://evil.example"}
+    )
+    assert resp.status_code == 403
+    assert manager.calls == 0
+
+
+@pytest.mark.parametrize("host", ["localhost:8000", "127.0.0.1:8000", "[::1]:8000", "localhost"])
+def test_tokenless_api_answers_loopback_names(host: str) -> None:
+    resp = _client().get("/api/v1/health/live", headers={"Host": host})
+    assert resp.status_code == 200
+
+
+def test_tokenless_api_refuses_a_rebinding_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    # DNS rebinding: the page's own name now points at 127.0.0.1.
+    monkeypatch.delenv("TESTO_ALLOWED_HOSTS", raising=False)
+    resp = _client().get("/api/v1/runs", headers={"Host": "rebind.evil.example:8000"})
+    assert resp.status_code == 421
+    assert "TESTO_ALLOWED_HOSTS" in resp.json()["error"]["message"]
+
+
+def test_allowed_hosts_and_token_lift_the_host_check(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TESTO_ALLOWED_HOSTS", "testo.lan")
+    assert _client().get("/api/v1/health/live", headers={"Host": "testo.lan"}).status_code == 200
+    monkeypatch.setenv("TESTO_API_TOKEN", "s3cret")
+    assert _client().get("/api/v1/health/live", headers={"Host": "other.lan"}).status_code == 200
+    monkeypatch.delenv("TESTO_API_TOKEN")
+    monkeypatch.setenv("TESTO_ALLOW_UNAUTHENTICATED", "1")
+    assert _client().get("/api/v1/health/live", headers={"Host": "other.lan"}).status_code == 200

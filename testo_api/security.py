@@ -18,7 +18,10 @@ The API starts test runs, i.e. it runs commands on the host by design. It binds
   API. Defaults to the Vite dev and preview servers. A mutating request that
   carries any other ``Origin`` is refused even without a token, because CORS
   alone does not stop a "simple" cross-site POST (or a DNS-rebinding page)
-  from reaching a localhost server. With a token set, the UI served by this
+  from reaching a localhost server. ``*`` waives that check only with a token.
+- Without a token, a request whose ``Host`` is not a loopback name (or listed in
+  ``TESTO_ALLOWED_HOSTS``) is refused, so a DNS-rebinding page can't read the
+  API either (see :func:`guard_host`). ``TESTO_ALLOW_UNAUTHENTICATED=1`` lifts it. With a token set, the UI served by this
   process (same origin, see :mod:`testo_api.ui`) may write too; the token
   still has to be sent.
 """
@@ -236,9 +239,12 @@ def guard_mutating_request(request: Request) -> None:
     origin = request.headers.get("Origin")
     allowed_origins, _ = cors_settings()
     expected = api_token()
+    # ``*`` only waives the check when a token is required anyway: without one it
+    # would let any web page start runs (run commands) on this machine.
+    wildcard = "*" in allowed_origins and bool(expected)
     if (
         origin is not None
-        and "*" not in allowed_origins
+        and not wildcard
         and origin not in allowed_origins
         and not (expected and _is_same_origin(request, origin))
     ):
@@ -266,6 +272,54 @@ def guard_mutating_request(request: Request) -> None:
                 detail=f"This needs the {needed} role; {principal.username} is a "
                 f"{principal.role}. Ask an admin (`testo users set-role`).",
             )
+
+
+def unauthenticated_allowed() -> bool:
+    """``TESTO_ALLOW_UNAUTHENTICATED=1``: a token-less API on a network the operator trusts."""
+    return os.getenv("TESTO_ALLOW_UNAUTHENTICATED", "0").strip().lower() in ("1", "true", "yes")
+
+
+def _allowed_hosts() -> set[str]:
+    extra = os.getenv("TESTO_ALLOWED_HOSTS", "")
+    hosts = {h.strip().lower() for h in extra.split(",") if h.strip()}
+    reports = os.getenv("TESTO_REPORTS_ORIGIN", "").strip()
+    if reports:
+        hostname = urlsplit(reports).hostname
+        if hostname:
+            hosts.add(hostname.lower())
+    return hosts
+
+
+def guard_host(request: Request) -> Response | None:
+    """Without a token, only answer requests addressed to this machine by a loopback name.
+
+    A token-less API binds 127.0.0.1, but a web page can still reach it through DNS
+    rebinding: its own hostname is re-pointed at 127.0.0.1, so the browser treats the
+    API as that page's origin and lets it read every GET response (runs, logs,
+    reports). Such a request still names the page's hostname in ``Host``, so it is
+    refused here. Extra names go in ``TESTO_ALLOWED_HOSTS``; with a token, or
+    ``TESTO_ALLOW_UNAUTHENTICATED=1``, any ``Host`` is answered.
+    """
+    if api_token() or unauthenticated_allowed():
+        return None
+    host = request.headers.get("Host", "")
+    hostname = urlsplit(f"//{host}").hostname or ""
+    if is_loopback_host(hostname) or hostname in _allowed_hosts():
+        return None
+    return JSONResponse(
+        status_code=421,
+        content={
+            "error": {
+                "code": "misdirected_request",
+                "message": (
+                    f"Host {host!r} is not a loopback name. Without TESTO_API_TOKEN this API "
+                    "only answers localhost; add the name to TESTO_ALLOWED_HOSTS."
+                ),
+                "details": None,
+            },
+            "request_id": getattr(request.state, "request_id", None),
+        },
+    )
 
 
 def guard_read_request(request: Request) -> Response | None:
