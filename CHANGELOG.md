@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fixed
 - Two stages with the same name in one cycle (or names that differ only in case) are a config error: the second stage wiped the first one's results, so a failed test could disappear from the run. Each stage's `run.log` now holds only the latest run instead of growing with every run (it was copied whole into every run's history snapshot)
 
+### Changed
+- Docs: an architecture review (`docs/Specs & ADRs/Architecture Review - 2026-10-31.md`) ranks the codebase's structural pressure points and proposes next steps; linked from the docs site menu
+
 ## [1.5.0] - 2026-10-31
 
 ### Added
