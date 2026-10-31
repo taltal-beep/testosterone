@@ -39,7 +39,7 @@ def is_rspec_report(data: Any) -> bool:
 def _seconds_ms(value: Any) -> int:
     try:
         return max(0, int(round(float(value or 0) * 1000)))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return 0
 
 
@@ -90,7 +90,10 @@ def rspec_results_for_report(
         clock += duration
 
     summary: dict[str, Any] = data["summary"] if isinstance(data.get("summary"), dict) else {}
-    outside = int(summary.get("errors_outside_of_examples_count") or 0)
+    try:
+        outside = int(summary.get("errors_outside_of_examples_count") or 0)
+    except (TypeError, ValueError):
+        outside = 0
     if outside:
         messages = [str(m) for m in data.get("messages") or []]
         results.append(
