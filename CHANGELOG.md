@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fixed
 - `timeout_s`, `workers` and `version` in `testosterone.yaml` are checked the way the JSON Schema says: `timeout_s: abc` gives a config error instead of a traceback, `timeout_s: 0` or `-1` (which timed every stage out at once) and `workers: 0` are config errors, and an unknown `version` is refused. A stage whose `target_repo` doesn't exist says so instead of "executable not found"
 
+### Changed
+- Docs: an architecture review (`docs/Specs & ADRs/Architecture Review - 2026-10-31.md`) ranks the codebase's structural pressure points and proposes next steps; linked from the docs site menu
+
 ## [1.5.0] - 2026-10-31
 
 ### Added
