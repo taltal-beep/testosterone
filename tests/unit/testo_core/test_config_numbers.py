@@ -58,3 +58,13 @@ def test_unknown_version_is_a_config_error(tmp_path: Path, value: str) -> None:
 @pytest.mark.parametrize("value", ["1", "'1'"])
 def test_version_one_loads(tmp_path: Path, value: str) -> None:
     assert _load(tmp_path, top=f"version: {value}\n").version == 1  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize("value", ["0", "-3"])
+def test_run_workers_flag_must_be_at_least_one(value: str) -> None:
+    from typer.testing import CliRunner
+
+    from testo_core.cli.app import app
+
+    result = CliRunner().invoke(app, ["run", "--cycle", "x", "--workers", value])
+    assert result.exit_code == 2

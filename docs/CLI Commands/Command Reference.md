@@ -44,7 +44,7 @@ testo run --cycle sample-pytests --workers 8 --force
 | `--no-persist` | | Skip optional run-history DB writes |
 | `--no-report-db` | | Skip archiving cycle artifacts to report DB after run |
 | `--async-report-db` | | Archive in background thread with join timeout; **ignored when `--ci` is set** |
-| `--workers` | `-w` | Override parallel workers (e.g. BehaveX) |
+| `--workers` | `-w` | Override parallel workers (e.g. BehaveX); 1 or more |
 | `--force` | `-f` | Run even when trigger would skip the cycle |
 
 > [!warning] Roadmap flags — not implemented yet
