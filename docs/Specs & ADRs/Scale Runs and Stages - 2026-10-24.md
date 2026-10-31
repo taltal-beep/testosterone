@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-10-31
 related: "Deep Dive - Execution Logic, Team Server, Technical Debt Tracker, Project Review"
 ---
 
@@ -24,7 +24,7 @@ Both fixes had to keep one engine entered through `CycleRunService` and stay sma
    - **One writer.** Worker threads only call `run_stage()` and return its `StageResult`. Starting stages, writing `events.ndjson` and calling the renderer all happen on the calling thread, so no locks are needed and the NDJSON contract is unchanged.
    - **Order.** Stages start in config order as slots free up. `stage_finished` events are written in completion order; `PlanResult.stages` (and so `plan_result.json`, the run record and reporters) stays in config order.
    - **Failures.** `fail_fast` stops new stages from starting after the first failure. Stages already running finish (their processes aren't killed), then `plan_aborted` is written. An engine crash in one stage becomes an internal-failure result (exit `4`) without stopping the others.
-   - **Isolation.** Each stage already writes to `artifacts/<cycle>/<stage>/`, so the config loader rejects repeated stage names when `max_parallel_stages > 1`.
+   - **Isolation.** Each stage already writes to `artifacts/<cycle>/<stage>/`, so the config loader rejects repeated stage names when `max_parallel_stages > 1`. Since 2026-10-31 it rejects them in sequential cycles too (ignoring case, for macOS and Windows): the second stage reset the first one's results folder, so a failed test could vanish from the run.
    - **Output.** Live output from several stages would interleave, so parallel cycles are buffered: each stage's panel and output tail prints when it finishes. Plan duration is the wall clock, or the longest stage when a `junit` stage reports more test time than that.
 
 ## Options considered

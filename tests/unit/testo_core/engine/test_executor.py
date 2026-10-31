@@ -300,3 +300,17 @@ def test_missing_target_repo_names_the_folder(
     assert result.error is not None
     assert "target_repo is not a folder that exists" in result.error
     assert str(missing) in result.error
+
+
+def test_run_log_holds_only_this_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    use_echo_adapter(monkeypatch)
+    first = run_stage(
+        _stage(args=("--text", "first-run")), plan_name="demo", artifacts_root=tmp_path
+    )
+    second = run_stage(
+        _stage(args=("--text", "second-run")), plan_name="demo", artifacts_root=tmp_path
+    )
+    assert first.log_path == second.log_path
+    text = second.log_path.read_text()  # type: ignore[union-attr]
+    assert "second-run" in text
+    assert "first-run" not in text
