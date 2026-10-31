@@ -284,3 +284,17 @@ def test_missing_behave_names_the_bdd_extra(
 
     assert result.returncode == 127
     assert result.error is not None and "testo-core[bdd]" in result.error
+
+
+def test_run_log_holds_only_this_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    use_echo_adapter(monkeypatch)
+    first = run_stage(
+        _stage(args=("--text", "first-run")), plan_name="demo", artifacts_root=tmp_path
+    )
+    second = run_stage(
+        _stage(args=("--text", "second-run")), plan_name="demo", artifacts_root=tmp_path
+    )
+    assert first.log_path == second.log_path
+    text = second.log_path.read_text()  # type: ignore[union-attr]
+    assert "second-run" in text
+    assert "first-run" not in text

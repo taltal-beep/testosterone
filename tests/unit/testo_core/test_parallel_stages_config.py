@@ -42,11 +42,12 @@ def test_rejects_values_that_are_not_a_positive_whole_number(tmp_path: Path, val
 
 def test_parallel_cycles_need_unique_stage_names(tmp_path: Path) -> None:
     cfg = _config(tmp_path, "    max_parallel_stages: 2\n", stages="[unit, unit, api]")
-    with pytest.raises(ConfigValidationError, match="repeated: unit"):
+    with pytest.raises(ConfigValidationError, match="unique"):
         load_config(cfg)
-    # Sequential cycles keep accepting repeated names, as before.
+    # Sequential cycles too: the second stage would wipe the first one's results.
     cfg = _config(tmp_path, "", stages="[unit, unit]")
-    assert len(load_config(cfg).cycles["app"].stages) == 2
+    with pytest.raises(ConfigValidationError, match="unique"):
+        load_config(cfg)
 
 
 def test_schema_documents_the_setting() -> None:
