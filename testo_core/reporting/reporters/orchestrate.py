@@ -11,7 +11,7 @@ from testo_core.reporting.collector import (
     collect_results,
     collect_results_docker_run,
 )
-from testo_core.reporting.reporters.base import ReportContext, ReportLayout
+from testo_core.reporting.reporters.base import ReportContext, ReporterResult, ReportLayout
 from testo_core.reporting.reporters.factory import ReporterFactory
 
 if TYPE_CHECKING:
@@ -44,10 +44,12 @@ def run_configured_reporters(
     if not reporters_tuple and not reporter_override:
         return []
 
+    failed_to_start: list[ReporterResult] = []
     try:
         active_reporters = ReporterFactory.build(
             config_reporters=reporters_tuple,
             overrides=reporter_override,
+            failures=failed_to_start,
         )
     except ValueError as exc:
         if console is not None:
@@ -80,7 +82,7 @@ def run_configured_reporters(
         open_browser=not ci and not generate_only,
     )
 
-    outcomes = ReporterFactory.run_all(
+    outcomes = failed_to_start + ReporterFactory.run_all(
         active_reporters, results=results, context=context, console=console
     )
     for outcome in outcomes:
