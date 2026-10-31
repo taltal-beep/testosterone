@@ -38,13 +38,13 @@ def parse_defaults(raw: Any, *, config_dir: Path) -> Defaults:
         raise ConfigValidationError("'defaults:' must be a mapping.")
     target_repo = _resolve_path(raw.get("target_repo", "."), config_dir=config_dir)
     artifacts_root = _resolve_path(raw.get("artifacts_root", "artifacts"), config_dir=config_dir)
-    timeout_s = raw.get("timeout_s", 600.0)
-    workers = int(raw.get("workers", 4))
+    timeout_s = parse_timeout(raw.get("timeout_s", 600.0), where="defaults")
+    workers = parse_workers(raw.get("workers", 4), where="defaults")
     extra_env = _normalise_env(raw.get("extra_env"))
     return Defaults(
         target_repo=target_repo,
         artifacts_root=artifacts_root,
-        timeout_s=float(timeout_s) if timeout_s is not None else None,
+        timeout_s=timeout_s,
         workers=workers,
         extra_env=extra_env,
     )
@@ -288,7 +288,11 @@ def parse_stage(
             f"stage {name!r}: resources per: test works with pytest only; use per: worker "
             "or per: stage."
         )
-    workers = defaults.workers if workers_auto else int(stage_raw.get("workers", defaults.workers))
+    workers = (
+        defaults.workers
+        if workers_auto
+        else parse_workers(stage_raw.get("workers", defaults.workers), where=f"stage {name!r}")
+    )
     # Plugin adapters get ``workers`` in build_argv and decide for themselves.
     if (
         "workers" in stage_raw
@@ -300,8 +304,9 @@ def parse_stage(
             name,
             framework,
         )
-    timeout_raw = stage_raw.get("timeout_s", defaults.timeout_s)
-    timeout_s = float(timeout_raw) if timeout_raw is not None else None
+    timeout_s = parse_timeout(
+        stage_raw.get("timeout_s", defaults.timeout_s), where=f"stage {name!r}"
+    )
     if_expr = stage_raw.get("if")
     if if_expr is not None and not isinstance(if_expr, str):
         raise ConfigValidationError(f"stage {name!r}: 'if' must be a string.")
@@ -363,6 +368,51 @@ def parse_stage(
         resources=resources,
         workers_auto=workers_auto,
     )
+
+
+def parse_timeout(value: Any, *, where: str) -> float | None:
+    """``timeout_s``: seconds above zero, or null for no limit (as the JSON Schema says)."""
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise ConfigValidationError(f"{where}: 'timeout_s' must be a number of seconds or null.")
+    try:
+        seconds = float(value)
+    except ValueError:
+        raise ConfigValidationError(
+            f"{where}: 'timeout_s' must be a number of seconds or null (got {value!r})."
+        ) from None
+    if not seconds > 0 or seconds == float("inf"):
+        raise ConfigValidationError(
+            f"{where}: 'timeout_s' must be above 0 (got {value!r}); use null for no limit."
+        )
+    return seconds
+
+
+def parse_workers(value: Any, *, where: str) -> int:
+    """``workers``: a whole number, 1 or more (as the JSON Schema says)."""
+    if isinstance(value, bool):
+        raise ConfigValidationError(f"{where}: 'workers' must be a whole number, 1 or more.")
+    try:
+        workers = int(value)
+    except (TypeError, ValueError):
+        raise ConfigValidationError(
+            f"{where}: 'workers' must be a whole number, 1 or more (got {value!r})."
+        ) from None
+    if workers < 1 or (isinstance(value, float) and value != workers):
+        raise ConfigValidationError(
+            f"{where}: 'workers' must be a whole number, 1 or more (got {value!r})."
+        )
+    return workers
+
+
+def parse_version(value: Any) -> int:
+    """Top-level ``version``: only 1 exists so far."""
+    if isinstance(value, bool) or (value != 1 and str(value).strip() != "1"):
+        raise ConfigValidationError(
+            f"unsupported config 'version: {value}'; this testo-core reads version 1."
+        )
+    return 1
 
 
 def _resolve_path(value: Any, *, config_dir: Path) -> Path:
