@@ -358,6 +358,9 @@ def _run_process_stage(
         except (FileNotFoundError, RunnerError) as exc:
             if isinstance(exc, RunnerError):
                 error = str(exc)
+            elif not target_repo.is_dir():
+                # Popen reports a missing cwd as FileNotFoundError too; name the real cause.
+                error = f"target_repo is not a folder that exists: {target_repo}"
             else:
                 error = f"executable not found: {exc.filename or argv[0]}"
                 if argv and argv[0] in _BDD_EXECUTABLES:

@@ -17,6 +17,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `testo pool add`, `remove` and `sweep` run a pool's own `provider.create` / `provider.destroy` commands, when a person types them: dry run unless `--apply` (which asks unless `--yes`), only verbs listed under `provider.allow`, at most 5 keys per command, `max_items` and `name_prefix` limits, never a key in `items` or one someone holds, and `TESTO_PROVIDER_ACTIONS=0` turns them off. Every command run is logged with who, where and how it went: `testo pool log`, a "Provider commands" card on the Resources page, `GET`/`POST /api/v1/resources/actions`. New table `resource_action`
 - `testo pool status`: compare each resource pool with the keys that really exist. A pool's new `provider.list` is your own read-only command that prints them; the report shows keys that are missing, VMs outside the pool (leftovers) and, with `--check`, free keys that fail `on_check`. Exits `1` when something needs a look. Testosterone never creates or deletes a key on its own: only `testo pool`, typed by a person, runs provider commands, and a test checks that runs, leases, stages and the API never reach them
 
+### Fixed
+- `timeout_s`, `workers` and `version` in `testosterone.yaml` are checked the way the JSON Schema says: `timeout_s: abc` gives a config error instead of a traceback, `timeout_s: 0` or `-1` (which timed every stage out at once) and `workers: 0` are config errors, and an unknown `version` is refused. A stage whose `target_repo` doesn't exist says so instead of "executable not found"
+
 ## [1.4.0] - 2026-10-30
 
 ### Added
