@@ -22,13 +22,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 - `testo run` warns, before a pytest stage fails with `unrecognized arguments: --alluredir`, when the `pytest` on PATH can't load allure-pytest (typical after `pipx install testo-core` or `uv tool install`) and says how to fix it
-- The PyPI page's Documentation link goes to the docs site instead of the GitHub wiki, and README links to guides open the rendered docs site pages
+- Docs: an architecture review (`docs/Specs & ADRs/Architecture Review - 2026-10-31.md`) ranks the codebase's structural pressure points and proposes next steps; linked from the docs site menu
+
+## [1.5.0] - 2026-10-31
 
 ### Added
 - OpenTelemetry export: a run, its stages and its tests as one trace over OTLP, so test runs show up in Datadog, Grafana Tempo, Honeycomb, Jaeger or any other OTLP backend. Tests keep their real start and stop times; failures are error spans with the message. The `otel` reporter sends it after `testo run`, and `testo otel --cycle/--run-id` sends any recorded run (`--dry-run` prints the spans). Configured with the standard `OTEL_EXPORTER_OTLP_*` variables; off unless configured. Needs the new `[otel]` extra (`pip install 'testo-core[otel]'`)
 - Affected-test selection, off unless asked: `testo affected` lists the tests the changes since the baseline branch can affect, each with why it was picked (`--json`, or `--list` for any runner's command line), and `pytest --testo-affected` runs only those. Changed files map to tests through `affected.rules` globs in `testosterone.yaml`, changed test files, and a coverage.py report with test contexts; a change nothing maps, a lockfile or `conftest.py`, or a git problem runs everything and says why
 - `testo pool add`, `remove` and `sweep` run a pool's own `provider.create` / `provider.destroy` commands, when a person types them: dry run unless `--apply` (which asks unless `--yes`), only verbs listed under `provider.allow`, at most 5 keys per command, `max_items` and `name_prefix` limits, never a key in `items` or one someone holds, and `TESTO_PROVIDER_ACTIONS=0` turns them off. Every command run is logged with who, where and how it went: `testo pool log`, a "Provider commands" card on the Resources page, `GET`/`POST /api/v1/resources/actions`. New table `resource_action`
 - `testo pool status`: compare each resource pool with the keys that really exist. A pool's new `provider.list` is your own read-only command that prints them; the report shows keys that are missing, VMs outside the pool (leftovers) and, with `--check`, free keys that fail `on_check`. Exits `1` when something needs a look. Testosterone never creates or deletes a key on its own: only `testo pool`, typed by a person, runs provider commands, and a test checks that runs, leases, stages and the API never reach them
+
+### Changed
+- The PyPI page's Documentation link goes to the docs site instead of the GitHub wiki, and README links to guides open the rendered docs site pages
 
 ## [1.4.0] - 2026-10-30
 
@@ -388,7 +393,8 @@ First public release. Published to PyPI (`testo-core`), GHCR (`testo-runner`), a
 
 ---
 
-[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/taltal-beep/testosterone/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/taltal-beep/testosterone/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/taltal-beep/testosterone/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/taltal-beep/testosterone/compare/v1.1.1...v1.2.0
