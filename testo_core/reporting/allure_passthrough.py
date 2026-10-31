@@ -17,9 +17,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-_SIDE_FILES = frozenset(
-    {"environment.properties", "environment.xml", "categories.json", "executor.json"}
-)
+_SIDE_FILES = frozenset({"environment.properties", "categories.json", "executor.json"})
 
 
 # Allure adapters name attachments ``<uuid>-attachment.<ext>`` (or ``<uuid>-attachment``).
@@ -32,7 +30,10 @@ def is_allure_side_file(path: Path) -> bool:
     Only Allure's own names: ``my-attachment-tests.xml`` is still read as a report.
     """
     name = path.name
-    return name.endswith("-container.json") or bool(_ATTACHMENT.match(name)) or name in _SIDE_FILES
+    if name.endswith("-container.json") or _ATTACHMENT.match(name) or name in _SIDE_FILES:
+        return True
+    # environment.xml is Allure's only inside an Allure results folder.
+    return name == "environment.xml" and any(path.parent.glob("*-result.json"))
 
 
 def is_allure_result(path: Path, data: Any) -> bool:

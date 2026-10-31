@@ -70,6 +70,14 @@ def _check_username(username: str) -> str:
     return name
 
 
+def check_new_account(username: str, role: str) -> str:
+    """Validate the name and role of an account about to be added (before asking for a
+    password); returns the cleaned name. :class:`AccountError` if either is bad."""
+    name = _check_username(username)
+    _check_role(role)
+    return name
+
+
 def _check_password(password: str) -> None:
     if len(password) < MIN_PASSWORD_LENGTH:
         raise AccountError(f"passwords need at least {MIN_PASSWORD_LENGTH} characters")

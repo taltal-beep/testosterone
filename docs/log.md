@@ -145,6 +145,10 @@ Added [Feature Gaps and Quick Wins - 2026-10-31](Roadmap%20&%20Strategy/Feature%
 
 Added [UI Design Review - 2026-10-31](Specs%20&%20ADRs/UI%20Design%20Review%20-%202026-10-31.md) to Specs & ADRs with annotated screenshots under `assets/ui-review-2026-10-31/`, linked from its README, the Index and the docs site menu.
 
+## 2026-10-31: engine and CLI bug hunt
+
+Added [Engine and CLI Bug Hunt](engine-cli-review.md) (reproduced bugs, fixes, ranked proposals), linked from the [Index](Index.md) and the docs site menu.
+
 ## 2026-10-31: importer and integration bug hunt
 
 Added [Importer and Integration Bug Hunt - 2026-10-31](Specs%20&%20ADRs/Importer%20and%20Integration%20Bug%20Hunt%20-%202026-10-31.md) to Specs & ADRs (ranked findings, fixes and proposals), linked from its README, the Index and the docs site menu.

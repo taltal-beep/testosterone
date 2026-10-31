@@ -120,11 +120,27 @@ def _rerun_failures(case: ET.Element) -> list[ET.Element]:
     ]
 
 
+def report_paths(repo: Path, pattern: str) -> list[Path]:
+    """What *pattern* names under *repo*: the file itself when it exists (so a name
+    with ``[`` or ``*`` in it still works), otherwise the glob's matches, sorted."""
+    literal = repo / pattern
+    try:
+        if literal.is_file():
+            return [literal]
+    except OSError:
+        pass
+    return sorted(repo.glob(pattern))
+
+
 def _suites(root: ET.Element) -> list[ET.Element]:
     # The root itself when it is a <testsuite>, and every nested <testsuite>
     # (PHPUnit, Mocha and others nest them), depth-first. Each suite's own
-    # <testcase> children are read, so nothing is counted twice.
-    return list(root.iter("testsuite"))
+    # <testcase> children are read, so nothing is counted twice. A wrapper such as
+    # <testsuites> with <testcase>s of its own acts as a suite too.
+    suites = list(root.iter("testsuite"))
+    if root.tag != "testsuite" and root.find("testcase") is not None:
+        suites.insert(0, root)
+    return suites
 
 
 def _android_device(suite: ET.Element) -> str | None:
@@ -363,7 +379,7 @@ def import_junit_reports(
     results_dir.mkdir(parents=True, exist_ok=True)
     files: list[Path] = []
     for pattern in patterns:
-        for match in sorted(repo.glob(pattern)):
+        for match in report_paths(repo, pattern):
             resolved = match.resolve()
             if not resolved.is_file() or repo not in resolved.parents:
                 continue

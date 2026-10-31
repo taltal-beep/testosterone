@@ -50,14 +50,17 @@ def is_xcresult_report(data: Any) -> bool:
 
 def _duration_ms(node: dict[str, Any]) -> int:
     seconds = node.get("durationInSeconds")
-    if isinstance(seconds, (int, float)):
-        return max(0, int(round(seconds * 1000)))
-    match = _DURATION.match(str(node.get("duration") or "").strip())
-    if not match:
+    try:
+        if isinstance(seconds, (int, float)):
+            return max(0, int(round(seconds * 1000)))
+        match = _DURATION.match(str(node.get("duration") or "").strip())
+        if not match:
+            return 0
+        value = float(match.group(1))
+        unit = match.group(2) or "s"
+        return max(0, int(round(value * {"ms": 1, "s": 1000, "m": 60_000}[unit])))
+    except (ValueError, OverflowError):  # "1.2.3s", inf: no time rather than no tests
         return 0
-    value = float(match.group(1))
-    unit = match.group(2) or "s"
-    return int(round(value * {"ms": 1, "s": 1000, "m": 60_000}[unit]))
 
 
 def _children(node: dict[str, Any]) -> list[dict[str, Any]]:
