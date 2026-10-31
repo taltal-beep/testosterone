@@ -85,6 +85,104 @@
         "$ref": "#/definitions/resource_pool"
       }
     },
+    "affected": {
+      "type": "object",
+      "description": "How changed files map to tests, for `testo affected` and `pytest --testo-affected`. Anything not mapped runs every test.",
+      "properties": {
+        "base": {
+          "type": "string",
+          "description": "Branch or commit to diff against. Default: the pull request's target branch in CI, else origin/main."
+        },
+        "coverage": {
+          "type": "string",
+          "description": "coverage.py JSON with test contexts (`pytest --cov --cov-context=test`, then `coverage json --show-contexts`), relative to this file."
+        },
+        "run_all_when": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Files whose change runs every test (added to conftest.py, pyproject.toml, lockfiles and this file)."
+        },
+        "ignore": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Files whose change needs no test."
+        },
+        "test_files": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Names of test files (a changed one runs). Default: test_*.py, *_test.py, *.test.*, *.spec.*, *_test.go, *_spec.rb, *.feature."
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "changed",
+              "tests"
+            ],
+            "properties": {
+              "changed": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ],
+                "description": "Globs of changed files."
+              },
+              "tests": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ],
+                "description": "Globs of test files, or pytest node ids, to run."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "cycles": {
       "type": "object",
       "minProperties": 1,
@@ -526,6 +624,18 @@
           "type": "number",
           "exclusiveMinimum": 0,
           "default": 300.0
+        },
+        "provider": {
+          "type": "object",
+          "description": "Your own commands that look at the real keys. Only `testo pool`, typed by a person, runs them; Testosterone never creates or deletes keys.",
+          "properties": {
+            "list": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Prints the keys that exist, one per line (read-only)."
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

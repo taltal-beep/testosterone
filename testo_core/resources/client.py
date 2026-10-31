@@ -290,7 +290,14 @@ def _prepare(pool: ResourcePool, lease: Lease) -> str | None:
 
 def run_hook(command: str, lease: Lease, *, timeout_s: float) -> str | None:
     """Run a pool hook with the lease's env vars; the problem, or None when it worked."""
-    env = {**os.environ, **lease_env(lease)}
+    return run_command(command, lease_env(lease), timeout_s=timeout_s)[0]
+
+
+def run_command(
+    command: str, extra_env: Mapping[str, str], *, timeout_s: float
+) -> tuple[str | None, str]:
+    """Run the config author's command with ``extra_env``: (the problem or None, its stdout)."""
+    env = {**os.environ, **extra_env}
     try:
         done = subprocess.run(  # noqa: S602 — the config author's own command line
             command,
@@ -302,13 +309,13 @@ def run_hook(command: str, lease: Lease, *, timeout_s: float) -> str | None:
             check=False,
         )
     except subprocess.TimeoutExpired:
-        return f"timed out after {timeout_s:g}s"
+        return f"timed out after {timeout_s:g}s", ""
     except OSError as exc:
-        return str(exc)
+        return str(exc), ""
     if done.returncode != 0:
         tail = (done.stderr or done.stdout or "").strip().splitlines()[-1:] or [""]
-        return f"exit {done.returncode}" + (f": {tail[0][:200]}" if tail[0] else "")
-    return None
+        return f"exit {done.returncode}" + (f": {tail[0][:200]}" if tail[0] else ""), done.stdout
+    return None, done.stdout
 
 
 def _disable_quietly(backend: LeaseBackend, lease: Lease, reason: str) -> None:

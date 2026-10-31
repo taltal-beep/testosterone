@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 
 # Command Reference
@@ -481,6 +481,18 @@ Exit codes: `2` for an unknown pool, a bad config or no command after `--`; `3` 
 
 ---
 
+## `testo pool`
+
+Compare resource pools with the keys that really exist, using the pool's own `provider.list` command. Read-only: it never creates, deletes, disables or leases a key. Guide: [Shared Resource Pools](../Processes%20&%20Guides/Shared%20Resource%20Pools.md#compare-the-pool-with-what-really-exists).
+
+| Command | Effect |
+|---------|--------|
+| `testo pool status [POOL] [--check] [--json]` | For each pool: which keys `provider.list` shows (`yes`, `missing`, or `?` without a list command), which listed keys aren't in the pool, and each key's lease state. `--check` runs `on_check` on every free key that exists |
+
+Flags `--server` and `--config` as for `testo lease`. Exit codes: `0` every pool matches; `1` a key is missing, not in the pool, or fails its check; `2` an unknown pool or a bad config; `3` a `provider.list` command failed or the lease server can't be reached.
+
+---
+
 ## `testo split`
 
 Split a cycle's tests into shards that take about the same time, from each test's median time over the cycle's recent runs (longest test first, each to the shard with the least time so far). For CI matrix jobs, or one shard per key of a pool. Guide: [Shared Resource Pools § Split tests by time](../Processes%20&%20Guides/Shared%20Resource%20Pools.md#split-tests-by-time).
@@ -502,6 +514,42 @@ testo split --cycle flows --shards 4 --json                # every shard, with i
 | `--window` | `20` | Recent runs to take the times from |
 
 Tests with no recorded time count as a typical (median) test; with no history at all the split is round robin. The split depends only on which tests there are and their times, not their order, so every shard that sees the same history picks the same tests. Exit codes: `2` for a bad `--index` or unreadable `--tests`, `3` when the server can't be reached, `1` when there is nothing to split.
+
+---
+
+## `testo affected`
+
+Pick the tests a change can affect, and say why each one was picked. Opt-in: nothing runs fewer tests unless you use this command or [`pytest --testo-affected`](#pytest---testo). Design: [Affected Test Selection - 2026-10-30](../Specs%20&%20ADRs/Affected%20Test%20Selection%20-%202026-10-30.md).
+
+```bash
+testo affected                                   # tests to run, each with its reasons
+testo affected --base origin/develop --json      # the selection, reasons and per-file decisions
+npx jest $(testo affected --list)                # nothing printed = run everything
+git diff --name-only HEAD~1 | testo affected --changed -
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--base REF` | `affected.base`, else the pull request's target branch in CI, else `origin/main` | Diff the working tree (and untracked files) against the merge base with this |
+| `--changed FILE` | git diff | Changed files, one per line, relative to the repo root (`-` reads stdin) |
+| `--coverage FILE` | `affected.coverage` | coverage.py JSON with test contexts: `pytest --cov --cov-context=test`, then `coverage json --show-contexts` |
+| `--config` | discovery | `testosterone.yaml` with the `affected:` section |
+| `--list` | off | Only the tests, one per line; prints nothing when everything should run |
+| `--json` | off | `run_all`, `run_all_reasons`, `nothing_to_run`, `tests` (with `reasons`) and `files` (each changed file's outcome) |
+
+Each changed file maps to tests by the first of: `run_all_when` (run everything), `ignore` (no test), a changed test file (it runs), `rules`, the coverage report. Anything else, an unknown base or an empty diff runs everything, with the reason. Exit codes: `0` for any selection, including "run everything"; `2` for a bad config, an unreadable `--changed` or `--coverage`, or both `--list` and `--json`.
+
+```yaml
+affected:
+  base: origin/main            # optional
+  coverage: coverage.json      # optional, relative to this file
+  run_all_when: ["src/core/**"]   # added to conftest.py, pyproject.toml, lockfiles, testosterone.yaml
+  ignore: ["docs/**", "*.md"]
+  test_files: ["test_*.py"]    # replaces the built-in names of test files
+  rules:
+    - changed: "src/payments/**"
+      tests: ["tests/payments/**", "tests/test_api.py::test_checkout"]
+```
 
 ---
 
@@ -533,6 +581,8 @@ testo-core installs a pytest plugin (entry point `pytest11`, `testo_core/pytest_
 | `--testo-resource-label LABEL` | Only keys with this label (repeat for more) |
 | `--testo-resource-wait DURATION` | How long to wait for a key (default `30m`); then the test fails |
 | `--testo-shard I/N` | Run only shard I of N, split by time like [`testo split`](#testo-split) (also `$TESTO_SHARD`). Bad value or unreachable server: usage error (exit `4`), never a guess |
+| `--testo-affected` | Run only the tests the changes since the baseline branch can affect, like [`testo affected`](#testo-affected) (also `$TESTO_AFFECTED=1`); deselects the rest before `--testo-shard` splits. The summary lists what was picked and why, or why everything ran. A picked Python test that isn't collected runs everything; when only ignored files changed, no test runs and pytest exits `0` |
+| `--testo-affected-base REF` | Branch or commit `--testo-affected` diffs against (default as `testo affected --base`) |
 | `--testo-timings CYCLE` | Cycle whose test times `--testo-shard` uses (default `$TESTO_CYCLE`, which `testo run` sets, else the rootdir's name; from `--testo-server` / `$TESTO_SERVER_URL` when set) |
 
 The session's JUnit XML (yours if `--junitxml` is set, else a temporary file in a `.testo-*` folder of the rootdir, removed afterwards) is recorded through the same path as `testo ingest`, into a `pytest` stage, and the run writes `artifacts/` like `testo ingest` does. One line in pytest's summary says where it went. Recording never changes pytest's exit code: a problem is reported on that line instead. Nothing is recorded when no tests ran, or on a pytest-xdist worker (the controller records).

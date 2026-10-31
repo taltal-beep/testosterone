@@ -8,7 +8,7 @@
 # See docs/Specs & ADRs/Docs Site - 2026-10-19.md
 
 site_name: Testosterone
-site_description: One YAML file to run your whole test cycle, then see what changed since the last run.
+site_description: See what broke, what's flaky and what got slower on every run. Test history, run-to-run diffs and flaky detection for any test runner.
 site_url: https://taltal-beep.github.io/testosterone/docs/
 repo_url: https://github.com/taltal-beep/testosterone
 repo_name: taltal-beep/testosterone
@@ -112,8 +112,10 @@ nav:
       - Changelog Policy: changelog_automation_policy.md
   - Decisions:
       - Specs & ADRs: Specs & ADRs/README.md
+      - Affected Test Selection: Specs & ADRs/Affected Test Selection - 2026-10-30.md
       - Resource Pools and Leases: Specs & ADRs/Resource Pools and Leases - 2026-10-26.md
       - Resource Lifecycle Hooks: Specs & ADRs/Resource Lifecycle Hooks - 2026-10-26.md
+      - Human-Run Resource Provider: Specs & ADRs/Human-Run Resource Provider - 2026-10-30.md
       - Scale Runs and Stages: Specs & ADRs/Scale Runs and Stages - 2026-10-24.md
       - Ingest and Team Server: Specs & ADRs/Ingest and Team Server - 2026-10-22.md
       - UI Restyle: Specs & ADRs/UI Restyle - 2026-10-19.md

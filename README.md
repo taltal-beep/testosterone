@@ -3,9 +3,9 @@
 **See what broke, what's flaky and what got slower on every run.** Test history, run-to-run diffs and flaky detection for pytest, Playwright, Jest, `go test` or any runner that writes JUnit XML: on your laptop, in CI, or on one shared server for the whole team.
 
 [![CI](https://github.com/taltal-beep/testosterone/actions/workflows/ci.yml/badge.svg)](https://github.com/taltal-beep/testosterone/actions/workflows/ci.yml)
-[![Pages demo](https://github.com/taltal-beep/testosterone/actions/workflows/pages-demo.yml/badge.svg)](https://github.com/taltal-beep/testosterone/actions/workflows/pages-demo.yml)
 [![PyPI](https://img.shields.io/pypi/v/testo-core)](https://pypi.org/project/testo-core/)
-![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
+[![Python versions](https://img.shields.io/pypi/pyversions/testo-core)](https://pypi.org/project/testo-core/)
+[![Docs](https://img.shields.io/badge/docs-site-blue)](https://taltal-beep.github.io/testosterone/docs/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 **Live demo: <https://taltal-beep.github.io/testosterone/>** · **Docs: <https://taltal-beep.github.io/testosterone/docs/>** · **Try it with your own JUnit file: <https://taltal-beep.github.io/testosterone/try>** (read in your browser, nothing uploaded)
@@ -76,12 +76,12 @@ There are two ways in. **`testo ingest`** records JUnit XML that your existing C
 so adoption is one extra step. **`testo run`** goes further: it runs several frameworks as one
 **cycle** of stages from a `testosterone.yaml` (pytest, Playwright, Behave, any command), the
 same way from the CLI, CI or the web UI. Point either at a shared
-[team server](docs/Processes%20&%20Guides/Team%20Server.md) and every CI job lands in one history.
+[team server](https://taltal-beep.github.io/testosterone/docs/processes-and-guides/team-server/) and every CI job lands in one history.
 
 **How it compares.** Allure renders one run; ReportPortal is a large server to operate.
 Testosterone is a `pip install` that keeps the history and diffs runs against each other, works
 with whatever runner you have, and can still hand results to Allure, ReportPortal, Extent or
-TestBeats as reporters. The [comparison page](docs/Compared%20With%20Other%20Tools.md) has the details, including when another tool is the better pick.
+TestBeats as reporters. The [comparison page](https://taltal-beep.github.io/testosterone/docs/compared-with-other-tools/) has the details, including when another tool is the better pick.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/testosterone-architecture-detailed-dark.png">
@@ -94,8 +94,6 @@ backend (`testo_api`, `/api/v1`, live runs over server-sent events), a React fro
 [ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit.
 
 ## Quickstart
-
-Install the CLI from PyPI and point it at your own tests:
 
 Already have tests that write JUnit XML? Record them, no config needed:
 
@@ -119,7 +117,7 @@ testo run --cycle smoke-test      # runs pytest -q tests; edit args for a differ
 
 An installed `testo` keeps per-run report copies in `./.testo/` (set `TESTO_HOME` to move them).
 
-[Getting Started](docs/Getting%20Started.md) goes further in about five minutes: a regression
+[Getting Started](https://taltal-beep.github.io/testosterone/docs/getting-started/) goes further in about five minutes: a regression
 between two runs, then the same cycle in GitHub Actions.
 
 Or work from a checkout of this repository, which ships sample cycles:
@@ -142,7 +140,7 @@ testo report --cycle sample-pytests   # build the Allure report for it
 </details>
 
 Adding Testosterone to your own project with an AI coding assistant? Paste one of the
-[Setup Prompts](docs/Prompts%20&%20Snippets/Setup%20Prompts.md).
+[Setup Prompts](https://taltal-beep.github.io/testosterone/docs/prompts-and-snippets/setup-prompts/).
 
 Runs are stored in SQLite by default (`database.url` in `testosterone.yaml`, or
 `DATABASE_URL`). Postgres and MySQL work too; `docker compose up -d postgres` starts one.
@@ -163,9 +161,11 @@ npm --prefix frontend install
 npm --prefix frontend run dev          # React on http://localhost:5173
 ```
 
-Pages: Dashboard, Cycles (run any cycle and watch its stages live, see its flaky tests), Runs and Run Detail
-(reports, test pyramid, AI summary), Compare (delta between two runs), Quick Run (run one
-framework against a repo without defining a cycle) and AI settings.
+Pages: Dashboard (what needs attention first), Cycles (run any cycle and watch its stages live,
+see its flaky tests), Runs and Run Detail (failing tests first, reports, test pyramid, AI summary),
+a page per test (history, attachments, Playwright trace), Compare (delta between two runs),
+Project health, Resources, Quick Run (run one framework against a repo without defining a cycle)
+and AI settings.
 
 ## Defining cycles
 
@@ -203,7 +203,7 @@ JUnit XML another step wrote; what `testo ingest` uses). `behave` and `behavex` 
 `pip install 'testo-core[bdd]'`. A package can add more (see [Plugins](#optional-integrations)).
 
 `testo config validate` checks the file; `testo init` writes one interactively. The full
-schema and every flag are in [Command Reference](docs/CLI%20Commands/Command%20Reference.md).
+schema and every flag are in [Command Reference](https://taltal-beep.github.io/testosterone/docs/cli-commands/command-reference/).
 
 ## CLI
 
@@ -218,11 +218,14 @@ schema and every flag are in [Command Reference](docs/CLI%20Commands/Command%20R
 | `testo watch --cycle <name>` | Re-run a cycle when files change |
 | `testo flaky --cycle <name>` | Tests that keep flipping between pass and fail across recent runs (`--fail-on-flaky` for CI) |
 | `testo plugins` | Built-in and installed frameworks and reporters (`--check` imports them, `--json`) |
+| `testo ui` | API and web UI on `http://127.0.0.1:8000` (needs the `api` extra) |
+| `testo badge --cycle <name>` | A README badge for a cycle's latest run (SVG or shields.io endpoint JSON) |
+| `testo lease …` | Resource pools: give each parallel worker its own VM, device or test account |
 | `testo doctor` | Check config, database and tools on PATH |
 
 Exit codes: `0` success (or trigger-skipped), `1` tests failed, `2` invalid input,
 `3` infrastructure failure, `4` internal error.
-Details: [Troubleshooting and Error Codes](docs/CLI%20Commands/Troubleshooting%20and%20Error%20Codes.md).
+Details: [Troubleshooting and Error Codes](https://taltal-beep.github.io/testosterone/docs/cli-commands/troubleshooting-and-error-codes/).
 
 ## API
 
@@ -249,8 +252,8 @@ GitHub Actions:
     comment-on-pr: "true" # results as a pull request comment (needs pull-requests: write)
 ```
 
-GitLab CI (a GitLab mirror of this repo is coming; until then, include the template straight
-from GitHub, or copy [ci/gitlab/testo.gitlab-ci.yml](ci/gitlab/testo.gitlab-ci.yml)):
+GitLab CI (include the template straight from GitHub, or copy
+[ci/gitlab/testo.gitlab-ci.yml](ci/gitlab/testo.gitlab-ci.yml) into your project):
 
 ```yaml
 include:
