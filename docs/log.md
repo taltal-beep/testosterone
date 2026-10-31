@@ -141,6 +141,10 @@ Added [Architecture Review - 2026-10-31](Specs%20&%20ADRs/Architecture%20Review%
 
 Added [Feature Gaps and Quick Wins - 2026-10-31](Roadmap%20&%20Strategy/Feature%20Gaps%20and%20Quick%20Wins%20-%202026-10-31.md) to Roadmap & Strategy (competitor research and a new-user pass, ranked with effort), linked from the Index, the Product Roadmap and the docs site menu.
 
+## 2026-10-31: ui design review
+
+Added [UI Design Review - 2026-10-31](Specs%20&%20ADRs/UI%20Design%20Review%20-%202026-10-31.md) to Specs & ADRs with annotated screenshots under `assets/ui-review-2026-10-31/`, linked from its README, the Index and the docs site menu.
+
 ## 2026-10-31: paid features to offer free
 
 Added [Paid Features to Offer Free - 2026-10-31](Roadmap%20&%20Strategy/Paid%20Features%20to%20Offer%20Free%20-%202026-10-31.md) to Roadmap & Strategy (competitor paywalls, twelve ranked ideas, licence and trademark rules), linked from the Index, the Product Roadmap and the docs site menu.

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from functools import lru_cache
+import threading
 from typing import Final
 from urllib.parse import urlparse
 
@@ -86,17 +86,29 @@ def validate_database_url(url: str) -> str:
     return dialect
 
 
-@lru_cache(maxsize=8)
-def _build_engine(url: str) -> Engine:
-    dialect = validate_database_url(url)
-    kwargs: dict[str, object] = {"echo": False}
+# One engine (and so one connection pool) per database URL, kept until
+# reset_engine_cache() disposes it. A plain dict rather than lru_cache: evicting
+# an engine without dispose() would leave its pooled connections open.
+_ENGINES: dict[str, Engine] = {}
+_ENGINES_LOCK = threading.Lock()
 
+
+def engine_kwargs(url: str) -> dict[str, object]:
+    """``create_engine`` keyword arguments for ``url``'s dialect (shared by probes)."""
+    dialect = urlparse(url).scheme.lower().split("+", 1)[0]
     if dialect == "sqlite":
-        kwargs["connect_args"] = {"check_same_thread": False}
-    else:
-        kwargs["pool_pre_ping"] = True
+        return {"connect_args": {"check_same_thread": False}}
+    return {"pool_pre_ping": True}
 
-    return create_engine(url, **kwargs)
+
+def _build_engine(url: str) -> Engine:
+    with _ENGINES_LOCK:
+        engine = _ENGINES.get(url)
+        if engine is None:
+            validate_database_url(url)
+            engine = create_engine(url, echo=False, **engine_kwargs(url))
+            _ENGINES[url] = engine
+        return engine
 
 
 def get_engine() -> Engine:
@@ -124,5 +136,9 @@ def create_db_and_tables() -> None:
 
 
 def reset_engine_cache() -> None:
-    """Clear the cached engine(s). Use in tests after changing ``DATABASE_URL``."""
-    _build_engine.cache_clear()
+    """Dispose and forget the cached engine(s). Use in tests after changing ``DATABASE_URL``."""
+    with _ENGINES_LOCK:
+        engines = list(_ENGINES.values())
+        _ENGINES.clear()
+    for engine in engines:
+        engine.dispose()
