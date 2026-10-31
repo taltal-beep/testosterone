@@ -219,6 +219,8 @@ testo config validate --config path/to/testosterone.yaml
 **Symptoms**
 
 - `cycle 'x' not found. Available: ...`
+- `the config defines several cycles; pick one with --cycle. Available: ...` (`testo run` with no `--cycle`)
+- `Error: No such command 'x'.` or `Error: No such option: --x` after a `Usage:` line (a mistyped command or flag; also exit 2)
 - `plan 'x' has no stages enabled in this environment`
 
 **Debug**

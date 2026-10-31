@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from typer.testing import CliRunner
 
+from testo_core import paths
 from testo_core.cli.app import app
 from testo_core.cli.runner import matching_reports, report_patterns
 from testo_core.config.errors import ConfigError, ConfigValidationError
@@ -161,7 +162,12 @@ def test_plan_duration_is_the_recorded_test_time(tmp_path: Path) -> None:
     assert result.duration_s == pytest.approx(1.75)
 
 
-def test_run_metadata_reaches_the_run_record(tmp_path: Path) -> None:
+def test_run_metadata_reaches_the_run_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The DB backend copies artifacts to STATIC_HISTORY_ROOT/<run id>; with a mocked
+    # repository the id is a MagicMock repr, so keep that copy out of the checkout.
+    monkeypatch.setattr(paths, "STATIC_HISTORY_ROOT", tmp_path / "history")
     _write(tmp_path / "a.xml", PASSING)
     plan = junit_ingest_plan(cycle="web", reports=["a.xml"], target_repo=tmp_path)
     result = run_plan(

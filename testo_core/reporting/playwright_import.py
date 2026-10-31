@@ -355,7 +355,7 @@ def playwright_results_for_file(
     errors come back in ``notes``.
     """
     try:
-        report = json.loads(path.read_text(encoding="utf-8"))
+        report = json.loads(path.read_text(encoding="utf-8-sig"))
     except json.JSONDecodeError as exc:
         raise ValueError(f"not valid JSON ({exc})") from exc
     if not isinstance(report, dict) or not isinstance(report.get("suites"), list):

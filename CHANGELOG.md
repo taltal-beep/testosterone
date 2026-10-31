@@ -8,26 +8,32 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-### Added
-- Python 3.14 is tested in CI and listed in the package classifiers
-
 ### Security
 - PR comment and job summary: a backtick in a test name (which in a fork's pull request its author controls) ended the code span, so `@user` mentions and HTML after it rendered live. Names are now fenced so nothing inside can close them, and stage, runner and branch cells are plain text. A cycle name with `-->` can no longer end the comment marker
 
+### Added
+- Python 3.14 is tested in CI and listed in the package classifiers
+
 ### Fixed
 - Result importers no longer crash or silently drop results on odd files. A file with unexpected field types (Jest, Playwright, RSpec, k6) or a JUnit `time="inf"` used to crash the whole import and lose every other file's results; now that one file is skipped and logged. A `<testsuite>` nested in a root `<testsuite>` is read (it counted 0 tests), UTF-16 XML is read, XML that isn't JUnit (an HTML error page) is reported instead of counting 0 tests, a report whose name contains `-attachment` is no longer skipped as an Allure attachment, Maven Surefire reruns (`flakyFailure`, `rerunFailure`) mark the test flaky, and a JUnit failure message is capped like its trace
+- Two stages with the same name in one cycle (or names that differ only in case) are a config error: the second stage wiped the first one's results, so a failed test could disappear from the run. Each stage's `run.log` now holds only the latest run instead of growing with every run (it was copied whole into every run's history snapshot)
 - Robot Framework: a failed suite teardown fails that suite's passed tests, as `robot` reports them ("Parent suite teardown failed"); `output.xml` keeps their own PASS, so they counted as passed
 - The PR comment's baseline is never another branch's run: a push to the default branch compares with the previous run on that branch (it took the newest run on any branch), and a pull request whose target branch has no run yet compares with its own previous run instead of another pull request's
+- `timeout_s`, `workers` and `version` in `testosterone.yaml` are checked the way the JSON Schema says: `timeout_s: abc` gives a config error instead of a traceback, `timeout_s: 0` or `-1` (which timed every stage out at once) and `workers: 0` are config errors, and an unknown `version` is refused; `testo run --workers 0` is refused too. A stage whose `target_repo` doesn't exist says so instead of "executable not found"
 - The run summary no longer says "No test changed outcome" when the previous run has no stored test results; it says there is nothing to compare with
 - GitHub Action: when `testo run` stops before recording a run (bad config, crash), the action no longer publishes the previous job's run (restored from the cache) as this job's summary, PR comment, annotations and alert, and `summary_json` now carries the `error` event's message
+- `testo run` without `--cycle` on a config with several cycles says to pick one with `--cycle` instead of "cycle '<unspecified>' not found"
 - Plugins: one reporter plugin that fails to import or to start no longer turns off every reporter (Slack, Teams, Allure, ...); it is reported as a failed reporter and the others run. A plugin adapter or reporter whose constructor raises is now a clear `PluginError` instead of a traceback that changed `testo run`'s exit code after the cycle finished
 - Affected-test selection: a rule's folder glob (`tests/payments/**`) picks only test files, so `__init__.py` and helpers no longer make `pytest --testo-affected` run everything; test files with non-ASCII names are no longer missed (git quoted their paths)
+- `testo users add` checks the name, the role and whether the account already exists before asking for the password (twice), and `testo users reset-password` checks the account exists first. `testo report` with no results no longer shows reStructuredText backticks in its hint
 - A red run is no longer recorded as green when the failure is outside any single test. `testo ingest` (and `junit_xml` imports) now record a `broken` result for: a Go 1.24+ build failure (`build-output` events, which made the whole `go test -json` file unreadable before), a Go test that never finished (timeout or crash), a Jest/Vitest file whose `beforeAll`/`afterAll` hook threw while its tests show passed or skipped, a Playwright spec that fails to load or a failing `globalSetup` (top-level `errors`), a TRX run whose test host crashed (`RunInfo outcome="Error"`), and a JUnit `<testsuite>` that claims failures or errors no `<testcase>` carries. `testo ingest` also exits 1 when every matching file was unreadable (truncated, empty, not a report) instead of recording a passing run with 0 tests
 - Database engines are closed when the engine cache is reset, and `testo doctor` / `testo config-db` close their connection probe, so no SQLite or Postgres connections are left open (the test suite showed 110 "unclosed database" warnings)
 - A mistyped command or option (`testo runn`, `testo run --bogus`), or `testo` with no arguments, printed a Python traceback with newer Typer releases. It now prints the error and a hint (or the help), and exits `2`
+- Report imports: a `<testcase>` directly under `<testsuites>` is counted instead of dropped; a report file whose name has `[` in it, or `environment.xml` outside an Allure results folder, is read instead of skipped; an xcresult or Playwright JSON duration like `1.2.3s` or `inf`, or a Playwright JSON with a UTF-8 BOM, no longer stops the import
 - `testo clean --yes` refuses to delete a folder that is the project (`artifacts_root: .`), the current, home or root folder, the config's folder or a parent of any of them, or a folder holding `.git`, `testosterone.yaml` or `pyproject.toml`. Before, `artifacts_root: .` deleted the whole project
 
 ### Changed
+- Docs: an importer and integration bug hunt (`docs/Specs & ADRs/Importer and Integration Bug Hunt - 2026-10-31.md`) ranks what was found and fixed, with proposals for the rest
 - UI polish from the design review: Compare and dashboard highlights read as plain sentences ("Wall duration up 6.9 s", "1 more test passed", "Pass rate up 3.8 points"; no duplicate line when the metrics duration moved as much as the wall duration), the breadcrumb names the cycle, test or run on its page and says Testosterone, the Runs list says "96% passed" instead of "health 96%", the Compare filter chips read "Status change", the phone menu is opaque, and the 404 page has a page heading
 - Docs: a UI design review (`docs/Specs & ADRs/UI Design Review - 2026-10-31.md`) ranks 14 design and UX findings on the web UI with annotated screenshots and proposes fixes; linked from the Index and the docs site menu
 - Docs: an architecture review (`docs/Specs & ADRs/Architecture Review - 2026-10-31.md`) ranks the codebase's structural pressure points and proposes next steps; linked from the docs site menu
