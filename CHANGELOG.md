@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Python 3.14 is tested in CI and listed in the package classifiers
 
 ### Fixed
+- A mistyped command or option (`testo rnu`, `--cylce`) or a missing argument prints the usual usage message and exits `2`, as documented. It printed a traceback and exited `1`, which CI reads as failing tests
 - Database engines are closed when the engine cache is reset, and `testo doctor` / `testo config-db` close their connection probe, so no SQLite or Postgres connections are left open (the test suite showed 110 "unclosed database" warnings)
 
 ## [1.5.0] - 2026-10-31
