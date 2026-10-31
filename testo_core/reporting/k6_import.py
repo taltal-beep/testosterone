@@ -57,6 +57,13 @@ def _checks(group: dict[str, Any], path: tuple[str, ...]) -> list[tuple[tuple[st
     return found
 
 
+def _count(value: Any) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
 def _threshold_failed(value: Any) -> bool:
     if isinstance(value, dict):
         return value.get("ok") is False
@@ -80,7 +87,7 @@ def k6_results_for_summary(
 
     for path, check in _checks(data["root_group"], ()):
         name = str(check.get("name") or "(unnamed check)")
-        passes, fails = int(check.get("passes") or 0), int(check.get("fails") or 0)
+        passes, fails = _count(check.get("passes")), _count(check.get("fails"))
         group = " › ".join(p for p in path if p)
         failed = fails > 0
         results.append(
