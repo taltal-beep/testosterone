@@ -15,6 +15,12 @@ Status mapping (JUnit has no "broken" of its own):
     <skipped>            -> skipped
     none of the above    -> passed
 
+Retries in one file count once. Maven Surefire's ``<flakyFailure>`` /
+``<flakyError>`` on a passing case mark it flaky ("passed on retry"); a case
+written more than once under the same name in one file (the Gradle test-retry
+plugin's shape) keeps its last outcome, and is flaky when an earlier attempt
+failed and the last one passed.
+
 Other result files among the matches are recognised by their content, not
 their name, and read by their own importer, which keeps what JUnit loses:
 
@@ -64,7 +70,7 @@ class JunitImportResult:
     failed: int = 0
     # Sum of the per-case ``time`` attributes, in seconds.
     duration_s: float = 0.0
-    # Playwright JSON only: tests that passed on a retry, and attachments copied.
+    # Tests that passed on a retry (Playwright, Jest, Xcode, JUnit retries), and attachments copied.
     flaky: int = 0
     attachments: int = 0
     # Files that matched but could not be read as any known format (truncated,
@@ -200,10 +206,15 @@ def _results_for_root(root: ET.Element, *, path: Path, tool: str, fallback_ms: i
                     *([{"name": "host", "value": device}] if device else []),
                 ],
             }
+            retried = _surefire_retry(case) if status == "passed" else None
+            if retried is not None:
+                message = _passed_on_retry(retried)
             if message or trace:
                 result["statusDetails"] = {
                     k: v for k, v in (("message", message), ("trace", trace)) if v
                 }
+            if retried is not None:
+                result["statusDetails"]["flaky"] = True
             results.append(result)
             clock += duration
             problems += status in ("failed", "broken")
@@ -211,7 +222,47 @@ def _results_for_root(root: ET.Element, *, path: Path, tool: str, fallback_ms: i
             results.append(
                 _suite_error_result(suite, suite_name=suite_name, tool=tool, start_ms=suite_start)
             )
-    return results
+    return _collapse_retries(results)
+
+
+def _surefire_retry(case: ET.Element) -> ET.Element | None:
+    """Surefire's record of a failed attempt on a test that passed in the end."""
+    for tag in ("flakyFailure", "flakyError"):
+        node = case.find(tag)
+        if node is not None:
+            return node
+    return None
+
+
+def _passed_on_retry(attempt: ET.Element) -> str:
+    text = (attempt.text or "").strip()
+    first = attempt.get("message") or (text.splitlines()[0] if text else "")
+    return "Passed on retry." + (f" {first}" if first else "")
+
+
+def _collapse_retries(results: list[dict]) -> list[dict]:
+    """One result per test: a test written twice in one file is a retry, not two tests.
+
+    The last attempt's outcome wins. When an earlier attempt failed or broke and
+    the last one passed, the test passed on retry and is flagged flaky.
+    """
+    by_key: dict[str, list[dict]] = {}
+    for result in results:
+        by_key.setdefault(result["historyId"], []).append(result)
+    if all(len(attempts) == 1 for attempts in by_key.values()):
+        return results
+    collapsed: list[dict] = []
+    for attempts in by_key.values():
+        last = attempts[-1]
+        failed_before = [a for a in attempts[:-1] if a["status"] in ("failed", "broken")]
+        if last["status"] == "passed" and failed_before:
+            earlier = (failed_before[-1].get("statusDetails") or {}).get("message")
+            details = last.setdefault("statusDetails", {})
+            details["message"] = "Passed on retry." + (f" {earlier}" if earlier else "")
+            details["flaky"] = True
+        last["start"] = attempts[0]["start"]
+        collapsed.append(last)
+    return collapsed
 
 
 @dataclass(frozen=True)
@@ -243,7 +294,9 @@ def _results_for_any(
             return _FileResults(trx_results_for_root(root, tool=tool, fallback_ms=fallback_ms))
         if is_robot_root(root):
             return _FileResults(robot_results_for_root(root, tool=tool, fallback_ms=fallback_ms))
-        return _FileResults(_results_for_root(root, path=path, tool=tool, fallback_ms=fallback_ms))
+        results = _results_for_root(root, path=path, tool=tool, fallback_ms=fallback_ms)
+        flaky = sum(1 for r in results if (r.get("statusDetails") or {}).get("flaky"))
+        return _FileResults(results, flaky=flaky)
     from testo_core.reporting.gotest_import import gotest_results_for_text, is_gotest_text
     from testo_core.reporting.jest_import import is_jest_report, jest_results_for_report
 

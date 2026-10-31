@@ -2,12 +2,12 @@
 type: guide
 status: current
 created: 2026-10-19
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 
 # Getting Started
 
-Add Testosterone to a project you already have, in about five minutes: install it, describe your tests in one file, run them, see what changed, then run the same thing in GitHub Actions. Every command below was run against `testo-core` 1.1.1 from PyPI in a fresh virtualenv.
+Add Testosterone to a project you already have, in about five minutes: install it, describe your tests in one file, run them, see what changed, then run the same thing in GitHub Actions. The commands below were checked against `testo-core` 1.4.0 from PyPI in a fresh virtualenv.
 
 You need Python 3.11 or newer and a project with tests. The examples use pytest; other runners are at [step 6](#6-add-other-test-runners).
 
@@ -16,7 +16,7 @@ You need Python 3.11 or newer and a project with tests. The examples use pytest;
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install testo-core pytest
-testo --version          # testo 1.1.1
+testo --version          # testo 1.4.0
 ```
 
 `testo-core` is the `testo` CLI. It doesn't install your test runner, so keep installing pytest (or Behave, Jest...) the way your project already does.
@@ -145,6 +145,6 @@ Every run is recorded like `testo ingest` would record it (the cycle defaults to
 
 ## Next
 
-- **Web UI**: Dashboard, Runs, Compare and AI failure summaries on the same history. `pip install 'testo-core[api]'`, then `testo ui` opens it on <http://127.0.0.1:8000> (releases after 1.2.0; before that it runs from a checkout, see the README's [UI section](https://github.com/taltal-beep/testosterone#ui)). Or look at the [live demo](https://taltal-beep.github.io/testosterone/).
+- **Web UI**: Dashboard, Runs, Compare and AI failure summaries on the same history. `pip install 'testo-core[api]'`, then `testo ui` opens it on <http://127.0.0.1:8000>. Or look at the [live demo](https://taltal-beep.github.io/testosterone/).
 - **Using an AI coding assistant?** [Setup Prompts](Prompts%20&%20Snippets/Setup%20Prompts.md) are copy-paste prompts that do the steps above for you.
 - **How it works**: [System Diagram](Architecture/System%20Diagram.md).

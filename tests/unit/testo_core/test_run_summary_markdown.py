@@ -98,7 +98,7 @@ def test_markdown_starts_with_the_comment_marker(two_runs: list[CompletedRunView
 
     assert text.splitlines()[0] == md.comment_marker("unit") == "<!-- testo-summary:unit -->"
     assert "### ❌ Testosterone: `unit` failed" in text
-    assert "**2 passed · 1 failed · 0 skipped** in 12.3s · health 66.7%" in text
+    assert "**2 passed · 1 failed · 0 skipped** in 12.3s · pass rate 66.7%" in text
     assert "| unit | pytest | ❌ fail | 3 | 2 | 1 | 0 | 1.5s |" in text
     assert "- `test_a`" in text
     assert "**Since the previous run:** 1 regression, 1 new test" in text

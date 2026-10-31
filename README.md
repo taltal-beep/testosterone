@@ -29,6 +29,16 @@ read-only static site.
 
 </details>
 
+**Try it in a minute** on a project you already have:
+
+```bash
+pip install 'testo-core[api]'
+pytest --testo                                # or: testo ingest 'reports/**/*.xml' --cycle web
+testo ui                                      # what broke, what's flaky, what got slower
+```
+
+More ways in, from Jest to `go test`, are in the [Quickstart](#quickstart).
+
 ## What's new
 
 New in 1.5.0:

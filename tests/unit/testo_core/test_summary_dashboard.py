@@ -40,7 +40,7 @@ def test_suite_duration_preferred_prefers_allure() -> None:
     )
     ms, label = suite_duration_preferred(a)
     assert ms == 5000
-    assert "Allure" in label
+    assert label == "sum of test times"
 
 
 def test_format_delta_ms_cell() -> None:

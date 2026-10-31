@@ -189,13 +189,15 @@ export function ComparePage() {
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5" data-testid="status-summary">
               <Badge tone={payload.status_summary.regressions.length > 0 ? "danger" : "neutral"}>
-                {countLabel(payload.status_summary.regressions.length, "regression")}
+                {countLabel(payload.status_summary.regressions.length, "metric")} worse
               </Badge>
               <Badge tone={payload.status_summary.improvements.length > 0 ? "success" : "neutral"}>
-                {countLabel(payload.status_summary.improvements.length, "improvement")}
+                {payload.status_summary.improvements.length} better
               </Badge>
               <Badge>{payload.status_summary.unchanged.length} unchanged</Badge>
-              <Badge>{payload.status_summary.unknown.length} unknown</Badge>
+              {payload.status_summary.unknown.length > 0 ? (
+                <Badge>{payload.status_summary.unknown.length} not comparable</Badge>
+              ) : null}
             </div>
           </Card>
 
@@ -218,7 +220,7 @@ export function ComparePage() {
           </div>
 
           {(payload.stage_deltas ?? []).length > 0 && (
-            <Card title="Per-stage health">
+            <Card title="Pass rate by stage">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-ink-300">
                   <thead>
