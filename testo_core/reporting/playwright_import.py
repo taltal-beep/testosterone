@@ -21,6 +21,11 @@ Status mapping (Playwright test status -> Allure):
     skipped      -> skipped
     unexpected   -> failed (broken if the last attempt was interrupted)
 
+Errors outside any test (a spec file that doesn't compile, a failing
+``globalSetup``) are in the report's top-level ``errors``; Playwright then
+runs no test at all. Each becomes one ``broken`` result, so such a run is
+never recorded as passed.
+
 Attachments are read from disk only inside ``attachments_root``. Playwright
 writes absolute paths; when a report was produced elsewhere (a CI artifact
 downloaded to a laptop) the path's tail is looked up under that root instead.
@@ -295,6 +300,38 @@ def _results_for_report(
     return results, flaky_count
 
 
+def _report_error_result(error: dict, *, tool: str, start_ms: int, root: Path | None) -> dict:
+    """One ``broken`` result for an error outside any test, named after the file it points to."""
+    location = error.get("location")
+    where = str(location.get("file") or "") if isinstance(location, dict) else ""
+    if where and root is not None:
+        try:
+            where = Path(where).resolve().relative_to(root).as_posix()
+        except (ValueError, OSError):
+            where = Path(where).name
+    elif where:
+        where = Path(where).name
+    full_name = f"{where} › (failed to load)" if where else "(report error)"
+    details: dict[str, Any] = {"message": "Playwright reported an error outside any test"}
+    details.update(_error_details({"error": error}))
+    return {
+        "uuid": str(uuid.uuid4()),
+        "historyId": hashlib.sha256(f"{tool}:{full_name}".encode()).hexdigest(),
+        "name": "(failed to load)" if where else "(report error)",
+        "fullName": full_name,
+        "status": "broken",
+        "stage": "finished",
+        "start": start_ms,
+        "stop": start_ms,
+        "labels": [
+            {"name": "suite", "value": where or "playwright"},
+            {"name": "framework", "value": "playwright"},
+            {"name": "language", "value": "javascript"},
+        ],
+        "statusDetails": details,
+    }
+
+
 def playwright_results_for_file(
     path: Path,
     *,
@@ -327,10 +364,14 @@ def playwright_results_for_file(
     results, flaky = _results_for_report(
         report, tool=tool, fallback_ms=fallback_ms, attachments=attachments
     )
+    report_errors = [e for e in report.get("errors") or [] if isinstance(e, dict)]
+    results += [
+        _report_error_result(error, tool=tool, start_ms=fallback_ms, root=root)
+        for error in report_errors
+    ]
     notes = [
         f"report error: {(_clean(e.get('message')) or 'error').splitlines()[0]}"
-        for e in report.get("errors") or []
-        if isinstance(e, dict)
+        for e in report_errors
     ]
     notes += [f"attachment skipped: {s}" for s in attachments.skipped]
     return PlaywrightFileResults(
