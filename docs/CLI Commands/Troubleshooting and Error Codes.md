@@ -21,7 +21,7 @@ Defined in `testo_core/engine/exit_codes.py` as `EngineExitCode`. The process ex
 |------|------|---------|----------------|
 | `0` | `SUCCESS` | Run completed; all stage return codes zero | Pass; or cycle **skipped by trigger** (resting) |
 | `1` | `DOMAIN_FAILURE` | Tests or framework reported failure | Non-zero pytest/behave/behavex exit |
-| `2` | `INVALID_INPUT` | Config or CLI validation failed | Missing YAML, bad schema, unknown cycle, tag mismatch |
+| `2` | `INVALID_INPUT` | Config or CLI validation failed | Missing YAML, bad schema, unknown cycle, tag mismatch; a mistyped command or option, or bare `testo` (prints the error or the help, no traceback) |
 | `3` | `INFRA_FAILURE` | Infrastructure / runtime dependency failure | Return code `127` (missing binary); `124` (stage timeout); report DB archive failure; Docker/Allure CLI failures |
 | `4` | `INTERNAL_ERROR` | Unexpected engine error | Orchestrator `internal_failure` on uncaught engine exception; empty return-code list in classifier |
 
