@@ -8,7 +8,7 @@
 # See docs/Specs & ADRs/Docs Site - 2026-10-19.md
 
 site_name: Testosterone
-site_description: One YAML file to run your whole test cycle, then see what changed since the last run.
+site_description: See what broke, what's flaky and what got slower on every run. Test history, run-to-run diffs and flaky detection for any test runner.
 site_url: https://taltal-beep.github.io/testosterone/docs/
 repo_url: https://github.com/taltal-beep/testosterone
 repo_name: taltal-beep/testosterone
