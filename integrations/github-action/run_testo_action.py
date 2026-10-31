@@ -64,6 +64,9 @@ def _extract_summary(stdout: str, *, fallback_exit_code: int) -> dict[str, Any]:
             continue
         if isinstance(payload, dict) and "exit_code" in payload:
             return payload
+        if isinstance(payload, dict) and payload.get("event") == "error":
+            # ``{"event": "error", "code": ..., "message": ...}`` carries no exit code.
+            return {**payload, "exit_code": int(fallback_exit_code)}
     return {
         "event": "error",
         "error": "Unable to parse a plan_finished event from testo output.",
@@ -330,7 +333,15 @@ def main(argv: list[str] | None = None) -> int:
         _write_github_outputs(Path(github_output), values=outputs)
 
     # Everything below reads the run back from the run history, which --no-persist skips.
-    if persist:
+    # Without a plan_finished event nothing was recorded, and "the latest run" would be
+    # an earlier job's (restored from the cache) shown as if it were this one.
+    finished = summary.get("event") == "plan_finished"
+    if persist and not finished:
+        _warn(
+            "testo run did not finish a run (exit code "
+            f"{proc.returncode}); no summary, comment, annotations or alert were published"
+        )
+    if persist and finished:
         env = os.environ.copy()
         publish_summary(
             cycle=str(args.cycle or "").strip(),
