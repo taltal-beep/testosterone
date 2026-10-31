@@ -31,21 +31,17 @@ read-only static site.
 
 ## What's new
 
-New in 1.4.0:
+New in 1.5.0:
 
-- **Bring your runner's own results.** `testo ingest` reads Jest, Vitest, .NET TRX, `go test -json`,
-  Robot Framework, Allure, RSpec, k6 and Xcode results as they are, with no JUnit reporter to add.
-  New `jest`, `vitest` and `cypress` stages, and "Rerun these tests" for many more runners.
-- **`pytest --testo`.** A pytest plugin that records each session as a run, with no config file.
-- **Needs attention first.** The dashboard leads with red cycles, new failures and tests that just
-  turned flaky, and a Project health page (`/health`) gives the tests one 0-100 score.
-- **Triage memory.** Mark why a test failed once, and later failures with the same message show it.
-- **More on the test page.** Screenshots, videos and the Playwright trace from the last failure,
-  and how flaky the test has been over time. Each cycle shows its recent runs.
-- **Resource pools.** Give each parallel worker its own VM, device or test account
-  (`resources:` and `testo lease`), and split tests into shards of equal time (`pytest --testo-shard`).
-- **`testo badge`** for your README, a try-it page that reads a JUnit file in the browser, and the
-  GitHub Action at a shorter path: `uses: taltal-beep/testosterone@v1`.
+- **Run only the tests a change can affect.** `testo affected` lists them with the reason each
+  was picked, and `pytest --testo-affected` runs just those. Anything it can't map runs everything.
+- **Check your resource pools against reality.** `testo pool status` shows keys that are missing
+  and leftover VMs outside the pool. Testosterone never creates or deletes a key on its own.
+
+New in 1.4.0: `testo ingest` for Jest, Vitest, .NET, Go, Robot, Allure, RSpec, k6 and Xcode results,
+`pytest --testo`, a dashboard that leads with what needs attention, triage memory, traces and
+flakiness on the test page, resource pools and time-based shards, `testo badge`, and the GitHub
+Action at `uses: taltal-beep/testosterone@v1`.
 
 New in 1.3.0: failing tests first on the run page, `testo ui`, a page per test, pull request
 comments judged against the target branch, owners and issue links for flaky tests, less timing

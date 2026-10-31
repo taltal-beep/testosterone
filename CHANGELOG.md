@@ -8,6 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-31
+
 ### Added
 - Affected-test selection, off unless asked: `testo affected` lists the tests the changes since the baseline branch can affect, each with why it was picked (`--json`, or `--list` for any runner's command line), and `pytest --testo-affected` runs only those. Changed files map to tests through `affected.rules` globs in `testosterone.yaml`, changed test files, and a coverage.py report with test contexts; a change nothing maps, a lockfile or `conftest.py`, or a git problem runs everything and says why
 - `testo pool status`: compare each resource pool with the keys that really exist. A pool's new `provider.list` is your own read-only command that prints them; the report shows keys that are missing, VMs outside the pool (leftovers) and, with `--check`, free keys that fail `on_check`. Exits `1` when something needs a look. Testosterone never creates or deletes a key on its own: only `testo pool`, typed by a person, runs provider commands, and a test checks that runs, leases, stages and the API never reach them
@@ -370,7 +372,8 @@ First public release. Published to PyPI (`testo-core`), GHCR (`testo-runner`), a
 
 ---
 
-[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/taltal-beep/testosterone/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/taltal-beep/testosterone/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/taltal-beep/testosterone/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/taltal-beep/testosterone/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/taltal-beep/testosterone/compare/v1.1.1...v1.2.0
