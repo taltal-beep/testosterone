@@ -49,11 +49,16 @@ def add(
     ),
 ) -> None:
     """Create an account."""
-    from testo_core.accounts import AccountError
+    from testo_core.accounts import AccountError, check_new_account
     from testo_core.cli.ui.console import default_console
 
+    store = _store()
     try:
-        account = _store().add(username, _password(password_stdin), role)
+        # Name, role and "already exists" first, so nobody types a password twice for nothing.
+        name = check_new_account(username, role)
+        if store.get(name) is not None:
+            raise AccountError(f"user {name!r} already exists")
+        account = store.add(name, _password(password_stdin), role)
     except AccountError as exc:
         raise _fail(str(exc)) from exc
     default_console().print(f"[pass]added[/] {account.username} ({account.role})")
@@ -109,8 +114,11 @@ def reset_password(
     from testo_core.accounts import AccountError
     from testo_core.cli.ui.console import default_console
 
+    store = _store()
     try:
-        _store().reset_password(username, _password(password_stdin))
+        if store.get(username.strip()) is None:
+            raise AccountError(f"no user {username.strip()!r}")
+        store.reset_password(username, _password(password_stdin))
     except AccountError as exc:
         raise _fail(str(exc)) from exc
     default_console().print(f"[pass]password changed[/] for {username}")
