@@ -16,13 +16,13 @@ Severity: **High** loses data or gives a wrong verdict silently, **Med** mislead
 | # | Sev | What happened | Fix |
 |---|---|---|---|
 | F1 | High | `testo clean --yes` with `artifacts_root: .` deleted the whole project, then crashed. `--temp-dir` took `~` or any absolute path. | #219 refuses root, home, the current folder, the config's folder, their parents, and folders holding `.git` / `testosterone.yaml` / `pyproject.toml` |
-| F2 | High | One report with `time="inf"`, `"duration": Infinity`, `1e999` or an odd JSON shape (`{"suites":[1]}`) crashed the whole import (exit 4) and lost every other file's results | #220 (importers thread) and #218: per-file catch, `OverflowError` handled |
+| F2 | High | One report with `time="inf"`, `"duration": Infinity`, `1e999` or an odd JSON shape (`{"suites":[1]}`) crashed the whole import (exit 4) and lost every other file's results | #220 and #232 (importers thread): per-file catch, `OverflowError` handled |
 | F3 | High | A `<testsuite>` inside a root `<testsuite>` counted 0 tests, exit 0, so its failure was hidden | #220 |
-| F4 | Med | `testo ingest` of files that all failed to parse (empty, truncated, an HTML error page) passed with 0 tests | #220 / #218: exit 1 |
+| F4 | Med | `testo ingest` of files that all failed to parse (empty, truncated, an HTML error page) passed with 0 tests | #220: exit 1 |
 | F5 | Med | Two stages with one name (or `Unit` / `unit`, one folder on macOS and Windows): the second reset the first's results, so a failed test vanished while the run said exit 1 | #223: a config error |
 | F6 | Med | `run.log` was opened for append and never reset. Each run's log held every earlier run, and was copied whole into every history snapshot (100 MB of output, then 200 MB, ...) | #223: reset when the stage starts |
 | F7 | Med | `timeout_s: abc` crashed config load with a traceback; `timeout_s: 0` or `-1` timed every stage out instantly; `workers: 0` and `version: 99` were accepted, though the JSON Schema forbids all of them | #215 |
-| F8 | Low | A mistyped command or flag (`testo frobnicate`, `testo run --bogus`, `testo split --shards 0`) printed a Python traceback (`standalone_mode=False` let Click's `UsageError` escape). `testo run` with no `--cycle` said `cycle '<unspecified>' not found` | #214: usage line + error, exit 2 |
+| F8 | Low | A mistyped command or flag (`testo frobnicate`, `testo run --bogus`, `testo split --shards 0`) printed a Python traceback (`standalone_mode=False` let Click's `UsageError` escape). `testo run` with no `--cycle` said `cycle '<unspecified>' not found` | #213: usage line + error, exit 2; #214: "pick one with --cycle" |
 | F9 | Low | A stage whose `target_repo` doesn't exist said `executable not found: /nonexistent` | #215: names the folder |
 | F10 | Low | Playwright JSON with a UTF-8 BOM, a report named `report[1].xml` (globbed), JUnit named `environment.xml` outside an Allure folder, `<testcase>` directly under `<testsuites>`, and one bad xcresult duration (dropped the whole file) | #218 (the rest after #220) |
 | F11 | Low | `testo run --workers 0` or `-3` was accepted. `testo users add` with a bad name or an existing user asked for the password twice and then said no (a bare `Abort` traceback without a TTY). | #215, #228 |

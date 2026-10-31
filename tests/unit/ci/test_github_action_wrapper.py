@@ -295,3 +295,32 @@ def test_flaky_issues_skip_tests_that_already_have_an_open_issue(
     assert body["title"] == "Flaky test: test_b (smoke)"
     assert body["labels"] == ["flaky-test"]
     assert "testo flaky --cycle smoke" in body["body"]
+
+
+def test_error_event_without_exit_code_is_the_summary() -> None:
+    module = _load_wrapper_module()
+    stdout = '{"event":"error","code":"invalid_input","message":"unknown equipment: pytestt"}\n'
+    summary = module._extract_summary(stdout, fallback_exit_code=2)
+    assert summary["message"] == "unknown equipment: pytestt"
+    assert summary["exit_code"] == 2
+
+
+def test_a_run_that_did_not_finish_publishes_nothing(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    module = _load_wrapper_module()
+    calls: list[list[str]] = []
+
+    def fake_run(cmd, **_kwargs):  # noqa: ANN001
+        calls.append(list(cmd))
+        return subprocess.CompletedProcess(
+            args=cmd,
+            returncode=2,
+            stdout='{"event":"error","code":"invalid_input","message":"bad config"}\n',
+            stderr="",
+        )
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "out.txt"))
+    monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
+    assert module.main(["--cycle", "smoke"]) == 2
+    # Only `testo run`: no `testo report markdown` / annotations / notify of an older run.
+    assert calls == [["testo", "run", "--cycle", "smoke", "--ci"]]
