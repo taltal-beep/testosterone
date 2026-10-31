@@ -322,3 +322,36 @@ def test_pytest_runs_all_when_a_picked_test_is_not_collected(tmp_path: Path) -> 
     assert done.returncode == 0, done.stdout + done.stderr
     assert "3 passed" in done.stdout
     assert "picked but not collected (test_calc.py::test_renamed)" in done.stdout
+
+
+# --- bug hunt 2026-10-31 ---------------------------------------------------------------
+
+
+def test_a_folder_glob_picks_only_test_files(tmp_path: Path) -> None:
+    files = [*_FILES, "tests/pay/__init__.py", "tests/pay/helpers.py"]
+    config = _rules(("src/pay/**", "tests/pay/**"))
+    sel = select_tests(["src/pay/charge.py"], config, root=tmp_path, all_files=files)
+    # __init__.py and helpers.py are never collected; picking them made pytest run everything.
+    assert list(sel.tests) == ["tests/pay/test_charge.py"]
+
+
+def test_a_folder_glob_with_no_test_file_names_keeps_its_matches(tmp_path: Path) -> None:
+    config = _rules(("src/pay/**", "e2e/**"))
+    sel = select_tests(
+        ["src/pay/charge.py"], config, root=tmp_path, all_files=[*_FILES, "e2e/checkout.ts"]
+    )
+    assert list(sel.tests) == ["e2e/checkout.ts"]
+
+
+def test_non_ascii_test_file_names_are_picked(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    (repo / "tests" / "test_é.py").write_text("def test_e(): pass\n", encoding="utf-8")
+    (repo / "testosterone.yaml").write_text(
+        "affected:\n  base: main\n  rules:\n    - changed: src/**\n      tests: tests/**\n",
+        encoding="utf-8",
+    )
+    _git(repo, "-c", "user.email=a@b", "-c", "user.name=a", "add", "-A")
+    _git(repo, "-c", "user.email=a@b", "-c", "user.name=a", "commit", "-qm", "e")
+    (repo / "src" / "calc.py").write_text("X = 2\n", encoding="utf-8")
+    sel, _ = compute(repo, load_config(repo / "testosterone.yaml").affected)
+    assert "tests/test_é.py" in sel.tests
