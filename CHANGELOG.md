@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+- `testo users add` checks the name, the role and whether the account already exists before asking for the password (twice), and `testo users reset-password` checks the account exists first. `testo report` with no results no longer shows reStructuredText backticks in its hint
+
 ### Changed
 - Docs: an architecture review (`docs/Specs & ADRs/Architecture Review - 2026-10-31.md`) ranks the codebase's structural pressure points and proposes next steps; linked from the docs site menu
 
