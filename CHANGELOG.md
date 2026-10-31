@@ -8,11 +8,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-### Added
-- Python 3.14 is tested in CI and listed in the package classifiers
-
 ### Security
 - PR comment and job summary: a backtick in a test name (which in a fork's pull request its author controls) ended the code span, so `@user` mentions and HTML after it rendered live. Names are now fenced so nothing inside can close them, and stage, runner and branch cells are plain text. A cycle name with `-->` can no longer end the comment marker
+
+### Added
+- Python 3.14 is tested in CI and listed in the package classifiers
 
 ### Fixed
 - Result importers no longer crash or silently drop results on odd files. A file with unexpected field types (Jest, Playwright, RSpec, k6) or a JUnit `time="inf"` used to crash the whole import and lose every other file's results; now that one file is skipped and logged. A `<testsuite>` nested in a root `<testsuite>` is read (it counted 0 tests), UTF-16 XML is read, XML that isn't JUnit (an HTML error page) is reported instead of counting 0 tests, a report whose name contains `-attachment` is no longer skipped as an Allure attachment, Maven Surefire reruns (`flakyFailure`, `rerunFailure`) mark the test flaky, and a JUnit failure message is capped like its trace
@@ -33,6 +33,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `testo clean --yes` refuses to delete a folder that is the project (`artifacts_root: .`), the current, home or root folder, the config's folder or a parent of any of them, or a folder holding `.git`, `testosterone.yaml` or `pyproject.toml`. Before, `artifacts_root: .` deleted the whole project
 
 ### Changed
+- Docs: an importer and integration bug hunt (`docs/Specs & ADRs/Importer and Integration Bug Hunt - 2026-10-31.md`) ranks what was found and fixed, with proposals for the rest
 - UI polish from the design review: Compare and dashboard highlights read as plain sentences ("Wall duration up 6.9 s", "1 more test passed", "Pass rate up 3.8 points"; no duplicate line when the metrics duration moved as much as the wall duration), the breadcrumb names the cycle, test or run on its page and says Testosterone, the Runs list says "96% passed" instead of "health 96%", the Compare filter chips read "Status change", the phone menu is opaque, and the 404 page has a page heading
 - Docs: a UI design review (`docs/Specs & ADRs/UI Design Review - 2026-10-31.md`) ranks 14 design and UX findings on the web UI with annotated screenshots and proposes fixes; linked from the Index and the docs site menu
 - Docs: an architecture review (`docs/Specs & ADRs/Architecture Review - 2026-10-31.md`) ranks the codebase's structural pressure points and proposes next steps; linked from the docs site menu
