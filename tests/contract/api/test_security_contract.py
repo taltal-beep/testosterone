@@ -334,6 +334,7 @@ def test_refusals_get_the_headers_too(token: str, monkeypatch: pytest.MonkeyPatc
     [
         "/history/run-1/allure-results/0b7f-attachment.html",
         "/history/run-1/allure/data/attachments/1a2b.html",
+        "/history/run-1/artifacts/web/junit/allure-results/junit/page.html",
     ],
 )
 def test_report_attachments_are_sandboxed(path: str) -> None:

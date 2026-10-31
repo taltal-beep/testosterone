@@ -303,7 +303,9 @@ def guard_read_request(request: Request) -> Response | None:
     )
 
 
-_ATTACHMENT_MARKERS = ("-attachment", "/data/attachments/")
+# Raw result folders hold data and attachments only, never a page meant to run, so
+# everything under one is sandboxed whatever its name.
+_ATTACHMENT_MARKERS = ("-attachment", "/data/attachments/", "/allure-results/")
 
 
 def add_security_headers(request: Request, response: Response) -> None:
