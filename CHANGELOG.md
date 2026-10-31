@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Security
+- AI provider requests no longer follow HTTP redirects, which resent the `Authorization` / `x-api-key` header to the redirect's host
 - With `TESTO_RUNNER=container`, `${env:...}` in a stage's `args` or `env:` no longer reads the server's own secrets (`TESTO_*`, `DATABASE_URL`, `POSTGRES_*`, `*_API_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`, `*_DB_URL`). Before, a runner could copy `TESTO_API_TOKEN` (the admin credential) into a throwaway container with `${env:TESTO_API_TOKEN}`
 - The development `docker-compose.yml` publishes Postgres (default password `admin`) on `127.0.0.1` only, not on every network interface
 - The GitHub Action passes its inputs to the shell as environment variables instead of pasting them into the script, so an input built from a branch name or PR title can't run commands

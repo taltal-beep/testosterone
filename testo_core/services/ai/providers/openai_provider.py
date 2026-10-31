@@ -5,6 +5,7 @@ import urllib.error
 import urllib.request
 
 from testo_core.security.redaction import redact_error_message, redact_text
+from testo_core.services.ai import provider_base
 
 from ..provider_base import (
     AiGenerationRequest,
@@ -71,7 +72,7 @@ class OpenAiProvider(AiProvider):
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=self._timeout_s) as response:  # nosec: B310
+            with provider_base.urlopen(req, timeout=self._timeout_s) as response:
                 body = json.loads(response.read().decode("utf-8"))
         except TimeoutError as exc:
             raise ProviderTimeoutError(f"{self._label} request timed out.") from exc
