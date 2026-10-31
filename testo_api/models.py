@@ -698,6 +698,30 @@ class ResourceItemRequest(ApiModel):
     reason: str = Field(default="", max_length=500)
 
 
+class ResourceActionRequest(ApiModel):
+    """``POST /api/v1/resources/actions``: a ``create`` or ``destroy`` command a person ran
+    with ``testo pool ... --apply``. The server only keeps this log; it never runs one.
+    """
+
+    pool: str = Field(min_length=1, max_length=128)
+    item: str = Field(min_length=1, max_length=128)
+    verb: Literal["create", "destroy"]
+    user: str = Field(default="", max_length=64)
+    host: str = Field(default="", max_length=255)
+    command: str = Field(default="", max_length=500)
+    ok: bool
+    detail: str = Field(default="", max_length=500)
+
+
+class ResourceActionItem(ResourceActionRequest):
+    # When the server logged it (its clock, like the lease times).
+    at: float
+
+
+class ResourceActionsResponse(ApiModel):
+    actions: list[ResourceActionItem]
+
+
 class HealthSignalItem(ApiModel):
     key: str
     name: str
