@@ -11,10 +11,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Security
 - PR comment and job summary: a backtick in a test name (which in a fork's pull request its author controls) ended the code span, so `@user` mentions and HTML after it rendered live. Names are now fenced so nothing inside can close them, and stage, runner and branch cells are plain text. A cycle name with `-->` can no longer end the comment marker
 
-### Added
-- Affected-test selection, off unless asked: `testo affected` lists the tests the changes since the baseline branch can affect, each with why it was picked (`--json`, or `--list` for any runner's command line), and `pytest --testo-affected` runs only those. Changed files map to tests through `affected.rules` globs in `testosterone.yaml`, changed test files, and a coverage.py report with test contexts; a change nothing maps, a lockfile or `conftest.py`, or a git problem runs everything and says why
-- `testo pool status`: compare each resource pool with the keys that really exist. A pool's new `provider.list` is your own read-only command that prints them; the report shows keys that are missing, VMs outside the pool (leftovers) and, with `--check`, free keys that fail `on_check`. Exits `1` when something needs a look. Testosterone never creates or deletes a key on its own: only `testo pool`, typed by a person, runs provider commands, and a test checks that runs, leases, stages and the API never reach them
-
 ### Fixed
 - The PR comment's baseline is never another branch's run: a push to the default branch compares with the previous run on that branch (it took the newest run on any branch), and a pull request whose target branch has no run yet compares with its own previous run instead of another pull request's
 - The run summary no longer says "No test changed outcome" when the previous run has no stored test results; it says there is nothing to compare with
