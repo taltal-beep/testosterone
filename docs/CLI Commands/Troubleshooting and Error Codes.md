@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-10-22
+updated: 2026-10-31
 ---
 
 # Troubleshooting and Error Codes
@@ -125,6 +125,7 @@ Emitted by `CIRenderer` and `_NdjsonRecorder`.
 When the executor sets an error string (timeout, missing binary):
 
 - `error` may appear on the in-memory result; the NDJSON mirror in `orchestrator` includes `error` when present on `StageResult`. The mirror also carries `internal_failure` (true only for orchestrator-caught engine exceptions). `CIRenderer` stdout omits both keys.
+- `crash_kind` (`"stack_overflow"`, `"crash"` or `null`) names a failed stage that died of a stack overflow or a crash; the orchestrator mirror adds `crash_detail`, the line that showed it. See [Stack overflow or crash](#stack-overflow-or-crash-exit-1).
 
 ### `plan_finished`
 
@@ -312,6 +313,22 @@ tail -100 artifacts/<cycle>/<stage>/run.log
 
 - Increase `timeout_s` in `defaults:` or per-stage in YAML
 - Fix hanging test; use `testo run --stream` locally to watch live output
+
+---
+
+### Stack overflow or crash (exit 1)
+
+**Symptoms**
+
+- A red **Stack overflow** or **Crashed** badge on the stage or the failing test on the run page, and `💥 stack overflow` / `💥 crashed` in the PR comment
+- `crash_kind` / `crash_detail` on the stage (`stage_finished` NDJSON, `plan_result.json`, the run record), a `crash:` line in the CLI's stage panel, and `[testo] crash detection: …` at the end of `run.log`
+
+Testosterone looks for each runtime's own stack overflow line (Python `RecursionError`, Java/Kotlin `StackOverflowError`, JavaScript `Maximum call stack size exceeded`, Go `goroutine stack exceeds`, Rust `has overflowed its stack`, .NET `Stack overflow.`, Ruby `SystemStackError`, AddressSanitizer `stack-overflow`), for a native crash (`Segmentation fault`, AddressSanitizer `SEGV`), and for a process killed by `SIGSEGV`, `SIGBUS`, `SIGILL`, `SIGABRT` or `SIGFPE` (or Windows `0xC00000FD` / `0xC0000005`). Only failed stages and failed tests are flagged. The table is in `testo_core/engine/crash_signatures.py`; why it works this way: [Crash Detection - 2026-10-31](../Specs%20&%20ADRs/Crash%20Detection%20-%202026-10-31.md).
+
+**Fix**
+
+- Stack overflow: look for recursion with no base case, or two functions calling each other, in the repeating frames of the trace
+- Crash: run the test under a debugger or AddressSanitizer; a crash is a bug in native code (or a C extension), not a failed assertion
 
 ---
 

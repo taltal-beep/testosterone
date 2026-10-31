@@ -10,10 +10,12 @@ same text can be rebuilt for any past run.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from typing import Any
 
 from testo_core import paths
+from testo_core.engine.crash_signatures import label as crash_label
 from testo_core.history.read_model import get_run, list_recent_runs
 from testo_core.history.views import CompletedRunView
 from testo_core.services.report_archive_diff import CaseChange, _load_cases, diff_case_maps
@@ -51,6 +53,8 @@ class RunSummary:
     changes: tuple[CaseChange, ...]
     # The branch ``previous`` was taken from; ``None`` means simply the run before.
     baseline_branch: str | None = None
+    # Failing test name -> "stack_overflow" | "crash" (engine/crash_signatures.py).
+    crashes: Mapping[str, str] = field(default_factory=dict)
 
     @property
     def baseline_label(self) -> str:
@@ -118,6 +122,11 @@ def load_run_summary(
     failing = tuple(
         sorted(str(c["name"]) for c in current_cases.values() if c["status"] in _FAILED)
     )
+    crashes = {
+        str(c["name"]): str(c["crash"])
+        for c in current_cases.values()
+        if c["status"] in _FAILED and c.get("crash")
+    }
     changes: tuple[CaseChange, ...] = ()
     if previous is not None:
         previous_cases = _cases(previous)
@@ -134,6 +143,7 @@ def load_run_summary(
         failing=failing,
         changes=changes,
         baseline_branch=from_branch,
+        crashes=crashes,
     )
 
 
@@ -183,6 +193,8 @@ def render_markdown(summary: RunSummary, *, run_url: str | None = None) -> str:
             result = "✅ pass" if s.get("returncode") == 0 else "❌ fail"
             if s.get("quarantined"):
                 result += f" · {len(s['quarantined'])} quarantined"
+            if s.get("crash_kind"):
+                result += f" · 💥 {crash_label(str(s['crash_kind'])).lower()}"
             duration = s.get("duration_s")
             lines.append(
                 f"| {_escape(str(s.get('name', '?')))} | {s.get('framework', '')} | {result} "
@@ -197,7 +209,9 @@ def render_markdown(summary: RunSummary, *, run_url: str | None = None) -> str:
         lines.append("")
         quarantined = {str(n) for s in run.stage_health for n in (s.get("quarantined") or []) if n}
         lines += [
-            f"- `{_escape(n)}`" + (" _(quarantined)_" if n in quarantined else "")
+            f"- `{_escape(n)}`"
+            + (f" 💥 _{crash_label(summary.crashes[n]).lower()}_" if n in summary.crashes else "")
+            + (" _(quarantined)_" if n in quarantined else "")
             for n in summary.failing[:MAX_ROWS]
         ]
         if len(summary.failing) > MAX_ROWS:

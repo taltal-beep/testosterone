@@ -62,6 +62,8 @@ class FailingTest:
     new: bool
     # The cause someone marked for this message in this cycle (services/triage.py).
     triage: Triage | None = None
+    # "stack_overflow" | "crash" when its message or trace shows one (engine/crash_signatures.py).
+    crash_kind: str | None = None
 
 
 @dataclass(frozen=True)
@@ -209,6 +211,7 @@ def load_run_failures(run_id: str, *, window: int = DEFAULT_WINDOW) -> RunFailur
                 failing_since_run_id=since,
                 flaky=flaky_service.classify(key, observations.get(key, [])) is not None,
                 new=new,
+                crash_kind=str(case.get("crash") or "") or None,
             )
         )
     tests = _with_triage(run.cycle, tests)

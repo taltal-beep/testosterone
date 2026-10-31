@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- Stack overflow and crash detection: a failed stage or test that died of a stack overflow (Python `RecursionError`, Java/Kotlin `StackOverflowError`, JavaScript `Maximum call stack size exceeded`, Go, Rust, .NET, Ruby, AddressSanitizer) or a crash (`Segmentation fault`, killed by `SIGSEGV`/`SIGABRT`/..., Windows crash codes) gets a red "Stack overflow" or "Crashed" badge on the run page, a note in the PR comment, a `crash:` line in the CLI stage panel, and a hint in the AI summary. Works for imported results too, from the failing test's message and trace. New `crash_kind` / `crash_detail` on stages (`stage_finished`, `plan_result.json`, `GET /api/v1/runs/{id}`) and `crash_kind` on `GET /api/v1/runs/{id}/failures` tests
+
 ### Fixed
 - A red run is no longer recorded as green when the failure is outside any single test. `testo ingest` (and `junit_xml` imports) now record a `broken` result for: a Go 1.24+ build failure (`build-output` events, which made the whole `go test -json` file unreadable before), a Go test that never finished (timeout or crash), a Jest/Vitest file whose `beforeAll`/`afterAll` hook threw while its tests show passed or skipped, a Playwright spec that fails to load or a failing `globalSetup` (top-level `errors`), a TRX run whose test host crashed (`RunInfo outcome="Error"`), and a JUnit `<testsuite>` that claims failures or errors no `<testcase>` carries. `testo ingest` also exits 1 when every matching file was unreadable (truncated, empty, not a report) instead of recording a passing run with 0 tests
 

@@ -242,3 +242,24 @@ def test_message_signature_ignores_numbers_and_quoted_values() -> None:
     assert run_failures.message_signature("KeyError") != run_failures.message_signature(
         "ValueError"
     )
+
+
+def test_stack_overflows_and_crashes_are_named_on_failing_tests(history) -> None:  # noqa: ANN001
+    root, runs = history
+    _write(
+        root,
+        runs["r4"],
+        {
+            "test_tree": ("failed", "RangeError: Maximum call stack size exceeded"),
+            "test_native": ("broken", "Segmentation fault (core dumped)"),
+            "test_math": ("failed", "AssertionError: 1 != 2"),
+            # A test that expects RecursionError and passes is never flagged.
+            "test_guard": ("passed", "RecursionError: maximum recursion depth exceeded"),
+        },
+    )
+
+    result = run_failures.load_run_failures("r4")
+
+    assert result is not None
+    kinds = {t.name: t.crash_kind for t in result.tests}
+    assert kinds == {"test_tree": "stack_overflow", "test_native": "crash", "test_math": None}

@@ -151,6 +151,24 @@ describe("RunDetailPage states", () => {
     expect(screen.getByText("artifacts/smoke/run.log")).toBeInTheDocument();
   });
 
+  it("names a stage that died of a stack overflow", async () => {
+    const detail = "Stack overflow (Go): runtime: goroutine stack exceeds 1000000000-byte limit";
+    stubApi(
+      defaultRoutes({
+        "/api/v1/runs/run-1": {
+          run: {
+            ...RUN,
+            stage_health: [{ ...RUN.stage_health[1], crash_kind: "stack_overflow", crash_detail: detail }]
+          }
+        }
+      })
+    );
+    renderAt();
+
+    expect(await screen.findByTestId("stage-crash")).toHaveTextContent(detail);
+    expect(screen.getAllByText("Stack overflow").length).toBeGreaterThan(0);
+  });
+
   it("shows empty states when a run has no reports or stage breakdown", async () => {
     stubApi(
       defaultRoutes({

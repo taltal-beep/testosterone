@@ -136,3 +136,7 @@ Added [OpenTelemetry Export - 2026-10-30](Specs%20&%20ADRs/OpenTelemetry%20Expor
 ## 2026-10-31: architecture review
 
 Added [Architecture Review - 2026-10-31](Specs%20&%20ADRs/Architecture%20Review%20-%202026-10-31.md) to Specs & ADRs (ranked findings on the read side, migrations and layering, with proposals), linked from its README, the Index and the docs site menu.
+
+## 2026-10-31: crash detection
+
+Added [Crash Detection - 2026-10-31](Specs%20&%20ADRs/Crash%20Detection%20-%202026-10-31.md) to Specs & ADRs (naming stack overflows and crashes on failing stages and tests), linked from its README and the docs site menu.

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from testo_core.engine.crash_signatures import crash_in_text
 from testo_core.reporting.paths import plan_artifacts_dir
 from testo_core.repository.models import ReportArchive
 
@@ -46,6 +47,18 @@ def _case_message(data: dict[str, Any]) -> str:
     text = str(details.get("message") or details.get("trace") or "")
     line = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")
     return line[:300]
+
+
+def _case_crash(data: dict[str, Any], status: str) -> str:
+    """``"stack_overflow"`` / ``"crash"`` when a failed case's message or trace shows one, else ``""``."""
+    if status not in ("failed", "broken"):
+        return ""
+    details = data.get("statusDetails")
+    if not isinstance(details, dict):
+        return ""
+    text = f"{details.get('message') or ''}\n{details.get('trace') or ''}"
+    found = crash_in_text(text)
+    return found.kind if found else ""
 
 
 def _case_stage(path: Path, plan_root: Path) -> str:
@@ -99,6 +112,7 @@ def _load_cases(plan_root: Path) -> dict[str, dict[str, Any]]:
             "message": _case_message(data),
             "stage": _case_stage(path, plan_root),
             "framework": _label_value(data.get("labels"), "framework"),
+            "crash": _case_crash(data, st),
         }
     return out
 

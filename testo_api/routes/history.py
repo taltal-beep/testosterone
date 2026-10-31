@@ -93,6 +93,8 @@ def get_run_detail(run_id: str) -> RunDetailResponse:
                     broken=s.get("broken"),
                     skipped=s.get("skipped"),
                     health_pct=s.get("health_pct"),
+                    crash_kind=s.get("crash_kind"),
+                    crash_detail=s.get("crash_detail"),
                 )
                 for s in record.stage_health
             ],

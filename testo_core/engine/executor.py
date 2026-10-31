@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING
 
 from testo_core.config.schema import QuarantineRule, Stage
 from testo_core.engine.backends import RunnerError, StageProcess, launch
+from testo_core.engine.crash_signatures import CrashScanner, stage_crash
 from testo_core.engine.log_buffer import LogBuffer, drain_stream_into_buffer, merged_env
 from testo_core.engine.quarantine import WAIVABLE_RETURNCODE, QuarantineVerdict
 from testo_core.engine.quarantine import evaluate as evaluate_quarantine
@@ -347,7 +348,14 @@ def _run_process_stage(
     timed_out = False
     error: str | None = None
 
-    with LogBuffer(log_path=log_path, on_chunk=on_chunk) as buffer:
+    scanner = CrashScanner()
+
+    def scan_then_forward(chunk: bytes) -> None:
+        scanner.feed(chunk)
+        if on_chunk is not None:
+            on_chunk(chunk)
+
+    with LogBuffer(log_path=log_path, on_chunk=scan_then_forward) as buffer:
         try:
             proc = launch(
                 argv,
@@ -428,6 +436,10 @@ def _run_process_stage(
             waived_returncode, returncode = returncode, 0
         _append_run_log(log_path, _quarantine_log_lines(verdict))
 
+    crash = stage_crash(scanner.finish(), returncode=returncode, timed_out=timed_out)
+    if crash is not None:
+        _append_run_log(log_path, [f"[testo] crash detection: {crash.describe()}"])
+
     duration = max(0.0, finished_at - started_at)
     return StageResult(
         stage_name=stage.name,
@@ -446,6 +458,8 @@ def _run_process_stage(
         target_repo=target_repo,
         quarantined=quarantined,
         waived_returncode=waived_returncode,
+        crash_kind=crash.kind if crash else None,
+        crash_detail=crash.describe() if crash else None,
     )
 
 
