@@ -13,6 +13,8 @@ Status mapping:
     failed                              -> failed
     skipped, pending, todo, disabled    -> skipped
     a file that failed with no tests    -> broken, one result for the file
+    a file that failed, no test failing -> broken, one more result for the file
+                                           (a ``beforeAll``/``afterAll`` hook threw)
 
 Test file paths are made relative to the repository root when they sit inside
 it, else to the folder all of the report's test files share, so a report made
@@ -125,6 +127,8 @@ def jest_results_for_report(
                     )
                 )
             continue
+        file_failed = file_result.get("status") == "failed"
+        any_case_failed = False
         for case in cases:
             title = str(case.get("title") or "(unnamed)")
             ancestors = [str(a) for a in case.get("ancestorTitles") or [] if str(a)]
@@ -156,4 +160,35 @@ def jest_results_for_report(
             )
             results.append(result)
             clock += max(0, duration)
+            any_case_failed = any_case_failed or status in ("failed", "broken")
+        if file_failed and not any_case_failed:
+            # Jest and Vitest fail the file, not a test, when a hook throws: the
+            # tests show passed or skipped, and only the file's message says why.
+            file_message = str(
+                file_result.get("message") or file_result.get("failureMessage") or ""
+            )
+            results.append(
+                make_result(
+                    tool=tool,
+                    framework=framework,
+                    language="javascript",
+                    name="(test file failed)",
+                    full_name=f"{file_name} › (test file failed)",
+                    status="broken",
+                    start_ms=clock,
+                    duration_ms=0,
+                    suite=file_name,
+                    message=_first_line(file_message) or "The test file failed outside its tests",
+                    trace=file_message or None,
+                )
+            )
     return results
+
+
+def _first_line(text: str) -> str | None:
+    """The first non-blank line, without Jest's ``●`` bullet."""
+    for line in text.splitlines():
+        line = line.strip().lstrip("●").strip()
+        if line:
+            return line
+    return None

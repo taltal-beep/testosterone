@@ -12,8 +12,12 @@ What becomes a result:
 - a parent test only when it has no subtests, or failed while none of its
   subtests did (otherwise its subtests already tell the story, and counting the
   parent too would report one failure twice);
+- a test that started but never finished in a package that failed (it hit
+  the ``-timeout`` or the binary crashed): ``broken``;
 - a package that failed with no failing test (a build error, a panic in
-  ``TestMain``): one ``broken`` result for the package.
+  ``TestMain``): one ``broken`` result for the package. Go 1.24 and later
+  report the compiler's output as ``build-output`` events keyed by
+  ``ImportPath``; that output becomes the package result's trace.
 
 A test's output lines become its trace; the first ``file.go:N:`` line is its message.
 """
@@ -58,6 +62,11 @@ def _events(text: str) -> list[dict[str, Any]]:
     return events
 
 
+def _import_package(import_path: Any) -> str:
+    """``example.com/m`` from a Go 1.24 build event's ``"example.com/m [example.com/m.test]"``."""
+    return str(import_path or "").split(" [", 1)[0]
+
+
 def is_gotest_text(text: str) -> bool:
     """True when the first JSON line of ``text`` is a ``go test -json`` event."""
     for line in text.splitlines():
@@ -70,7 +79,12 @@ def is_gotest_text(text: str) -> bool:
             event = json.loads(line)
         except json.JSONDecodeError:
             return False
-        return isinstance(event, dict) and "Action" in event and "Package" in event
+        # Go 1.24+: a build failure comes first, as ``ImportPath`` events.
+        return (
+            isinstance(event, dict)
+            and "Action" in event
+            and ("Package" in event or "ImportPath" in event)
+        )
     return False
 
 
@@ -84,10 +98,16 @@ def _elapsed_ms(value: Any) -> int:
 def gotest_results_for_text(text: str, *, tool: str, fallback_ms: int) -> list[dict[str, Any]]:
     tests: dict[tuple[str, str], _Test] = {}
     packages: dict[str, _Test] = {}
+    build_output: dict[str, list[str]] = {}
     for event in _events(text):
+        action = str(event["Action"])
+        if "Package" not in event and "ImportPath" in event:
+            if action == "build-output":
+                package = _import_package(event.get("ImportPath"))
+                build_output.setdefault(package, []).append(str(event.get("Output") or ""))
+            continue
         package = str(event.get("Package") or "")
         name = event.get("Test")
-        action = str(event["Action"])
         stamp = iso_ms(event.get("Time"), fallback_ms)
         if name:
             key = (package, str(name))
@@ -114,6 +134,19 @@ def gotest_results_for_text(text: str, *, tool: str, fallback_ms: int) -> list[d
             continue
         results.append(_result(test, tool=tool))
     failed_packages = {p for (p, _), t in finished.items() if t.action == "fail"}
+    for (package, _), test in tests.items():
+        # Started, never finished, and its package failed: the -timeout or a crash.
+        if test.action is None and (packages.get(package) or _Test("", "", 0)).action == "fail":
+            unfinished = [line for line in test.output if line.strip()]
+            unfinished.append(f"{test.name} did not finish: the test binary timed out or crashed\n")
+            results.append(
+                _result(
+                    _Test(package, test.name, test.start_ms, "fail", 0, unfinished),
+                    tool=tool,
+                    status="broken",
+                )
+            )
+            failed_packages.add(package)
     for package, pkg in packages.items():
         if pkg.action == "fail" and package not in failed_packages:
             results.append(
@@ -124,7 +157,7 @@ def gotest_results_for_text(text: str, *, tool: str, fallback_ms: int) -> list[d
                         pkg.start_ms,
                         "fail",
                         pkg.elapsed_ms,
-                        pkg.output,
+                        [*build_output.get(package, []), *pkg.output],
                     ),
                     tool=tool,
                     status="broken",
