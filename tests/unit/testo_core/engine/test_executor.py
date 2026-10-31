@@ -284,3 +284,19 @@ def test_missing_behave_names_the_bdd_extra(
 
     assert result.returncode == 127
     assert result.error is not None and "testo-core[bdd]" in result.error
+
+
+def test_missing_target_repo_names_the_folder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Popen raises FileNotFoundError for a missing cwd too; the error must not blame the binary.
+    use_echo_adapter(monkeypatch)
+    missing = tmp_path / "no-such-repo"
+    stage = dataclasses.replace(_stage(name="no-repo"), target_repo=missing)
+
+    result = run_stage(stage, plan_name="demo", artifacts_root=tmp_path / "artifacts")
+
+    assert result.returncode == 127
+    assert result.error is not None
+    assert "target_repo is not a folder that exists" in result.error
+    assert str(missing) in result.error
