@@ -84,7 +84,7 @@ describe("QuickRunPage", () => {
 
     await waitFor(() => expect(screen.getByTestId("run-outcome")).toHaveTextContent("Run passed."));
     // The finished run shows up in the lists on screen without a reload.
-    expect(invalidate).toHaveBeenCalled();
+    await waitFor(() => expect(invalidate).toHaveBeenCalled());
     expect(screen.getByText("1.5s")).toBeInTheDocument();
   });
 });
