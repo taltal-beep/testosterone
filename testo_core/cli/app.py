@@ -218,11 +218,26 @@ _register_commands()
 def main(argv: list[str] | None = None) -> int:
     """Public main entry-point referenced by ``[project.scripts] testo``."""
     try:
-        result = app(args=argv, standalone_mode=False)
+        result = app(args=argv, prog_name="testo", standalone_mode=False)
     except typer.Exit as exc:
         return int(exc.exit_code or 0)
     except SystemExit as exc:
         return int(exc.code or 0)
+    except typer.Abort:
+        # Ctrl-C at a prompt, or a declined confirmation.
+        typer.echo("Aborted.", err=True)
+        return 1
+    except Exception as exc:
+        # ``standalone_mode=False`` hands usage errors (unknown command, missing
+        # or bad option) back to us instead of printing them. Show them the way
+        # Click's standalone mode would: the message and a hint, no traceback.
+        # Duck-typed so it works with plain Click and with Typer's vendored copy.
+        show = getattr(exc, "show", None)
+        exit_code = getattr(exc, "exit_code", None)
+        if callable(show) and isinstance(exit_code, int):
+            show()
+            return exit_code
+        raise
 
     # In ``standalone_mode=False`` Click captures ``typer.Exit`` and returns
     # its exit code instead of raising. Treat the result as an exit code if
