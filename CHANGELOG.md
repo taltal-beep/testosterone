@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fixed
 - A mistyped command or option (`testo frobnicate`, `testo run --bogus`) prints the usage line and the error and exits 2, instead of a Python traceback; `testo run` without `--cycle` on a config with several cycles says to pick one with `--cycle` instead of "cycle '<unspecified>' not found"
 
+### Changed
+- Docs: an architecture review (`docs/Specs & ADRs/Architecture Review - 2026-10-31.md`) ranks the codebase's structural pressure points and proposes next steps; linked from the docs site menu
+
 ## [1.5.0] - 2026-10-31
 
 ### Added
