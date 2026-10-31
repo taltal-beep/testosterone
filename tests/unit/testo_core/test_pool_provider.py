@@ -44,11 +44,16 @@ def _write(project: Path, pool: dict[str, object]) -> None:
     )
 
 
-def test_provider_accepts_only_list() -> None:
+def test_provider_parses_and_needs_limits_for_each_allowed_verb() -> None:
     pool = parse_pool("vms", {"items": ["vm-1"], "provider": {"list": "ls"}})
     assert pool.provider is not None and pool.provider.list == "ls"
-    with pytest.raises(ConfigValidationError, match=r"unknown key\(s\) \['create'\]"):
-        parse_pool("vms", {"items": ["vm-1"], "provider": {"create": "make-vm"}})
+    assert not pool.provider.allows("create")
+    with pytest.raises(ConfigValidationError, match=r"unknown key\(s\) \['make'\]"):
+        parse_pool("vms", {"items": ["vm-1"], "provider": {"make": "x"}})
+    with pytest.raises(ConfigValidationError, match="also needs create, name_prefix, max_items"):
+        parse_pool("vms", {"items": ["vm-1"], "provider": {"list": "ls", "allow": ["create"]}})
+    with pytest.raises(ConfigValidationError, match="must be a list of create, destroy"):
+        parse_pool("vms", {"items": ["vm-1"], "provider": {"list": "ls", "allow": ["reboot"]}})
 
 
 def test_provider_never_travels_to_a_server_or_a_stage() -> None:

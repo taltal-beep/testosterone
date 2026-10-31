@@ -531,6 +531,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/resources/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Actions
+         * @description Provider commands people ran (``testo pool add/remove/sweep --apply``), newest first.
+         */
+        get: operations["list_actions_api_v1_resources_actions_get"];
+        put?: never;
+        /**
+         * Record Action
+         * @description Log a provider command a client ran. The server never runs one itself.
+         */
+        post: operations["record_action_api_v1_resources_actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/resources/items/disable": {
         parameters: {
             query?: never;
@@ -1748,6 +1772,85 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "degraded";
+        };
+        /** ResourceActionItem */
+        ResourceActionItem: {
+            /** At */
+            at: number;
+            /**
+             * Command
+             * @default
+             */
+            command: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /**
+             * Host
+             * @default
+             */
+            host: string;
+            /** Item */
+            item: string;
+            /** Ok */
+            ok: boolean;
+            /** Pool */
+            pool: string;
+            /**
+             * User
+             * @default
+             */
+            user: string;
+            /**
+             * Verb
+             * @enum {string}
+             */
+            verb: "create" | "destroy";
+        };
+        /**
+         * ResourceActionRequest
+         * @description ``POST /api/v1/resources/actions``: a ``create`` or ``destroy`` command a person ran
+         *     with ``testo pool ... --apply``. The server only keeps this log; it never runs one.
+         */
+        ResourceActionRequest: {
+            /**
+             * Command
+             * @default
+             */
+            command?: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail?: string;
+            /**
+             * Host
+             * @default
+             */
+            host?: string;
+            /** Item */
+            item: string;
+            /** Ok */
+            ok: boolean;
+            /** Pool */
+            pool: string;
+            /**
+             * User
+             * @default
+             */
+            user?: string;
+            /**
+             * Verb
+             * @enum {string}
+             */
+            verb: "create" | "destroy";
+        };
+        /** ResourceActionsResponse */
+        ResourceActionsResponse: {
+            /** Actions */
+            actions: components["schemas"]["ResourceActionItem"][];
         };
         /**
          * ResourceHolder
@@ -3197,6 +3300,69 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ResourcesResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_actions_api_v1_resources_actions_get: {
+        parameters: {
+            query?: {
+                pool?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceActionsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_action_api_v1_resources_actions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResourceActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

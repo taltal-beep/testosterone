@@ -2853,6 +2853,152 @@
         "title": "ReadinessCheck",
         "type": "object"
       },
+      "ResourceActionItem": {
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "number"
+          },
+          "command": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Command",
+            "type": "string"
+          },
+          "detail": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Detail",
+            "type": "string"
+          },
+          "host": {
+            "default": "",
+            "maxLength": 255,
+            "title": "Host",
+            "type": "string"
+          },
+          "item": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Item",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "pool": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Pool",
+            "type": "string"
+          },
+          "user": {
+            "default": "",
+            "maxLength": 64,
+            "title": "User",
+            "type": "string"
+          },
+          "verb": {
+            "enum": [
+              "create",
+              "destroy"
+            ],
+            "title": "Verb",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pool",
+          "item",
+          "verb",
+          "user",
+          "host",
+          "command",
+          "ok",
+          "detail",
+          "at"
+        ],
+        "title": "ResourceActionItem",
+        "type": "object"
+      },
+      "ResourceActionRequest": {
+        "description": "``POST /api/v1/resources/actions``: a ``create`` or ``destroy`` command a person ran\nwith ``testo pool ... --apply``. The server only keeps this log; it never runs one.",
+        "properties": {
+          "command": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Command",
+            "type": "string"
+          },
+          "detail": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Detail",
+            "type": "string"
+          },
+          "host": {
+            "default": "",
+            "maxLength": 255,
+            "title": "Host",
+            "type": "string"
+          },
+          "item": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Item",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "pool": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Pool",
+            "type": "string"
+          },
+          "user": {
+            "default": "",
+            "maxLength": 64,
+            "title": "User",
+            "type": "string"
+          },
+          "verb": {
+            "enum": [
+              "create",
+              "destroy"
+            ],
+            "title": "Verb",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pool",
+          "item",
+          "verb",
+          "ok"
+        ],
+        "title": "ResourceActionRequest",
+        "type": "object"
+      },
+      "ResourceActionsResponse": {
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/ResourceActionItem"
+            },
+            "title": "Actions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "actions"
+        ],
+        "title": "ResourceActionsResponse",
+        "type": "object"
+      },
       "ResourceHolder-Input": {
         "description": "Who holds (or asks for) a key. On a server with accounts, ``user`` is the account.",
         "properties": {
@@ -5907,6 +6053,101 @@
           }
         },
         "summary": "List Resources",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/api/v1/resources/actions": {
+      "get": {
+        "description": "Provider commands people ran (``testo pool add/remove/sweep --apply``), newest first.",
+        "operationId": "list_actions_api_v1_resources_actions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "pool",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pool"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceActionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Actions",
+        "tags": [
+          "resources"
+        ]
+      },
+      "post": {
+        "description": "Log a provider command a client ran. The server never runs one itself.",
+        "operationId": "record_action_api_v1_resources_actions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Action",
         "tags": [
           "resources"
         ]

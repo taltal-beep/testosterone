@@ -24,6 +24,9 @@ keywords = [
     "junit",
     "ci",
     "test-reporting",
+    "playwright",
+    "jest",
+    "github-actions",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -90,6 +93,12 @@ metrics = [
     "matplotlib>=3.10.0",
     "influxdb-client>=1.48.0",
 ]
+# `otel` reporter and `testo otel`: runs as OpenTelemetry traces over OTLP/HTTP.
+# For OTLP/gRPC also install opentelemetry-exporter-otlp-proto-grpc.
+otel = [
+    "opentelemetry-sdk>=1.27.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.27.0",
+]
 # The docs site (mkdocs.yml). Material 9.x pins MkDocs below 2.0.
 docs = [
     "mkdocs-material>=9.7.7,<10",
@@ -105,16 +114,17 @@ dev = [
     "pre-commit>=4.0.0",
     # The dev profile installs every extra so the test suite covers the full
     # surface area without needing per-test installs.
-    "testo-core[api,bdd,db,metrics]",
+    "testo-core[api,bdd,db,metrics,otel]",
 ]
 
 [project.urls]
 Homepage = "https://github.com/taltal-beep/testosterone"
-Documentation = "https://github.com/taltal-beep/testosterone/wiki"
+Documentation = "https://taltal-beep.github.io/testosterone/docs/"
 Demo = "https://taltal-beep.github.io/testosterone/"
 Source = "https://github.com/taltal-beep/testosterone"
 Issues = "https://github.com/taltal-beep/testosterone/issues"
 Changelog = "https://github.com/taltal-beep/testosterone/blob/main/CHANGELOG.md"
+"Release notes" = "https://github.com/taltal-beep/testosterone/releases"
 
 [tool.hatch.metadata.hooks.fancy-pypi-readme]
 content-type = "text/markdown"

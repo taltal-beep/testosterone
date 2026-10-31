@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-10-26
+updated: 2026-10-30
 ---
 
 # Architecture Overview
@@ -213,7 +213,7 @@ A `composite_backend()` factory fans out to both; individual backend failures ne
 
 Code that needs per-test data for a *run_id* (not a *report_id*) should extract from `CompletedRunView.snapshot_dir` (via `history.snapshots.snapshot_files_for_download()`), not attempt to resolve a `ReportArchive` row — there isn't one to resolve to. See `testo_core/services/run_snapshot_diff.py` for the pattern.
 
-Resource pool leases (`testo_core/resources/store.py`, tables `resource_item`, `resource_lease`, `resource_waiter`) live in the same database and are unrelated to runs: they say which parallel worker holds which key right now. See [Shared Resource Pools](../Processes%20&%20Guides/Shared%20Resource%20Pools.md).
+Resource pool leases (`testo_core/resources/store.py`, tables `resource_item`, `resource_lease`, `resource_waiter`, plus `resource_action`, the log of provider commands people ran with `testo pool`) live in the same database and are unrelated to runs: they say which parallel worker holds which key right now. See [Shared Resource Pools](../Processes%20&%20Guides/Shared%20Resource%20Pools.md).
 
 ## Related operational docs
 

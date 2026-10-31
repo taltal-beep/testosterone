@@ -113,6 +113,21 @@ class PoolStatus:
         object.__setattr__(self, "free", free)
 
 
+@dataclass(frozen=True)
+class ProviderAction:
+    """A ``create`` or ``destroy`` command someone ran with ``testo pool ... --apply``."""
+
+    pool: str
+    item: str
+    verb: str
+    user: str
+    host: str
+    command: str
+    ok: bool
+    detail: str = ""
+    at: float = 0.0
+
+
 class LeaseError(RuntimeError):
     """A lease could not be taken, kept or given back (the message says why)."""
 
@@ -122,10 +137,20 @@ class LeaseStore:
 
     def __init__(self, engine: Any = None) -> None:
         from testo_core.repository.db_config import get_engine
-        from testo_core.repository.models import ResourceItemRow, ResourceLease, ResourceWaiter
+        from testo_core.repository.models import (
+            ResourceAction,
+            ResourceItemRow,
+            ResourceLease,
+            ResourceWaiter,
+        )
 
         self._engine = engine if engine is not None else get_engine()
-        tables = (ResourceItemRow.__table__, ResourceLease.__table__, ResourceWaiter.__table__)  # type: ignore[attr-defined]
+        tables = (
+            ResourceItemRow.__table__,  # type: ignore[attr-defined]
+            ResourceLease.__table__,  # type: ignore[attr-defined]
+            ResourceWaiter.__table__,  # type: ignore[attr-defined]
+            ResourceAction.__table__,  # type: ignore[attr-defined]
+        )
         for table in tables:
             _create_table(self._engine, table)
 
@@ -427,6 +452,56 @@ class LeaseStore:
                 waiting=sum(1 for w in waiters if w.pool == name),
             )
             for name, items in sorted(by_pool.items())
+        ]
+
+    # -- the provider log ------------------------------------------------------
+
+    def record_action(self, action: ProviderAction) -> None:
+        """Log a provider command a person ran (``testo pool ... --apply``)."""
+        from sqlmodel import Session
+
+        from testo_core.repository.models import ResourceAction
+
+        with Session(self._engine) as session:
+            session.add(
+                ResourceAction(
+                    at=action.at or time.time(),
+                    pool=action.pool,
+                    item=action.item,
+                    verb=action.verb,
+                    user=action.user[:64],
+                    host=action.host[:255],
+                    command=action.command[:500],
+                    ok=action.ok,
+                    detail=action.detail[:500],
+                )
+            )
+            session.commit()
+
+    def actions(self, pool: str | None = None, *, limit: int = 50) -> list[ProviderAction]:
+        """The newest provider commands first."""
+        from sqlmodel import Session, col, select
+
+        from testo_core.repository.models import ResourceAction
+
+        query = select(ResourceAction).order_by(col(ResourceAction.at).desc()).limit(limit)
+        if pool is not None:
+            query = query.where(col(ResourceAction.pool) == pool)
+        with Session(self._engine) as session:
+            rows = session.exec(query).all()
+        return [
+            ProviderAction(
+                pool=r.pool,
+                item=r.item,
+                verb=r.verb,
+                user=r.user,
+                host=r.host,
+                command=r.command,
+                ok=r.ok,
+                detail=r.detail,
+                at=r.at,
+            )
+            for r in rows
         ]
 
     def _register(self, pool: ResourcePool, *, now: float) -> None:
