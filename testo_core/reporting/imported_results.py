@@ -16,10 +16,15 @@ from typing import Any
 MAX_TRACE_CHARS = 20_000
 
 
-def clip(text: str | None) -> str | None:
-    """``text`` stripped and capped at :data:`MAX_TRACE_CHARS`; ``None`` when empty."""
+def clip(text: Any) -> str | None:
+    """``text`` stripped and capped at :data:`MAX_TRACE_CHARS`; ``None`` when empty.
+
+    A non-string (a report with an odd field type) is shown as its ``str()``.
+    """
     if not text:
         return None
+    if not isinstance(text, str):
+        text = str(text)
     text = text.strip()
     if len(text) > MAX_TRACE_CHARS:
         text = text[:MAX_TRACE_CHARS] + "\n… (truncated)"
