@@ -272,28 +272,48 @@ class DeltaComparisonService:
         )
 
     def _build_highlights(self, deltas: tuple[MetricDelta, ...]) -> tuple[str, ...]:
+        """Up to five plain sentences about the biggest changes, largest first.
+
+        Durations read like the UI (``6.9 s``, ``265 ms``), counts carry the right
+        plural, the pass rate is "points", and the metrics duration is left out
+        when it moved exactly as much as the wall duration (every ingested run).
+        """
+        by_key = {d.metric_key: d for d in deltas}
+        wall = by_key.get("wall_duration_ms")
         ranked = sorted(
             [
                 d
                 for d in deltas
                 if d.classification in {"regression", "improvement"}
                 and d.absolute_delta is not None
+                and not (
+                    d.metric_key == "metrics_duration_ms"
+                    and wall is not None
+                    and wall.absolute_delta == d.absolute_delta
+                )
             ],
             key=lambda d: abs(d.absolute_delta or 0.0),
             reverse=True,
         )
-        highlights: list[str] = []
-        for delta in ranked[:5]:
-            change = delta.absolute_delta or 0.0
-            magnitude = abs(change)
-            verb = "worsened" if delta.classification == "regression" else "improved"
-            if delta.unit == "ms":
-                highlights.append(f"{delta.label} {verb} by {magnitude:.2f} ms.")
-            elif delta.unit == "pct":
-                highlights.append(f"{delta.label} {verb} by {magnitude:.2f} percentage points.")
-            else:
-                highlights.append(f"{delta.label} {verb} by {magnitude:.0f} tests.")
-        return tuple(highlights)
+        return tuple(self._highlight_sentence(d) for d in ranked[:5])
+
+    @staticmethod
+    def _highlight_sentence(delta: MetricDelta) -> str:
+        change = delta.absolute_delta or 0.0
+        magnitude = abs(change)
+        if delta.unit == "ms":
+            amount = f"{magnitude / 1000:.1f} s" if magnitude >= 1000 else f"{magnitude:.0f} ms"
+            verb = "up" if change > 0 else "down"
+            return f"{delta.label} {verb} {amount}."
+        if delta.unit == "pct":
+            verb = "up" if change > 0 else "down"
+            return f"Pass rate {verb} {magnitude:.1f} points."
+        count = int(round(magnitude))
+        noun = "test" if count == 1 else "tests"
+        subject = delta.label.removesuffix(" tests").lower()
+        if delta.metric_key == "total_tests":
+            return f"{count} {'more' if change > 0 else 'fewer'} {noun} ran."
+        return f"{count} {'more' if change > 0 else 'fewer'} {noun} {subject}."
 
     @staticmethod
     def _to_float(value: float | int | None) -> float | None:
