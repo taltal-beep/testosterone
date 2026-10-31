@@ -69,6 +69,7 @@ def parse_cycle(
         parse_stage(stage_raw=item, defaults=defaults, config_dir=config_dir, pools=pools)
         for item in stages_raw
     )
+    _check_unique_stage_names(stages, cycle_name=cycle_name)
     trigger = _parse_trigger(cycle_raw.get("trigger"), cycle_name=cycle_name)
     quarantine = shared_quarantine + parse_quarantine(
         cycle_raw.get("quarantine"), where=f"cycle {cycle_name!r}"
@@ -84,6 +85,24 @@ def parse_cycle(
         quarantine=quarantine,
         max_parallel_stages=max_parallel_stages,
     )
+
+
+def _check_unique_stage_names(stages: tuple[Stage, ...], *, cycle_name: str) -> None:
+    # Each stage writes to artifacts/<cycle>/<stage>/; two stages with one name (or
+    # names that differ only in case, one folder on macOS and Windows) would wipe
+    # each other's results.
+    seen: dict[str, str] = {}
+    for stage in stages:
+        key = stage.name.casefold()
+        if key in seen:
+            same = (
+                "the same name" if seen[key] == stage.name else f"{seen[key]!r} and {stage.name!r}"
+            )
+            raise ConfigValidationError(
+                f"cycle {cycle_name!r}: two stages have {same}; stage names must be "
+                "unique (ignoring case), since each stage gets its own artifacts folder."
+            )
+        seen[key] = stage.name
 
 
 def _parse_max_parallel_stages(raw: Any, *, cycle_name: str, stages: tuple[Stage, ...]) -> int:

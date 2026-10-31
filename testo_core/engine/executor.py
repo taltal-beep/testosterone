@@ -162,6 +162,8 @@ def run_stage(
         shutil.rmtree(results_dir)
     results_dir.mkdir(parents=True, exist_ok=True)
     log_path = (stage_root / "run.log").resolve()
+    # One run's log per run: the results folder is reset above, and LogBuffer appends.
+    log_path.unlink(missing_ok=True)
 
     target_repo: Path | None = None
     try:
