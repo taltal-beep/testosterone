@@ -72,7 +72,7 @@ Small, mostly found in the first ten minutes. Ordered by how many new users hit 
 | Q15 | Flaky detection scans the newest 500 runs of **all** cycles and then filters to one, so on a busy server a nightly cycle can show fewer runs than its window | S | Ask the history for that cycle's runs |
 | Q16 | `testo run` prints two summary tables that say nearly the same thing (stage status and duration, then stage counts) | S | One table with both |
 
-**Status:** Q1 is fixed in #213. Q2 to Q5, Q7, Q9 (the backticks and the error; the gym jokes stay), Q10, Q11, Q13 and Q14 are fixed in #214. Still open: Q8 (belongs with G2), Q12, Q15 and Q16.
+**Status:** Q1 is fixed in #213. Q2 to Q5, Q7, Q9 (the backticks and the error; the gym jokes stay), Q10, Q11, Q13 and Q14 are fixed in #234. Still open: Q8 (belongs with G2), Q12, Q15 and Q16.
 
 ## Feature gaps, ranked
 
