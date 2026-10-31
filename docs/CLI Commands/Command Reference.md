@@ -403,7 +403,7 @@ testo clean --yes
 testo clean -y --docker
 ```
 
-Without `--yes` / `-y`: refuses with exit **2**.
+Without `--yes` / `-y`: refuses with exit **2**. It also refuses (exit **2**, nothing deleted) when the artifacts root or `--temp-dir` is the filesystem root, your home folder, the current folder, the config's folder, a parent of any of them, or a folder holding `.git`, `testosterone.yaml` or `pyproject.toml`, so `artifacts_root: .` can't delete the project.
 
 ---
 
