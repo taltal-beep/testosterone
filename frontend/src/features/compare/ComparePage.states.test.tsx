@@ -148,7 +148,7 @@ describe("ComparePage states", () => {
     ]);
     renderAt(PAIR);
 
-    const toggle = await screen.findByRole("button", { name: /Test-Level Changes/ });
+    const toggle = await screen.findByRole("button", { name: /Test-level changes/ });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(toggle);
 
@@ -156,11 +156,11 @@ describe("ComparePage states", () => {
     expect(screen.getByText("test_new")).toBeInTheDocument();
     expect(screen.getByText(/passed → failed \(\+12ms\)/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "regression" }));
+    fireEvent.click(screen.getByRole("button", { name: "Regression" }));
     expect(screen.getByText("test_broken")).toBeInTheDocument();
     expect(screen.queryByText("test_new")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "removed" }));
+    fireEvent.click(screen.getByRole("button", { name: "Removed" }));
     expect(screen.getByText("No matching test changes.")).toBeInTheDocument();
   });
 });

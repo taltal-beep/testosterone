@@ -49,7 +49,10 @@ def _framework(report: dict, tool: str) -> str:
     if tool in ("jest", "vitest"):
         return tool
     for file_result in report.get("testResults") or []:
-        for case in file_result.get("assertionResults") or []:
+        if not isinstance(file_result, dict):
+            continue
+        cases = file_result.get("assertionResults")
+        for case in cases if isinstance(cases, list) else []:
             # Vitest adds ``meta`` to every assertion; Jest never does.
             if isinstance(case, dict) and "meta" in case:
                 return "vitest"
@@ -105,7 +108,8 @@ def jest_results_for_report(
         file_name = rel.get(str(file_result.get("name") or ""), "") or "(unknown file)"
         clock = file_result.get("startTime")
         clock = int(clock) if isinstance(clock, (int, float)) and clock > 0 else int(report_start)
-        cases = [c for c in file_result.get("assertionResults") or [] if isinstance(c, dict)]
+        raw_cases = file_result.get("assertionResults")
+        cases = [c for c in raw_cases if isinstance(c, dict)] if isinstance(raw_cases, list) else []
         if not cases:
             file_message = str(
                 file_result.get("message") or file_result.get("failureMessage") or ""
@@ -131,7 +135,10 @@ def jest_results_for_report(
         any_case_failed = False
         for case in cases:
             title = str(case.get("title") or "(unnamed)")
-            ancestors = [str(a) for a in case.get("ancestorTitles") or [] if str(a)]
+            raw_ancestors = case.get("ancestorTitles")
+            if not isinstance(raw_ancestors, list):
+                raw_ancestors = [raw_ancestors] if raw_ancestors else []
+            ancestors = [str(a) for a in raw_ancestors if str(a)]
             status = _STATUS.get(str(case.get("status")), "broken")
             failures = "\n\n".join(str(m) for m in case.get("failureMessages") or [] if m)
             retries = [str(r) for r in case.get("retryReasons") or [] if r]
@@ -141,7 +148,7 @@ def jest_results_for_report(
                 message = "Passed on retry. " + retries[0]
             try:
                 duration = int(round(float(case.get("duration") or 0)))
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 duration = 0
             result = make_result(
                 tool=tool,
