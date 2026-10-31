@@ -2,7 +2,7 @@
 type: index
 status: current
 created: 2026-06-25
-updated: 2026-10-26
+updated: 2026-10-31
 ---
 
 # Testosterone docs
@@ -46,6 +46,7 @@ The notes are plain markdown. They open as an Obsidian vault, and are published 
 - [Product Roadmap](Roadmap%20&%20Strategy/Product%20Roadmap.md): current state and next steps
 - [Technical Debt Tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md): open backlog
 - [Project Review](project-review.md): whole-repo scorecard (architecture, code, tests, security, docs, CI) and verdict, 2026-10-24
+- [Architecture Review](Specs%20&%20ADRs/Architecture%20Review%20-%202026-10-31.md): ranked review of module boundaries, data model, scaling limits and extension points, with proposed next steps, 2026-10-31
 - [Product Review](product-review.md): product scorecard (positioning against Allure, ReportPortal, Currents and Trunk, onboarding, the red-build workflow, design, accessibility, copy) and the Now / Next / Later roadmap, 2026-10-24
 - [Agent Context Guide](Prompts%20&%20Snippets/Agent%20Context%20Guide.md): which note to read before changing what (for AI coding agents)
 
