@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+- Database engines are closed when the engine cache is reset, and `testo doctor` / `testo config-db` close their connection probe, so no SQLite or Postgres connections are left open (the test suite showed 110 "unclosed database" warnings)
+
 ## [1.5.0] - 2026-10-31
 
 ### Added
