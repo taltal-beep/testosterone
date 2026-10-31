@@ -132,3 +132,7 @@ Added [Human-Run Resource Provider - 2026-10-30](Specs%20&%20ADRs/Human-Run%20Re
 ## 2026-10-30: opentelemetry export
 
 Added [OpenTelemetry Export - 2026-10-30](Specs%20&%20ADRs/OpenTelemetry%20Export%20-%202026-10-30.md) to Specs & ADRs (runs as OTLP traces, the `otel` reporter and `testo otel`), linked from its README and the docs site menu.
+
+## 2026-10-31: security and install review
+
+Added [Security and Install Review - 2026-10-31](Specs%20&%20ADRs/Security%20and%20Install%20Review%20-%202026-10-31.md) to Specs & ADRs (findings R1 to R17, what was fixed, proposals P1 to P4), linked from its README and the docs site menu.
