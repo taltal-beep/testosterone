@@ -255,3 +255,40 @@ def test_average_case_duration_has_its_own_small_floor() -> None:
     result = service.compare_runs(current_run_id="cur", baseline_run_id="base")
     avg = next(m for m in result.metrics if m.metric_key == "avg_case_ms")
     assert avg.classification == "regression"
+
+
+def test_highlights_read_as_plain_sentences() -> None:
+    """Durations like the UI, the right plural, pass rate in points, no duplicate
+    line for a metrics duration that moved exactly as much as the wall duration."""
+    service = _service(
+        {
+            "current": _view(
+                run_id="current",
+                passed=22,
+                failed=1,
+                health_pct=84.6,
+                wall_duration_ms=32250.0,
+                metrics_duration_ms=32250,
+                avg_case_ms=1240.0,
+            ),
+            "baseline": _view(
+                run_id="baseline",
+                passed=21,
+                failed=2,
+                health_pct=80.8,
+                wall_duration_ms=25350.0,
+                metrics_duration_ms=25350,
+                avg_case_ms=975.0,
+            ),
+        }
+    )
+    result = service.compare_runs(current_run_id="current", baseline_run_id="baseline")
+
+    assert result.highlights == (
+        "Wall duration up 6.9 s.",
+        "Average case duration up 265 ms.",
+        "Pass rate up 3.8 points.",
+        "1 more test passed.",
+        "1 fewer test failed.",
+    )
+    assert not any("Metrics duration" in line for line in result.highlights)

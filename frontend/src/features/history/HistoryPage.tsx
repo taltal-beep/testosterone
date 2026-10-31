@@ -96,7 +96,7 @@ export function HistoryPage() {
                 <RunLabel run={run} linked />
               </div>
               <span className="text-xs text-ink-400">
-                {run.health_pct != null ? `health ${formatPercent(run.health_pct)}` : ""}
+                {run.health_pct != null ? `${formatPercent(run.health_pct)} passed` : ""}
               </span>
             </li>
           ))}
