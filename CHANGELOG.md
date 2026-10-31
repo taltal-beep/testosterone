@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+- A mistyped command or option (`testo runn`, `testo run --bogus`), or `testo` with no arguments, printed a Python traceback with newer Typer releases. It now prints the error and a hint (or the help), and exits `2`
+
 ## [1.5.0] - 2026-10-31
 
 ### Added
