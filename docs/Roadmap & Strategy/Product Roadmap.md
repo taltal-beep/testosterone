@@ -2,7 +2,7 @@
 type: roadmap
 status: current
 created: 2026-06-25
-updated: 2026-10-24
+updated: 2026-10-31
 ---
 
 # Product Roadmap
@@ -28,6 +28,8 @@ Where Testosterone (`testo-core`, CLI `testo`) stands today and what comes next.
 ## Next
 
 The product-side priorities are the Now / Next / Later roadmap in the [Product Review](../product-review.md) (2026-10-24): failing tests first on the run page, the UI shipped in the wheel (`testo ui`), a main-branch baseline for diffs and the PR comment, and a per-test page. Since this note was last updated, ingest, the team server, parallel stages (`max_parallel_stages`), the API run queue and the security switches all shipped; see the [Specs & ADRs](../Specs%20&%20ADRs/README.md).
+
+The next ranked list is [Feature Gaps and Quick Wins](Feature%20Gaps%20and%20Quick%20Wins%20-%202026-10-31.md) (2026-10-31): sixteen small fixes from a new user's first ten minutes, and fourteen gaps against Trunk, Datadog, ReportPortal, Allure TestOps, Currents and others, led by a better flaky signal, quarantine from the UI, issues for flaky tests and an MCP server.
 
 Still open from the earlier list:
 
