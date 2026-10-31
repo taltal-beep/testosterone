@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-19
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 
 # Getting Started
@@ -16,7 +16,7 @@ You need Python 3.11 or newer and a project with tests. The examples use pytest;
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install testo-core pytest
-testo --version          # testo 1.1.1
+testo --version          # testo 1.x.y
 ```
 
 `testo-core` is the `testo` CLI. It doesn't install your test runner, so keep installing pytest (or Behave, Jest...) the way your project already does.
