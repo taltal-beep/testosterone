@@ -478,7 +478,9 @@ def _record_junit_stage(
     Unlike the post-stage hook, files are not filtered by age (they predate this
     stage by definition), and the returncode comes from the results: 1 when a
     case failed or broke, or when no file matched (ingesting nothing should be
-    loud in CI), 0 otherwise. Duration is the summed test time from the reports.
+    loud in CI), or when no test was recorded because every matching file was
+    unreadable (truncated, empty, not a report), 0 otherwise. Duration is the
+    summed test time from the reports.
     """
     from testo_core.reporting.junit_import import import_junit_reports
 
@@ -500,10 +502,15 @@ def _record_junit_stage(
     if not imported.files:
         error = f"no JUnit XML matched {list(stage.junit_xml)} in {target_repo}"
         lines.append(f"[testo] junit: {error}")
-    returncode = 1 if (imported.failed or not imported.files) else 0
+    elif not imported.tests and imported.unreadable:
+        # Every matching file was truncated, empty or not a report: a job killed
+        # mid-write must not be recorded as a passing run.
+        error = f"no test recorded: {imported.unreadable} matching file(s) could not be read"
+        lines.append(f"[testo] junit: {error}")
+    returncode = 1 if (imported.failed or error) else 0
     quarantined: tuple[str, ...] = ()
     waived_returncode: int | None = None
-    if quarantine and imported.files and returncode == WAIVABLE_RETURNCODE:
+    if quarantine and not error and returncode == WAIVABLE_RETURNCODE:
         verdict = evaluate_quarantine(quarantine, results_dir)
         quarantined = verdict.quarantined
         if verdict.waives_stage:
