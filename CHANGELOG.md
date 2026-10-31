@@ -25,6 +25,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - A mistyped command or option (`testo runn`, `testo run --bogus`), or `testo` with no arguments, printed a Python traceback with newer Typer releases. It now prints the error and a hint (or the help), and exits `2`
 
 ### Changed
+- Docs: a UI design review (`docs/Specs & ADRs/UI Design Review - 2026-10-31.md`) ranks 14 design and UX findings on the web UI with annotated screenshots and proposes fixes; linked from the Index and the docs site menu
 - Docs: an architecture review (`docs/Specs & ADRs/Architecture Review - 2026-10-31.md`) ranks the codebase's structural pressure points and proposes next steps; linked from the docs site menu
 
 ## [1.5.0] - 2026-10-31
