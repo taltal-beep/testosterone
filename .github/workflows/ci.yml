@@ -6,7 +6,7 @@ name: ci
 #   format               ruff lint + ruff format check + mypy on testo_core and testo_api (all blocking)
 #   test                 fast required pytest suite with the coverage gate, then the
 #                        heavy (local, mocked) tier; uploads coverage.xml
-#   test_python_versions the same suite on Python 3.12 and 3.13, the other versions
+#   test_python_versions the same suite on Python 3.12, 3.13 and 3.14, the other versions
 #                        pyproject.toml lists (no coverage gate, not a required check)
 #   frontend             React dashboard: typecheck, ESLint, generated API types up to date,
 #                        vitest unit tests, production build
@@ -129,7 +129,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.12", "3.13"]
+        python: ["3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
