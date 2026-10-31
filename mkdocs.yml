@@ -151,6 +151,7 @@ nav:
       - Technical Debt Tracker: Testing Workflows/Technical Debt Tracker.md
       - Project Review: project-review.md
       - Product Review: product-review.md
+      - Engine and CLI Bug Hunt: engine-cli-review.md
   - Contributing:
       - Agent Context Guide: Prompts & Snippets/Agent Context Guide.md
       - Vault Schema: CLAUDE.md
