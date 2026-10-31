@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 
 # CI Integrations
@@ -87,7 +87,7 @@ Tier selection is marker-driven and shared between local runs and GitHub Actions
 
 Reference CI definitions:
 
-- GitHub: `.github/workflows/ci.yml` (unified format → test → deploy pipeline; the fast-required gate lives in its `test` job on Python 3.11, and `test_python_versions` runs the same suite on 3.12 and 3.13 without the coverage gate), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`. Code review runs via a local pre-push hook (`.claude/settings.json`), not in CI.
+- GitHub: `.github/workflows/ci.yml` (unified pipeline: format and test run in parallel, then deploy on a release; the fast-required gate lives in its `test` job on Python 3.11, followed by the heavy tier, and `test_python_versions` runs the same suite on 3.12 and 3.13 without the coverage gate), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`. Code review runs via a local pre-push hook (`.claude/settings.json`), not in CI.
 
 All tier jobs upload diagnostics artifacts (`logs`, summary JSON, API responses, screenshots when present) on failure, and external suites run with `external-e2e` concurrency isolation.
 

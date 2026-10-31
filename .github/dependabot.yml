@@ -24,6 +24,11 @@ updates:
     groups:
       frontend:
         update-types: [minor, patch]
+    ignore:
+      # @types/node follows the Node major CI builds with (actions/setup-node
+      # node-version: "22"); move both together, by hand.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /
     schedule:
@@ -34,8 +39,11 @@ updates:
     groups:
       tooling:
         update-types: [minor, patch]
+  # Both copies of the composite action: the root action.yml (Marketplace) and
+  # integrations/github-action/action.yml. tests/contract/ci/test_action_copies.py
+  # fails if they differ, so they must be bumped in the same PR.
   - package-ecosystem: github-actions
-    directory: /
+    directories: ["/", "/integrations/github-action"]
     schedule:
       interval: weekly
     commit-message:
