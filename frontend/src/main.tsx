@@ -5,6 +5,7 @@ import { RouterProvider } from "react-router-dom";
 
 import { router } from "./app/routes";
 import { StaticBuildBanner } from "./components/StaticBuildBanner";
+import { shouldRetry } from "./lib/api-client";
 import { installStaticBackend } from "./lib/static-backend";
 import "./styles.css";
 
@@ -13,7 +14,7 @@ import "./styles.css";
 // first render so the initial queries hit the shim.
 installStaticBackend();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: shouldRetry } } });
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

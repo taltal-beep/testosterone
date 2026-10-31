@@ -34,6 +34,6 @@ describe("CycleRunsCard", () => {
     expect(squares.map((s) => s.getAttribute("href"))).toEqual(["/runs/w-1", "/runs/w-2", "/runs/w-3"]);
     expect(squares[2]).toHaveAccessibleName(/failed$/);
     expect(screen.getByRole("link", { name: "All runs of web" })).toHaveAttribute("href", "/runs?cycle=web");
-    expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/runs?cycle=web");
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/runs?limit=30&cycle=web");
   });
 });

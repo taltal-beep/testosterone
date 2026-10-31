@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from testo_api.models import (
     FailingTestItem,
@@ -21,14 +21,15 @@ from testo_api.security import read_config_path
 from testo_core.config.errors import ConfigError
 from testo_core.config.loader import discover_and_load
 from testo_core.history.read_model import get_run, list_run_sessions
-from testo_core.history.snapshots import snapshot_files_for_download
+from testo_core.history.report_links import local_report_links
+from testo_core.history.snapshots import snapshot_file_names, snapshot_url_base
 from testo_core.services.run_failures import load_run_failures
 
 router = APIRouter(prefix="/api/v1", tags=["history"])
 
 
 @router.get("/runs", response_model=RunListResponse)
-def list_runs(limit: int = 30, cycle: str | None = None) -> RunListResponse:
+def list_runs(limit: int = Query(30, ge=1, le=500), cycle: str | None = None) -> RunListResponse:
     """Recent runs, newest first; ``cycle`` keeps only that cycle's."""
     sessions = list_run_sessions(limit=limit, cycle=cycle or None)
     items = [
@@ -104,14 +105,9 @@ def get_run_detail(run_id: str) -> RunDetailResponse:
 
 @router.get("/runs/{run_id}/reports", response_model=RunReportsResponse)
 def get_run_reports(run_id: str) -> RunReportsResponse:
-    sessions = list_run_sessions(limit=200)
-    session = next((s for s in sessions if s.run_id == run_id), None)
-    if session is None:
-        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
     record = get_run(run_id=run_id)
     if record is None:
         raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
-    artifact_links = [name for name, _ in snapshot_files_for_download(record=record)]
     allure_base = os.getenv("ALLURE_SERVER_URL", "").rstrip("/")
     allure_url = None
     if allure_base:
@@ -120,8 +116,9 @@ def get_run_reports(run_id: str) -> RunReportsResponse:
         allure_url = allure_report_url_for_run(run_id)
     return RunReportsResponse(
         allure_server_url=allure_url,
-        static_links=session.links_under_static,
-        artifact_links=artifact_links,
+        static_links=local_report_links(run_id),
+        artifact_links=snapshot_file_names(record=record),
+        artifacts_url=snapshot_url_base(record=record),
     )
 
 

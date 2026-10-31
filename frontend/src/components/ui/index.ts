@@ -1,4 +1,4 @@
-export { Button } from "./Button";
+export { Button, buttonClasses } from "./Button";
 export { Card } from "./Card";
 export { Badge } from "./Badge";
 export { StatusPill, normalizeRunStatus } from "./StatusPill";

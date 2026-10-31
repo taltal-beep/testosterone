@@ -4145,6 +4145,17 @@
             "title": "Artifact Links",
             "type": "array"
           },
+          "artifacts_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifacts Url"
+          },
           "static_links": {
             "additionalProperties": {
               "type": "string"
@@ -4156,7 +4167,8 @@
         "required": [
           "allure_server_url",
           "static_links",
-          "artifact_links"
+          "artifact_links",
+          "artifacts_url"
         ],
         "title": "RunReportsResponse",
         "type": "object"
@@ -4815,7 +4827,7 @@
   },
   "info": {
     "title": "Testosterone API",
-    "version": "1.5.0"
+    "version": "1.4.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6439,6 +6451,8 @@
             "required": false,
             "schema": {
               "default": 30,
+              "maximum": 500,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }

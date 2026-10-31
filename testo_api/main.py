@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import mimetypes
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from uuid import uuid4
@@ -100,6 +101,8 @@ def create_app() -> FastAPI:
     app.include_router(resources_router)
 
     STATIC_HISTORY_ROOT.mkdir(parents=True, exist_ok=True)
+    # Stage logs (<stage>/run.log) open in the browser instead of downloading.
+    mimetypes.add_type("text/plain", ".log")
     app.mount("/history", StaticFiles(directory=STATIC_HISTORY_ROOT), name="history")
 
     built_ui = ui_dir()

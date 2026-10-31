@@ -140,6 +140,7 @@ export function TestPage() {
   return (
     <section className="space-y-4">
       <PageHeader
+        documentTitle={test.name}
         title={
           <span className="flex flex-wrap items-center gap-3">
             <span className="break-all">{test.name}</span>
