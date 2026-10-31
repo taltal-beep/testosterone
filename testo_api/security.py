@@ -112,6 +112,16 @@ def account_store() -> AccountStore:
     return AccountStore()
 
 
+def session_tag(account: Account) -> str:
+    """What ties a cookie to one account: its session version and when it was created.
+
+    The creation time means removing a user and adding the name again doesn't bring
+    the old person's cookies back, though the new row starts at version 1 again.
+    """
+    created = int(account.created_at.timestamp() * 1_000_000)
+    return f"{account.session_version}.{created}"
+
+
 def account_session_value(token: str, account: Account, *, now: float | None = None) -> str:
     """Cookie for an account: ``<user>:<session version>:<expiry>`` signed with the token.
 
@@ -119,7 +129,7 @@ def account_session_value(token: str, account: Account, *, now: float | None = N
     change, ``testo users sign-out``), invalidates it.
     """
     expires = int((time.time() if now is None else now) + SESSION_MAX_AGE)
-    payload = f"{account.username}:{account.session_version}:{expires}".encode()
+    payload = f"{account.username}:{session_tag(account)}:{expires}".encode()
     sig = hmac.new(token.encode(), b"testo-account-v1:" + payload, hashlib.sha256).hexdigest()
     return base64.urlsafe_b64encode(payload).decode().rstrip("=") + "." + sig
 
@@ -137,7 +147,7 @@ def _account_from_cookie(token: str, cookie: str) -> Principal | None:
     if int(expires) < time.time():
         return None
     account = account_store().get(username)
-    if account is None or str(account.session_version) != version:
+    if account is None or session_tag(account) != version:
         return None
     return Principal(username=account.username, role=account.role)
 

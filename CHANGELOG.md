@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Security
+- Accounts: removing a user and adding the same name again no longer revives the old person's session cookies (cookies now carry the account's creation time). Existing account sessions sign in again once after the upgrade
 - Failure evidence redaction (before storage and before an AI provider sees it) now also catches GitHub, GitLab, npm, Slack, AWS and Google tokens, JWTs, `Basic` credentials, passwords in URLs (`scheme://user:***@host`), `password=` values, quoted JSON keys and private key blocks, and masks `password`, `DATABASE_URL`, `privateKey` and `cookie` fields
 - AI provider requests no longer follow HTTP redirects, which resent the `Authorization` / `x-api-key` header to the redirect's host
 - With `TESTO_RUNNER=container`, `${env:...}` in a stage's `args` or `env:` no longer reads the server's own secrets (`TESTO_*`, `DATABASE_URL`, `POSTGRES_*`, `*_API_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`, `*_DB_URL`). Before, a runner could copy `TESTO_API_TOKEN` (the admin credential) into a throwaway container with `${env:TESTO_API_TOKEN}`
