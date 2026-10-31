@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+- A red run is no longer recorded as green when the failure is outside any single test. `testo ingest` (and `junit_xml` imports) now record a `broken` result for: a Go 1.24+ build failure (`build-output` events, which made the whole `go test -json` file unreadable before), a Go test that never finished (timeout or crash), a Jest/Vitest file whose `beforeAll`/`afterAll` hook threw while its tests show passed or skipped, a Playwright spec that fails to load or a failing `globalSetup` (top-level `errors`), a TRX run whose test host crashed (`RunInfo outcome="Error"`), and a JUnit `<testsuite>` that claims failures or errors no `<testcase>` carries. `testo ingest` also exits 1 when every matching file was unreadable (truncated, empty, not a report) instead of recording a passing run with 0 tests
+
 ### Changed
 - The PyPI page's Documentation link goes to the docs site instead of the GitHub wiki, and README links to guides open the rendered docs site pages
 

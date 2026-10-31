@@ -67,6 +67,10 @@ class JunitImportResult:
     # Playwright JSON only: tests that passed on a retry, and attachments copied.
     flaky: int = 0
     attachments: int = 0
+    # Files that matched but could not be read as any known format (truncated,
+    # empty, not a report). A ``junit`` stage that recorded no test and had one
+    # of these fails, so a report cut off by a killed job is never a green run.
+    unreadable: int = 0
 
 
 def _suite_start_ms(suite: ET.Element, fallback_ms: int) -> int:
@@ -116,12 +120,63 @@ def _android_device(suite: ET.Element) -> str | None:
     return None
 
 
+def _claimed_problems(suite: ET.Element) -> int:
+    """How many failures plus errors a ``<testsuite>``'s own attributes claim."""
+    total = 0
+    for attr in ("failures", "errors"):
+        try:
+            total += max(0, int(suite.get(attr) or 0))
+        except ValueError:
+            pass
+    return total
+
+
+def _suite_error_result(suite: ET.Element, *, suite_name: str, tool: str, start_ms: int) -> dict:
+    """One ``broken`` result for a suite that failed with no failing ``<testcase>``.
+
+    jest-junit (by default), and other runners when a test file fails to load,
+    write ``<testsuite errors="1" tests="0">`` with the error only in
+    ``<system-err>``, or nowhere. Without this the suite would count as passed.
+    """
+    output = "\n".join(
+        (node.text or "").strip() for node in suite.findall("system-err") if node.text
+    ).strip()
+    full_name = f"{suite_name}.(suite failed)"
+    message = output.splitlines()[0] if output else None
+    trace = output or None
+    if trace and len(trace) > _MAX_TRACE_CHARS:
+        trace = trace[:_MAX_TRACE_CHARS] + "\n… (truncated)"
+    return {
+        "uuid": str(uuid.uuid4()),
+        "historyId": hashlib.sha256(f"{tool}:{full_name}".encode()).hexdigest(),
+        "name": "(suite failed)",
+        "fullName": full_name,
+        "status": "broken",
+        "stage": "finished",
+        "start": start_ms,
+        "stop": start_ms,
+        "labels": [
+            {"name": "suite", "value": suite_name},
+            {"name": "framework", "value": tool},
+            {"name": "language", "value": "junit"},
+        ],
+        "statusDetails": {
+            "message": message
+            or f"The suite reports {_claimed_problems(suite)} failure(s) or error(s)"
+            " but no failing test case",
+            **({"trace": trace} if trace else {}),
+        },
+    }
+
+
 def _results_for_root(root: ET.Element, *, path: Path, tool: str, fallback_ms: int) -> list[dict]:
     results: list[dict] = []
     for suite in _suites(root):
         suite_name = suite.get("name") or path.stem
         clock = _suite_start_ms(suite, fallback_ms)
         device = _android_device(suite)
+        suite_start = clock
+        problems = 0
         for case in suite.findall("testcase"):
             name = case.get("name") or "(unnamed)"
             classname = case.get("classname") or suite_name
@@ -151,6 +206,11 @@ def _results_for_root(root: ET.Element, *, path: Path, tool: str, fallback_ms: i
                 }
             results.append(result)
             clock += duration
+            problems += status in ("failed", "broken")
+        if not problems and _claimed_problems(suite) and suite.find("testsuite") is None:
+            results.append(
+                _suite_error_result(suite, suite_name=suite_name, tool=tool, start_ms=suite_start)
+            )
     return results
 
 
@@ -280,12 +340,14 @@ def import_junit_reports(
     duration_ms = 0
     flaky = 0
     attachments = 0
+    unreadable = 0
     errors: list[str] = []
     for path in files:
         try:
             parsed = _results_for_any(path, tool=tool, results_dir=results_dir, repo=repo)
         except (ET.ParseError, OSError, ValueError, UnicodeDecodeError) as exc:
             errors.append(f"{path.name}: {exc}")
+            unreadable += 1
             continue
         if parsed is None:  # an Allure folder's container, attachment or settings file
             continue
@@ -308,4 +370,5 @@ def import_junit_reports(
         duration_s=duration_ms / 1000,
         flaky=flaky,
         attachments=attachments,
+        unreadable=unreadable,
     )

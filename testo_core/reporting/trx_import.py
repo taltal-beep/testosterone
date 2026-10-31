@@ -13,6 +13,10 @@ Status mapping (``UnitTestResult/@outcome``):
 A data-driven test's rows (``InnerResults``) are one result each. The test's
 class comes from ``TestDefinitions``, so ``full_name`` is ``Namespace.Class.Method``
 plus any row arguments, the way ``dotnet test --filter`` names it.
+
+A run-level error (``ResultSummary/RunInfos/RunInfo[@outcome="Error"]``: the
+test host crashed, the run was aborted) is one ``broken`` result, so a run
+that died before or between tests is never recorded as passed.
 """
 
 from __future__ import annotations
@@ -126,7 +130,36 @@ def trx_results_for_root(root: ET.Element, *, tool: str, fallback_ms: int) -> li
     for node in results_node if results_node is not None else []:
         if _local(node.tag).endswith("TestResult"):
             visit(node, None)
+    out += _run_errors(root, tool=tool, start_ms=run_start)
     return out
+
+
+def _run_errors(root: ET.Element, *, tool: str, start_ms: int) -> list[dict[str, Any]]:
+    """One ``broken`` result when the run itself reported errors (host crash, abort)."""
+    infos = _child(root, "ResultSummary", "RunInfos")
+    texts = [
+        (_text(_child(info, "Text")) or "").strip()
+        for info in (infos if infos is not None else [])
+        if (info.get("outcome") or "").lower() == "error"
+    ]
+    if not texts:
+        return []
+    trace = "\n\n".join(t for t in texts if t) or None
+    return [
+        make_result(
+            tool=tool,
+            framework="dotnet",
+            language="csharp",
+            name="(test run error)",
+            full_name="(test run error)",
+            status="broken",
+            start_ms=start_ms,
+            duration_ms=0,
+            suite="dotnet",
+            message=trace or "The test run reported an error",
+            trace=trace,
+        )
+    ]
 
 
 def trx_results_for_file(path: Path, *, tool: str) -> list[dict[str, Any]]:
