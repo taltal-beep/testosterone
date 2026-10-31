@@ -138,7 +138,8 @@ def _is_test_file(path: str, patterns: Sequence[str]) -> bool:
 def _git(argv: list[str], cwd: Path) -> str:
     try:
         proc = subprocess.run(  # noqa: S603 — fixed argv
-            ["git", *argv],  # noqa: S607 — git from PATH, like config/triggers.py
+            # quotePath=false: non-ASCII paths come out as themselves, not "tests/test_\\303\\251.py".
+            ["git", "-c", "core.quotePath=false", *argv],  # noqa: S607 — git from PATH, like config/triggers.py
             cwd=str(cwd),
             capture_output=True,
             text=True,
@@ -310,6 +311,10 @@ def select_tests(
                 if known is None:
                     known = list(repo_files(root))
                 found = [f for f in known if _glob_regex(target).match(f)]
+                if any(ch in target for ch in "*?["):
+                    # "tests/payments/**" also matches __init__.py and helpers that
+                    # pytest never collects, which used to force a run of everything.
+                    found = [f for f in found if _is_test_file(f, config.test_files)] or found
                 if found:
                     rule_tests.extend(found)
                 else:

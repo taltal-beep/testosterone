@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+- Plugins: one reporter plugin that fails to import or to start no longer turns off every reporter (Slack, Teams, Allure, ...); it is reported as a failed reporter and the others run. A plugin adapter or reporter whose constructor raises is now a clear `PluginError` instead of a traceback that changed `testo run`'s exit code after the cycle finished
+- Affected-test selection: a rule's folder glob (`tests/payments/**`) picks only test files, so `__init__.py` and helpers no longer make `pytest --testo-affected` run everything; test files with non-ASCII names are no longer missed (git quoted their paths)
+
 ### Changed
 - Docs: an architecture review (`docs/Specs & ADRs/Architecture Review - 2026-10-31.md`) ranks the codebase's structural pressure points and proposes next steps; linked from the docs site menu
 
