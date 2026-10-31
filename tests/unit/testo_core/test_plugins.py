@@ -190,3 +190,64 @@ def test_plugins_command_without_plugins(monkeypatch: pytest.MonkeyPatch) -> Non
     assert result.exit_code == 0
     assert "pytest" in result.stdout
     assert "No plugins installed" in result.stdout
+
+
+_CTOR_BOOM = {
+    "ctor_boom": """\
+    from testo_core.reporting.reporters.base import BaseReporter
+
+    class Boom:
+        def __init__(self):
+            raise RuntimeError("adapter ctor boom")
+
+    class BoomReporter(BaseReporter):
+        reporter_type = "boomrep"
+        def __init__(self, *, options=None):
+            raise RuntimeError("reporter ctor boom")
+        def publish(self, **kwargs):
+            raise AssertionError("never built")
+    """
+}
+
+
+def test_a_plugin_constructor_that_raises_is_a_plugin_error(site: Path) -> None:
+    _install(
+        site,
+        "testo-ctor-boom",
+        """\
+        [testo.frameworks]
+        boomfw = ctor_boom:Boom
+        [testo.reporters]
+        boomrep = ctor_boom:BoomReporter
+        """,
+        modules=_CTOR_BOOM,
+    )
+    plugins.clear_cache()
+    with pytest.raises(plugins.PluginError, match="failed to start: adapter ctor boom"):
+        get_adapter("boomfw")
+    with pytest.raises(plugins.PluginError, match="failed to start: reporter ctor boom"):
+        ReporterFactory.build(config_reporters=(), overrides=["boomrep"])
+
+
+def test_one_broken_reporter_plugin_does_not_turn_off_the_others(site: Path) -> None:
+    _install(
+        site,
+        "testo-ctor-boom",
+        """\
+        [testo.reporters]
+        boomrep = ctor_boom:BoomReporter
+        missingrep = ctor_boom:NotThere
+        """,
+        modules=_CTOR_BOOM,
+    )
+    plugins.clear_cache()
+    failures: list = []
+    built = ReporterFactory.build(
+        config_reporters=(),
+        overrides=["boomrep", "json-summary", "missingrep"],
+        failures=failures,
+    )
+    assert [r.reporter_type for r in built] == ["json-summary"]
+    assert len(failures) == 2 and not any(f.ok for f in failures)
+    assert any("reporter ctor boom" in f.message for f in failures)
+    assert any("failed to import" in f.message for f in failures)
