@@ -45,7 +45,7 @@ def _timing(status: ET.Element, fallback_ms: int) -> tuple[int, int]:
         start = iso_ms(status.get("start"), fallback_ms)
         try:
             elapsed = int(round(float(status.get("elapsed") or 0) * 1000))
-        except ValueError:
+        except (ValueError, OverflowError):
             elapsed = 0
         return start, elapsed
     legacy_start = _legacy_ms(status.get("starttime"))

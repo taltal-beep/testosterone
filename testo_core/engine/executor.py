@@ -498,7 +498,11 @@ def _record_junit_stage(
     if not imported.files:
         error = f"no JUnit XML matched {list(stage.junit_xml)} in {target_repo}"
         lines.append(f"[testo] junit: {error}")
-    returncode = 1 if (imported.failed or not imported.files) else 0
+    elif not imported.tests and imported.errors:
+        # Files matched but none could be read: as loud as no file at all.
+        error = f"none of the {len(imported.files)} matched file(s) could be read"
+        lines.append(f"[testo] junit: {error}")
+    returncode = 1 if (imported.failed or error) else 0
     quarantined: tuple[str, ...] = ()
     waived_returncode: int | None = None
     if quarantine and imported.files and returncode == WAIVABLE_RETURNCODE:

@@ -84,7 +84,7 @@ def _start_ms(value: Any, fallback_ms: int) -> int:
 def _ms(value: Any) -> int:
     try:
         return max(0, int(round(float(value or 0))))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return 0
 
 
@@ -311,7 +311,7 @@ def playwright_results_for_file(
     errors come back in ``notes``.
     """
     try:
-        report = json.loads(path.read_text(encoding="utf-8"))
+        report = json.loads(path.read_text(encoding="utf-8-sig"))
     except json.JSONDecodeError as exc:
         raise ValueError(f"not valid JSON ({exc})") from exc
     if not isinstance(report, dict) or not isinstance(report.get("suites"), list):

@@ -39,7 +39,7 @@ def is_rspec_report(data: Any) -> bool:
 def _seconds_ms(value: Any) -> int:
     try:
         return max(0, int(round(float(value or 0) * 1000)))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return 0
 
 

@@ -83,7 +83,7 @@ def _suite_start_ms(suite: ET.Element, fallback_ms: int) -> int:
 def _seconds_ms(value: str | None) -> int:
     try:
         return max(0, int(round(float(value or 0) * 1000)))
-    except ValueError:
+    except (ValueError, OverflowError):
         return 0
 
 
@@ -102,10 +102,13 @@ def _status(case: ET.Element) -> tuple[str, str | None, str | None]:
 
 
 def _suites(root: ET.Element) -> list[ET.Element]:
-    if root.tag == "testsuite":
-        return [root]
-    # <testsuites> or any wrapper: every nested <testsuite>, depth-first.
-    return list(root.iter("testsuite"))
+    # Every <testsuite> at any depth, the root included (suites nest in some tools'
+    # output), depth-first. Each suite then reads only its own direct <testcase>s, so
+    # nothing counts twice. A wrapper with <testcase>s of its own acts as a suite too.
+    suites = list(root.iter("testsuite"))
+    if root.tag != "testsuite" and root.find("testcase") is not None:
+        suites.insert(0, root)
+    return suites
 
 
 def _android_device(suite: ET.Element) -> str | None:
@@ -162,6 +165,18 @@ class _FileResults:
     notes: tuple[str, ...] = ()
 
 
+def report_paths(repo: Path, pattern: str) -> list[Path]:
+    """What *pattern* names under *repo*: the file itself when it exists (so a name
+    with ``[`` or ``*`` in it still works), otherwise the glob's matches, sorted."""
+    literal = repo / pattern
+    try:
+        if literal.is_file():
+            return [literal]
+    except OSError:
+        pass
+    return sorted(repo.glob(pattern))
+
+
 def _results_for_any(
     path: Path, *, tool: str, results_dir: Path, repo: Path
 ) -> _FileResults | None:
@@ -172,7 +187,11 @@ def _results_for_any(
         return None
     fallback_ms = int(path.stat().st_mtime * 1000)
     raw = path.read_bytes()
-    text = raw.decode("utf-8-sig", errors="replace")
+    if raw[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        # UTF-16 with a BOM (.NET and PowerShell write it). expat reads the raw bytes.
+        text = raw.decode("utf-16", errors="replace")
+    else:
+        text = raw.decode("utf-8-sig", errors="replace")
     head = text.lstrip()[:1]
     if head == "<":
         root = ET.fromstring(raw)  # noqa: S314 — stage-owned file, expat ignores external entities
@@ -264,7 +283,7 @@ def import_junit_reports(
     results_dir.mkdir(parents=True, exist_ok=True)
     files: list[Path] = []
     for pattern in patterns:
-        for match in sorted(repo.glob(pattern)):
+        for match in report_paths(repo, pattern):
             resolved = match.resolve()
             if not resolved.is_file() or repo not in resolved.parents:
                 continue
@@ -286,6 +305,9 @@ def import_junit_reports(
             parsed = _results_for_any(path, tool=tool, results_dir=results_dir, repo=repo)
         except (ET.ParseError, OSError, ValueError, UnicodeDecodeError) as exc:
             errors.append(f"{path.name}: {exc}")
+            continue
+        except Exception as exc:  # noqa: BLE001 — one odd file must not lose the others
+            errors.append(f"{path.name}: could not read it ({type(exc).__name__}: {exc})")
             continue
         if parsed is None:  # an Allure folder's container, attachment or settings file
             continue

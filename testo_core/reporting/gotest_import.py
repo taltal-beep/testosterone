@@ -77,7 +77,7 @@ def is_gotest_text(text: str) -> bool:
 def _elapsed_ms(value: Any) -> int:
     try:
         return max(0, int(round(float(value or 0) * 1000)))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return 0
 
 

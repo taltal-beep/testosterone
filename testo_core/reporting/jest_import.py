@@ -137,7 +137,7 @@ def jest_results_for_report(
                 message = "Passed on retry. " + retries[0]
             try:
                 duration = int(round(float(case.get("duration") or 0)))
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 duration = 0
             result = make_result(
                 tool=tool,
