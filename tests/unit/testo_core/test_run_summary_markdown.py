@@ -180,3 +180,71 @@ def test_pick_baseline_ignores_its_own_branch() -> None:
     run = replace(_run("new", created_at=2), branch="main", base_branch=None)
     older = [replace(_run("old", created_at=1), branch="main")]
     assert md.pick_baseline(run, older, "main") == (older[0], None)
+
+
+# --- names from the code under test can't break out (bug hunt 2026-10-31) ---------------
+
+
+def test_a_backtick_in_a_test_name_cannot_unlock_mentions_or_html(
+    two_runs: list[CompletedRunView],
+) -> None:
+    summary = md.load_run_summary(cycle="unit")
+    assert summary is not None
+    evil = "test_w[q` @octocat <img src=x> `z]"
+    text = md.render_markdown(
+        replace(summary, failing=(evil,), changes=(replace(summary.changes[0], name=evil),))
+    )
+    # One code span with a longer fence: nothing inside it is rendered.
+    assert f"- ``{evil}``" in text
+    assert f"| ``{evil}`` |" in text
+    for line in text.splitlines():
+        outside_code = "".join(line.split("``")[::2])
+        assert "@octocat" not in outside_code and "<img" not in outside_code
+
+
+def test_pipes_are_only_escaped_inside_tables(two_runs: list[CompletedRunView]) -> None:
+    summary = md.load_run_summary(cycle="unit")
+    assert summary is not None
+    text = md.render_markdown(replace(summary, failing=("test[a|b]",)))
+    assert "- `test[a|b]`" in text
+
+
+def test_stage_cells_are_plain_text(two_runs: list[CompletedRunView]) -> None:
+    summary = md.load_run_summary(cycle="unit")
+    assert summary is not None
+    stage = {**summary.run.stage_health[0], "name": "a|b", "framework": "x|<b>@y"}
+    text = md.render_markdown(replace(summary, run=replace(summary.run, stage_health=[stage])))
+    assert "| a\\|b | x\\|&lt;b&gt;&#64;y |" in text
+
+
+def test_comment_marker_cannot_end_the_html_comment() -> None:
+    assert md.comment_marker("a-->b") == "<!-- testo-summary:a__b -->"
+    assert md.comment_marker("smoke-tests") == "<!-- testo-summary:smoke-tests -->"
+
+
+def test_a_push_to_main_is_not_compared_with_a_feature_branch_run() -> None:
+    run = replace(_run("new", created_at=3), branch="main", base_branch=None)
+    feature = replace(_run("feature", created_at=2), branch="feature/x", base_branch="main")
+    main = replace(_run("main", created_at=1), branch="main")
+    assert md.pick_baseline(run, [feature, main], None) == (main, None)
+
+
+def test_a_pr_with_no_target_run_yet_is_not_compared_with_another_pr() -> None:
+    run = replace(_run("pr", created_at=3), branch="feature/y", base_branch="main")
+    other = replace(_run("other", created_at=2), branch="feature/x", base_branch="main")
+    assert md.pick_baseline(run, [other], None) == (None, None)
+    own = replace(_run("own", created_at=1), branch="feature/y", base_branch="main")
+    assert md.pick_baseline(run, [other, own], None) == (own, None)
+
+
+def test_previous_run_without_stored_results_is_not_called_unchanged(
+    two_runs: list[CompletedRunView], tmp_path: Path
+) -> None:
+    import shutil
+
+    shutil.rmtree(tmp_path / str(two_runs[1].snapshot_dir))
+    summary = md.load_run_summary(cycle="unit")
+    assert summary is not None and summary.previous is not None
+    text = md.render_markdown(summary)
+    assert "No test changed outcome" not in text
+    assert "No test results are stored for the previous run" in text
