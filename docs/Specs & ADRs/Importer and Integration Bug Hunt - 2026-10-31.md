@@ -38,12 +38,12 @@ Status: **fixed** means merged or in an open fix PR (number given). **proposal**
 
 | # | Area | Finding | Status |
 |---|---|---|---|
-| M1 | All importers | One file with an unexpected field type (non-dict Jest/Playwright entries, a non-string `error.message`, RSpec `pending_message`, k6 `passes`, JUnit `time="inf"`) crashed the whole import. Every other file's results were lost: `testo ingest` exited 4 with a traceback, and the post-stage hook logged "import failed". | fixed #220 |
+| M1 | All importers | One file with an unexpected field type (non-dict Jest/Playwright entries, a non-string `error.message`, RSpec `pending_message`, k6 `passes`, JUnit `time="inf"`) crashed the whole import. Every other file's results were lost: `testo ingest` exited 4 with a traceback, and the post-stage hook logged "import failed". | fixed #232 |
 | M2 | TRX | A crashed test host (`RunInfo outcome="Error"`) with no results was recorded as passed. | fixed #217 |
 | M3 | JUnit | A `<testsuite errors="1">` with no failing `<testcase>` (a suite that failed to load) counted as passed. | fixed #217 |
 | M4 | Go | A test that hit `-timeout` was dropped, and only "(package failed)" showed. | fixed #217: the hung test is `broken` |
-| M5 | Robot | A failed suite teardown didn't fail the suite's tests. `output.xml` keeps each test's PASS, and `robot` applies "Parent suite teardown failed" when it reads the file, so `robot` exited 2 while Testosterone recorded 1 failure. | fixed #220 |
-| M6 | JUnit | A `<testsuite>` nested under a root `<testsuite>` was read as 0 tests, and UTF-16 XML (the Windows PowerShell default) was rejected. | fixed #220 |
+| M5 | Robot | A failed suite teardown didn't fail the suite's tests. `output.xml` keeps each test's PASS, and `robot` applies "Parent suite teardown failed" when it reads the file, so `robot` exited 2 while Testosterone recorded 1 failure. | fixed #232 |
+| M6 | JUnit | A `<testsuite>` nested under a root `<testsuite>` was read as 0 tests, and UTF-16 XML (the Windows PowerShell default) was rejected. | fixed #232 |
 | M7 | PR comment | With no target-branch run, the baseline fell back to the newest run on *any* branch. A push to main was compared with a feature branch, and a PR with another PR. | fixed #226 |
 | M8 | Action | When `testo run` stopped before recording a run (bad config), the Action published the **previous job's** run (restored from cache) as this job's summary, comment, annotations and alert. `summary_json` never carried the error. | fixed #226 |
 | M9 | Plugins | One reporter plugin that failed to import turned off *every* reporter, including Slack, Teams and Allure. `PluginError` is a `ValueError`, and the orchestrator swallowed it. | fixed #229 |
@@ -55,10 +55,10 @@ Status: **fixed** means merged or in an open fix PR (number given). **proposal**
 
 | # | Area | Finding | Status |
 |---|---|---|---|
-| L1 | JUnit | Maven Surefire reruns (`flakyFailure`, `rerunFailure`) passed without the flaky flag. | fixed #220 |
-| L2 | JUnit | A report whose name contains `-attachment` (`email-attachment-tests.xml`) was skipped as an Allure attachment. | fixed #220 |
-| L3 | JUnit | An HTML error page or other non-JUnit XML counted 0 tests with no warning. | fixed #220 |
-| L4 | JUnit | The `message` attribute wasn't capped (2 MB stored whole). | fixed #220 |
+| L1 | JUnit | Maven Surefire reruns (`flakyFailure`, `rerunFailure`) passed without the flaky flag. | fixed #232 |
+| L2 | JUnit | A report whose name contains `-attachment` (`email-attachment-tests.xml`) was skipped as an Allure attachment. | fixed #232 |
+| L3 | JUnit | An HTML error page or other non-JUnit XML counted 0 tests with no warning. | fixed #232 |
+| L4 | JUnit | The `message` attribute wasn't capped (2 MB stored whole). | fixed #232 |
 | L5 | Summary | "No test changed outcome" was shown when the previous run had no stored results. | fixed #226 |
 | L6 | Summary | The runner column wasn't escaped, a cycle name with `-->` ended the comment marker, and list items showed `\|`. | fixed #226 |
 | L7 | pytest JUnit | A test that passes and then errors in teardown is written as **two** `<testcase>` entries with the same name, so it counts as 2 tests (1 passed, 1 broken). | proposal P3 |
