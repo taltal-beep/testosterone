@@ -112,6 +112,7 @@ nav:
       - Changelog Policy: changelog_automation_policy.md
   - Decisions:
       - Specs & ADRs: Specs & ADRs/README.md
+      - Architecture Review: Specs & ADRs/Architecture Review - 2026-10-31.md
       - Affected Test Selection: Specs & ADRs/Affected Test Selection - 2026-10-30.md
       - Resource Pools and Leases: Specs & ADRs/Resource Pools and Leases - 2026-10-26.md
       - Resource Lifecycle Hooks: Specs & ADRs/Resource Lifecycle Hooks - 2026-10-26.md
