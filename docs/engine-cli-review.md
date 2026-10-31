@@ -25,6 +25,7 @@ Severity: **High** loses data or gives a wrong verdict silently, **Med** mislead
 | F8 | Low | A mistyped command or flag (`testo frobnicate`, `testo run --bogus`, `testo split --shards 0`) printed a Python traceback (`standalone_mode=False` let Click's `UsageError` escape). `testo run` with no `--cycle` said `cycle '<unspecified>' not found` | #214: usage line + error, exit 2 |
 | F9 | Low | A stage whose `target_repo` doesn't exist said `executable not found: /nonexistent` | #215: names the folder |
 | F10 | Low | Playwright JSON with a UTF-8 BOM, a report named `report[1].xml` (globbed), JUnit named `environment.xml` outside an Allure folder, `<testcase>` directly under `<testsuites>`, and one bad xcresult duration (dropped the whole file) | #218 (the rest after #220) |
+| F11 | Low | `testo run --workers 0` or `-3` was accepted. `testo users add` with a bad name or an existing user asked for the password twice and then said no (a bare `Abort` traceback without a TTY). | #215, #228 |
 
 ## Open: proposals, not built
 
@@ -41,12 +42,12 @@ Ranked by impact. Each is bigger than a safe one-line fix or changes behaviour p
 | P7 | Low | `extra_env` values go through `str()`: `null` becomes `"None"`, `true` becomes `"True"`, a list becomes `"[1, 2]"`. | Reject lists and mappings, map `null` to `""` and booleans to `"true"` / `"false"`. |
 | P8 | Low | `if:` misparses an env value containing `==` (`${env:X}` with `X=a==b` is False), and silently evaluates `and` / `or`, which it doesn't support. | Interpolate after splitting on the operator, and reject expressions the grammar doesn't have. |
 | P9 | Low | `testo split --index N` prints nothing and exits 0 for an empty shard, so `pytest $(testo split ...)` runs **every** test on that shard. | Exit 1 with "nothing to run on this shard" (the command already uses 1 for "nothing to split"), or document a `|| true` pattern. |
-| P10 | Low | `testo badge` / `testo flaky` on an unknown cycle say "no runs" (badge exits 0). | Say "unknown cycle", exit 2, like `testo cycles show`. |
+| P10 | Low | `testo badge` / `testo flaky` on a misspelt cycle say "no runs" (badge exits 0), the same as a real cycle before its first run. | Add "(no cycle by that name has any runs; known: ...)" to the message. Keep exit 0, since a badge job before the first run shouldn't fail. |
 | P11 | Low | Engine runs store `start_time` as the persist (finish) time and `end_time` as NULL, so ordering by start is really by finish. | Pass the plan's real start and end into `RunRecord`. |
 | P12 | Low | Allure attachments that are symlinks are followed, so a results folder can copy `/etc/hostname` into the artifacts. Local only; server uploads are plain bytes. | Refuse attachments whose resolved path leaves the results folder, as report files already are. |
 | P13 | Low | Windows paths in Jest reports (`C:\ci\repo\src\a.test.js`) aren't made relative on Linux, so a CI report and a local one give different test ids. | Treat drive-letter and backslash paths as absolute when relativising. |
 | P14 | Low | Whitespace before `<?xml` makes a report unreadable ("XML declaration not at start"). | Strip leading whitespace before parsing. |
-| P15 | Low | `testo users add ""` asks for the password before checking the name. | Validate the name first. |
+| P16 | Low | `testo ingest --server not-a-url` (and `split`, `lease`) exits 3 "could not reach", as if the server were down. | Check the URL has `http(s)://` and exit 2 for a malformed one. |
 
 ## Suspicions (not reproduced)
 
