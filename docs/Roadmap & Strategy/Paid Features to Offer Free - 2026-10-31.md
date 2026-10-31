@@ -15,7 +15,7 @@ Effort uses the same scale: **S** is under a day, **M** is one to three days, **
 
 ## How it was checked
 
-Pricing pages and docs, read on 2026-10-31: ReportPortal (SaaS pricing, features, quality gates), Allure TestOps (server pricing), Qualflare (plans), BuildPulse (via a comparison page; its own pricing page wasn't reachable), Currents, Datadog Test Optimization (via a comparison page), Trunk (billing), LambdaTest (now TestMu AI), BrowserStack Test Reporting & Analytics, TestRail, Testmo and Buildkite Test Engine. Prices change often and several pages didn't say which plan a feature needs; where a tier is uncertain, the table says so. Treat prices as rough.
+Pricing pages and docs, read on 2026-10-31: ReportPortal (SaaS pricing, features, quality gates), Allure TestOps (server pricing), Qualflare (plans), BuildPulse (prices from a comparison page, not BuildPulse's own), Currents, Datadog Test Optimization (via a comparison page), Trunk (billing), LambdaTest (now TestMu AI), BrowserStack Test Reporting & Analytics, TestRail, Testmo and Buildkite Test Engine. Prices change often and several pages didn't say which plan a feature needs; where a tier is uncertain, the table says so. Treat prices as rough.
 
 ## Where the paywalls are
 
