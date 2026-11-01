@@ -20,7 +20,10 @@ const PROVIDER_DEFAULTS: Record<Provider, { model: string; envVar: string; timeo
     envVar: "OPENAI_COMPATIBLE_API_KEY",
     timeoutS: 60,
     maxOutputTokens: 2000
-  }
+  },
+  // The local Claude Code CLI (`claude -p`) with its own login: no key. It starts a
+  // process per summary, so it needs a longer timeout than an HTTP call.
+  claude_code: { model: "sonnet", envVar: "", timeoutS: 120, maxOutputTokens: 300 }
 };
 
 // Services that speak OpenAI's chat-completions API. The first is the default.
@@ -42,6 +45,15 @@ const COMPATIBLE_PRESETS = [
 ] as const;
 
 function describeStatus(status: AiConfigStatus): string {
+  if (status.provider === "claude_code") {
+    if (!status.configured) {
+      return "Not configured: the claude command was not found on the API's PATH. Install Claude Code and log in, or set TESTO_CLAUDE_CLI to its path, then restart the API.";
+    }
+    if (!status.enabled) {
+      return "Claude Code found, but AI failure summaries are switched off.";
+    }
+    return "Configured: failed runs can generate an AI summary with your Claude Code login.";
+  }
   if (status.provider === "openai_compatible") {
     if (!status.configured) {
       return "Not configured: an OpenAI-compatible provider needs a base URL.";
@@ -169,8 +181,16 @@ export function AIIntegrationSettingsPage() {
             <option value="openai">OpenAI</option>
             <option value="anthropic">Anthropic</option>
             <option value="openai_compatible">OpenAI-compatible (Groq, OpenRouter, Gemini, Ollama)</option>
+            <option value="claude_code">Claude Code on this machine (your login, no key)</option>
           </select>
         </label>
+        {effectiveForm.provider === "claude_code" ? (
+          <p className="text-xs text-ink-400">
+            Runs <code>claude -p</code> on the machine where the API runs, with no tools, so it only reads the failure
+            text it is given. Meant for local use (<code>testo ui</code>). Model can be an alias such as sonnet or haiku,
+            or empty for Claude Code's default.
+          </p>
+        ) : null}
         {effectiveForm.provider === "openai_compatible" ? (
           <>
             <label className={labelClass}>
@@ -212,40 +232,44 @@ export function AIIntegrationSettingsPage() {
             onChange={(event) => setFormState((prev) => ({ ...prev, model: event.target.value }))}
           />
         </label>
-        <label className={labelClass}>
-          API key source
-          <select
-            className={inputClass}
-            value={effectiveForm.api_key_source}
-            onChange={(event) =>
-              setFormState((prev) => ({ ...prev, api_key_source: event.target.value as "env" | "runtime_input" }))
-            }
-          >
-            <option value="env">Environment variable</option>
-            <option value="runtime_input">Runtime input</option>
-          </select>
-        </label>
-        {effectiveForm.api_key_source === "env" ? (
-          <label className={labelClass}>
-            Name of the environment variable holding the key (not the key itself)
-            <input
-              className={inputClass}
-              value={effectiveForm.api_key_env_var ?? ""}
-              placeholder={PROVIDER_DEFAULTS[effectiveForm.provider ?? "openai"].envVar}
-              onChange={(event) => setFormState((prev) => ({ ...prev, api_key_env_var: event.target.value || null }))}
-            />
-          </label>
-        ) : (
-          <label className={labelClass}>
-            API token
-            <input
-              type="password"
-              className={inputClass}
-              value={apiKeyInput}
-              placeholder="Enter token (not persisted to disk)"
-              onChange={(event) => setApiKeyInput(event.target.value)}
-            />
-          </label>
+        {effectiveForm.provider === "claude_code" ? null : (
+          <>
+            <label className={labelClass}>
+              API key source
+              <select
+                className={inputClass}
+                value={effectiveForm.api_key_source}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, api_key_source: event.target.value as "env" | "runtime_input" }))
+                }
+              >
+                <option value="env">Environment variable</option>
+                <option value="runtime_input">Runtime input</option>
+              </select>
+            </label>
+            {effectiveForm.api_key_source === "env" ? (
+              <label className={labelClass}>
+                Name of the environment variable holding the key (not the key itself)
+                <input
+                  className={inputClass}
+                  value={effectiveForm.api_key_env_var ?? ""}
+                  placeholder={PROVIDER_DEFAULTS[effectiveForm.provider ?? "openai"].envVar}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, api_key_env_var: event.target.value || null }))}
+                />
+              </label>
+            ) : (
+              <label className={labelClass}>
+                API token
+                <input
+                  type="password"
+                  className={inputClass}
+                  value={apiKeyInput}
+                  placeholder="Enter token (not persisted to disk)"
+                  onChange={(event) => setApiKeyInput(event.target.value)}
+                />
+              </label>
+            )}
+          </>
         )}
         <div>
           <button

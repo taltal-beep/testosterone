@@ -13,6 +13,8 @@ _DEFAULT_KEY_ENV_VARS: dict[AiProviderName, str] = {
     "openai": "OPENAI_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
     "openai_compatible": "OPENAI_COMPATIBLE_API_KEY",
+    # Uses the local Claude Code CLI's own login: no key, so no variable.
+    "claude_code": "",
 }
 
 _ENV_VAR_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -21,6 +23,10 @@ _ENV_VAR_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 # Ollama, or a hosted service such as Groq, OpenRouter or Gemini. A local server needs
 # no key, so the key is optional for this provider.
 OPENAI_COMPATIBLE: AiProviderName = "openai_compatible"
+
+# The locally installed Claude Code CLI (``claude -p``), signed in with the person's own
+# account. Opt-in, for local runs; it takes no API key and no base URL.
+CLAUDE_CODE: AiProviderName = "claude_code"
 
 
 @dataclass(frozen=True)
@@ -48,7 +54,11 @@ class AiProviderConfig:
             raise ValueError("max_input_chars must be greater than zero.")
         if self.max_output_tokens <= 0:
             raise ValueError("max_output_tokens must be greater than zero.")
-        if self.api_key_source == "env" and not self.resolved_api_key_env_var():
+        if (
+            self.api_key_source == "env"
+            and self.provider != CLAUDE_CODE
+            and not self.resolved_api_key_env_var()
+        ):
             raise ValueError("api_key_env_var must be provided when api_key_source=env.")
         if self.api_key_env_var and not _ENV_VAR_NAME.fullmatch(self.api_key_env_var):
             # Catches a key pasted into the name field, which would then be shown back in clear.
@@ -62,6 +72,8 @@ class AiProviderConfig:
                 raise ValueError("base_url must start with http:// or https://.")
 
     def resolve_api_key(self, *, runtime_api_key: str | None = None) -> str:
+        if self.provider == CLAUDE_CODE:
+            return ""
         if self.api_key_source == "runtime_input":
             if runtime_api_key:
                 return runtime_api_key
