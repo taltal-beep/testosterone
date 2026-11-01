@@ -38,6 +38,10 @@ class StageResult:
     quarantined: tuple[str, ...] = ()
     # The process's own returncode when quarantine waived it (``returncode`` is then 0).
     waived_returncode: int | None = None
+    # A failed stage's stack overflow or crash, from its output or exit status
+    # (testo_core/engine/crash_signatures.py): "stack_overflow" | "crash", and the evidence line.
+    crash_kind: str | None = None
+    crash_detail: str | None = None
 
 
 @dataclass(frozen=True)

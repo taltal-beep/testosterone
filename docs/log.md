@@ -137,6 +137,9 @@ Added [OpenTelemetry Export - 2026-10-30](Specs%20&%20ADRs/OpenTelemetry%20Expor
 
 Added [Architecture Review - 2026-10-31](Specs%20&%20ADRs/Architecture%20Review%20-%202026-10-31.md) to Specs & ADRs (ranked findings on the read side, migrations and layering, with proposals), linked from its README, the Index and the docs site menu.
 
+## 2026-10-31: crash detection
+
+Added [Crash Detection - 2026-10-31](Specs%20&%20ADRs/Crash%20Detection%20-%202026-10-31.md) to Specs & ADRs (naming stack overflows and crashes on failing stages and tests), linked from its README and the docs site menu.
 ## 2026-10-31: feature gaps and quick wins
 
 Added [Feature Gaps and Quick Wins - 2026-10-31](Roadmap%20&%20Strategy/Feature%20Gaps%20and%20Quick%20Wins%20-%202026-10-31.md) to Roadmap & Strategy (competitor research and a new-user pass, ranked with effort), linked from the Index, the Product Roadmap and the docs site menu.
@@ -145,6 +148,9 @@ Added [Feature Gaps and Quick Wins - 2026-10-31](Roadmap%20&%20Strategy/Feature%
 
 Added [UI Design Review - 2026-10-31](Specs%20&%20ADRs/UI%20Design%20Review%20-%202026-10-31.md) to Specs & ADRs with annotated screenshots under `assets/ui-review-2026-10-31/`, linked from its README, the Index and the docs site menu.
 
+## 2026-10-31: engineering health review
+
+Added [Engineering Health Review - 2026-10-31](Specs%20&%20ADRs/Engineering%20Health%20Review%20-%202026-10-31.md) to Specs & ADRs (tests, CI, docs accuracy, dependencies), linked from its README, the Index and the docs site menu.
 ## 2026-10-31: engine and CLI bug hunt
 
 Added [Engine and CLI Bug Hunt](engine-cli-review.md) (reproduced bugs, fixes, ranked proposals), linked from the [Index](Index.md) and the docs site menu.

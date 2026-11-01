@@ -124,3 +124,32 @@ def test_failure_metadata_falls_back_to_output_tail_and_flags_timeouts(tmp_path:
     assert md["error_message"] == md["log_tail"]
     assert md["log_tail"].startswith("still running")
     assert "abcdefghijklmnop" not in md["log_tail"]  # redacted before it is stored
+
+
+def test_failure_metadata_names_a_crashed_stage_first(tmp_path: Path) -> None:
+    results = tmp_path / "unit" / "allure-results" / "pytest"
+    _write_result(
+        results,
+        "a-result.json",
+        {
+            "name": "test_deep",
+            "status": "broken",
+            "statusDetails": {"message": "boom", "trace": "java.lang.StackOverflowError\n\tat A.a"},
+        },
+    )
+    tested = _stage(tmp_path, "unit", returncode=1)
+    crashed = StageResult(
+        **{
+            **vars(_stage(tmp_path, "native", returncode=-11)),
+            "crash_kind": "crash",
+            "crash_detail": "Crashed: process killed by SIGSEGV (exit -11)",
+        }
+    )
+
+    cases, _ = failed_cases_from_allure(results_dir=results)
+    assert cases[0]["crash"] == "Stack overflow (Java/Kotlin): java.lang.StackOverflowError"
+    out = failure_metadata(_plan(tested, crashed, exit_code=EngineExitCode.DOMAIN_FAILURE))
+    assert out["crash"] == "Crashed: process killed by SIGSEGV (exit -11)"
+    # Without a crashed stage, the first crashed test is the evidence.
+    out = failure_metadata(_plan(tested, exit_code=EngineExitCode.DOMAIN_FAILURE))
+    assert out["crash"].startswith("Stack overflow (Java/Kotlin)")

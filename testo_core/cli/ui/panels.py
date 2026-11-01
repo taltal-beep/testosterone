@@ -32,6 +32,8 @@ class StagePanelData:
     error: str | None = None
     # Failed tests a ``quarantine:`` rule matched (they don't fail the stage on their own).
     quarantined: tuple[str, ...] = ()
+    # "Stack overflow (Python): RecursionError: ..." when crash detection named the failure.
+    crash: str | None = None
 
 
 def _status_markup(data: StagePanelData) -> str:
@@ -61,6 +63,8 @@ def render_stage_panel(console: Console, data: StagePanelData, *, tail_max_lines
         )
     if data.error:
         rows.append(Text.from_markup("[fail]error:[/]    ").append(data.error))
+    if data.crash:
+        rows.append(Text.from_markup("[fail]crash:[/]    ").append(data.crash))
 
     tail = data.output_tail.rstrip("\n")
     if tail:

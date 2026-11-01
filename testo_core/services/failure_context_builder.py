@@ -74,6 +74,10 @@ def build_failure_context(
         f"broken={run.broken}\n"
         f"health_pct={run.health_pct}\n"
     )
+    # Crash detection (engine/crash_signatures.py) already named a stack overflow or crash.
+    crash = _redacted_context_text(metadata.get("crash"))
+    if crash:
+        summary_block += f"crash_detected={crash[:400]}\n"
     raw_log = _redacted_context_text(metadata.get("error_message") or metadata.get("error"))
     raw_trace = _redacted_context_text(
         metadata.get("traceback") or metadata.get("stack_trace") or metadata.get("audit_json")

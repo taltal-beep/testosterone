@@ -21,6 +21,8 @@ def main() -> int:
     parser.add_argument("--stderr-text", default=None)
     parser.add_argument("--sleep", type=float, default=0.0)
     parser.add_argument("--print-env", action="append", default=[])
+    # Die of this signal (e.g. SIGSEGV) instead of exiting, like a crashed native test.
+    parser.add_argument("--kill-with", default=None)
     args = parser.parse_args()
 
     print(args.text, flush=True)
@@ -30,6 +32,10 @@ def main() -> int:
         print(args.stderr_text, file=sys.stderr, flush=True)
     if args.sleep:
         time.sleep(args.sleep)
+    if args.kill_with:
+        import signal
+
+        os.kill(os.getpid(), getattr(signal, args.kill_with))
     return args.exit_code
 
 

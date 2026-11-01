@@ -1623,6 +1623,8 @@ export interface components {
         };
         /** FailingTestItem */
         FailingTestItem: {
+            /** Crash Kind */
+            crash_kind: string | null;
             /** Duration Ms */
             duration_ms: number | null;
             /** Failing Runs */
@@ -2386,6 +2388,10 @@ export interface components {
         StageHealth: {
             /** Broken */
             broken: number | null;
+            /** Crash Detail */
+            crash_detail: string | null;
+            /** Crash Kind */
+            crash_kind: string | null;
             /** Failed */
             failed: number | null;
             /** Framework */
