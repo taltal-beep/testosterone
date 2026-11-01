@@ -320,6 +320,31 @@ Exit `0` when sent or when there is nothing to report, `2` for a bad flag, a mis
 
 ---
 
+## `testo issues sync`
+
+Open one GitHub issue for each flaky test of a cycle, assigned to its CODEOWNERS when asked, and close it once the test is stable. The same pass runs on its own after every recorded run (`testo run`, `testo ingest`, the team server's ingest and runs) when `TESTO_ISSUES=github` is set; this command runs it now and prints what it did.
+
+```bash
+export TESTO_GITHUB_TOKEN=...              # from a secret, never on the command line
+testo issues sync --cycle nightly --dry-run   # what it would open and close, changes nothing
+testo issues sync --cycle nightly             # every flaky test without an open issue
+testo issues sync --cycle nightly --new --repo acme/shop
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--cycle` | required | Cycle whose flaky tests to sync |
+| `--dry-run` | off | Print what would be opened or closed; only reads issues (works without a token on a public repository) |
+| `--new` | off | Open issues only for tests the cycle's latest run made flaky ([`testo flaky --new`](#testo-flaky)), as the run hook does. Without it, every flaky test in the last 20 runs is a candidate |
+| `--repo` | `TESTO_ISSUES_REPO`, else the repository the runs recorded | `owner/name` on GitHub (or GitHub Enterprise Server through `GITHUB_API_URL`) |
+
+- **Open.** Title `Flaky test: <name> (<cycle>)`, labels `TESTO_ISSUES_LABELS` (default `flaky-test`). The body has the pass/fail counts and flip history, the last failure message in a code block, the CODEOWNERS owners, a link to the test's page when `TESTO_UI_URL` is set, and a hidden `<!-- testo-flaky:<cycle>:<test key> -->` marker. A test with an open issue that has its marker, or the same title (issues the GitHub Action's `flaky-issues` opened), gets no second one. At most 5 issues are opened per pass; the rest wait for the next one. With `TESTO_ISSUES_ASSIGN=1` CODEOWNERS `@user` owners are assigned (teams and emails can't be); if GitHub rejects an assignee the issue is opened unassigned.
+- **Close.** An open issue with the cycle's marker is commented on and closed as completed when its test is no longer flaky in the last 20 runs and passed each of its last `TESTO_ISSUES_CLOSE_AFTER` runs (default `10`). Issues without the marker are never touched.
+
+Exit `0` when the pass ran, `2` with no repository or (without `--dry-run`) no token, `3` when GitHub refused a request or couldn't be reached. After a run the pass is best-effort: an error is one `testo issues:` warning line on stderr and never changes the run's exit code. The token needs `issues: write` ([CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md#github-action)). Design: [Flaky Test Issues - 2026-11-01](../Specs%20&%20ADRs/Flaky%20Test%20Issues%20-%202026-11-01.md).
+
+---
+
 ## `testo otel`
 
 Send a recorded run to an OpenTelemetry collector as one trace: a span for the run, one per stage and one per test, with the tests' real start and stop times. Failed tests, red stages and red runs are error spans. Datadog, Grafana Tempo, Honeycomb, Jaeger and any other OTLP backend show it. Needs `pip install 'testo-core[otel]'`.
@@ -618,6 +643,14 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `INFLUXDB_URL`, `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, `INFLUXDB_BUCKET` | Push run KPIs to InfluxDB after each run |
 | `PROMETHEUS_PUSHGATEWAY_URL`, `PROMETHEUS_JOB_NAME` | Push run KPIs to a Prometheus Pushgateway after each run |
 | `TESTO_SLACK_WEBHOOK_URL`, `TESTO_TEAMS_WEBHOOK_URL` | Webhooks for `testo notify` and the `slack` / `teams` reporters |
+| `TESTO_ISSUES` | `github`: after every recorded run, open an issue per newly flaky test and close fixed ones ([`testo issues sync`](#testo-issues-sync)) |
+| `TESTO_GITHUB_TOKEN`, `GITHUB_TOKEN` | Token for those issues (`issues: write`); the first one set wins |
+| `TESTO_ISSUES_REPO` | `owner/name` for the issues, instead of the repository the runs recorded |
+| `TESTO_ISSUES_LABELS` | Comma-separated labels on the issues (default `flaky-test`; empty for none) |
+| `TESTO_ISSUES_ASSIGN` | `1`: assign the test's CODEOWNERS users |
+| `TESTO_ISSUES_CLOSE_AFTER` | Passing runs in a row before an issue is closed (default `10`) |
+| `TESTO_UI_URL` | Base URL of the web UI, for the test page link in issues |
+| `GITHUB_API_URL` | GitHub API for issues (default `https://api.github.com`; GitHub Enterprise Server: `https://<host>/api/v3`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_SERVICE_NAME` | Where `testo otel` and the `otel` reporter send traces (the standard OpenTelemetry variables, `*_TRACES_*` forms too) |
 | `TESTO_SERVER_URL`, `TESTO_API_TOKEN` | Team server for `testo lease` (and `pytest --testo-server`) |
 | `TESTO_LEASE_DB_URL` | Database for local leases when it isn't the run-history one |

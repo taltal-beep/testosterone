@@ -55,6 +55,21 @@ After a persisted run the action renders it with `testo report markdown` and wri
 
 The action also prints failing tests as annotations on the diff (`annotations`, default on, no permission needed; [`testo report annotations`](../CLI%20Commands/Command%20Reference.md#subcommands)). Pass `slack-webhook: ${{ secrets.SLACK_WEBHOOK_URL }}` and/or `teams-webhook` to get a chat alert ([`testo notify`](../CLI%20Commands/Command%20Reference.md#testo-notify), `notify-when` default `failure`). `flaky-issues: "true"` opens one issue (label `flaky-test`) per test the run made flaky and needs `issues: write`. All three are best-effort like the summary. Design: [Alerts Where Developers Look - 2026-10-22](../Specs%20&%20ADRs/Alerts%20Where%20Developers%20Look%20-%202026-10-22.md).
 
+Issues that also close themselves come from `testo` itself: set `TESTO_ISSUES: github` in the step's `env:`; the action already passes its `github-token` input as `TESTO_GITHUB_TOKEN` (outside the action, set `GITHUB_TOKEN: ${{ github.token }}`, or run [`testo issues sync`](../CLI%20Commands/Command%20Reference.md#testo-issues-sync) as a later step). Every recorded run then opens one issue per test it made flaky, found again by a hidden marker so there is never a duplicate, and closes it once the test has passed its last `TESTO_ISSUES_CLOSE_AFTER` runs. The job needs `permissions: issues: write`; without it GitHub answers 403 and the run prints one `testo issues:` warning, nothing more. It skips tests whose open issue the action's `flaky-issues` already made, so the two can be on together. Design: [Flaky Test Issues - 2026-11-01](../Specs%20&%20ADRs/Flaky%20Test%20Issues%20-%202026-11-01.md).
+
+```yaml
+permissions:
+  contents: read
+  issues: write               # TESTO_ISSUES=github or flaky-issues
+steps:
+  - uses: taltal-beep/testosterone@v1
+    env:
+      TESTO_ISSUES: github
+      TESTO_ISSUES_ASSIGN: "1"
+    with:
+      cycle: nightly
+```
+
 ## GitLab include template
 
 Template lives at `ci/gitlab/testo.gitlab-ci.yml`.

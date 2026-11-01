@@ -168,3 +168,7 @@ Added [Engine Fixes - 2026-11-01](Specs%20&%20ADRs/Engine%20Fixes%20-%202026-11-
 ## 2026-11-01: better flaky signal
 
 Added [Better Flaky Signal - 2026-11-01](Specs%20&%20ADRs/Better%20Flaky%20Signal%20-%202026-11-01.md) to Specs & ADRs (gap G1), linked from its README, the Index and the docs site menu.
+
+## 2026-11-01: flaky test issues
+
+Added [Flaky Test Issues - 2026-11-01](Specs%20&%20ADRs/Flaky%20Test%20Issues%20-%202026-11-01.md) to Specs & ADRs (`TESTO_ISSUES=github`, `testo issues sync`), linked from its README and the docs site menu.
