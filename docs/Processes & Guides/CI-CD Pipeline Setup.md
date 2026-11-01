@@ -7,6 +7,8 @@ updated: 2026-11-01
 
 # CI Integrations
 
+Just want a snippet to paste? [Setup Snippets](Setup%20Snippets.md) has one per runner for GitHub Actions, GitLab CI, Jenkins and CircleCI, and `testo init --ci <system>` writes it for you.
+
 Pre-packaged CI wrappers keep orchestration in `testo_core`: they install `testo-core`, run `testo run --ci`, and keep its machine output.
 
 ## Architecture boundary

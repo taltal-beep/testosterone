@@ -496,7 +496,9 @@ Cypress is found but left out (it needs the app running first); the command says
 What it writes, in the project folder (`--dir`, default here):
 
 - **`testosterone.yaml`**: one cycle, named after the folder unless `--cycle` (the same default as `pytest --testo`), with a stage per runner.
-- **`.github/workflows/testosterone.yml`** (`--ci github`): checkout, each language's setup and dependency install (from `requirements*.txt` or the `pyproject.toml` test extra, the Node lockfile's package manager and `.nvmrc`, `go.mod`, ...), then the [GitHub Action](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md) with `comment-on-pr: "true"`. With `--ci auto` (the default) it is skipped when the project already uses GitLab CI, Jenkins or CircleCI and has no `.github` folder; `--ci none` never writes one.
+- **The CI file** (`--ci`; `auto`, the default, picks the CI the project already uses, else GitHub Actions; `none` writes none):
+  - `github`: `.github/workflows/testosterone.yml`: checkout, each language's setup and dependency install (from `requirements*.txt` or the `pyproject.toml` test extra, the Node lockfile's package manager and `.nvmrc`, `go.mod`, ...), then the [GitHub Action](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md) running the cycle with `comment-on-pr: "true"`.
+  - `gitlab`, `jenkins`, `circleci`: `.gitlab-ci.yml`, `Jenkinsfile` or `.circleci/config.yml` that run the tests and record them with `testo ingest`, as on [Setup Snippets](../Processes%20&%20Guides/Setup%20Snippets.md). When that file exists it is left alone: the new one goes next to it (`.gitlab/testosterone.gitlab-ci.yml`, `Jenkinsfile.testosterone`, `.circleci/testosterone.yml`) and the command says how to wire it in. With several runners, GitLab and CircleCI get a job per runner, each recording its own cycle (`<cycle>-<runner>`).
 - **`.gitignore`**: `testo_history.db`, `artifacts/`, `.testo/` and `test-results/`, the ones not ignored yet.
 
 A file that exists is kept unless `--force`; a kept `testosterone.yaml` with one cycle gives the workflow its cycle name.
