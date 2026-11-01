@@ -117,10 +117,12 @@ def _pct(part: int, whole: int) -> float | None:
 
 def _combined_rate(rows: list[run_digest.CycleDigest], *, prev: bool) -> float | None:
     """Pass rate over every cycle, weighted by runs (each cycle's rate is per test)."""
-    pairs = [
-        ((d.prev_pass_rate if prev else d.pass_rate), d.prev_runs if prev else d.runs) for d in rows
-    ]
-    pairs = [(rate, n) for rate, n in pairs if rate is not None and n]
+    pairs: list[tuple[float, int]] = []
+    for d in rows:
+        rate = d.prev_pass_rate if prev else d.pass_rate
+        runs = d.prev_runs if prev else d.runs
+        if rate is not None and runs:
+            pairs.append((rate, runs))
     total = sum(n for _, n in pairs)
     return round(sum(rate * n for rate, n in pairs) / total, 1) if total else None
 
@@ -227,7 +229,8 @@ def build_report(
     health_by_cycle = {c.cycle: c.score for c in health.by_cycle}
     if len(wanted) > 1:
         scores = [health_by_cycle[c] for c in wanted if health_by_cycle.get(c) is not None]
-        score: int | None = round(sum(scores) / len(scores)) if scores else None  # type: ignore[arg-type]
+        known = [s for s in scores if s is not None]
+        score: int | None = round(sum(known) / len(known)) if known else None
     else:
         score = health.score
 

@@ -7320,6 +7320,118 @@
         ]
       }
     },
+    "/api/v1/report/export": {
+      "get": {
+        "description": "The report as a file: the same as ``testo export FORMAT`` on this server's history.\n\nPDF and PNG need the ``export`` extra and Chromium on the server; PowerPoint and\nExcel need the ``export`` extra; HTML needs the built UI (bundled in released wheels).",
+        "operationId": "export_report_api_v1_report_export_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "pdf",
+              "enum": [
+                "pdf",
+                "png",
+                "html",
+                "pptx",
+                "xlsx",
+                "csv",
+                "json"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "week",
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "quarter"
+              ],
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cycle"
+            }
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Title"
+            }
+          },
+          {
+            "in": "query",
+            "name": "brand",
+            "required": false,
+            "schema": {
+              "default": "Testosterone",
+              "maxLength": 60,
+              "title": "Brand",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The report file, as an attachment."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "501": {
+            "description": "This server can't make that format (the message says what to install)."
+          }
+        },
+        "summary": "Export Report",
+        "tags": [
+          "report"
+        ]
+      }
+    },
     "/api/v1/resources": {
       "get": {
         "description": "Every pool the server knows, with each key's holder and how many requests wait.",

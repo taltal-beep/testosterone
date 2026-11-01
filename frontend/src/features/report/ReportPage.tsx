@@ -3,7 +3,9 @@ import { useSearchParams } from "react-router-dom";
 
 import { Button, EmptyState, PageHeader, Spinner } from "../../components/ui";
 import { apiClient, type ReportPeriod } from "../../lib/api-client";
+import { IS_STATIC_BUILD } from "../../lib/static-backend";
 import { CyclePicker } from "../health/ProjectHealthPage";
+import { DownloadMenu } from "./DownloadMenu";
 import { ReportDocument } from "./ReportDocument";
 
 const PERIODS: { value: ReportPeriod; label: string }[] = [
@@ -41,11 +43,14 @@ export function ReportPage() {
       <div className="print:hidden">
         <PageHeader
           title="Report"
-          subtitle="A summary of a period for managers and stakeholders: print it, save it as a PDF, or copy any section."
+          subtitle="A summary of a period for managers and stakeholders: save it as a PDF, download slides or a spreadsheet, or copy any section."
           actions={
-            <Button onClick={() => window.print()} disabled={!query.data}>
-              Save as PDF
-            </Button>
+            <>
+              {IS_STATIC_BUILD ? null : <DownloadMenu period={period} cycle={cycle} />}
+              <Button onClick={() => window.print()} disabled={!query.data}>
+                Save as PDF
+              </Button>
+            </>
           }
         />
         <div className="mb-6 flex flex-wrap items-center gap-4">

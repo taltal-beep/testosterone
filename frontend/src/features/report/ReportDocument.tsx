@@ -31,7 +31,7 @@ export function periodRange(report: ManagerReport): string {
 }
 
 /** A titled block of the report with its own Copy menu; kept on one printed page when it fits. */
-function Section({ title, children, note }: { title: string; children: ReactNode; note?: string }) {
+function Section({ title, children, note, copy = true }: { title: string; children: ReactNode; note?: string; copy?: boolean }) {
   const ref = useRef<HTMLElement>(null);
   const anchor = cardAnchor(title);
   return (
@@ -46,7 +46,7 @@ function Section({ title, children, note }: { title: string; children: ReactNode
               {note}
             </span>
           ) : null}
-          <CopyMenu target={ref} label={title} anchor={anchor} />
+          {copy ? <CopyMenu target={ref} label={title} anchor={anchor} /> : null}
         </div>
       </div>
       {children}
@@ -108,7 +108,7 @@ function TestList({ items, empty }: { items: ManagerReport["still_failing"]; emp
  * fixed colours. The same component is what `testo export` renders to PDF,
  * PNG and HTML, so the screen, the printout and the files match.
  */
-export function ReportDocument({ report, brand = "Testosterone" }: { report: ManagerReport; brand?: string }) {
+export function ReportDocument({ report, brand = "Testosterone", copy = true }: { report: ManagerReport; brand?: string; copy?: boolean }) {
   const k = report.kpis;
   const rate = delta(k.pass_rate, k.prev_pass_rate);
   const cov = delta(k.coverage_pct, k.prev_coverage_pct);
@@ -176,7 +176,7 @@ export function ReportDocument({ report, brand = "Testosterone" }: { report: Man
         )}
       </section>
 
-      <Section title="Summary">
+      <Section copy={copy} title="Summary">
         <ul className="list-disc space-y-1 pl-5 text-[15px] leading-relaxed" style={{ color: PAPER.ink }}>
           {report.summary.map((line) => (
             <li key={line}>{line}</li>
@@ -185,15 +185,15 @@ export function ReportDocument({ report, brand = "Testosterone" }: { report: Man
       </Section>
 
       <div className="grid gap-x-8 md:grid-cols-2">
-        <Section title="Pass rate by day">
+        <Section copy={copy} title="Pass rate by day">
           <PassRateChart points={report.trend} />
         </Section>
-        <Section title="Runs by day" note="green · red">
+        <Section copy={copy} title="Runs by day" note="green · red">
           <RunsChart points={report.trend} />
         </Section>
       </div>
 
-      <Section title="Cycles">
+      <Section copy={copy} title="Cycles">
         {report.cycles.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
@@ -243,27 +243,27 @@ export function ReportDocument({ report, brand = "Testosterone" }: { report: Man
         )}
       </Section>
 
-      <Section title="Still failing" note={report.still_failing.length ? `${report.still_failing.length} shown` : undefined}>
+      <Section copy={copy} title="Still failing" note={report.still_failing.length ? `${report.still_failing.length} shown` : undefined}>
         <TestList items={report.still_failing} empty="Nothing is failing in the latest runs." />
       </Section>
 
       <div className="grid gap-x-8 md:grid-cols-2">
-        <Section title="Turned flaky">
+        <Section copy={copy} title="Turned flaky">
           <TestList items={report.newly_flaky} empty="No test turned flaky." />
         </Section>
-        <Section title="Fixed">
+        <Section copy={copy} title="Fixed">
           <TestList items={report.fixed} empty="No test was fixed this period." />
         </Section>
       </div>
 
       {report.slower.length ? (
-        <Section title="Got slower">
+        <Section copy={copy} title="Got slower">
           <TestList items={report.slower} empty="" />
         </Section>
       ) : null}
 
       {report.findings.length ? (
-        <Section title="What to fix first">
+        <Section copy={copy} title="What to fix first">
           <ol className="list-decimal space-y-1.5 pl-5 text-sm">
             {report.findings.map((f) => (
               <li key={`${f.cycle}:${f.title}:${f.detail}`}>

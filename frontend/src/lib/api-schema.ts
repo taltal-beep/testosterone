@@ -583,6 +583,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/report/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Report
+         * @description The report as a file: the same as ``testo export FORMAT`` on this server's history.
+         *
+         *     PDF and PNG need the ``export`` extra and Chromium on the server; PowerPoint and
+         *     Excel need the ``export`` extra; HTML needs the built UI (bundled in released wheels).
+         */
+        get: operations["export_report_api_v1_report_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/resources": {
         parameters: {
             query?: never;
@@ -3847,6 +3870,46 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    export_report_api_v1_report_export_get: {
+        parameters: {
+            query?: {
+                format?: "pdf" | "png" | "html" | "pptx" | "xlsx" | "csv" | "json";
+                period?: "day" | "week" | "month" | "quarter";
+                cycle?: string[] | null;
+                title?: string | null;
+                brand?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report file, as an attachment. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description This server can't make that format (the message says what to install). */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

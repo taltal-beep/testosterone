@@ -81,3 +81,37 @@ describe("ReportPage", () => {
     expect(print).toHaveBeenCalled();
   });
 });
+
+describe("ReportPage downloads", () => {
+  it("downloads the report as a file from the server", async () => {
+    const blob = new Blob(["pptx"]);
+    const fetchMock = vi.fn((url: string) => {
+      const u = String(url);
+      if (u.includes("/report/export"))
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: new Headers({ "Content-Disposition": 'attachment; filename="weekly-test-report-2025-11-01.pptx"' }),
+          blob: async () => blob
+        });
+      return Promise.resolve({ ok: true, status: 200, json: async () => (u.includes("/report") ? report : { items: [] }) });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const createObjectURL = vi.fn(() => "blob:report");
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }));
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/report?period=month"]}>
+          <ReportPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    await screen.findByRole("heading", { level: 1, name: "Weekly test report" });
+    screen.getByRole("button", { name: "Download" }).click();
+    (await screen.findByRole("menuitem", { name: /PowerPoint/ })).click();
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalledWith(blob));
+    const exportUrl = String(fetchMock.mock.calls.find((c) => String(c[0]).includes("/report/export"))?.[0]);
+    expect(exportUrl).toContain("format=pptx");
+    expect(exportUrl).toContain("period=month");
+  });
+});
