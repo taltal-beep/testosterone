@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { apiClient, type FailingTestItem } from "../../lib/api-client";
 import { Badge, Button, Card } from "../../components/ui";
 import { countLabel, formatDuration, shortRunId, testPath } from "../../lib/format";
+import { CrashBadge } from "./CrashBadge";
 import { CAUSE_LABELS, TriageControl } from "./TriageControl";
 
 // Enough to read at a glance; the rest are one click away.
@@ -53,6 +54,7 @@ function FailingTestRow({
         <Streak test={test} baselineBranch={baselineBranch} />
         {test.flaky ? <Badge tone="brand">Flaky</Badge> : null}
         {test.status === "broken" ? <Badge>Broken</Badge> : null}
+        <CrashBadge kind={test.crash_kind} />
       </div>
       {test.message ? (
         <p className="break-words font-mono text-xs text-danger-300" title={test.message}>

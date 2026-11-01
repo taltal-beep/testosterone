@@ -187,6 +187,35 @@ def test_pick_baseline_ignores_its_own_branch() -> None:
     assert md.pick_baseline(run, older, "main") == (older[0], None)
 
 
+def test_stack_overflows_and_crashes_are_labelled(
+    two_runs: list[CompletedRunView], tmp_path: Path
+) -> None:
+    folder = tmp_path / str(two_runs[0].snapshot_dir) / "unit" / "allure-results" / "pytest"
+    (folder / "test_a-result.json").write_text(
+        json.dumps(
+            {
+                "historyId": "test_a",
+                "name": "test_a",
+                "status": "failed",
+                "statusDetails": {
+                    "message": "RecursionError: maximum recursion depth exceeded",
+                    "trace": "Traceback ...",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    summary = md.load_run_summary(cycle="unit")
+    assert summary is not None
+    assert summary.crashes == {"test_a": "stack_overflow"}
+    stage = {**summary.run.stage_health[0], "crash_kind": "crash"}
+
+    text = md.render_markdown(replace(summary, run=replace(summary.run, stage_health=[stage])))
+
+    assert "| unit | pytest | ❌ fail · 💥 crashed |" in text
+    assert "- `test_a` 💥 _stack overflow_" in text
+
+
 # --- names from the code under test can't break out (bug hunt 2026-10-31) ---------------
 
 

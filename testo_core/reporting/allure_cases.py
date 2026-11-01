@@ -2,7 +2,7 @@
 
 This is the shape the analytics share (``flaky``, per-test history, failures,
 Compare, the PR comment): ``{key: {name, full_name, group, status, duration_ms,
-message, stage, framework}}``. Since revision ``0003`` the same rows are also
+message, stage, framework, crash}}``. Since revision ``0003`` the same rows are also
 stored in the ``test_result`` table when a run is recorded
 (:mod:`testo_core.repository.test_results`); this module is the parser that
 fills it, and the fallback for snapshots recorded before the table existed.
@@ -13,6 +13,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+
+from testo_core.engine.crash_signatures import crash_in_text
 
 # Bounds for the stored columns; the files keep the full text.
 NAME_LIMIT = 120
@@ -56,6 +58,18 @@ def case_message(data: dict[str, Any]) -> str:
     text = str(details.get("message") or details.get("trace") or "")
     line = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")
     return line[:MESSAGE_LIMIT]
+
+
+def case_crash(data: dict[str, Any], status: str) -> str:
+    """``"stack_overflow"`` / ``"crash"`` when a failed case's message or trace shows one, else ``""``."""
+    if status not in ("failed", "broken"):
+        return ""
+    details = data.get("statusDetails")
+    if not isinstance(details, dict):
+        return ""
+    text = f"{details.get('message') or ''}\n{details.get('trace') or ''}"
+    found = crash_in_text(text)
+    return found.kind if found else ""
 
 
 def case_stage(path: Path, plan_root: Path) -> str:
@@ -111,5 +125,6 @@ def load_cases(plan_root: Path) -> dict[str, dict[str, Any]]:
             "message": case_message(data),
             "stage": case_stage(path, plan_root),
             "framework": label_value(data.get("labels"), "framework"),
+            "crash": case_crash(data, st),
         }
     return out

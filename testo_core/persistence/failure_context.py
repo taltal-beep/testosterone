@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from testo_core.engine.crash_signatures import crash_in_text
 from testo_core.engine.result import PlanResult
 from testo_core.security.redaction import redact_text
 
@@ -47,14 +48,16 @@ def failed_cases_from_allure(
         trace_raw = str(details.get("trace") or "")
         if trace_excerpt is None and trace_raw:
             trace_excerpt = redact_text(trace_raw)[:trace_max_chars]
-        cases.append(
-            {
-                "name": str(payload.get("name") or ""),
-                "fullName": str(payload.get("fullName") or ""),
-                "status": status,
-                "message": redact_text(str(details.get("message") or ""))[:message_max_chars],
-            }
-        )
+        case = {
+            "name": str(payload.get("name") or ""),
+            "fullName": str(payload.get("fullName") or ""),
+            "status": status,
+            "message": redact_text(str(details.get("message") or ""))[:message_max_chars],
+        }
+        crash = crash_in_text(f"{details.get('message') or ''}\n{trace_raw}")
+        if crash is not None:
+            case["crash"] = redact_text(crash.describe())
+        cases.append(case)
         if len(cases) >= max_cases:
             break
     return cases, trace_excerpt
@@ -67,7 +70,8 @@ def failure_metadata(
 
     Keys (each only when there is evidence for it): ``failure_context``
     (``schema_version``/``captured_cases``/``failed_cases``, each case tagged
-    with its ``stage``), ``error_message``, ``traceback``, ``log_tail``.
+    with its ``stage``), ``error_message``, ``traceback``, ``log_tail``, and
+    ``crash`` (the first stack overflow or crash a stage or test showed).
     """
     if result.exit_code == 0:
         return {}
@@ -109,4 +113,8 @@ def failure_metadata(
             out.setdefault("error_message", tail)
     if result.error:
         out.setdefault("error_message", redact_text(str(result.error)))
+    crash = next((redact_text(s.crash_detail) for s in result.stages if s.crash_detail), None)
+    crash = crash or next((c["crash"] for c in cases if c.get("crash")), None)
+    if crash:
+        out["crash"] = crash
     return out

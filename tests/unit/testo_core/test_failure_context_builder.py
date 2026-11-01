@@ -110,3 +110,19 @@ def test_failure_context_redacts_structured_secret_metadata() -> None:
     assert "nested-secret-123456" not in context.prompt
     assert "retained diagnostic context" in context.prompt
     assert "***REDACTED***" in context.prompt
+
+
+def test_failure_context_tells_the_model_about_a_detected_crash() -> None:
+    context = build_failure_context(
+        run=_run(),
+        metadata={"crash": "Stack overflow (Go): fatal error: stack overflow"},
+        budget=FailureContextBudget(),
+    )
+
+    assert "crash_detected=Stack overflow (Go): fatal error: stack overflow" in context.prompt
+
+
+def test_failure_context_has_no_crash_line_without_one() -> None:
+    context = build_failure_context(run=_run(), metadata={}, budget=FailureContextBudget())
+
+    assert "crash_detected" not in context.prompt

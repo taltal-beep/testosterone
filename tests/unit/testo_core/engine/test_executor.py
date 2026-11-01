@@ -88,6 +88,48 @@ def test_failing_stage_propagates_returncode(
     assert "boom" in result.output_tail
 
 
+def test_failing_stage_names_a_stack_overflow_in_its_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    use_echo_adapter(monkeypatch)
+    overflow = "RecursionError: maximum recursion depth exceeded"
+    stage = _stage(args=("--exit-code", "1", "--stderr-text", overflow))
+
+    result = run_stage(stage, plan_name="demo", artifacts_root=tmp_path)
+
+    assert result.crash_kind == "stack_overflow"
+    assert result.crash_detail == f"Stack overflow (Python): {overflow}"
+    assert result.log_path is not None
+    assert "[testo] crash detection: Stack overflow (Python)" in result.log_path.read_text()
+
+
+def test_passing_stage_is_never_flagged_as_crashed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    use_echo_adapter(monkeypatch)
+    stage = _stage(args=("--text", "RecursionError: maximum recursion depth exceeded"))
+
+    result = run_stage(stage, plan_name="demo", artifacts_root=tmp_path)
+
+    assert result.returncode == 0
+    assert result.crash_kind is None
+    assert result.crash_detail is None
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX signals")
+def test_stage_killed_by_sigsegv_is_a_crash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    use_echo_adapter(monkeypatch)
+    stage = _stage(args=("--kill-with", "SIGSEGV"))
+
+    result = run_stage(stage, plan_name="demo", artifacts_root=tmp_path)
+
+    assert result.returncode != 0
+    assert result.crash_kind == "crash"
+    assert result.crash_detail is not None and "SIGSEGV" in result.crash_detail
+
+
 def test_stderr_is_merged_into_stdout_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     use_echo_adapter(monkeypatch)
     stage = _stage(args=("--text", "out-line", "--stderr-text", "err-line"))

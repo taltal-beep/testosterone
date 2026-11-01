@@ -335,6 +335,8 @@ def _stage_finished_payload(stage_result: StageResult) -> dict[str, object]:
         "internal_failure": stage_result.internal_failure,
         "quarantined": list(stage_result.quarantined),
         "waived_returncode": stage_result.waived_returncode,
+        "crash_kind": stage_result.crash_kind,
+        "crash_detail": stage_result.crash_detail,
     }
 
 
