@@ -552,9 +552,12 @@ Lists the built-in frameworks and reporters, then every installed [plugin](#plug
 testo plugins            # table
 testo plugins --check    # also import each plugin and verify its interface
 testo plugins --json
+testo plugins new my-runner [--dir DIR]   # start a plugin package
 ```
 
 Exits **1** when `--check` finds a plugin that fails to import or does not implement its interface; otherwise **0**.
+
+`testo plugins new NAME` writes `testo-NAME-plugin/`, a working package to start from: `pyproject.toml` with both entry points (framework `NAME`, reporter `NAME-summary`), the adapter and reporter in `testo_NAME_plugin/__init__.py`, a `runner.py` that runs unittest and writes one Allure result per test (replace it with your runner), a `testosterone.yaml` with a `unit` cycle using the plugin, and a test that checks the plugin loads. It is [`examples/plugin`](https://github.com/taltal-beep/testosterone/tree/main/examples/plugin) under your name. Names are lowercase letters, digits and single hyphens; exit `2` for a bad name or a folder that exists.
 
 ---
 
@@ -676,6 +679,26 @@ testo ai summary [--cycle NAME | --run-id ID] [--refresh]
 - **`status`** prints the provider, model, where the settings came from and whether the key variable is set.
 - **`summary`** prints the AI summary of the latest failed run (of `--cycle`, or `--run-id`), generating and storing it on first use so the UI shows the same. Exit `2` when there is no failed run or the provider can't answer.
 - **In CI**, set `TESTO_AI_PROVIDER` (`openai`, `anthropic`, `openai_compatible`, `claude_code`) with `TESTO_AI_MODEL`, `TESTO_AI_BASE_URL`, `TESTO_AI_KEY_ENV` and `TESTO_AI_TIMEOUT_S` (default `60`): they win over the settings file. The GitHub Action's `ai-summary: "true"` input adds the summary to the job summary and comment (`testo report markdown --ai`).
+
+---
+
+## `testo server init`
+
+Write the files to run a [team server](../Processes%20&%20Guides/Team%20Server.md) with Docker Compose.
+
+```bash
+testo server init                                   # ./testo-server/
+testo server init --dir /srv/testo --domain testo.example.com --admin ada
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--dir` | `testo-server` | Folder to write into (created) |
+| `--domain` | none | Also write a `Caddyfile` and `docker-compose.override.yml` with [Caddy](https://caddyserver.com), which gets the HTTPS certificate itself, and publish the server's own port on `127.0.0.1` only (`TESTO_SERVER_PORT`) |
+| `--admin NAME` | none | `TESTO_AUTH=accounts`, with this admin created on the server's first start; its generated password is `TESTO_ADMIN_PASSWORD` in `.env` |
+| `--force` | off | Overwrite the files (and generate a new token) |
+
+It writes `docker-compose.yml` (the repository's `deploy/server/docker-compose.yml`, which ships in the package, without its `build:` sections) and `.env`, created with mode `600`, holding a generated `TESTO_API_TOKEN` (64 hex characters) and `POSTGRES_PASSWORD`. Secrets go only to `.env`, never to the terminal. It then prints `docker compose up -d`, the URL, and the `testo init --server` / `testo ingest --server` lines for CI. Exit `2` for a bad domain or admin name, or files that exist without `--force`.
 
 ---
 

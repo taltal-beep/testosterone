@@ -73,6 +73,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import quarantine as quarantine_mod
     from testo_core.cli.commands import report as report_cmd
     from testo_core.cli.commands import run as run_cmd
+    from testo_core.cli.commands import server_cmd as server_mod
     from testo_core.cli.commands import split as split_mod
     from testo_core.cli.commands import try_cmd, ui_cmd
     from testo_core.cli.commands import users as users_cmd
@@ -168,11 +169,13 @@ def _register_commands() -> None:
         help="Quarantine tests without a config change (list, add, remove), here or on a server.",
         rich_help_panel="Diagnostics",
     )
-    app.command(
+    app.add_typer(
+        plugins_mod.app,
         name="plugins",
-        help="List built-in and installed framework and reporter plugins (--check imports them).",
+        help="List built-in and installed framework and reporter plugins (--check imports them); "
+        "`testo plugins new NAME` starts one.",
         rich_help_panel="Diagnostics",
-    )(plugins_mod.plugins_cmd)
+    )
     app.add_typer(
         cycles_cmd.app,
         name="cycles",
@@ -209,6 +212,12 @@ def _register_commands() -> None:
         users_cmd.app,
         name="users",
         help="Team server accounts and roles (TESTO_AUTH=accounts).",
+        rich_help_panel="Config",
+    )
+    app.add_typer(
+        server_mod.app,
+        name="server",
+        help="Set up a team server: docker compose, a generated token, HTTPS and a first admin.",
         rich_help_panel="Config",
     )
     app.add_typer(

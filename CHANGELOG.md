@@ -38,6 +38,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - PR comment and job summary: a backtick in a test name (which in a fork's pull request its author controls) ended the code span, so `@user` mentions and HTML after it rendered live. Names are now fenced so nothing inside can close them, and stage, runner and branch cells are plain text. A cycle name with `-->` can no longer end the comment marker
 
 ### Added
+- `testo plugins new NAME` writes a working plugin package (framework adapter, reporter, entry points, a cycle and a test) to start a runner or reporter from
+- `testo server init [--domain testo.example.com] [--admin NAME]` writes a team server's `docker-compose.yml` and a private `.env` with a generated token; `--domain` adds Caddy for automatic HTTPS, `--admin` turns on accounts. A server with `TESTO_AUTH=accounts` and no accounts creates `TESTO_ADMIN_USER` / `TESTO_ADMIN_PASSWORD` as its first admin when it starts
 - `testo doctor` and the web UI's sidebar say when a newer testo-core is on PyPI (asked at most once a day, never in CI, off with `TESTO_NO_UPDATE_CHECK=1`); new `GET /api/v1/version`
 - A missing optional dependency prints one line naming the extra to install (`pip install 'testo-core[api]'`), or a reinstall for a broken environment, instead of a traceback; `testo ui` without the `api` extra offers to install it when run in a terminal
 - `testo ui --from-github [--repo owner/name] [--run-id ID]` opens the UI on the history the GitHub Action keeps in CI, so nobody needs a server to browse it. The Action now also uploads its cached history as a `testo-history-*` artifact (kept 7 days, `history-artifact: false` turns it off), which this downloads with the GitHub CLI

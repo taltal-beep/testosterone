@@ -13,7 +13,16 @@ One Testosterone server that every CI job uploads its test results to, so the wh
 
 ## Start it
 
-From a checkout of the repository (`deploy/server/docker-compose.yml`: the `testo-server` image, which is the API with the web UI built in, plus Postgres):
+Quickest, from any machine with Docker and `pip install testo-core`:
+
+```bash
+testo server init --domain testo.example.com --admin ada   # both optional
+cd testo-server && docker compose up -d
+```
+
+[`testo server init`](../CLI%20Commands/Command%20Reference.md#testo-server-init) writes the compose file below, a `.env` (mode 600) with a generated `TESTO_API_TOKEN` and Postgres password, and prints what to run next; secrets are never printed. `--domain` adds [Caddy](https://caddyserver.com), which gets the HTTPS certificate by itself (ports 80 and 443 open, DNS pointing at the machine), and keeps the server's own port on `127.0.0.1`. `--admin NAME` turns on [accounts](#accounts) and the server creates that admin on its first start (`TESTO_ADMIN_USER` / `TESTO_ADMIN_PASSWORD` in `.env`), so nobody needs `docker compose exec` for the first user.
+
+Or from a checkout of the repository (`deploy/server/docker-compose.yml`: the `testo-server` image, which is the API with the web UI built in, plus Postgres):
 
 ```bash
 export TESTO_API_TOKEN="$(openssl rand -hex 32)"   # keep it: CI needs it to upload
@@ -35,6 +44,7 @@ Open <http://localhost:8000> and sign in with the token on the `/login` page. Th
 | `TESTO_RUN_QUEUE` | `memory` | Where `queued` runs wait. `memory`: a restart drops them. `db`: they are also rows in the database (`queued_run`) and are queued again when the server starts, so a restart or upgrade loses nothing that hadn't started. A run that was already running is not repeated; it shows as failed in the history |
 | `TESTO_ALLOWED_HOSTS` | unset | Only matters without a token: extra `Host` names a token-less API answers (it otherwise answers only `localhost`, `127.0.0.1` and `::1`, so a DNS-rebinding page can't read it). With a token, or `TESTO_ALLOW_UNAUTHENTICATED=1`, any name is answered |
 | `FORWARDED_ALLOW_IPS` | unset | Behind an HTTPS reverse proxy, the proxy's address, so the session cookie is marked `Secure` |
+| `TESTO_ADMIN_USER`, `TESTO_ADMIN_PASSWORD` | unset | With `TESTO_AUTH=accounts` and no account yet: the server creates this admin when it starts. Once any account exists they are ignored, so changing them never resets a password |
 | `POSTGRES_PASSWORD` | `testo` | Database password (internal to the compose network) |
 | `TESTO_SERVER_PORT` | `8000` | Port on the host |
 | `TESTO_SERVER_TAG` | `1` | Image tag to pull |

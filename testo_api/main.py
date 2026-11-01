@@ -73,6 +73,18 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
         # Broad on purpose: like the cleanup above, a DB problem must not block startup.
         logger.warning("queued-run recovery skipped (DB unavailable?)", exc_info=True)
 
+    # TESTO_AUTH=accounts with TESTO_ADMIN_USER / TESTO_ADMIN_PASSWORD and no accounts yet:
+    # create that admin (a fresh `testo server init` server).
+    from testo_core.accounts import ensure_first_admin
+
+    try:
+        created = ensure_first_admin()
+        if created:
+            logger.warning("Created the first admin account %r from TESTO_ADMIN_USER.", created)
+    except Exception:
+        # Broad on purpose: a bad name or password, or a DB problem, must not block startup.
+        logger.warning("first admin from TESTO_ADMIN_USER not created", exc_info=True)
+
     # history.retention in testosterone.yaml: prune now and every few hours while the
     # server runs. Without the section this starts nothing.
     stop_retention = _start_retention_timer()

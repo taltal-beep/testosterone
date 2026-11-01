@@ -25,6 +25,9 @@ services:
       TESTO_PROTECT_READS: ${TESTO_PROTECT_READS:-1}
       # accounts: people sign in with their own username and password (`testo users add`).
       TESTO_AUTH: ${TESTO_AUTH:-token}
+      # With accounts and none yet: this admin is created at start (`testo server init` sets them).
+      TESTO_ADMIN_USER: ${TESTO_ADMIN_USER:-}
+      TESTO_ADMIN_PASSWORD: ${TESTO_ADMIN_PASSWORD:-}
       # db: runs waiting for a worker are kept in Postgres and survive a restart.
       TESTO_RUN_QUEUE: ${TESTO_RUN_QUEUE:-memory}
       DATABASE_URL: postgresql+psycopg://testo:${POSTGRES_PASSWORD:-testo}@postgres:5432/testo
