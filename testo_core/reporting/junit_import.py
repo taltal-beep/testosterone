@@ -52,6 +52,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from testo_core.reporting.imported_results import fold_attempts
+
 _MAX_TRACE_CHARS = 20_000
 
 
@@ -200,10 +202,38 @@ def _suite_error_result(suite: ET.Element, *, suite_name: str, tool: str, start_
     }
 
 
-def _results_for_root(root: ET.Element, *, path: Path, tool: str, fallback_ms: int) -> list[dict]:
+def _missing_cases_note(suite: ET.Element, suite_name: str) -> str | None:
+    """A note when a leaf ``<testsuite tests="N">`` holds fewer than N test cases."""
+    if suite.find("testsuite") is not None:
+        return None
+    try:
+        claimed = int(suite.get("tests") or "")
+    except ValueError:
+        return None
+    found = len(suite.findall("testcase"))
+    if claimed <= found:
+        return None
+    return (
+        f"suite {suite_name!r} says it has {claimed} tests but the file lists {found};"
+        " the runner may have stopped while writing it"
+    )
+
+
+def _results_for_root(
+    root: ET.Element, *, path: Path, tool: str, fallback_ms: int, notes: list[str] | None = None
+) -> list[dict]:
+    """Allure result dicts for one JUnit root. Notes about the file go to ``notes``.
+
+    Test cases listed more than once in one suite (pytest's teardown error,
+    reruns) are folded into one result by :func:`fold_attempts`.
+    """
     results: list[dict] = []
     for suite in _suites(root):
         suite_name = suite.get("name") or path.stem
+        note = _missing_cases_note(suite, suite_name)
+        if note and notes is not None:
+            notes.append(note)
+        suite_results: list[dict] = []
         clock = _suite_start_ms(suite, fallback_ms)
         device = _android_device(suite)
         suite_start = clock
@@ -245,9 +275,10 @@ def _results_for_root(root: ET.Element, *, path: Path, tool: str, fallback_ms: i
                     "message": _clip(f"Passed on rerun. {why}".strip()),
                     **({"trace": _clip(first_text)} if first_text else {}),
                 }
-            results.append(result)
+            suite_results.append(result)
             clock += duration
             problems += status in ("failed", "broken")
+        results += fold_attempts(suite_results)
         if not problems and _claimed_problems(suite) and suite.find("testsuite") is None:
             results.append(
                 _suite_error_result(suite, suite_name=suite_name, tool=tool, start_ms=suite_start)
@@ -261,6 +292,14 @@ class _FileResults:
     flaky: int = 0
     attachments: int = 0
     notes: tuple[str, ...] = ()
+
+
+def _flaky(results: list[dict]) -> int:
+    return sum(1 for r in results if (r.get("statusDetails") or {}).get("flaky"))
+
+
+def _go(results: list[dict]) -> _FileResults:
+    return _FileResults(results, flaky=_flaky(results))
 
 
 def _decode(raw: bytes) -> tuple[bytes, str]:
@@ -296,23 +335,25 @@ def _results_for_any(
         if root.tag not in ("testsuite", "testsuites") and root.find(".//testsuite") is None:
             # An HTML error page, a coverage report, ...: say so instead of "0 tests".
             raise ValueError(f"not a JUnit report (root element <{root.tag}>, no <testsuite>)")
-        results = _results_for_root(root, path=path, tool=tool, fallback_ms=fallback_ms)
-        flaky = sum(1 for r in results if (r.get("statusDetails") or {}).get("flaky"))
-        return _FileResults(results, flaky=flaky)
+        notes: list[str] = []
+        results = _results_for_root(
+            root, path=path, tool=tool, fallback_ms=fallback_ms, notes=notes
+        )
+        return _FileResults(results, flaky=_flaky(results), notes=tuple(notes))
     from testo_core.reporting.gotest_import import gotest_results_for_text, is_gotest_text
     from testo_core.reporting.jest_import import is_jest_report, jest_results_for_report
 
     if head not in ("{", "["):
         # ``go test -json`` output can start with a build line ("go: downloading ...").
         if is_gotest_text(text):
-            return _FileResults(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
+            return _go(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
         raise ValueError("not a test result file (neither XML nor JSON)")
 
     try:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
         if is_gotest_text(text):
-            return _FileResults(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
+            return _go(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
         raise ValueError(f"not valid JSON ({exc})") from exc
     if allure_passthrough.is_allure_result(path, data):
         result, copied = allure_passthrough.copy_allure_result(
@@ -346,7 +387,7 @@ def _results_for_any(
         )
         return _FileResults(parsed.results, parsed.flaky, parsed.attachments, parsed.notes)
     if is_gotest_text(text):  # a single-event go test file is valid JSON too
-        return _FileResults(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
+        return _go(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
     raise ValueError(
         "not a known JSON report (Playwright, Jest/Vitest, RSpec, k6, xcresulttool,"
         " go test -json or an Allure result)"
