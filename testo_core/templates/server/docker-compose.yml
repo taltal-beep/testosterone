@@ -77,6 +77,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      # After the server, so the two never fill the new testo_data volume at the same time.
+      server:
+        condition: service_started
     restart: unless-stopped
 
   postgres:
