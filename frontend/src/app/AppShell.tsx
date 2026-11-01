@@ -80,6 +80,7 @@ export function AppShell() {
           ))}
         </nav>
         <DocsLink />
+        <VersionNote />
       </aside>
 
       <header className="sticky top-0 z-30 border-b border-white/5 bg-ink-950/80 backdrop-blur-xl lg:hidden">
@@ -182,6 +183,33 @@ function DocsLink() {
       </span>
       Docs
     </a>
+  );
+}
+
+const RELEASES_URL = "https://github.com/taltal-beep/testosterone/releases";
+
+/** The running version, and a link when PyPI has a newer one (GET /api/v1/version). */
+export function VersionNote() {
+  const query = useQuery({
+    queryKey: ["version"],
+    queryFn: () => apiClient.getVersion(),
+    staleTime: 60 * 60 * 1000,
+    retry: false
+  });
+  const info = query.data;
+  if (!info) return null;
+  return (
+    <p className="mt-2 px-4 text-[11px] text-ink-400" data-testid="version-note">
+      testo-core {info.version}
+      {info.update_available && info.latest ? (
+        <>
+          {" · "}
+          <a href={RELEASES_URL} target="_blank" rel="noreferrer" className="font-semibold text-brand-300 hover:text-white">
+            {info.latest} is out
+          </a>
+        </>
+      ) : null}
+    </p>
   );
 }
 

@@ -3,7 +3,8 @@
 Starts the API (``testo_api``) on 127.0.0.1 with the UI that ships in the
 wheel and opens a browser on it. Same history as the CLI: whatever
 ``DATABASE_URL`` / ``testosterone.yaml`` point at, by default the SQLite file
-next to the project.
+next to the project. ``--from-github`` opens the history the GitHub Action
+keeps instead (:mod:`testo_core.services.github_history`).
 
 The UI's writes (starting a run, saving AI settings) come from the server's
 own origin, so that origin is added to ``TESTO_CORS_ORIGINS`` for this
@@ -46,19 +47,32 @@ def ui(
     open_browser: bool = typer.Option(
         True, "--open/--no-open", help="Open the UI in the default browser."
     ),
+    from_github: bool = typer.Option(
+        False,
+        "--from-github",
+        help="Open the history the GitHub Action keeps (its newest testo-history artifact), "
+        "via the gh CLI, instead of this machine's.",
+    ),
+    repo: str = typer.Option(
+        None, "--repo", help="With --from-github: owner/name (default: this checkout's)."
+    ),
+    run_id: str = typer.Option(
+        None, "--run-id", help="With --from-github: the history saved by this workflow run."
+    ),
 ) -> None:
     """Serve the web UI and the API on http://127.0.0.1:PORT for this machine's run history."""
-    try:
-        import uvicorn  # type: ignore[import-not-found]  # noqa: F401
-
-        from testo_api.ui import ui_dir
-    except ModuleNotFoundError:
-        typer.echo("The web UI needs the API extra: pip install 'testo-core[api]'", err=True)
-        raise typer.Exit(int(EngineExitCode.INVALID_INPUT)) from None
+    if (repo or run_id) and not from_github:
+        raise typer.BadParameter("only with --from-github", param_hint="--repo/--run-id")
+    if not _api_extra_ready():
+        raise typer.Exit(int(EngineExitCode.INVALID_INPUT))
+    from testo_api.ui import ui_dir
 
     if ui_dir() is None:
         typer.echo(_BUILD_HINT, err=True)
         raise typer.Exit(int(EngineExitCode.INVALID_INPUT))
+
+    if from_github:
+        _use_github_history(repo=repo, run_id=run_id)
 
     # Local only: binding anything wider is `testo-api`'s job, with a token.
     os.environ["TESTO_API_HOST"] = "127.0.0.1"
@@ -73,3 +87,70 @@ def ui(
     from testo_api.main import run
 
     raise typer.Exit(run([]))
+
+
+def _use_github_history(*, repo: str | None, run_id: str | None) -> None:
+    """Download the Action's history and point this process at it (``DATABASE_URL``)."""
+    from pathlib import Path
+
+    from testo_core.services.github_history import GithubHistoryError, download_history
+
+    slug = (repo or Path.cwd().name).replace("/", "-")
+    dest = Path.home() / ".cache" / "testosterone" / "from-github" / slug
+    try:
+        db, artifact = download_history(cwd=Path.cwd(), dest=dest, repo=repo, run_id=run_id)
+    except GithubHistoryError as exc:
+        typer.echo(f"--from-github: {exc}", err=True)
+        raise typer.Exit(int(EngineExitCode.INVALID_INPUT)) from None
+    os.environ["DATABASE_URL"] = f"sqlite:///{db.as_posix()}"
+    # Report copies and attachments stay in CI; don't mix in this machine's.
+    os.environ["TESTO_HOME"] = str(dest)
+    typer.echo(
+        f"History from {artifact.name} (workflow run {artifact.run_id}, {artifact.created_at}). "
+        "Runs, tests, flaky and Compare work; HTML reports and attachments stay in CI."
+    )
+
+
+def _has_api_extra() -> bool:
+    import importlib
+
+    importlib.invalidate_caches()
+    try:
+        import fastapi  # noqa: F401
+        import uvicorn  # type: ignore[import-not-found]  # noqa: F401
+    except ModuleNotFoundError:
+        return False
+    return True
+
+
+def _api_extra_ready() -> bool:
+    """True when the ``api`` extra is importable; in a terminal, offer to install it first."""
+    import subprocess
+    import sys
+
+    if _has_api_extra():
+        return True
+    from testo_core import __version__
+
+    spec = f"testo-core[api]=={__version__}"
+    typer.echo("The web UI needs the api extra (FastAPI and uvicorn).", err=True)
+    if not (sys.stdin.isatty() and sys.stdout.isatty()) or not typer.confirm(
+        f"Install it into this Python now ({sys.executable} -m pip install '{spec}')?",
+        default=True,
+    ):
+        typer.echo(f"Install it with: pip install '{spec}'", err=True)
+        return False
+    proc = subprocess.run(  # noqa: S603 — this interpreter's pip, fixed argv
+        [sys.executable, "-m", "pip", "install", spec], check=False
+    )
+    if proc.returncode != 0:
+        typer.echo(
+            f"pip couldn't install it (exit {proc.returncode}). With pipx: "
+            "pipx install --force 'testo-core[api]'; with uv: uvx --from 'testo-core[api]' testo ui",
+            err=True,
+        )
+        return False
+    if _has_api_extra():
+        return True
+    typer.echo("Installed. Run `testo ui` again.", err=True)
+    return False

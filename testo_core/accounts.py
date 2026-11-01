@@ -245,3 +245,28 @@ class AccountStore:
 
 
 _DUMMY_HASH: Final[str] = hash_password("not-a-real-password")
+
+
+def ensure_first_admin(
+    env: dict[str, str] | None = None, *, store: AccountStore | None = None
+) -> str | None:
+    """Create ``TESTO_ADMIN_USER`` as admin when ``TESTO_AUTH=accounts`` and no account exists.
+
+    For a fresh team server (``testo server init`` writes both variables to
+    ``.env``), so nobody has to ``docker compose exec`` into it to add the first
+    user. Does nothing once any account exists, so a changed password in ``.env``
+    never overwrites one. Returns the name it created.
+    """
+    import os
+
+    env = dict(os.environ if env is None else env)
+    if env.get("TESTO_AUTH", "").strip().lower() != "accounts":
+        return None
+    user = env.get("TESTO_ADMIN_USER", "").strip()
+    password = env.get("TESTO_ADMIN_PASSWORD", "")
+    if not user or not password:
+        return None
+    store = store or AccountStore()
+    if store.all():
+        return None
+    return store.add(user, password, role="admin").username
