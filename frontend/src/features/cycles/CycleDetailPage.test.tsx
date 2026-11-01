@@ -38,7 +38,8 @@ describe("CycleDetailPage", () => {
     );
 
     expect(await screen.findByText(/can't be run from here/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Stages (1)" })).toBeInTheDocument();
+    // One recorded stage with nothing to configure: no Stages card repeating the header.
+    expect(screen.queryByRole("heading", { name: "Stages (1)" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Run/ })).not.toBeInTheDocument();
     expect(screen.queryByText("Timeout")).not.toBeInTheDocument();
   });

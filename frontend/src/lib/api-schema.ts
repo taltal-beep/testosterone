@@ -551,6 +551,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/resources/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Actions
+         * @description Provider commands people ran (``testo pool add/remove/sweep --apply``), newest first.
+         */
+        get: operations["list_actions_api_v1_resources_actions_get"];
+        put?: never;
+        /**
+         * Record Action
+         * @description Log a provider command a client ran. The server never runs one itself.
+         */
+        post: operations["record_action_api_v1_resources_actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/resources/items/disable": {
         parameters: {
             query?: never;
@@ -1259,6 +1283,32 @@ export interface components {
             /** Tests */
             tests: number;
         };
+        /**
+         * CycleLatestRun
+         * @description The newest recorded run of a cycle: enough for a list card to show its result.
+         */
+        CycleLatestRun: {
+            /** Branch */
+            branch: string | null;
+            /** Commit */
+            commit: string | null;
+            /** Created At */
+            created_at: number;
+            /** Failed */
+            failed: number | null;
+            /** Health Pct */
+            health_pct: number | null;
+            /** Passed */
+            passed: number | null;
+            /** Returncode */
+            returncode: number;
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string | null;
+            /** Total Tests */
+            total_tests: number | null;
+        };
         /** CycleListResponse */
         CycleListResponse: {
             /** Config Path */
@@ -1272,6 +1322,7 @@ export interface components {
             description: string | null;
             /** Equipment */
             equipment: string[];
+            latest_run: components["schemas"]["CycleLatestRun"] | null;
             /** Name */
             name: string;
             /**
@@ -1361,6 +1412,10 @@ export interface components {
         };
         /** DashboardRecentRunItem */
         DashboardRecentRunItem: {
+            /** Branch */
+            branch: string | null;
+            /** Commit */
+            commit: string | null;
             /** Compare Url */
             compare_url: string | null;
             /** Created At */
@@ -1816,6 +1871,85 @@ export interface components {
              */
             status: "ok" | "degraded";
         };
+        /** ResourceActionItem */
+        ResourceActionItem: {
+            /** At */
+            at: number;
+            /**
+             * Command
+             * @default
+             */
+            command: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /**
+             * Host
+             * @default
+             */
+            host: string;
+            /** Item */
+            item: string;
+            /** Ok */
+            ok: boolean;
+            /** Pool */
+            pool: string;
+            /**
+             * User
+             * @default
+             */
+            user: string;
+            /**
+             * Verb
+             * @enum {string}
+             */
+            verb: "create" | "destroy";
+        };
+        /**
+         * ResourceActionRequest
+         * @description ``POST /api/v1/resources/actions``: a ``create`` or ``destroy`` command a person ran
+         *     with ``testo pool ... --apply``. The server only keeps this log; it never runs one.
+         */
+        ResourceActionRequest: {
+            /**
+             * Command
+             * @default
+             */
+            command?: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail?: string;
+            /**
+             * Host
+             * @default
+             */
+            host?: string;
+            /** Item */
+            item: string;
+            /** Ok */
+            ok: boolean;
+            /** Pool */
+            pool: string;
+            /**
+             * User
+             * @default
+             */
+            user?: string;
+            /**
+             * Verb
+             * @enum {string}
+             */
+            verb: "create" | "destroy";
+        };
+        /** ResourceActionsResponse */
+        ResourceActionsResponse: {
+            /** Actions */
+            actions: components["schemas"]["ResourceActionItem"][];
+        };
         /**
          * ResourceHolder
          * @description Who holds (or asks for) a key. On a server with accounts, ``user`` is the account.
@@ -2174,6 +2308,8 @@ export interface components {
             branch: string | null;
             /** Broken */
             broken: number | null;
+            /** Commit */
+            commit: string | null;
             /** Created At */
             created_at: number;
             /** Cycle */
@@ -3297,6 +3433,69 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ResourcesResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_actions_api_v1_resources_actions_get: {
+        parameters: {
+            query?: {
+                pool?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceActionsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_action_api_v1_resources_actions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResourceActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -27,11 +27,11 @@ const pools = {
   ]
 };
 
-function renderPage(body: unknown) {
+function renderPage(body: unknown, actions: unknown[] = []) {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     if (init?.method === "POST") return Promise.resolve({ ok: true, status: 204, json: async () => null });
-    void input;
-    return Promise.resolve({ ok: true, status: 200, json: async () => body });
+    const reply = String(input).includes("/api/v1/resources/actions") ? { actions } : body;
+    return Promise.resolve({ ok: true, status: 200, json: async () => reply });
   });
   vi.stubGlobal("fetch", fetchMock);
   render(
@@ -78,6 +78,25 @@ describe("ResourcesPage", () => {
     const [key] = screen.getAllByTestId("resource-key");
     expect(within(key).getByText("Expired")).toBeInTheDocument();
     expect(key).toHaveTextContent(/free again in (9|10)s/);
+  });
+
+  it("lists the provider commands people ran, failures with their reason", async () => {
+    renderPage(pools, [
+      { pool: "flow-vms", item: "testo-vm-2", verb: "destroy", user: "dana", host: "laptop-7", command: "./vms.sh delete", ok: false, detail: "exit 1: not found", at: now - 60 },
+      { pool: "flow-vms", item: "testo-vm-1", verb: "create", user: "dana", host: "laptop-7", command: "./vms.sh create", ok: true, detail: "", at: now - 600 }
+    ]);
+
+    const log = await screen.findByTestId("provider-log");
+    const [failed, made] = within(log).getAllByRole("listitem");
+    expect(failed).toHaveTextContent("destroyflow-vms/testo-vm-2dana @laptop-7 · 1m ago · failed: exit 1: not found");
+    expect(made).toHaveTextContent("createflow-vms/testo-vm-1dana @laptop-7 · 10m ago");
+  });
+
+  it("hides the provider log when nobody ran a provider command", async () => {
+    renderPage(pools);
+
+    await waitFor(() => expect(screen.getByText("flow-vms")).toBeInTheDocument());
+    expect(screen.queryByText("Provider commands")).not.toBeInTheDocument();
   });
 
   it("explains how to add a pool when there is none", async () => {

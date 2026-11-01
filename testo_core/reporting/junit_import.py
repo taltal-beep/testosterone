@@ -45,11 +45,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import uuid
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+from testo_core.reporting.imported_results import fold_attempts
 
 _MAX_TRACE_CHARS = 20_000
 
@@ -67,6 +70,10 @@ class JunitImportResult:
     # Playwright JSON only: tests that passed on a retry, and attachments copied.
     flaky: int = 0
     attachments: int = 0
+    # Files that matched but could not be read as any known format (truncated,
+    # empty, not a report). A ``junit`` stage that recorded no test and had one
+    # of these fails, so a report cut off by a killed job is never a green run.
+    unreadable: int = 0
 
 
 def _suite_start_ms(suite: ET.Element, fallback_ms: int) -> int:
@@ -83,8 +90,14 @@ def _suite_start_ms(suite: ET.Element, fallback_ms: int) -> int:
 def _seconds_ms(value: str | None) -> int:
     try:
         return max(0, int(round(float(value or 0) * 1000)))
-    except ValueError:
+    except (ValueError, OverflowError):  # "abc", "nan", "inf"
         return 0
+
+
+def _clip(text: str | None) -> str | None:
+    if text and len(text) > _MAX_TRACE_CHARS:
+        return text[:_MAX_TRACE_CHARS] + "\n… (truncated)"
+    return text
 
 
 def _status(case: ET.Element) -> tuple[str, str | None, str | None]:
@@ -94,18 +107,42 @@ def _status(case: ET.Element) -> tuple[str, str | None, str | None]:
             continue
         text = (node.text or "").strip()
         message = node.get("message") or (text.splitlines()[0] if text else None)
-        trace = text or None
-        if trace and len(trace) > _MAX_TRACE_CHARS:
-            trace = trace[:_MAX_TRACE_CHARS] + "\n… (truncated)"
-        return status, message, trace
+        if message:
+            message = _clip(message.strip().splitlines()[0] if message.strip() else None)
+        return status, message, _clip(text or None)
     return "passed", None, None
 
 
+def _rerun_failures(case: ET.Element) -> list[ET.Element]:
+    """Maven Surefire's failed attempts of a test that passed on a rerun (``rerunFailingTestsCount``)."""
+    return [
+        node
+        for tag in ("flakyFailure", "flakyError", "rerunFailure", "rerunError")
+        for node in case.findall(tag)
+    ]
+
+
+def report_paths(repo: Path, pattern: str) -> list[Path]:
+    """What *pattern* names under *repo*: the file itself when it exists (so a name
+    with ``[`` or ``*`` in it still works), otherwise the glob's matches, sorted."""
+    literal = repo / pattern
+    try:
+        if literal.is_file():
+            return [literal]
+    except OSError:
+        pass
+    return sorted(repo.glob(pattern))
+
+
 def _suites(root: ET.Element) -> list[ET.Element]:
-    if root.tag == "testsuite":
-        return [root]
-    # <testsuites> or any wrapper: every nested <testsuite>, depth-first.
-    return list(root.iter("testsuite"))
+    # The root itself when it is a <testsuite>, and every nested <testsuite>
+    # (PHPUnit, Mocha and others nest them), depth-first. Each suite's own
+    # <testcase> children are read, so nothing is counted twice. A wrapper such as
+    # <testsuites> with <testcase>s of its own acts as a suite too.
+    suites = list(root.iter("testsuite"))
+    if root.tag != "testsuite" and root.find("testcase") is not None:
+        suites.insert(0, root)
+    return suites
 
 
 def _android_device(suite: ET.Element) -> str | None:
@@ -116,12 +153,91 @@ def _android_device(suite: ET.Element) -> str | None:
     return None
 
 
-def _results_for_root(root: ET.Element, *, path: Path, tool: str, fallback_ms: int) -> list[dict]:
+def _claimed_problems(suite: ET.Element) -> int:
+    """How many failures plus errors a ``<testsuite>``'s own attributes claim."""
+    total = 0
+    for attr in ("failures", "errors"):
+        try:
+            total += max(0, int(suite.get(attr) or 0))
+        except ValueError:
+            pass
+    return total
+
+
+def _suite_error_result(suite: ET.Element, *, suite_name: str, tool: str, start_ms: int) -> dict:
+    """One ``broken`` result for a suite that failed with no failing ``<testcase>``.
+
+    jest-junit (by default), and other runners when a test file fails to load,
+    write ``<testsuite errors="1" tests="0">`` with the error only in
+    ``<system-err>``, or nowhere. Without this the suite would count as passed.
+    """
+    output = "\n".join(
+        (node.text or "").strip() for node in suite.findall("system-err") if node.text
+    ).strip()
+    full_name = f"{suite_name}.(suite failed)"
+    message = output.splitlines()[0] if output else None
+    trace = output or None
+    if trace and len(trace) > _MAX_TRACE_CHARS:
+        trace = trace[:_MAX_TRACE_CHARS] + "\n… (truncated)"
+    return {
+        "uuid": str(uuid.uuid4()),
+        "historyId": hashlib.sha256(f"{tool}:{full_name}".encode()).hexdigest(),
+        "name": "(suite failed)",
+        "fullName": full_name,
+        "status": "broken",
+        "stage": "finished",
+        "start": start_ms,
+        "stop": start_ms,
+        "labels": [
+            {"name": "suite", "value": suite_name},
+            {"name": "framework", "value": tool},
+            {"name": "language", "value": "junit"},
+        ],
+        "statusDetails": {
+            "message": message
+            or f"The suite reports {_claimed_problems(suite)} failure(s) or error(s)"
+            " but no failing test case",
+            **({"trace": trace} if trace else {}),
+        },
+    }
+
+
+def _missing_cases_note(suite: ET.Element, suite_name: str) -> str | None:
+    """A note when a leaf ``<testsuite tests="N">`` holds fewer than N test cases."""
+    if suite.find("testsuite") is not None:
+        return None
+    try:
+        claimed = int(suite.get("tests") or "")
+    except ValueError:
+        return None
+    found = len(suite.findall("testcase"))
+    if claimed <= found:
+        return None
+    return (
+        f"suite {suite_name!r} says it has {claimed} tests but the file lists {found};"
+        " the runner may have stopped while writing it"
+    )
+
+
+def _results_for_root(
+    root: ET.Element, *, path: Path, tool: str, fallback_ms: int, notes: list[str] | None = None
+) -> list[dict]:
+    """Allure result dicts for one JUnit root. Notes about the file go to ``notes``.
+
+    Test cases listed more than once in one suite (pytest's teardown error,
+    reruns) are folded into one result by :func:`fold_attempts`.
+    """
     results: list[dict] = []
     for suite in _suites(root):
         suite_name = suite.get("name") or path.stem
+        note = _missing_cases_note(suite, suite_name)
+        if note and notes is not None:
+            notes.append(note)
+        suite_results: list[dict] = []
         clock = _suite_start_ms(suite, fallback_ms)
         device = _android_device(suite)
+        suite_start = clock
+        problems = 0
         for case in suite.findall("testcase"):
             name = case.get("name") or "(unnamed)"
             classname = case.get("classname") or suite_name
@@ -149,8 +265,24 @@ def _results_for_root(root: ET.Element, *, path: Path, tool: str, fallback_ms: i
                 result["statusDetails"] = {
                     k: v for k, v in (("message", message), ("trace", trace)) if v
                 }
-            results.append(result)
+            reruns = _rerun_failures(case) if status == "passed" else []
+            if reruns:
+                first = reruns[0]
+                first_text = (first.text or "").strip()
+                why = first.get("message") or first_text.split("\n", 1)[0]
+                result["statusDetails"] = {
+                    "flaky": True,
+                    "message": _clip(f"Passed on rerun. {why}".strip()),
+                    **({"trace": _clip(first_text)} if first_text else {}),
+                }
+            suite_results.append(result)
             clock += duration
+            problems += status in ("failed", "broken")
+        results += fold_attempts(suite_results)
+        if not problems and _claimed_problems(suite) and suite.find("testsuite") is None:
+            results.append(
+                _suite_error_result(suite, suite_name=suite_name, tool=tool, start_ms=suite_start)
+            )
     return results
 
 
@@ -162,6 +294,24 @@ class _FileResults:
     notes: tuple[str, ...] = ()
 
 
+def _flaky(results: list[dict]) -> int:
+    return sum(1 for r in results if (r.get("statusDetails") or {}).get("flaky"))
+
+
+def _go(results: list[dict]) -> _FileResults:
+    return _FileResults(results, flaky=_flaky(results))
+
+
+def _decode(raw: bytes) -> tuple[bytes, str]:
+    """``raw`` as UTF-8 bytes and text. UTF-16 files (Windows PowerShell's default) are re-encoded."""
+    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+        text = raw.decode("utf-16").lstrip("\ufeff \t\r\n")
+        # The XML declaration still says UTF-16; expat reads the bytes as given.
+        text = re.sub(r"^(<\?xml[^>]*?encoding=)([\"'])utf-16\2", r"\1\2utf-8\2", text, flags=re.I)
+        return text.encode("utf-8"), text
+    return raw, raw.decode("utf-8-sig", errors="replace")
+
+
 def _results_for_any(
     path: Path, *, tool: str, results_dir: Path, repo: Path
 ) -> _FileResults | None:
@@ -171,11 +321,13 @@ def _results_for_any(
     if allure_passthrough.is_allure_side_file(path):
         return None
     fallback_ms = int(path.stat().st_mtime * 1000)
-    raw = path.read_bytes()
-    text = raw.decode("utf-8-sig", errors="replace")
+    raw, text = _decode(path.read_bytes())
     head = text.lstrip()[:1]
     if head == "<":
-        root = ET.fromstring(raw)  # noqa: S314 — stage-owned file, expat ignores external entities
+        # Whitespace (or a BOM, then whitespace) before ``<?xml`` is an expat error
+        # ("XML or text declaration not at start of entity"); a stray newline from a
+        # shell redirect shouldn't make the report unreadable.
+        root = ET.fromstring(raw.removeprefix(b"\xef\xbb\xbf").lstrip())  # noqa: S314 — stage-owned file, expat ignores external entities
         from testo_core.reporting.robot_import import is_robot_root, robot_results_for_root
         from testo_core.reporting.trx_import import is_trx_root, trx_results_for_root
 
@@ -183,21 +335,28 @@ def _results_for_any(
             return _FileResults(trx_results_for_root(root, tool=tool, fallback_ms=fallback_ms))
         if is_robot_root(root):
             return _FileResults(robot_results_for_root(root, tool=tool, fallback_ms=fallback_ms))
-        return _FileResults(_results_for_root(root, path=path, tool=tool, fallback_ms=fallback_ms))
+        if root.tag not in ("testsuite", "testsuites") and root.find(".//testsuite") is None:
+            # An HTML error page, a coverage report, ...: say so instead of "0 tests".
+            raise ValueError(f"not a JUnit report (root element <{root.tag}>, no <testsuite>)")
+        notes: list[str] = []
+        results = _results_for_root(
+            root, path=path, tool=tool, fallback_ms=fallback_ms, notes=notes
+        )
+        return _FileResults(results, flaky=_flaky(results), notes=tuple(notes))
     from testo_core.reporting.gotest_import import gotest_results_for_text, is_gotest_text
     from testo_core.reporting.jest_import import is_jest_report, jest_results_for_report
 
     if head not in ("{", "["):
         # ``go test -json`` output can start with a build line ("go: downloading ...").
         if is_gotest_text(text):
-            return _FileResults(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
+            return _go(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
         raise ValueError("not a test result file (neither XML nor JSON)")
 
     try:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
         if is_gotest_text(text):
-            return _FileResults(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
+            return _go(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
         raise ValueError(f"not valid JSON ({exc})") from exc
     if allure_passthrough.is_allure_result(path, data):
         result, copied = allure_passthrough.copy_allure_result(
@@ -231,7 +390,7 @@ def _results_for_any(
         )
         return _FileResults(parsed.results, parsed.flaky, parsed.attachments, parsed.notes)
     if is_gotest_text(text):  # a single-event go test file is valid JSON too
-        return _FileResults(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
+        return _go(gotest_results_for_text(text, tool=tool, fallback_ms=fallback_ms))
     raise ValueError(
         "not a known JSON report (Playwright, Jest/Vitest, RSpec, k6, xcresulttool,"
         " go test -json or an Allure result)"
@@ -264,7 +423,7 @@ def import_junit_reports(
     results_dir.mkdir(parents=True, exist_ok=True)
     files: list[Path] = []
     for pattern in patterns:
-        for match in sorted(repo.glob(pattern)):
+        for match in report_paths(repo, pattern):
             resolved = match.resolve()
             if not resolved.is_file() or repo not in resolved.parents:
                 continue
@@ -280,12 +439,18 @@ def import_junit_reports(
     duration_ms = 0
     flaky = 0
     attachments = 0
+    unreadable = 0
     errors: list[str] = []
     for path in files:
         try:
             parsed = _results_for_any(path, tool=tool, results_dir=results_dir, repo=repo)
         except (ET.ParseError, OSError, ValueError, UnicodeDecodeError) as exc:
             errors.append(f"{path.name}: {exc}")
+            unreadable += 1
+            continue
+        except Exception as exc:  # noqa: BLE001 — one odd file must not lose the others
+            errors.append(f"{path.name}: could not be read ({type(exc).__name__}: {exc})")
+            unreadable += 1
             continue
         if parsed is None:  # an Allure folder's container, attachment or settings file
             continue
@@ -308,4 +473,5 @@ def import_junit_reports(
         duration_s=duration_ms / 1000,
         flaky=flaky,
         attachments=attachments,
+        unreadable=unreadable,
     )

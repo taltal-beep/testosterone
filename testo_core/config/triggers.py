@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from testo_core.config.schema import Plan, TestosteroneConfig
-from testo_core.reporting.paths import safe_child_path
+from testo_core.paths import safe_child_path
 
 _GIT_TIMEOUT_S = 60.0
 

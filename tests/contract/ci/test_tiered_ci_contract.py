@@ -10,10 +10,18 @@ def test_github_fast_workflow_has_required_gate_command() -> None:
     # (test job), which replaced the standalone pr-fast.yml workflow.
     payload = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
     job = payload["jobs"]["test"]
-    commands = "\n".join(step.get("run", "") for step in job["steps"] if isinstance(step, dict))
-    assert 'python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1' in commands
-    # The coverage gate in pytest.ini must stay active on this job.
-    assert "--no-cov" not in commands
+    runs = [step.get("run", "") for step in job["steps"] if isinstance(step, dict)]
+    fast = [r for r in runs if '-m "tier_fast and not quarantined"' in r]
+    assert len(fast) == 1
+    assert 'python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1' in fast[0]
+    # The coverage gate in pytest.ini must stay active on the fast suite.
+    assert "--no-cov" not in fast[0]
+
+
+def test_github_test_job_also_runs_the_heavy_tier() -> None:
+    payload = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    runs = "\n".join(step.get("run", "") for step in payload["jobs"]["test"]["steps"])
+    assert '-m "tier_heavy and not tier_external and not quarantined"' in runs
 
 
 def test_github_heavy_workflow_is_manual_or_label_triggered() -> None:

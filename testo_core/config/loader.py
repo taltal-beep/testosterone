@@ -17,6 +17,7 @@ single anonymous plan called ``default``.
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import tomllib
 from pathlib import Path
@@ -25,7 +26,9 @@ from typing import Any
 import yaml
 
 from testo_core import plugins
+from testo_core.config.affected import parse_affected
 from testo_core.config.errors import ConfigDiscoveryError, ConfigValidationError
+from testo_core.config.history_section import parse_history
 from testo_core.config.schema import Defaults, Plan, Stage, TestosteroneConfig
 from testo_core.config.sections import (
     parse_cycle,
@@ -33,6 +36,7 @@ from testo_core.config.sections import (
     parse_quarantine,
     parse_reporters,
     parse_stage,
+    parse_version,
     validate_artifact_name,
 )
 from testo_core.resources.pools import parse_resources
@@ -104,7 +108,14 @@ def load_config(path: Path) -> TestosteroneConfig:
     else:
         raw = _read_yaml(path)
 
-    return _build_config(raw, source=path)
+    cfg = _build_config(raw, source=path)
+    if isinstance(raw, dict) and "cycles" in raw:
+        from testo_core.config.unknown_keys import unknown_keys
+
+        found = unknown_keys(raw)
+        if found:
+            cfg = dataclasses.replace(cfg, warnings=tuple(found))
+    return cfg
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -138,13 +149,15 @@ def _build_config(raw: dict[str, Any], *, source: Path) -> TestosteroneConfig:
         return _build_cycle_config(raw, config_dir=config_dir, source=source)
     if "runs" in raw:
         return _build_legacy_runs_config(raw, config_dir=config_dir, source=source)
-    if "resources" in raw:
-        # Only pools (for `testo lease`), no cycles yet.
+    if "resources" in raw or "affected" in raw or "history" in raw:
+        # Only pools (`testo lease`), test selection (`testo affected`) or retention, no cycles yet.
         return TestosteroneConfig(
-            version=int(raw.get("version", 1)),
+            version=parse_version(raw.get("version", 1)),
             defaults=parse_defaults(raw.get("defaults", {}), config_dir=config_dir),
             source_path=source,
             resources=parse_resources(raw.get("resources")),
+            affected=parse_affected(raw.get("affected"), config_dir=config_dir),
+            history=parse_history(raw.get("history")),
         )
     if {"test_type", "target_repo"}.issubset(raw):
         # Single legacy run, no `runs:` wrapper.
@@ -158,7 +171,7 @@ def _build_config(raw: dict[str, Any], *, source: Path) -> TestosteroneConfig:
 def _build_cycle_config(
     raw: dict[str, Any], *, config_dir: Path, source: Path
 ) -> TestosteroneConfig:
-    version = int(raw.get("version", 1))
+    version = parse_version(raw.get("version", 1))
     defaults = parse_defaults(raw.get("defaults", {}), config_dir=config_dir)
     # Canonical: cycles. Legacy: plans.
     cycles_raw = raw.get("cycles")
@@ -194,6 +207,8 @@ def _build_cycle_config(
         reporters=reporters,
         source_path=source,
         resources=pools,
+        affected=parse_affected(raw.get("affected"), config_dir=config_dir),
+        history=parse_history(raw.get("history")),
     )
 
 
@@ -242,10 +257,12 @@ def _build_legacy_runs_config(
     )
     reporters = parse_reporters(raw.get("reporters"), config_dir=config_dir)
     return TestosteroneConfig(
-        version=int(raw.get("version", 1)),
+        version=parse_version(raw.get("version", 1)),
         defaults=defaults,
         cycles={plan.name: plan},
         reporters=reporters,
         source_path=source,
         resources=parse_resources(raw.get("resources")),
+        affected=parse_affected(raw.get("affected"), config_dir=config_dir),
+        history=parse_history(raw.get("history")),
     )

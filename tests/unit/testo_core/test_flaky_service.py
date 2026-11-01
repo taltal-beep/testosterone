@@ -8,9 +8,11 @@ from pathlib import Path
 
 import pytest
 
+from testo_core import paths
 from testo_core.history.views import CompletedRunView
 from testo_core.repository.models import RunStatus
 from testo_core.services import flaky_service
+from tests._history_fakes import cycle_runs_from
 
 
 def _run(run_id: str, *, cycle: str = "unit", created_at: float = 1.0) -> CompletedRunView:
@@ -95,8 +97,8 @@ def test_find_flaky_tests_reads_each_runs_snapshot(monkeypatch, tmp_path: Path) 
     )
     _write_results(tmp_path, runs[1], {"test_flaky": "failed"})
 
-    monkeypatch.setattr(flaky_service.paths, "ORCHESTRATOR_ROOT", tmp_path)
-    monkeypatch.setattr(flaky_service, "list_recent_runs", lambda *, limit: runs)
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(flaky_service, "list_cycle_runs", cycle_runs_from(runs))
 
     report = flaky_service.find_flaky_tests(cycle="unit")
 
@@ -109,8 +111,8 @@ def test_find_flaky_tests_limits_to_the_window(monkeypatch, tmp_path: Path) -> N
     runs = [_run(f"r{i}", created_at=i) for i in range(5, 0, -1)]  # newest first
     for run, status in zip(runs, ["passed", "passed", "failed", "passed", "failed"], strict=True):
         _write_results(tmp_path, run, {"test_x": status})
-    monkeypatch.setattr(flaky_service.paths, "ORCHESTRATOR_ROOT", tmp_path)
-    monkeypatch.setattr(flaky_service, "list_recent_runs", lambda *, limit: runs)
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(flaky_service, "list_cycle_runs", cycle_runs_from(runs))
 
     # Last 2 runs: passed, passed. Not flaky. All 5: failed, passed, failed, passed, passed.
     assert flaky_service.find_flaky_tests(cycle="unit", window=2).flaky == ()
@@ -119,7 +121,7 @@ def test_find_flaky_tests_limits_to_the_window(monkeypatch, tmp_path: Path) -> N
 
 def test_runs_without_a_snapshot_are_skipped(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
     runs = [replace(_run("r1"), snapshot_dir=None)]
-    monkeypatch.setattr(flaky_service, "list_recent_runs", lambda *, limit: runs)
+    monkeypatch.setattr(flaky_service, "list_cycle_runs", cycle_runs_from(runs))
     report = flaky_service.find_flaky_tests(cycle="unit")
     assert (report.runs_analyzed, report.flaky) == (0, ())
 
@@ -133,8 +135,8 @@ def test_newly_flaky_tests_are_the_ones_this_run_made_flaky(monkeypatch, tmp_pat
     }
     for i, run in enumerate(reversed(runs)):
         _write_results(tmp_path, run, {name: statuses[i] for name, statuses in history.items()})
-    monkeypatch.setattr(flaky_service.paths, "ORCHESTRATOR_ROOT", tmp_path)
-    monkeypatch.setattr(flaky_service, "list_recent_runs", lambda *, limit: runs)
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(flaky_service, "list_cycle_runs", cycle_runs_from(runs))
 
     assert [t.name for t in flaky_service.newly_flaky_tests(cycle="unit")] == ["test_now"]
     # As of r3, test_new and test_old had just made their second flip.

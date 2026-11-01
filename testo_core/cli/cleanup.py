@@ -9,6 +9,30 @@ from pathlib import Path
 PROJECT_DOCKER_LABEL = "com.testosterone.project=testo"
 
 
+_PROJECT_MARKERS = (".git", "testosterone.yaml", "testosterone.yml", "pyproject.toml")
+
+
+def unsafe_to_remove(path: Path, *, protected: tuple[Path, ...] = ()) -> str | None:
+    """Why ``testo clean`` must not delete *path*, or ``None`` when it may.
+
+    Refuses the filesystem root, the home folder, the current folder, any
+    *protected* folder (the config's folder), a parent of any of those, and a
+    folder that looks like a project (it holds ``.git``, ``testosterone.yaml``
+    or ``pyproject.toml``). ``artifacts_root: .`` would otherwise delete the
+    whole project.
+    """
+    p = path.expanduser().resolve()
+    keep = {Path("/").resolve(), Path.home().resolve(), Path.cwd().resolve()}
+    keep |= {q.expanduser().resolve() for q in protected}
+    for kept in keep:
+        if p == kept or p in kept.parents:
+            return f"{p} is (or contains) {kept}"
+    for marker in _PROJECT_MARKERS:
+        if (p / marker).exists():
+            return f"{p} looks like a project folder (it has {marker})"
+    return None
+
+
 def remove_tree_if_exists(path: Path) -> bool:
     """Delete ``path`` if it exists and is a directory. Returns whether anything was removed."""
     p = path.expanduser().resolve()

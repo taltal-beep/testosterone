@@ -1,0 +1,123 @@
+# The GitHub Marketplace listing: `uses: taltal-beep/testosterone@v1`.
+# Same action as integrations/github-action/action.yml (the older path, kept
+# working); tests/contract/ci/test_action_copies.py keeps the two in step.
+name: Testosterone Test History
+description: Run your tests or read JUnit XML, keep their history, and show what broke, what's flaky and what got slower.
+branding:
+  icon: activity
+  color: blue
+inputs:
+  config-path:
+    description: Path to testosterone.yaml (empty = discovery from the workspace root).
+    required: false
+    default: ""
+  cycle:
+    description: Cycle to run (empty = the only cycle in the config; `all` = every cycle, each with its own summary, comment and alert).
+    required: false
+    default: ""
+  ci-mode:
+    description: Emit NDJSON events on stdout (`testo run --ci`).
+    required: false
+    default: "true"
+  persist:
+    description: Persist plan_result.json and the run history record.
+    required: false
+    default: "true"
+  python-version:
+    description: Python version used to run testo.
+    required: false
+    default: "3.11"
+  package:
+    description: What to pip install for testo, e.g. `testo-core==1.2.0`, `.` for a checkout of this repository, or several requirements separated by spaces (`testo-core pytest-xdist`).
+    required: false
+    default: testo-core
+  job-summary:
+    description: Write the run (results, failing tests, changes since the last run) to the job summary.
+    required: false
+    default: "true"
+  comment-on-pr:
+    description: "On pull_request events, keep one comment per cycle on the pull request with the same summary. Needs `permissions: pull-requests: write`."
+    required: false
+    default: "false"
+  annotations:
+    description: Print failing tests as annotations, shown inline on the pull request diff. Needs no permission.
+    required: false
+    default: "true"
+  slack-webhook:
+    description: "Slack incoming-webhook URL. Pass a repository secret (secrets.SLACK_WEBHOOK_URL); empty = no Slack alert."
+    required: false
+    default: ""
+  teams-webhook:
+    description: "Microsoft Teams Workflows webhook URL. Pass a secret; empty = no Teams alert."
+    required: false
+    default: ""
+  notify-when:
+    description: "When to send the chat alert: `failure` (red run or newly flaky test), `change` (differs from the previous run) or `always`."
+    required: false
+    default: failure
+  flaky-issues:
+    description: "Open one issue per test that this run made flaky (skipped if an open issue has the same title). Needs `permissions: issues: write`."
+    required: false
+    default: "false"
+  github-token:
+    description: Token used for the pull request comment and flaky test issues.
+    required: false
+    default: ${{ github.token }}
+outputs:
+  exit_code:
+    description: testo process exit code.
+    value: ${{ steps.run_testo.outputs.exit_code }}
+  summary_json:
+    description: Final `plan_finished` (or `error`) NDJSON event as a JSON string.
+    value: ${{ steps.run_testo.outputs.summary_json }}
+  summary_path:
+    description: Absolute path to the saved summary JSON file.
+    value: ${{ steps.run_testo.outputs.summary_path }}
+  status:
+    description: Normalized status string from exit code.
+    value: ${{ steps.run_testo.outputs.status }}
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install testo
+      shell: bash
+      env:
+        # Inputs reach the shell as variables, never pasted into the script,
+        # so a quote or $(...) in an input is data, not a command.
+        TESTO_INPUT_PACKAGE: ${{ inputs.package }}
+      run: |
+        python -m pip install --upgrade pip
+        # One or more requirements, space separated: "testo-core pytest-xdist".
+        read -r -a packages <<< "$TESTO_INPUT_PACKAGE"
+        python -m pip install "${packages[@]}"
+    - name: Run testo
+      id: run_testo
+      shell: bash
+      env:
+        TESTO_GITHUB_TOKEN: ${{ inputs.github-token }}
+        TESTO_SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook }}
+        TESTO_TEAMS_WEBHOOK_URL: ${{ inputs.teams-webhook }}
+        TESTO_INPUT_CONFIG_PATH: ${{ inputs.config-path }}
+        TESTO_INPUT_CYCLE: ${{ inputs.cycle }}
+        TESTO_INPUT_CI_MODE: ${{ inputs.ci-mode }}
+        TESTO_INPUT_PERSIST: ${{ inputs.persist }}
+        TESTO_INPUT_JOB_SUMMARY: ${{ inputs.job-summary }}
+        TESTO_INPUT_COMMENT_ON_PR: ${{ inputs.comment-on-pr }}
+        TESTO_INPUT_ANNOTATIONS: ${{ inputs.annotations }}
+        TESTO_INPUT_NOTIFY_WHEN: ${{ inputs.notify-when }}
+        TESTO_INPUT_FLAKY_ISSUES: ${{ inputs.flaky-issues }}
+      run: |
+        python "${{ github.action_path }}/integrations/github-action/run_testo_action.py" \
+          --config-path "$TESTO_INPUT_CONFIG_PATH" \
+          --cycle "$TESTO_INPUT_CYCLE" \
+          --ci-mode "$TESTO_INPUT_CI_MODE" \
+          --persist "$TESTO_INPUT_PERSIST" \
+          --job-summary "$TESTO_INPUT_JOB_SUMMARY" \
+          --comment-on-pr "$TESTO_INPUT_COMMENT_ON_PR" \
+          --annotations "$TESTO_INPUT_ANNOTATIONS" \
+          --notify-when "$TESTO_INPUT_NOTIFY_WHEN" \
+          --flaky-issues "$TESTO_INPUT_FLAKY_ISSUES"

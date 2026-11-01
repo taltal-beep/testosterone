@@ -21,6 +21,11 @@ Status mapping (Playwright test status -> Allure):
     skipped      -> skipped
     unexpected   -> failed (broken if the last attempt was interrupted)
 
+Errors outside any test (a spec file that doesn't compile, a failing
+``globalSetup``) are in the report's top-level ``errors``; Playwright then
+runs no test at all. Each becomes one ``broken`` result, so such a run is
+never recorded as passed.
+
 Attachments are read from disk only inside ``attachments_root``. Playwright
 writes absolute paths; when a report was produced elsewhere (a CI artifact
 downloaded to a laptop) the path's tail is looked up under that root instead.
@@ -63,9 +68,11 @@ class PlaywrightFileResults:
     notes: tuple[str, ...]
 
 
-def _clean(text: str | None) -> str | None:
+def _clean(text: Any) -> str | None:
     if not text:
         return None
+    if not isinstance(text, str):
+        text = str(text)
     text = _ANSI.sub("", text).strip()
     if len(text) > _MAX_TRACE_CHARS:
         text = text[:_MAX_TRACE_CHARS] + "\n… (truncated)"
@@ -84,7 +91,7 @@ def _start_ms(value: Any, fallback_ms: int) -> int:
 def _ms(value: Any) -> int:
     try:
         return max(0, int(round(float(value or 0))))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return 0
 
 
@@ -185,10 +192,14 @@ def _test_status(test: dict, attempts: list[dict]) -> tuple[str, bool]:
     return ("broken" if last == "broken" else "failed"), False
 
 
+def _dicts(value: Any) -> list[dict]:
+    return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
+
+
 def _walk(suite: dict, titles: tuple[str, ...]):
-    for spec in suite.get("specs") or []:
+    for spec in _dicts(suite.get("specs")):
         yield titles, spec
-    for child in suite.get("suites") or []:
+    for child in _dicts(suite.get("suites")):
         yield from _walk(child, (*titles, str(child.get("title") or "")))
 
 
@@ -197,12 +208,13 @@ def _results_for_report(
 ) -> tuple[list[dict], int]:
     results: list[dict] = []
     flaky_count = 0
-    for top in report.get("suites") or []:
+    for top in _dicts(report.get("suites")):
         file_title = str(top.get("file") or top.get("title") or "")
         for titles, spec in _walk(top, ()):
             spec_title = str(spec.get("title") or "(unnamed)")
-            tags = [str(t).lstrip("@") for t in spec.get("tags") or []]
-            for test in spec.get("tests") or []:
+            raw_tags = spec.get("tags")
+            tags = [str(t).lstrip("@") for t in raw_tags] if isinstance(raw_tags, list) else []
+            for test in _dicts(spec.get("tests")):
                 project = str(test.get("projectName") or "")
                 attempts = [a for a in test.get("results") or [] if isinstance(a, dict)]
                 status, flaky = _test_status(test, attempts)
@@ -295,6 +307,38 @@ def _results_for_report(
     return results, flaky_count
 
 
+def _report_error_result(error: dict, *, tool: str, start_ms: int, root: Path | None) -> dict:
+    """One ``broken`` result for an error outside any test, named after the file it points to."""
+    location = error.get("location")
+    where = str(location.get("file") or "") if isinstance(location, dict) else ""
+    if where and root is not None:
+        try:
+            where = Path(where).resolve().relative_to(root).as_posix()
+        except (ValueError, OSError):
+            where = Path(where).name
+    elif where:
+        where = Path(where).name
+    full_name = f"{where} › (failed to load)" if where else "(report error)"
+    details: dict[str, Any] = {"message": "Playwright reported an error outside any test"}
+    details.update(_error_details({"error": error}))
+    return {
+        "uuid": str(uuid.uuid4()),
+        "historyId": hashlib.sha256(f"{tool}:{full_name}".encode()).hexdigest(),
+        "name": "(failed to load)" if where else "(report error)",
+        "fullName": full_name,
+        "status": "broken",
+        "stage": "finished",
+        "start": start_ms,
+        "stop": start_ms,
+        "labels": [
+            {"name": "suite", "value": where or "playwright"},
+            {"name": "framework", "value": "playwright"},
+            {"name": "language", "value": "javascript"},
+        ],
+        "statusDetails": details,
+    }
+
+
 def playwright_results_for_file(
     path: Path,
     *,
@@ -311,7 +355,7 @@ def playwright_results_for_file(
     errors come back in ``notes``.
     """
     try:
-        report = json.loads(path.read_text(encoding="utf-8"))
+        report = json.loads(path.read_text(encoding="utf-8-sig"))
     except json.JSONDecodeError as exc:
         raise ValueError(f"not valid JSON ({exc})") from exc
     if not isinstance(report, dict) or not isinstance(report.get("suites"), list):
@@ -327,10 +371,14 @@ def playwright_results_for_file(
     results, flaky = _results_for_report(
         report, tool=tool, fallback_ms=fallback_ms, attachments=attachments
     )
+    report_errors = [e for e in report.get("errors") or [] if isinstance(e, dict)]
+    results += [
+        _report_error_result(error, tool=tool, start_ms=fallback_ms, root=root)
+        for error in report_errors
+    ]
     notes = [
         f"report error: {(_clean(e.get('message')) or 'error').splitlines()[0]}"
-        for e in report.get("errors") or []
-        if isinstance(e, dict)
+        for e in report_errors
     ]
     notes += [f"attachment skipped: {s}" for s in attachments.skipped]
     return PlaywrightFileResults(

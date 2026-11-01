@@ -47,9 +47,9 @@ def suite_duration_preferred(archive: ReportArchive) -> tuple[int | None, str]:
     """Return (ms, label) preferring Allure per-test sum, else plan wall time."""
 
     if archive.allure_duration_ms is not None:
-        return archive.allure_duration_ms, "Allure Σ (per-test)"
+        return archive.allure_duration_ms, "sum of test times"
     if archive.plan_duration_ms is not None:
-        return archive.plan_duration_ms, "plan wall"
+        return archive.plan_duration_ms, "wall time"
     return None, ""
 
 
@@ -290,7 +290,7 @@ def render_change_sections(
 
     if not changes:
         console.print(
-            "[dim]No per-test differences detected (or no *-result.json in archives).[/]",
+            "[dim]No test changed outcome between these two runs (or their test results weren't recorded).[/]",
         )
 
 

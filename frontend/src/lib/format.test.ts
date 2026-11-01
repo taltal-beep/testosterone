@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { countLabel, formatPercent, formatRunLabel, shortRunId } from "./format";
+import {
+  countLabel,
+  formatPercent,
+  formatProvenance,
+  formatRelativeTime,
+  formatRunLabel,
+  shortRunId
+} from "./format";
 
 describe("run labels", () => {
   it("names a run by cycle and start time", () => {
@@ -33,5 +40,30 @@ describe("formatPercent", () => {
     expect(formatPercent(0.2)).toBe("0.2%");
     expect(formatPercent(100)).toBe("100%");
     expect(formatPercent(null)).toBe("n/a");
+  });
+});
+
+describe("formatRelativeTime", () => {
+  const now = 1_760_000_000_000;
+
+  it("rounds to the unit a reader would say", () => {
+    expect(formatRelativeTime(now / 1000 - 10, now)).toBe("just now");
+    expect(formatRelativeTime(now / 1000 - 3 * 60, now)).toBe("3 min ago");
+    expect(formatRelativeTime(now / 1000 - 5 * 3600, now)).toBe("5 h ago");
+    expect(formatRelativeTime(now / 1000 - 86_400, now)).toBe("1 day ago");
+    expect(formatRelativeTime(now / 1000 - 3 * 86_400, now)).toBe("3 days ago");
+  });
+
+  it("falls back to the date after a month", () => {
+    expect(formatRelativeTime(now / 1000 - 40 * 86_400, now)).toMatch(/\d{2}:\d{2}$/);
+  });
+});
+
+describe("formatProvenance", () => {
+  it("joins branch and a short commit, or shows whichever is known", () => {
+    expect(formatProvenance({ branch: "main", commit: "9c23517abcdef0123" })).toBe("main @ 9c23517");
+    expect(formatProvenance({ branch: "feature/x", commit: null })).toBe("feature/x");
+    expect(formatProvenance({ branch: null, commit: "9c23517abcdef0123" })).toBe("9c23517");
+    expect(formatProvenance({ branch: " ", commit: null })).toBeNull();
   });
 });

@@ -12,6 +12,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from testo_core.config.affected import AffectedConfig
+from testo_core.config.history_section import HistoryConfig
+
 if TYPE_CHECKING:
     from testo_core.resources.pools import ResourcePool, StageResources
 
@@ -49,7 +52,7 @@ DEFAULT_TIER_BY_FRAMEWORK: dict[str, str] = {
 
 # Supported post-run reporters. Add new ones in :mod:`testo_core.reporting.reporters` and append here.
 SUPPORTED_REPORTER_TYPES: frozenset[str] = frozenset(
-    {"allure", "extent", "reportportal", "slack", "teams", "testbeats"}
+    {"allure", "extent", "otel", "reportportal", "slack", "teams", "testbeats"}
 )
 
 
@@ -153,6 +156,12 @@ class TestosteroneConfig:
     source_path: Path | None = None
     # Top-level ``resources:``: pools of keys parallel workers lease (testo_core/resources/).
     resources: dict[str, ResourcePool] = field(default_factory=dict)
+    # Top-level ``affected:``: how changed files map to tests (`testo affected`).
+    affected: AffectedConfig = field(default_factory=AffectedConfig)
+    # Top-level ``history:``: how long run history is kept (`testo clean --history`).
+    history: HistoryConfig = field(default_factory=HistoryConfig)
+    # Keys the loader ignored ("unknown key 'cycles.web.triger' is ignored; did you mean ...").
+    warnings: tuple[str, ...] = ()
 
     @property
     def plans(self) -> dict[str, Plan]:

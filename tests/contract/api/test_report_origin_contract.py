@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from collections.abc import Iterator
 from pathlib import Path
@@ -15,12 +16,15 @@ from testo_core.paths import STATIC_HISTORY_ROOT
 
 _TOKEN = "s3cret-token"
 _REPORTS = "http://reports.test"
-_PAGE = "/history/report-origin-run/allure/index.html"
+# One run folder per process: pytest-xdist workers share STATIC_HISTORY_ROOT,
+# and one worker's teardown must not delete the page another is reading.
+_RUN = f"report-origin-run-{os.getpid()}"
+_PAGE = f"/history/{_RUN}/allure/index.html"
 
 
 @pytest.fixture
 def report_file() -> Iterator[Path]:
-    run_dir = Path(STATIC_HISTORY_ROOT) / "report-origin-run"
+    run_dir = Path(STATIC_HISTORY_ROOT) / _RUN
     page = run_dir / "allure" / "index.html"
     page.parent.mkdir(parents=True, exist_ok=True)
     page.write_text("<h1>report</h1>", encoding="utf-8")

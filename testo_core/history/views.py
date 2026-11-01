@@ -2,7 +2,9 @@
 
 Records are written by :class:`~testo_core.persistence.db_backend.DbBackend`
 (``exit_code``, ``duration_s``, ``stages``, ...). :func:`view_from_record` maps that
-JSON onto typed fields, so nothing above this module depends on the raw keys.
+JSON onto typed fields, so nothing above this module depends on the raw keys. The
+promoted columns (``cycle``, ``health_pct``, ``branch``, ...) win when set; the JSON
+is the fallback for rows migration 0002 could not fill.
 """
 
 from __future__ import annotations
@@ -64,6 +66,7 @@ class RunSessionView:
     links_under_static: dict[str, str]
     cycle: str | None = None
     branch: str | None = None
+    commit: str | None = None
 
 
 def wall_duration_ms_from_metadata(md: dict[str, Any]) -> float:
@@ -112,7 +115,7 @@ def view_from_record(record: RunRecord) -> CompletedRunView | None:
         started_at=float(md.get("started_at") or 0.0),
         finished_at=float(md.get("finished_at") or 0.0),
         test_kind=str(md.get("test_kind") or "unknown"),
-        cycle=_optional_str(md, "plan"),
+        cycle=record.cycle or _optional_str(md, "plan"),
         returncode=int(md.get("exit_code") or 0),
         wall_duration_ms=wall_duration_ms_from_metadata(md),
         metrics_duration_ms=_optional_int(md, "metrics_duration_ms"),
@@ -122,13 +125,17 @@ def view_from_record(record: RunRecord) -> CompletedRunView | None:
         broken=_optional_int(md, "broken"),
         skipped=_optional_int(md, "skipped"),
         avg_case_ms=_optional_float(md, "avg_case_ms"),
-        health_pct=health_pct_from_metadata(md),
+        health_pct=record.health_pct
+        if record.health_pct is not None
+        else health_pct_from_metadata(md),
         target_repo=_optional_str(md, "target_repo"),
-        snapshot_dir=_optional_str(md, "snapshot_dir"),
+        snapshot_dir=record.snapshot_dir or _optional_str(md, "snapshot_dir"),
         audit_json=_optional_str(md, "audit_json"),
         stage_health=[s for s in md.get("stages") or [] if isinstance(s, dict)],
-        branch=_optional_str(md, "ci_ref_name") or _optional_str(md, "git_branch"),
-        commit=_optional_str(md, "ci_commit_sha") or _optional_str(md, "git_commit"),
+        branch=record.branch or _optional_str(md, "ci_ref_name") or _optional_str(md, "git_branch"),
+        commit=record.commit_sha
+        or _optional_str(md, "ci_commit_sha")
+        or _optional_str(md, "git_commit"),
         base_branch=_optional_str(md, "ci_base_ref"),
         repository=_optional_str(md, "repository"),
     )

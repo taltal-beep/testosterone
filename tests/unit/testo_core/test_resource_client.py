@@ -192,3 +192,23 @@ def test_backend_choice_and_the_absolute_local_url(
     assert local_lease_db_url() == f"sqlite:///{tmp_path.resolve() / 'history.db'}"
     local = backend_from_env(env={"TESTO_LEASE_DB_URL": f"sqlite:///{tmp_path / 'x.db'}"})
     assert isinstance(local, LeaseStore)
+
+
+def test_on_release_never_runs_on_a_key_someone_else_now_holds(
+    store: LeaseStore, tmp_path: Path
+) -> None:
+    # P6 in docs/engine-cli-review.md: A's lease lapses between two heartbeats, B takes
+    # the key, then A gives it back. A's on_release must not reset B's key.
+    marker = tmp_path / "released.txt"
+    script = tmp_path / "release.py"
+    script.write_text(f"open({str(marker)!r}, 'a').write('reset')\n")
+    pool = parse_pool(
+        "vms", {"items": ["vm-1"], "lease_ttl": 30, "on_release": f'"{sys.executable}" "{script}"'}
+    )
+    a = acquire(store, pool, wait_s=0)
+    store.force_release("vms", "vm-1")  # as if A's lease expired
+    with acquire(store, pool, wait_s=0) as b:
+        a.release()
+        assert not marker.exists()
+        assert store.available(pool) == 0 and b.id == "vm-1"
+    assert marker.read_text() == "reset"  # B's own release still resets it

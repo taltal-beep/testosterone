@@ -49,7 +49,19 @@ flowchart TD
 | Adapters | `testo_core/cli/`, `testo_api/`, `frontend/` | Presentation only: CLI renderers (Rich / NDJSON), FastAPI routes + SSE, React pages. |
 
 `testo_core/paths.py` is the only module left at the package root: it defines the
-`artifacts/` and `static/` layout that every layer above shares.
+`artifacts/` and `static/` layout that every layer above shares, including
+`safe_child_path()` and `plan_artifacts_dir()`, the two helpers every layer uses to
+address a cycle's artifacts.
+
+CI keeps this table honest: `lint-imports` (import-linter, contracts in
+`pyproject.toml` under `[tool.importlinter]`, run by the `format` job) fails when
+`testo_core` imports `testo_api`, when anything below the analytics imports
+`services/` or `cli/`, when `repository/` imports a layer above it, when `config/`,
+`frameworks/` or `paths.py` import the engine or the read/write sides, or when
+`persistence/` and `history/` import each other. The few known exceptions are listed
+next to their contract as `ignore_imports`: `testo ui` starting the API server,
+`persistence/db_backend.py` reading CI provenance from `services/`, and the plugin
+loader knowing the reporter base class.
 
 ## One run, end to end
 
@@ -120,7 +132,7 @@ progress for both run panels comes from one hook, `features/execution/useCycleEx
 
 ### CI wrappers
 
-`integrations/github-action/` (composite action) and `ci/gitlab/testo.gitlab-ci.yml` both run
+`action.yml` at the root (composite action, listed on the Marketplace; its script lives in `integrations/github-action/`) and `ci/gitlab/testo.gitlab-ci.yml` both run
 `testo run --ci` and keep the NDJSON stream plus the final `plan_finished` event as artifacts.
 `Dockerfile.testo-runner` packages the CLI as a runner image (`ENTRYPOINT ["testo"]`).
 

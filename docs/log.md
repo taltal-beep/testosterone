@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-10-26
+updated: 2026-11-01
 ---
 
 # Vault log
@@ -120,3 +120,47 @@ Added [Resource Lifecycle Hooks - 2026-10-26](Specs%20&%20ADRs/Resource%20Lifecy
 ## 2026-10-26: qualflare follow-ups
 
 Added [Qualflare Follow-ups - 2026-10-26](Specs%20&%20ADRs/Qualflare%20Follow-ups%20-%202026-10-26.md) to Specs & ADRs (README badge, asking about your tests, Jira issues from failures), linked from its README and the docs site menu.
+
+## 2026-10-30: affected test selection
+
+Added [Affected Test Selection - 2026-10-30](Specs%20&%20ADRs/Affected%20Test%20Selection%20-%202026-10-30.md) to Specs & ADRs (`testo affected`, `pytest --testo-affected`, the `affected:` section), linked from its README and the docs site menu.
+
+## 2026-10-30: human-run resource provider
+
+Added [Human-Run Resource Provider - 2026-10-30](Specs%20&%20ADRs/Human-Run%20Resource%20Provider%20-%202026-10-30.md) to Specs & ADRs (`provider.list`, `testo pool status`; Testosterone never creates or deletes keys on its own), linked from its README and the docs site menu.
+
+## 2026-10-30: opentelemetry export
+
+Added [OpenTelemetry Export - 2026-10-30](Specs%20&%20ADRs/OpenTelemetry%20Export%20-%202026-10-30.md) to Specs & ADRs (runs as OTLP traces, the `otel` reporter and `testo otel`), linked from its README and the docs site menu.
+
+## 2026-10-31: architecture review
+
+Added [Architecture Review - 2026-10-31](Specs%20&%20ADRs/Architecture%20Review%20-%202026-10-31.md) to Specs & ADRs (ranked findings on the read side, migrations and layering, with proposals), linked from its README, the Index and the docs site menu.
+
+## 2026-10-31: feature gaps and quick wins
+
+Added [Feature Gaps and Quick Wins - 2026-10-31](Roadmap%20&%20Strategy/Feature%20Gaps%20and%20Quick%20Wins%20-%202026-10-31.md) to Roadmap & Strategy (competitor research and a new-user pass, ranked with effort), linked from the Index, the Product Roadmap and the docs site menu.
+
+## 2026-10-31: ui design review
+
+Added [UI Design Review - 2026-10-31](Specs%20&%20ADRs/UI%20Design%20Review%20-%202026-10-31.md) to Specs & ADRs with annotated screenshots under `assets/ui-review-2026-10-31/`, linked from its README, the Index and the docs site menu.
+
+## 2026-10-31: engine and CLI bug hunt
+
+Added [Engine and CLI Bug Hunt](engine-cli-review.md) (reproduced bugs, fixes, ranked proposals), linked from the [Index](Index.md) and the docs site menu.
+
+## 2026-10-31: importer and integration bug hunt
+
+Added [Importer and Integration Bug Hunt - 2026-10-31](Specs%20&%20ADRs/Importer%20and%20Integration%20Bug%20Hunt%20-%202026-10-31.md) to Specs & ADRs (ranked findings, fixes and proposals), linked from its README, the Index and the docs site menu.
+
+## 2026-10-31: paid features to offer free
+
+Added [Paid Features to Offer Free - 2026-10-31](Roadmap%20&%20Strategy/Paid%20Features%20to%20Offer%20Free%20-%202026-10-31.md) to Roadmap & Strategy (competitor paywalls, twelve ranked ideas, licence and trademark rules), linked from the Index, the Product Roadmap and the docs site menu.
+
+## 2026-11-01: UI review fixes
+
+Added [UI Review Fixes - 2026-11-01](Specs%20&%20ADRs/UI%20Review%20Fixes%20-%202026-11-01.md) to Specs & ADRs (the five proposals built from the UI design review), linked from its README, the Index and the docs site menu.
+
+## 2026-11-01: engine fixes
+
+Added [Engine Fixes - 2026-11-01](Specs%20&%20ADRs/Engine%20Fixes%20-%202026-11-01.md) to Specs & ADRs (what each approved bug-hunt proposal changed), linked from its README and the docs site menu.

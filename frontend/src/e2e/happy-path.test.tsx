@@ -246,9 +246,11 @@ describe("happy path", () => {
     await router.navigate("/runs/run-1");
     await waitFor(() => expect(screen.getByText("run-1")).toBeInTheDocument());
     await router.navigate("/compare?current_run_id=run-1&baseline_run_id=run-2");
-    await waitFor(() => expect(screen.getByTestId("status-summary")).toHaveTextContent("6 improvements"));
+    await waitFor(() => expect(screen.getByTestId("status-summary")).toHaveTextContent("6 better"));
     expect(screen.getByRole("heading", { name: "Reliability" })).toBeInTheDocument();
-  });
+    // Five pages in one test: ~1.5 s alone, but it went past vitest's 5 s
+    // default on a busy machine, so give it room instead of flaking.
+  }, 15_000);
 });
 
 function _metric(

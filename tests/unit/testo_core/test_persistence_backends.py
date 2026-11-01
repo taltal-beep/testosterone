@@ -270,6 +270,32 @@ class TestDbBackend:
         assert metadata["avg_case_ms"] == pytest.approx(200.0)
 
     @patch("testo_core.repository.db.get_repository")
+    def test_writes_one_test_result_row_per_test(
+        self, mock_get_repo: MagicMock, tmp_path: Path
+    ) -> None:
+        from testo_core.repository.db import get_test_result_store
+
+        mock_repo = MagicMock()
+        fake_record = MagicMock()
+        fake_record.id = "run-rows"
+        mock_repo.create_run.return_value = fake_record
+        mock_get_repo.return_value = mock_repo
+        artifacts = tmp_path / "artifacts"
+        results_dir = artifacts / "smoke" / "api" / "allure-results" / "pytest"
+        _write_allure_result(results_dir, "test_one", "passed", duration_ms=100)
+        _write_allure_result(results_dir, "test_two", "failed", duration_ms=300)
+
+        DbBackend(artifacts).persist(_make_plan_result(artifacts_dir=artifacts / "smoke" / "api"))
+
+        rows = get_test_result_store().cases("run-rows")
+        assert {c["name"]: c["status"] for c in rows.values()} == {
+            "test_one": "passed",
+            "test_two": "failed",
+        }
+        assert {c["stage"] for c in rows.values()} == {"api"}
+        assert sorted(c["duration_ms"] for c in rows.values()) == [100, 300]
+
+    @patch("testo_core.repository.db.get_repository")
     def test_persists_failed_run(self, mock_get_repo: MagicMock, tmp_path: Path) -> None:
         mock_repo = MagicMock()
         mock_get_repo.return_value = mock_repo

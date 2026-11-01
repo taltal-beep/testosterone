@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator
+import threading
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
@@ -67,7 +68,56 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     except Exception:
         # Broad on purpose: like the cleanup above, a DB problem must not block startup.
         logger.warning("queued-run recovery skipped (DB unavailable?)", exc_info=True)
-    yield
+
+    # history.retention in testosterone.yaml: prune now and every few hours while the
+    # server runs. Without the section this starts nothing.
+    stop_retention = _start_retention_timer()
+    try:
+        yield
+    finally:
+        stop_retention()
+
+
+# How often the server applies history.retention. Pruning is cheap when nothing
+# expired, and a run only ever expires by getting older, so hours are plenty.
+RETENTION_INTERVAL_S = 6 * 60 * 60
+
+
+def _start_retention_timer() -> Callable[[], None]:
+    """Prune expired history on a daemon thread; returns a function that stops it."""
+    from testo_core.config.errors import ConfigError
+    from testo_core.config.loader import discover_and_load
+
+    try:
+        retention = discover_and_load().history.retention
+    except ConfigError:
+        return lambda: None  # no config here (ingest-only server) means no retention
+    if not retention.enabled:
+        return lambda: None
+
+    from testo_core.history.retention import prune_history
+
+    stop = threading.Event()
+
+    def _loop() -> None:
+        while not stop.is_set():
+            try:
+                report = prune_history(retention)
+                if report.runs_deleted:
+                    logger.info("history retention deleted %s run(s)", report.runs_deleted)
+            except Exception:
+                # Broad on purpose: a DB hiccup must not kill the timer or the server.
+                logger.warning("history retention run failed", exc_info=True)
+            stop.wait(RETENTION_INTERVAL_S)
+
+    threading.Thread(target=_loop, name="testo-history-retention", daemon=True).start()
+    logger.info(
+        "history retention on: days=%s runs_per_cycle=%s, every %s h",
+        retention.days,
+        retention.runs_per_cycle,
+        RETENTION_INTERVAL_S // 3600,
+    )
+    return stop.set
 
 
 def create_app() -> FastAPI:

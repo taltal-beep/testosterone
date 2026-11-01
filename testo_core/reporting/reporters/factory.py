@@ -15,6 +15,7 @@ from testo_core.reporting.reporters.alert_reporter import SlackReporter, TeamsRe
 from testo_core.reporting.reporters.allure_reporter import AllureReporter
 from testo_core.reporting.reporters.base import BaseReporter, ReportContext, ReporterResult
 from testo_core.reporting.reporters.extent_reporter import ExtentReporter
+from testo_core.reporting.reporters.otel_reporter import OtelReporter
 from testo_core.reporting.reporters.reportportal_reporter import ReportPortalReporter
 from testo_core.reporting.reporters.testbeats_reporter import TestBeatsReporter
 
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 _REPORTER_REGISTRY: dict[str, type[BaseReporter]] = {
     "allure": AllureReporter,
     "extent": ExtentReporter,
+    "otel": OtelReporter,
     "reportportal": ReportPortalReporter,
     "slack": SlackReporter,
     "teams": TeamsReporter,
@@ -66,21 +68,42 @@ class ReporterFactory:
         *,
         config_reporters: tuple[ReporterSpec, ...],
         overrides: Sequence[str] | None = None,
+        failures: list[ReporterResult] | None = None,
     ) -> list[BaseReporter]:
+        """The active reporters, built.
+
+        With ``failures``, a plugin reporter that fails to import or to construct
+        is left out and recorded there, so one broken plugin doesn't turn off
+        the others (Slack, Teams, Allure, ...). Without it, that raises
+        :class:`~testo_core.plugins.PluginError`. An unknown type always raises.
+        """
         active = resolve_active_reporter_specs(config_reporters, overrides=overrides)
 
         reporters: list[BaseReporter] = []
         for spec in active:
             cls = _REPORTER_REGISTRY.get(spec.type)
-            if cls is None:
-                supported = plugins.reporter_types()
-                if spec.type not in supported:
-                    raise ValueError(
-                        f"unsupported reporter type {spec.type!r}; supported: {sorted(supported)}"
-                    )
-                cls = plugins.load_reporter(spec.type)
             opts = _interpolate_options(dict(spec.options))
-            reporters.append(cls(options=opts))
+            if cls is not None:
+                reporters.append(cls(options=opts))
+                continue
+            supported = plugins.reporter_types()
+            if spec.type not in supported:
+                raise ValueError(
+                    f"unsupported reporter type {spec.type!r}; supported: {sorted(supported)}"
+                )
+            try:
+                cls = plugins.load_reporter(spec.type)
+                try:
+                    reporters.append(cls(options=opts))
+                except Exception as exc:  # noqa: BLE001 — third-party constructor
+                    raise plugins.PluginError(
+                        f"reporter plugin {spec.type!r} failed to start: {exc}"
+                    ) from exc
+            except plugins.PluginError as exc:
+                if failures is None:
+                    raise
+                logger.warning("reporter plugin %s skipped", spec.type, exc_info=True)
+                failures.append(ReporterResult(ok=False, message=str(exc)))
         return reporters
 
     @staticmethod

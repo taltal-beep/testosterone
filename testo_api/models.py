@@ -26,6 +26,21 @@ class StageSummary(ApiModel):
     workers: int | None = None
 
 
+class CycleLatestRun(ApiModel):
+    """The newest recorded run of a cycle: enough for a list card to show its result."""
+
+    run_id: str
+    created_at: float
+    status: str | None = None
+    returncode: int
+    health_pct: float | None = None
+    total_tests: int | None = None
+    passed: int | None = None
+    failed: int | None = None
+    branch: str | None = None
+    commit: str | None = None
+
+
 class CycleSummary(ApiModel):
     name: str
     description: str | None = None
@@ -34,6 +49,8 @@ class CycleSummary(ApiModel):
     # "config": defined in testosterone.yaml, so it can be run from here.
     # "history": only recorded (``testo ingest``, CI, another machine); read-only.
     source: Literal["config", "history"] = "config"
+    # None until the cycle has a recorded run.
+    latest_run: CycleLatestRun | None = None
 
 
 class CycleListResponse(ApiModel):
@@ -135,6 +152,7 @@ class RunListItem(ApiModel):
     broken: int | None = None
     links_under_static: dict[str, str] = Field(default_factory=dict)
     branch: str | None = None
+    commit: str | None = None
 
 
 class RunListResponse(ApiModel):
@@ -483,6 +501,8 @@ class DashboardRecentRunItem(ApiModel):
     duration_ms: float | None = None
     run_detail_url: str
     compare_url: str | None = None
+    branch: str | None = None
+    commit: str | None = None
 
 
 class DashboardDataFreshnessResponse(ApiModel):
@@ -696,6 +716,30 @@ class ResourceItemRequest(ApiModel):
     pool: str = Field(min_length=1, max_length=128)
     item: str = Field(min_length=1, max_length=128)
     reason: str = Field(default="", max_length=500)
+
+
+class ResourceActionRequest(ApiModel):
+    """``POST /api/v1/resources/actions``: a ``create`` or ``destroy`` command a person ran
+    with ``testo pool ... --apply``. The server only keeps this log; it never runs one.
+    """
+
+    pool: str = Field(min_length=1, max_length=128)
+    item: str = Field(min_length=1, max_length=128)
+    verb: Literal["create", "destroy"]
+    user: str = Field(default="", max_length=64)
+    host: str = Field(default="", max_length=255)
+    command: str = Field(default="", max_length=500)
+    ok: bool
+    detail: str = Field(default="", max_length=500)
+
+
+class ResourceActionItem(ResourceActionRequest):
+    # When the server logged it (its clock, like the lease times).
+    at: float
+
+
+class ResourceActionsResponse(ApiModel):
+    actions: list[ResourceActionItem]
 
 
 class HealthSignalItem(ApiModel):

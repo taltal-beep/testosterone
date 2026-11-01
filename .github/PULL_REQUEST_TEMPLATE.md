@@ -2,6 +2,8 @@
 
 <!-- What does this PR change, and why? -->
 
+<!-- Fixes an issue? Add "Closes #123" so it closes on merge. -->
+
 ## Test plan
 
 <!-- How did you verify this? Commands run, tests added, manual steps. -->

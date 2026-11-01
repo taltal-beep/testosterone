@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-10-26
+updated: 2026-11-01
 ---
 
 # Specs & ADRs
@@ -20,6 +20,9 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Cycles-first UI | [Phase 5 UI Redesign - Cycles-First Navigation](Phase%205%20UI%20Redesign%20-%20Cycles-First%20Navigation.md) |
 | Navy glass look and sidebar | [UI Restyle - 2026-10-19](UI%20Restyle%20-%202026-10-19.md) |
 | One engine, generated API types, blocking type checks | [Architecture Consolidation - 2026-10-06](Architecture%20Consolidation%20-%202026-10-06.md) |
+| Architecture review: read-side scaling, migrations, layering enforcement (proposals only) | [Architecture Review - 2026-10-31](Architecture%20Review%20-%202026-10-31.md) |
+| Importer and integration bug hunt: ranked findings, fixes and proposals | [Importer and Integration Bug Hunt - 2026-10-31](Importer%20and%20Integration%20Bug%20Hunt%20-%202026-10-31.md) |
+| Engine fixes from the bug hunt: one run of a cycle at a time, and the other proposals | [Engine Fixes - 2026-11-01](Engine%20Fixes%20-%202026-11-01.md) |
 | Interview-readiness batch (pull requests 67 to 91, v1.1.0) | [Interview Readiness Fixes - 2026-10-07](Interview%20Readiness%20Fixes%20-%202026-10-07.md) |
 | Docs vault as second brain, wiki generated from `docs/` | [Docs Vault and Wiki Sync - 2026-10-07](Docs%20Vault%20and%20Wiki%20Sync%20-%202026-10-07.md) |
 | Post-publish features: flaky tests, PR comments, plugins, adapters | [Open Source Features - 2026-10-19](Open%20Source%20Features%20-%202026-10-19.md) |
@@ -28,10 +31,13 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Third-party frameworks and reporters through entry points | [Plugin API - 2026-10-19](Plugin%20API%20-%202026-10-19.md) |
 | Playwright as its own equipment | [Playwright Adapter - 2026-10-19](Playwright%20Adapter%20-%202026-10-19.md) |
 | Quarantining flaky tests so they don't fail the run | [Flaky Test Quarantine - 2026-10-22](Flaky%20Test%20Quarantine%20-%202026-10-22.md) |
+| Running only the tests a change can affect (`testo affected`, `pytest --testo-affected`) | [Affected Test Selection - 2026-10-30](Affected%20Test%20Selection%20-%202026-10-30.md) |
 | Pools of keys (VMs, devices, accounts) leased to parallel workers | [Resource Pools and Leases - 2026-10-26](Resource%20Pools%20and%20Leases%20-%202026-10-26.md) |
 | Checking keys, clean releases and a delay before reusing an expired key | [Resource Lifecycle Hooks - 2026-10-26](Resource%20Lifecycle%20Hooks%20-%202026-10-26.md) |
+| A provider of your own commands that never creates or deletes VMs on its own | [Human-Run Resource Provider - 2026-10-30](Human-Run%20Resource%20Provider%20-%202026-10-30.md) |
 | Playwright JSON reports: retries, flaky tests, traces | [Playwright JSON Import - 2026-10-22](Playwright%20JSON%20Import%20-%202026-10-22.md) |
 | Reading Jest/Vitest, .NET, Go, Robot, RSpec, k6, XCTest, Android and Allure results in their own formats | [Runner Coverage - 2026-10-26](Runner%20Coverage%20-%202026-10-26.md) |
+| Runs, stages and tests as OpenTelemetry traces (OTLP), off by default | [OpenTelemetry Export - 2026-10-30](OpenTelemetry%20Export%20-%202026-10-30.md) |
 | Slack and Teams alerts, failure annotations on the diff, flaky test issues | [Alerts Where Developers Look - 2026-10-22](Alerts%20Where%20Developers%20Look%20-%202026-10-22.md) |
 | BehaveX HTML report plus Allure results | [BehaveX Reports - 2026-10-21](BehaveX%20Reports%20-%202026-10-21.md) |
 | JSON Schema for `testosterone.yaml` (editor autocomplete) | [Config JSON Schema - 2026-10-22](Config%20JSON%20Schema%20-%202026-10-22.md) |
@@ -44,5 +50,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Product review second pass: every area except trust toward 10 | [Product to Ten - 2026-10-25](Product%20to%20Ten%20-%202026-10-25.md) |
 | Project health page: a repeatable test health score and an optional AI review of the tests | [Project Health - 2026-10-26](Project%20Health%20-%202026-10-26.md) |
 | README badge, asking about your tests, Jira issues from failures (and what was not built) | [Qualflare Follow-ups - 2026-10-26](Qualflare%20Follow-ups%20-%202026-10-26.md) |
+| UI design review: ranked design and UX findings with annotated screenshots, 7.5 / 10 | [UI Design Review - 2026-10-31](UI%20Design%20Review%20-%202026-10-31.md) |
+| UI review fixes: cycle results, run labels, Compare test list, test page charts, quieter cards | [UI Review Fixes - 2026-11-01](UI%20Review%20Fixes%20-%202026-11-01.md) |
 
 Older plans and incident write-ups (Allure 3 migration plan, reporters port, report-links fix, CLI–UI parity, the `doctor`/`clean`/`watch`/`init` restore) are in the [Archive](../Archive/README.md).

@@ -28,12 +28,21 @@ const ADVANCED_LINKS: NavLinkSpec[] = [
 
 const DOCS_URL = "https://taltal-beep.github.io/testosterone/docs/";
 
-/** Breadcrumb label for the current page, from the first path segment. */
-function sectionLabel(pathname: string): string {
+/** Breadcrumb for the current page: the section, then the cycle, run or test it shows. */
+function breadcrumbs(pathname: string): { label: string; to?: string }[] {
   const link = [...PRIMARY_LINKS, ...ADVANCED_LINKS].find((l) =>
     l.to === "/" ? pathname === "/" : pathname === l.to || pathname.startsWith(`${l.to}/`)
   );
-  return link?.label ?? "Not found";
+  if (!link) return [{ label: "Not found" }];
+  const crumbs: { label: string; to?: string }[] = [{ label: link.label, to: link.to }];
+  const rest = pathname.slice(link.to.length).split("/").filter(Boolean).map(decodeURIComponent);
+  if (link.to === "/cycles" && rest[0]) {
+    crumbs.push({ label: rest[0], to: rest[1] ? `/cycles/${encodeURIComponent(rest[0])}` : undefined });
+    if (rest[1] === "test") crumbs.push({ label: "Test" });
+  } else if (link.to === "/runs" && rest[0]) {
+    crumbs.push({ label: rest[0].slice(0, 8) });
+  }
+  return crumbs;
 }
 
 /**
@@ -91,9 +100,29 @@ export function AppShell() {
       <div className="lg:pl-[18rem]">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:pt-5">
           <header className="mb-5 hidden items-center justify-between gap-4 lg:flex">
-            <p className="text-xs text-ink-300">
-              Testo <span className="text-ink-500">/</span> <span className="font-semibold text-white">{sectionLabel(pathname)}</span>
-            </p>
+            <nav aria-label="Breadcrumb" className="text-xs text-ink-300">
+              <ol className="flex flex-wrap items-center gap-1">
+                <li>Testosterone</li>
+                {breadcrumbs(pathname).map((crumb, i, all) => (
+                  <li key={`${crumb.label}-${i}`} className="flex items-center gap-1">
+                    <span className="text-ink-500" aria-hidden>
+                      /
+                    </span>
+                    {i === all.length - 1 ? (
+                      <span className="font-semibold text-white" aria-current="page">
+                        {crumb.label}
+                      </span>
+                    ) : crumb.to ? (
+                      <Link to={crumb.to} className="hover:text-white">
+                        {crumb.label}
+                      </Link>
+                    ) : (
+                      <span>{crumb.label}</span>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </nav>
             <div className="flex items-center gap-4">
               <DemoBadge />
               <UserBadge />
@@ -228,7 +257,7 @@ function MobileMenu() {
         onClick={(e) => {
           if ((e.target as Element).closest("a")) close();
         }}
-        className="absolute inset-x-0 top-full border-b border-white/5 bg-ink-950/95 px-4 py-3 text-sm shadow-xl backdrop-blur-xl"
+        className="absolute inset-x-0 top-full border-b border-white/5 bg-ink-950 px-4 py-3 text-sm shadow-xl"
       >
         <div className="flex flex-col gap-1">
           {PRIMARY_LINKS.map((link) => (

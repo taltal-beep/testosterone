@@ -14,6 +14,8 @@ makes sure two workers never hold the same one at the same time (see
         max_per_user: 2         # optional
         on_take: "my-tool revert $TESTO_RESOURCE_ID"     # optional, your own command
         on_check: "my-tool ping $TESTO_RESOURCE_ID"      # optional: exit 0 = usable
+        provider:                                         # optional, your own commands
+          list: "my-tool list-vms"                        # prints the keys that exist, one per line
       seats:
         count: 3                # keys seat-1, seat-2, seat-3
 
@@ -47,8 +49,13 @@ _POOL_KEYS: Final[frozenset[str]] = frozenset(
         "on_check",
         "on_release",
         "hook_timeout",
+        "provider",
     }
 )
+_PROVIDER_KEYS: Final[frozenset[str]] = frozenset(
+    {"list", "create", "destroy", "allow", "max_items", "name_prefix"}
+)
+PROVIDER_VERBS: Final[tuple[str, ...]] = ("create", "destroy")
 _ITEM_KEYS: Final[frozenset[str]] = frozenset({"id", "labels", "data"})
 
 
@@ -62,6 +69,30 @@ class ResourceItem:
 
     def has_labels(self, wanted: Iterable[str]) -> bool:
         return set(wanted) <= set(self.labels)
+
+
+@dataclass(frozen=True)
+class ResourceProvider:
+    """A pool's ``provider:``: the user's own commands that look at the real keys.
+
+    Only ``testo pool`` runs them, when a person types it; leases, runs, stages
+    and the team server never do (see :mod:`testo_core.resources.provider`).
+    """
+
+    # Prints the keys that exist right now, one per line. Read-only by contract.
+    list: str | None = None
+    # Make or remove the key in $TESTO_RESOURCE_ID. Run only by `testo pool add`,
+    # `remove` and `sweep` with --apply, and only for verbs listed in ``allow``.
+    create: str | None = None
+    destroy: str | None = None
+    allow: tuple[str, ...] = ()
+    # Hard cap on keys that exist (the pool's items plus what ``list`` shows).
+    max_items: int | None = None
+    # Keys made or removed through the provider must start with this.
+    name_prefix: str | None = None
+
+    def allows(self, verb: str) -> bool:
+        return verb in self.allow
 
 
 @dataclass(frozen=True)
@@ -79,6 +110,7 @@ class ResourcePool:
     on_check: str | None = None
     on_release: str | None = None
     hook_timeout_s: float = DEFAULT_HOOK_TIMEOUT_S
+    provider: ResourceProvider | None = None
 
     @property
     def reuse_delay(self) -> float:
@@ -92,7 +124,11 @@ class ResourcePool:
         return next((item for item in self.items if item.id == item_id), None)
 
     def to_json(self, *, hooks: bool = True) -> dict[str, Any]:
-        """The pool as JSON. ``hooks=False`` leaves out the commands (a server never runs them)."""
+        """The pool as JSON. ``hooks=False`` leaves out the commands (a server never runs them).
+
+        ``provider`` is never included: it only runs from ``testo pool`` on the config
+        author's machine, so it doesn't travel to a server or to a stage's workers.
+        """
         data: dict[str, Any] = {
             "items": [
                 {"id": item.id, "labels": list(item.labels), "data": dict(item.data)}
@@ -245,7 +281,60 @@ def parse_pool(name: str, raw: Any) -> ResourcePool:
         hook_timeout_s=_seconds(
             raw.get("hook_timeout"), f"{where}.hook_timeout", DEFAULT_HOOK_TIMEOUT_S
         ),
+        provider=_parse_provider(raw.get("provider"), where=f"{where}.provider"),
     )
+
+
+def _parse_provider(raw: Any, *, where: str) -> ResourceProvider | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, Mapping):
+        raise ConfigValidationError(f"{where} must be a mapping of verbs to your commands.")
+    unknown = sorted(str(k) for k in raw if k not in _PROVIDER_KEYS)
+    if unknown:
+        raise ConfigValidationError(
+            f"{where} has unknown key(s) {unknown}; allowed: {sorted(_PROVIDER_KEYS)}"
+        )
+    allow_raw = raw.get("allow")
+    if allow_raw is None:
+        allow: tuple[str, ...] = ()
+    elif isinstance(allow_raw, list) and all(v in PROVIDER_VERBS for v in allow_raw):
+        allow = tuple(dict.fromkeys(allow_raw))
+    else:
+        raise ConfigValidationError(
+            f"{where}.allow must be a list of {', '.join(PROVIDER_VERBS)} (got {allow_raw!r})."
+        )
+    max_items_raw = raw.get("max_items")
+    prefix_raw = raw.get("name_prefix")
+    provider = ResourceProvider(
+        list=_command(raw.get("list"), f"{where}.list"),
+        create=_command(raw.get("create"), f"{where}.create"),
+        destroy=_command(raw.get("destroy"), f"{where}.destroy"),
+        allow=allow,
+        max_items=(
+            None
+            if max_items_raw is None
+            else _whole_number(max_items_raw, f"{where}.max_items", minimum=1)
+        ),
+        name_prefix=None if prefix_raw is None else str(prefix_raw).strip(),
+    )
+    if provider.name_prefix is not None:
+        check_name(provider.name_prefix, kind=f"{where}.name_prefix")
+    # Each allowed verb needs its command and the limits that keep it safe.
+    for verb in allow:
+        needs = {
+            verb: getattr(provider, verb),
+            "list": provider.list,
+            "name_prefix": provider.name_prefix,
+        }
+        if verb == "create":
+            needs["max_items"] = provider.max_items
+        missing = [key for key, value in needs.items() if value is None]
+        if missing:
+            raise ConfigValidationError(
+                f"{where}.allow has {verb!r}, which also needs {', '.join(missing)}."
+            )
+    return provider
 
 
 def check_name(value: str, *, kind: str) -> None:

@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-30
 ---
 
 # Shared Resource Pools
@@ -31,6 +31,13 @@ resources:
     on_check: "./vm-ready.sh $TESTO_RESOURCE_ID"     # optional: exit 0 if the key is usable
     on_release: "my-cleanup $TESTO_RESOURCE_ID"      # optional
     hook_timeout: 300                                # seconds, for each hook
+    provider:                                        # optional: your own commands for `testo pool`
+      list: "./vms.sh list"                          # prints the VMs that exist, one per line
+      create: "./vms.sh create $TESTO_RESOURCE_ID"   # only `testo pool add --apply` runs it
+      destroy: "./vms.sh delete $TESTO_RESOURCE_ID"  # only `testo pool remove/sweep --apply`
+      allow: [create, destroy]                       # without this, both are refused
+      max_items: 6                                   # never more VMs than this
+      name_prefix: "testo-flow-"                     # create and destroy only touch these names
   license-seats:
     count: 3                                         # keys license-seats-1 ... license-seats-3
 ```
@@ -46,6 +53,11 @@ resources:
 | `on_check` | none | Shell command run after `on_take`: exit `0` if the key is usable. If it fails, the key is disabled and another key is tried |
 | `on_release` | none | Shell command run before a key is given back. If it works, the key is marked clean for the next taker (`TESTO_RESOURCE_CLEAN=1`). If it fails, the key is disabled |
 | `hook_timeout` | `300` | Seconds each hook may take; longer counts as a failure |
+| `provider.list` | none | Shell command that prints the keys that really exist, one per line (blank lines and `#` lines skipped). Only `testo pool` runs it, when you type it ([below](#compare-the-pool-with-what-really-exists)). Never sent to a server or to a stage's workers |
+| `provider.create` / `provider.destroy` | none | Shell commands that make or remove the key in `$TESTO_RESOURCE_ID`. Only `testo pool add`, `remove` and `sweep` with `--apply` run them ([below](#add-or-remove-vms-yourself)) |
+| `provider.allow` | none | Which of `create`, `destroy` may run at all. An allowed verb needs its command, `list` and `name_prefix`; `create` also needs `max_items` |
+| `provider.max_items` | none | Most keys that may exist: the pool's `items` plus what `list` shows |
+| `provider.name_prefix` | none | Keys made or removed through the provider must start with this, so `destroy` can't reach other VMs |
 
 ## Give each worker its own key
 
@@ -176,6 +188,46 @@ The **Resources** page in the UI (under Tools) shows every pool, each key's hold
 - **Try it without real pools:** `testo lease demo` adds made-up pools, holders, a disabled key and a short queue to this machine's database, and `testo lease demo --clear` gives the keys back. The [live demo](https://taltal-beep.github.io/testosterone/) shows the same made-up pools.
 - **Take a key back** from its holder (`testo lease free`; an admin on a server with accounts). The holder's next heartbeat finds it gone, and `testo lease run` warns that the lease was lost.
 
+## Compare the pool with what really exists
+
+Testosterone never creates or deletes a VM, or any key, on its own. To see whether the pool still matches your real VMs, give it a read-only `provider.list` command and run:
+
+```bash
+testo pool status              # every pool: missing keys, VMs outside the pool
+testo pool status flow-vms --check   # also run on_check on each free key
+```
+
+| Column | Meaning |
+|--------|---------|
+| exists | `yes` when `provider.list` printed the key, `missing` when it didn't, `?` when the pool has no `provider.list`. Lines `provider.list` printed that the pool doesn't have show as `not in pool` (leftovers, or VMs to add to `items`) |
+| lease | `free`, `held` or `disabled`, as in `testo lease list` |
+| check | With `--check`: `ok`, or why `on_check` failed. A key someone holds, or one `provider.list` doesn't show, is skipped, so a check never disturbs a running test |
+
+It only reads: it never disables a key, takes a lease or changes your VMs. Fix what it finds with your own scripts and `items`. Exit `0` when every pool matches, `1` when a key is missing, not in the pool or fails its check, `3` when a `provider.list` command fails or the lease server can't be reached. A CI schedule can run it to warn about leftovers. Why it works this way: [Human-Run Resource Provider - 2026-10-30](../Specs%20&%20ADRs/Human-Run%20Resource%20Provider%20-%202026-10-30.md).
+
+## Add or remove VMs yourself
+
+Making or deleting a VM is always your decision, typed as a command. Testosterone runs your `provider.create` or `provider.destroy`, never on its own: not from a run, a lease, an expired lease, a schedule or the team server.
+
+```bash
+testo pool add flow-vms --count 2           # dry run: prints the commands and the new names
+testo pool add flow-vms --count 2 --apply   # asks, then runs ./vms.sh create for testo-flow-1, testo-flow-2
+testo pool remove flow-vms testo-flow-2 --apply --yes
+testo pool sweep flow-vms                   # dry run: leftovers to remove
+testo pool log                              # who ran what, from where, and how it went
+```
+
+| Rail | What it does |
+|------|--------------|
+| Dry run | Without `--apply` nothing runs; you see each command and key. `--apply` asks first unless `--yes` |
+| `allow` | A verb not listed is refused, even typed by hand. `TESTO_PROVIDER_ACTIONS=0` refuses both on a machine |
+| Limits | At most 5 keys per command; `add` stops at `max_items`; names must start with `name_prefix` |
+| Safe deletes | `remove` and `sweep` skip a key that is in `items`, one someone holds, and one `provider.list` doesn't show. `sweep` only takes listed keys with the prefix that aren't in the pool |
+| No guessing | If `provider.list` fails, nothing runs |
+| Log | Every command run with `--apply` is logged with the person, machine, time and result, in this machine's database or on the team server. `testo pool log` and the Resources page show it |
+
+`add` doesn't change your config: put the new keys under `items` in `testosterone.yaml` to use them (until then `testo pool status` shows them as `not in pool`). To remove a VM from the pool, take it out of `items` first, then run `remove`.
+
 ## How it works
 
 - **A lease, not a lock.** A lease is a database row with an owner and an expiry time, one row per key. Taking a key is one insert, so two workers can't get the same key on any database, from any number of machines.
@@ -184,4 +236,4 @@ The **Resources** page in the UI (under Tools) shows every pool, each key's hold
 - **Fair queue.** A request that finds no free key waits in line, oldest first. A request only goes ahead of an older one when they want different keys (other labels), so nobody waits behind someone who can't use the free key anyway.
 - **One clock.** All times come from the database's owner: the team server, or this machine.
 
-The pools are described by whoever uses them, so the server needs no copy of your config: each request carries the pool's keys, labels and data (never its hooks, which only run on the machine that took the key). Code: `testo_core/resources/` (`pools.py`, `store.py`, `client.py`), `testo_api/routes/resources.py`, tables `resource_item`, `resource_lease`, `resource_waiter`.
+The pools are described by whoever uses them, so the server needs no copy of your config: each request carries the pool's keys, labels and data (never its hooks, which only run on the machine that took the key). Code: `testo_core/resources/` (`pools.py`, `store.py`, `client.py`), `testo_api/routes/resources.py`, tables `resource_item`, `resource_lease`, `resource_waiter` and `resource_action` (the provider log). Provider commands: `testo_core/resources/provider.py`, `testo_core/cli/commands/pool.py`.

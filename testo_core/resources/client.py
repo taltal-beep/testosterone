@@ -30,6 +30,7 @@ import subprocess
 import threading
 import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Final, Protocol
 
@@ -41,6 +42,7 @@ from testo_core.resources.store import (
     LeaseError,
     LeaseStore,
     PoolStatus,
+    ProviderAction,
     TakeResult,
 )
 
@@ -88,6 +90,10 @@ class LeaseBackend(Protocol):
     def status(
         self, pool: str | None = None, *, pools: Sequence[ResourcePool] = ()
     ) -> list[PoolStatus]: ...
+
+    def record_action(self, action: ProviderAction) -> None: ...
+
+    def actions(self, pool: str | None = None, *, limit: int = 50) -> list[ProviderAction]: ...
 
 
 def backend_from_env(
@@ -199,6 +205,14 @@ class HeldLease:
         if self._thread is not None:
             self._thread.join(timeout=5.0)
         clean = False
+        if self.pool.on_release and not self.lost.is_set() and not self._still_ours():
+            logger.warning(
+                "skipping on_release for %s/%s: the lease expired, so the key may be someone "
+                "else's now",
+                self.lease.pool,
+                self.lease.item,
+            )
+            self.lost.set()
         if self.pool.on_release and not self.lost.is_set():
             problem = run_hook(self.pool.on_release, self.lease, timeout_s=self.pool.hook_timeout_s)
             if problem:
@@ -208,6 +222,15 @@ class HeldLease:
             self.backend.release(self.lease.lease_id, clean=clean)
         except Exception:  # noqa: BLE001 — the TTL frees it anyway
             logger.warning("could not release %s; it frees itself after its TTL", self.lease.item)
+
+    def _still_ours(self) -> bool:
+        """One heartbeat right before ``on_release``: the background beat only checks every
+        ttl/3, so a lease can expire (and the key be taken) between two beats."""
+        try:
+            return self.backend.heartbeat(self.lease.lease_id) is not None
+        except Exception:  # noqa: BLE001 — can't tell; resetting someone else's key is worse
+            logger.warning("could not check the lease on %s", self.lease.item, exc_info=True)
+            return False
 
     def __enter__(self) -> HeldLease:
         return self
@@ -290,7 +313,14 @@ def _prepare(pool: ResourcePool, lease: Lease) -> str | None:
 
 def run_hook(command: str, lease: Lease, *, timeout_s: float) -> str | None:
     """Run a pool hook with the lease's env vars; the problem, or None when it worked."""
-    env = {**os.environ, **lease_env(lease)}
+    return run_command(command, lease_env(lease), timeout_s=timeout_s)[0]
+
+
+def run_command(
+    command: str, extra_env: Mapping[str, str], *, timeout_s: float
+) -> tuple[str | None, str]:
+    """Run the config author's command with ``extra_env``: (the problem or None, its stdout)."""
+    env = {**os.environ, **extra_env}
     try:
         done = subprocess.run(  # noqa: S602 — the config author's own command line
             command,
@@ -302,13 +332,13 @@ def run_hook(command: str, lease: Lease, *, timeout_s: float) -> str | None:
             check=False,
         )
     except subprocess.TimeoutExpired:
-        return f"timed out after {timeout_s:g}s"
+        return f"timed out after {timeout_s:g}s", ""
     except OSError as exc:
-        return str(exc)
+        return str(exc), ""
     if done.returncode != 0:
         tail = (done.stderr or done.stdout or "").strip().splitlines()[-1:] or [""]
-        return f"exit {done.returncode}" + (f": {tail[0][:200]}" if tail[0] else "")
-    return None
+        return f"exit {done.returncode}" + (f": {tail[0][:200]}" if tail[0] else ""), done.stdout
+    return None, done.stdout
 
 
 def _disable_quietly(backend: LeaseBackend, lease: Lease, reason: str) -> None:
@@ -425,6 +455,15 @@ class RemoteLeases:
         del pools
         _, body = self._call("GET", "" if pool is None else f"?pool={pool}")
         return [_pool_from_json(p) for p in body.get("pools", [])]
+
+    def record_action(self, action: ProviderAction) -> None:
+        body = {k: v for k, v in asdict(action).items() if k != "at"}  # the server's clock
+        self._call("POST", "/actions", body, ok=(204,))
+
+    def actions(self, pool: str | None = None, *, limit: int = 50) -> list[ProviderAction]:
+        query = f"?limit={limit}" + (f"&pool={pool}" if pool else "")
+        _, body = self._call("GET", f"/actions{query}")
+        return [ProviderAction(**a) for a in body.get("actions", [])]
 
 
 def count_available(

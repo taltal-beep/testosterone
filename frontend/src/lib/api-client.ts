@@ -59,6 +59,8 @@ export type ResourcesResponse = Schemas["ResourcesResponse"];
 export type ResourcePoolStatus = Schemas["ResourcePoolStatus"];
 export type ResourceItemStatus = Schemas["ResourceItemStatus"];
 export type ResourceLeaseInfo = Schemas["ResourceLeaseInfo"];
+export type ResourceActionItem = Schemas["ResourceActionItem"];
+export type ResourceActionsResponse = Schemas["ResourceActionsResponse"];
 export type ProjectHealthResponse = Schemas["ProjectHealthResponse"];
 export type HealthSignalItem = Schemas["HealthSignalItem"];
 export type HealthFindingItem = Schemas["HealthFindingItem"];
@@ -203,6 +205,9 @@ export const apiClient = {
   },
   listResources(): Promise<ResourcesResponse> {
     return api<ResourcesResponse>("/api/v1/resources");
+  },
+  listResourceActions(limit = 20): Promise<ResourceActionsResponse> {
+    return api<ResourceActionsResponse>(`/api/v1/resources/actions?limit=${limit}`);
   },
   disableResource(pool: string, item: string, reason: string): Promise<void> {
     return api<void>("/api/v1/resources/items/disable", {

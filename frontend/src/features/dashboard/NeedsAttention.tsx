@@ -78,7 +78,9 @@ export function NeedsAttention() {
     <Card title="Needs attention" data-testid="needs-attention">
       <p className={`text-sm ${failing.length ? "text-ink-200" : "text-success-300"}`}>
         {failing.length === 0
-          ? `All ${countLabel(cycles, "cycle")} passed their latest run.`
+          ? cycles === 1
+            ? "Your cycle passed its latest run."
+            : `All ${countLabel(cycles, "cycle")} passed their latest run.`
           : passing === 0
             ? `${cycles === 1 ? "The only cycle is" : `All ${countLabel(cycles, "cycle")} are`} red.`
             : `${passing} of ${countLabel(cycles, "cycle")} passed their latest run; ${countLabel(failing.length, "cycle")} ${failing.length === 1 ? "is" : "are"} red.`}

@@ -49,10 +49,12 @@ def _register_commands() -> None:
     Each handler does its own deferred imports (engine, frameworks, DB), so
     only the lightweight Typer + Rich surface is loaded here.
     """
+    from testo_core.cli.commands import affected as affected_mod
     from testo_core.cli.commands import badge as badge_mod
     from testo_core.cli.commands import clean as clean_mod
     from testo_core.cli.commands import config as config_cmd
     from testo_core.cli.commands import config_db as config_db_cmd
+    from testo_core.cli.commands import demo as demo_mod
     from testo_core.cli.commands import diff_cli as diff_cli_mod
     from testo_core.cli.commands import doctor as doctor_mod
     from testo_core.cli.commands import flaky as flaky_mod
@@ -60,8 +62,10 @@ def _register_commands() -> None:
     from testo_core.cli.commands import init_cmd as init_cmd_mod
     from testo_core.cli.commands import lease as lease_mod
     from testo_core.cli.commands import notify as notify_mod
+    from testo_core.cli.commands import otel as otel_mod
     from testo_core.cli.commands import plans as cycles_cmd
     from testo_core.cli.commands import plugins as plugins_mod
+    from testo_core.cli.commands import pool as pool_mod
     from testo_core.cli.commands import report as report_cmd
     from testo_core.cli.commands import run as run_cmd
     from testo_core.cli.commands import split as split_mod
@@ -86,15 +90,30 @@ def _register_commands() -> None:
         rich_help_panel="Run and report",
     )(ui_cmd.ui)
     app.command(
+        name="demo",
+        help="Record eight sample runs (a flaky test, a new failure, a slower test) and open the UI.",
+        rich_help_panel="Run and report",
+    )(demo_mod.demo)
+    app.command(
         name="split",
         help="Split a cycle's tests into shards of about equal time (CI matrix, pool keys).",
         rich_help_panel="Run and report",
     )(split_mod.split)
     app.command(
+        name="affected",
+        help="Pick the tests a change can affect, with why; anything unmapped runs all.",
+        rich_help_panel="Run and report",
+    )(affected_mod.affected)
+    app.command(
         name="notify",
         help="Send a recorded run to Slack or Teams (webhook URLs from the environment).",
         rich_help_panel="Run and report",
     )(notify_mod.notify)
+    app.command(
+        name="otel",
+        help="Send a recorded run to an OpenTelemetry collector as a trace (OTLP).",
+        rich_help_panel="Run and report",
+    )(otel_mod.otel)
     app.command(
         name="badge",
         help="Write a README badge for a cycle's latest run (SVG, or shields.io JSON).",
@@ -146,6 +165,12 @@ def _register_commands() -> None:
         rich_help_panel="Run and report",
     )
     app.add_typer(
+        pool_mod.app,
+        name="pool",
+        help="Compare resource pools with the keys that really exist (read-only, your own commands).",
+        rich_help_panel="Run and report",
+    )
+    app.add_typer(
         users_cmd.app,
         name="users",
         help="Team server accounts and roles (TESTO_AUTH=accounts).",
@@ -178,7 +203,7 @@ def _register_commands() -> None:
     )(doctor_mod.doctor)
     app.command(
         name="clean",
-        help="Remove artifacts/temp; optional Docker prune (--yes, --docker).",
+        help="Remove artifacts/temp (--yes, --docker) or expired run history (--history).",
         rich_help_panel="Maintenance",
     )(clean_mod.clean)
     app.command(
@@ -196,14 +221,55 @@ def _register_commands() -> None:
 _register_commands()
 
 
+def _click_exception_types() -> tuple[type[BaseException], ...]:
+    """``ClickException`` from Click, and from the copy newer Typer vendors.
+
+    Typer 0.2x ships its own ``typer._click`` instead of depending on Click, so
+    a usage error can be either class depending on the installed Typer.
+    """
+    import importlib
+
+    found: list[type[BaseException]] = []
+    for module_name in ("click.exceptions", "typer._click.exceptions"):
+        try:
+            module = importlib.import_module(module_name)
+        except ImportError:
+            continue
+        exc_type = getattr(module, "ClickException", None)
+        if isinstance(exc_type, type) and exc_type not in found:
+            found.append(exc_type)
+    return tuple(found)
+
+
+def _show_usage_error(exc: BaseException) -> None:
+    """Print a usage error the way Typer does in standalone mode."""
+    try:
+        from typer import rich_utils
+
+        rich_utils.rich_format_error(exc)  # type: ignore[arg-type]
+    except Exception:  # noqa: BLE001 - fall back to Click's plain message
+        show = getattr(exc, "show", None)
+        if callable(show):
+            show()
+
+
 def main(argv: list[str] | None = None) -> int:
     """Public main entry-point referenced by ``[project.scripts] testo``."""
+    usage_errors = _click_exception_types()
     try:
         result = app(args=argv, standalone_mode=False)
     except typer.Exit as exc:
         return int(exc.exit_code or 0)
     except SystemExit as exc:
         return int(exc.code or 0)
+    except typer.Abort:
+        typer.echo("Aborted.", err=True)
+        return 1
+    except usage_errors as exc:
+        # A mistyped command or option, or bare ``testo``: print the message
+        # (or the help) instead of a traceback, with Click's exit code.
+        _show_usage_error(exc)
+        return int(getattr(exc, "exit_code", 2))
 
     # In ``standalone_mode=False`` Click captures ``typer.Exit`` and returns
     # its exit code instead of raising. Treat the result as an exit code if
