@@ -65,7 +65,7 @@ Status: **fixed** means merged or in an open fix PR (number given). **proposal**
 | L8 | Go | With `-count=2`, or reruns in one file, attempts of the same test overwrite each other, so a fail-then-pass test isn't flagged flaky. | fixed (P3) |
 | L9 | Action | `cycle: all` publishes the summary, annotations and alert of the last cycle only. | fixed (P4) |
 | L10 | Action | `${{ inputs.* }}` are pasted into the composite step's bash, so a `"` or `$(…)` in an input (`cycle: ${{ github.head_ref }}`) runs as shell. | fixed (P5) |
-| L11 | OTel | `test.case.name` is the same for every parametrized case, and an endpoint with no scheme exits 3 instead of 2. | proposal P6 |
+| L11 | OTel | `test.case.name` is the same for every parametrized case, and an endpoint with no scheme exits 3 instead of 2. | fixed (P6) |
 | L12 | JUnit | A suite's `tests="5"` with only 1 `<testcase>` gives no warning, and a naive `timestamp` is read as local time. | count warning added (P2); naive timestamps stay local time, which is what pytest and Surefire write |
 
 **Suspected, not verified:**
@@ -89,7 +89,7 @@ Belongs to the engine/CLI hunt instead: Playwright JSON with a BOM, report paths
 
 ## Proposals
 
-- **P1. Prefer runners' own formats over jest-junit.** In real output, jest-junit (default config) **dropped a test file that failed to compile** and named every suite `undefined`. The [Getting Started](../Getting%20Started.md) and setup prompts could say "use `jest --json`" first. Docs only.
+- **P1. Prefer runners' own formats over jest-junit.** In real output, jest-junit (default config) **dropped a test file that failed to compile** and named every suite `undefined`. The [Getting Started](../Getting%20Started.md) and setup prompts could say "use `jest --json`" first. Docs only. **Done 2026-11-01:** README, Getting Started, Team Server and Command Reference now show `jest --json`.
 - **P2. Cross-check suite counts.** When a `<testsuite tests="N">` claims more cases than it holds, log a warning like the Playwright report notes. This is cheap, but some tools write wrong counts, so warn rather than fail.
 - **P3. Merge duplicate attempts.** Fold same-name `<testcase>` entries in one suite (the pytest teardown error) and repeated Go runs into one result: worst status wins, and a fail followed by a pass is flaky. This changes counts users already have, so it needed a decision. **Decided 2026-11-01 (Taltal: go with the recommendation), built:** see [Decision on duplicate attempts](#decision-on-duplicate-attempts-2026-11-01).
 - **P4. `cycle: all` in the Action.** Publish one summary and alert per `plan_finished` event.

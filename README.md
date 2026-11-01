@@ -94,12 +94,12 @@ backend (`testo_api`, `/api/v1`, live runs over server-sent events), a React fro
 
 ## Quickstart
 
-Already have tests that write JUnit XML? Record them, no config needed:
+Already have tests that write JUnit XML, or a runner's own report? Record them, no config needed:
 
 ```bash
 pip install testo-core
-npx jest --ci --reporters=default --reporters=jest-junit   # or pytest --junitxml, go test, ...
-testo ingest 'junit*.xml' --cycle web                      # recorded; run again to see the diff
+npx jest --ci --json --outputFile=jest.json   # or pytest --junitxml, go test -json, ...
+testo ingest jest.json --cycle web            # recorded; run again to see the diff
 testo summary --cycle web
 ```
 
