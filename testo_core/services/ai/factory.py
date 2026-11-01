@@ -3,6 +3,7 @@ from __future__ import annotations
 from .config import AiProviderConfig
 from .provider_base import AiProvider, ProviderUnavailableError
 from .providers.anthropic_provider import AnthropicProvider
+from .providers.claude_code_provider import ClaudeCodeProvider
 from .providers.openai_provider import OpenAiCompatibleProvider, OpenAiProvider
 
 
@@ -22,4 +23,6 @@ def build_ai_provider(
             timeout_s=config.timeout_s,
             base_url=config.base_url or "",
         )
+    if config.provider == "claude_code":
+        return ClaudeCodeProvider(model=config.model, timeout_s=config.timeout_s)
     raise ProviderUnavailableError(f"Unsupported provider: {config.provider}")

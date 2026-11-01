@@ -625,7 +625,7 @@ class HealthReadyResponse(ApiModel):
 
 class AiConfigUpdateRequest(ApiModel):
     enabled: bool = False
-    provider: Literal["openai", "anthropic", "openai_compatible"] = "openai"
+    provider: Literal["openai", "anthropic", "openai_compatible", "claude_code"] = "openai"
     model: str = "gpt-4.1-mini"
     api_key_source: Literal["env", "runtime_input"] = "env"
     api_key_env_var: str | None = None
@@ -640,7 +640,7 @@ class AiConfigUpdateRequest(ApiModel):
 class AiConfigStatusResponse(ApiModel):
     enabled: bool
     configured: bool
-    provider: Literal["openai", "anthropic", "openai_compatible"]
+    provider: Literal["openai", "anthropic", "openai_compatible", "claude_code"]
     model: str
     api_key_source: Literal["env", "runtime_input"]
     api_key_env_var: str | None = None

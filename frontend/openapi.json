@@ -158,7 +158,8 @@
             "enum": [
               "openai",
               "anthropic",
-              "openai_compatible"
+              "openai_compatible",
+              "claude_code"
             ],
             "title": "Provider",
             "type": "string"
@@ -258,7 +259,8 @@
             "enum": [
               "openai",
               "anthropic",
-              "openai_compatible"
+              "openai_compatible",
+              "claude_code"
             ],
             "title": "Provider",
             "type": "string"

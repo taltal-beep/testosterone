@@ -116,4 +116,44 @@ describe("AIIntegrationSettingsPage", () => {
       max_output_tokens: 2000
     });
   });
+
+  it("offers the local Claude Code CLI without asking for a key", async () => {
+    const put = vi.fn();
+    const status = {
+      enabled: true,
+      configured: false,
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      api_key_source: "env",
+      api_key_env_var: null,
+      key_present: false,
+      timeout_s: 8,
+      retry_count: 1,
+      max_input_chars: 16000,
+      max_output_tokens: 300
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "PUT") {
+          put(JSON.parse(String(init.body)));
+        }
+        return Promise.resolve({ ok: String(input).includes("/api/v1/ai/config"), json: async () => status });
+      })
+    );
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <AIIntegrationSettingsPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Provider")).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText("Provider"), { target: { value: "claude_code" } });
+    expect(screen.getByLabelText("Model")).toHaveValue("sonnet");
+    expect(screen.queryByLabelText("API key source")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save settings" }));
+    await waitFor(() => expect(put).toHaveBeenCalled());
+    expect(put.mock.calls[0][0]).toMatchObject({ provider: "claude_code", model: "sonnet", timeout_s: 120 });
+  });
 });
