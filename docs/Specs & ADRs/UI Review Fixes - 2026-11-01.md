@@ -54,4 +54,4 @@ Two pull requests, both frontend-led, with the smallest API change that lets a p
 ## Pull requests
 
 - [#237](https://github.com/taltal-beep/testosterone/pull/237): U1 and U4.
-- Second pull request: U2, U6 and U8, plus this note.
+- [#241](https://github.com/taltal-beep/testosterone/pull/241): U2, U6 and U8, plus this note.
