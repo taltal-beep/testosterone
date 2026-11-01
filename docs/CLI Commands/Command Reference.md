@@ -468,11 +468,39 @@ Ignores `.git`, `artifacts`, `venv`, `__pycache__`, etc. Each batch invokes `tes
 
 ## `testo init`
 
-Interactive wizard for `testosterone.yaml` (non-interactive alternative: `testo config init`).
+Sets a project up in one command: detects its test runners, writes `testosterone.yaml` and the CI workflow, adds Testosterone's local files to `.gitignore` and records a first run. Nothing has to be edited by hand for the runners it knows.
 
 ```bash
-testo init
+testo init                      # detect, write, record a first run
+testo init --dry-run            # print the files it would write; write and run nothing
+testo init --stack jest --stack go --cycle web --no-run
+testo init --interactive        # the older wizard: asks for each value, writes only the config
 ```
+
+| Detected from | Stack (`--stack`) | Stage it writes |
+|---------------|-------------------|-----------------|
+| `pytest.ini`, `conftest.py`, `[tool.pytest]`, pytest in `requirements*.txt` / `pyproject.toml`, `tests/test_*.py` | `pytest` | `equipment: pytest` |
+| `jest` in `package.json` | `jest` | `equipment: jest` (Jest's JSON report) |
+| `vitest` in `package.json` | `vitest` | `equipment: vitest` |
+| `@playwright/test` in `package.json` | `playwright` | `equipment: playwright`, `tier: e2e` |
+| `go.mod` | `go` | `command`: `go test -json ./...` into `test-results/go-test.json` |
+| a `*.csproj` referencing a test SDK (xUnit, NUnit, MSTest) | `dotnet` | `command`: `dotnet test --logger trx` |
+| `pom.xml` | `maven` | `command`: `mvn -B test` (or `./mvnw`), Surefire XML |
+| `build.gradle(.kts)` | `gradle` | `command`: `gradle test` (or `./gradlew`) |
+| `rspec` in `Gemfile`, or `.rspec` | `rspec` | `command`: `bundle exec rspec` with the JSON formatter |
+| `phpunit/phpunit` in `composer.json` | `phpunit` | `command`: `vendor/bin/phpunit --log-junit` |
+
+Cypress is found but left out (it needs the app running first); the command says so.
+
+What it writes, in the project folder (`--dir`, default here):
+
+- **`testosterone.yaml`**: one cycle, named after the folder unless `--cycle` (the same default as `pytest --testo`), with a stage per runner.
+- **`.github/workflows/testosterone.yml`** (`--ci github`): checkout, each language's setup and dependency install (from `requirements*.txt` or the `pyproject.toml` test extra, the Node lockfile's package manager and `.nvmrc`, `go.mod`, ...), then the [GitHub Action](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md) with `comment-on-pr: "true"`. With `--ci auto` (the default) it is skipped when the project already uses GitLab CI, Jenkins or CircleCI and has no `.github` folder; `--ci none` never writes one.
+- **`.gitignore`**: `testo_history.db`, `artifacts/`, `.testo/` and `test-results/`, the ones not ignored yet.
+
+A file that exists is kept unless `--force`; a kept `testosterone.yaml` with one cycle gives the workflow its cycle name.
+
+The first run (`--no-run` skips it): result files a test run already left in the project (JUnit XML, Jest/Vitest/Playwright/RSpec JSON, `.trx`, `go test -json`, Robot `output.xml`, `allure-results`; recognised by content, files git tracks are skipped as fixtures) are recorded like `testo ingest` would. When there are none, the new cycle runs once. Exit code `0` once a run is recorded, even if some of its tests failed; `2` when no runner was found or an option is wrong.
 
 ---
 
