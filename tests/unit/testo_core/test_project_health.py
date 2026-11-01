@@ -117,6 +117,13 @@ def test_by_cycle_and_findings(history) -> None:  # noqa: ANN001
     kinds = [f.kind for f in health.findings]
     assert kinds == ["red_cycle", "flaky", "slower", "quarantined"]
     assert health.findings[1].test_key == "w-flaky"
+    assert health.findings[0].detail == "5 tests failing in the latest run."
+    assert health.findings[2].detail.startswith("Got slower by 40 ms")
+
+
+def test_slowdowns_read_like_the_ui() -> None:
+    assert project_health._duration(850) == "850 ms"
+    assert project_health._duration(13929) == "13.9 s"
 
 
 def test_one_cycle_and_no_data(history) -> None:  # noqa: ANN001

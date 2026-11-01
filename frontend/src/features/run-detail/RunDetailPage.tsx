@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
 import { API_BASE, apiClient } from "../../lib/api-client";
-import { Badge, Button, Card, KeyValue, PageHeader, Spinner, StatusPill, TestPyramid } from "../../components/ui";
+import { Badge, Button, Card, KeyValue, PageHeader, Spinner, StatusPill, TestPyramid, buttonClasses } from "../../components/ui";
 import { countLabel, describeExitCode, formatDuration, formatPercent, formatRunLabel } from "../../lib/format";
 import { AI_SUMMARY_SNAPSHOT_MESSAGE, IS_STATIC_BUILD } from "../../lib/static-backend";
 import { CrashBadge } from "./CrashBadge";
@@ -106,7 +106,7 @@ function runVerdict(run: { returncode: number | null; total_tests?: number | nul
   const total = run.total_tests ?? 0;
   const failing = (run.failed ?? 0) + (run.broken ?? 0);
   const took = `in ${formatDuration(run.wall_duration_ms)}`;
-  if (total === 0) return run.returncode === 0 ? `Passed ${took}` : `Failed ${took}`;
+  if (total === 0) return run.returncode === 0 ? `Passed ${took}` : `Failed before any test result was recorded, ${took}`;
   if (failing > 0) return `${countLabel(failing, "test")} of ${total} failed ${took}`;
   if (run.returncode === 0) return `All ${countLabel(total, "test")} passed ${took}`;
   return `No test failed, but the run exited ${describeExitCode(run.returncode)}, ${took}`;
@@ -155,10 +155,17 @@ export function RunDetailPage() {
   const run = runQuery.data.run;
   const reports = reportsQuery.data;
   const failed = run.returncode !== 0 && run.returncode != null;
+  // Files under the run's snapshot are served by the API (at /history); runs
+  // whose snapshot lives elsewhere just list the names.
+  const artifactHref = (path: string): string | null =>
+    reports.artifacts_url && reports.artifact_links.includes(path)
+      ? `${API_BASE}/${reports.artifacts_url}/${path.split("/").map(encodeURIComponent).join("/")}`
+      : null;
 
   return (
     <section className="space-y-4">
       <PageHeader
+        documentTitle={formatRunLabel(run)}
         title={
           <span className="flex items-center gap-3">
             <span>{formatRunLabel(run)}</span>
@@ -172,10 +179,8 @@ export function RunDetailPage() {
           </>
         }
         actions={
-          <Link to="/runs">
-            <Button variant="secondary" size="sm">
-              Back to runs
-            </Button>
+          <Link to="/runs" className={buttonClasses("secondary", "sm")}>
+            Back to runs
           </Link>
         }
       />
@@ -250,6 +255,17 @@ export function RunDetailPage() {
                   </span>
                   <span className="flex items-center gap-2">
                     <CrashBadge kind={stage.crash_kind} />
+                    {artifactHref(`${stage.name}/run.log`) ? (
+                      <a
+                        href={artifactHref(`${stage.name}/run.log`) ?? undefined}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`Log of ${stage.name}`}
+                        className="text-xs text-brand-300 hover:underline"
+                      >
+                        Log
+                      </a>
+                    ) : null}
                     {stage.total_tests != null && (
                       <span className="text-xs text-ink-400">
                         {stage.passed ?? 0}/{stage.total_tests}
@@ -301,7 +317,7 @@ export function RunDetailPage() {
           items={[
             { label: "Run ID", value: <span className="font-mono text-xs">{run.run_id}</span> },
             { label: "Exit code", value: describeExitCode(run.returncode) },
-            { label: "Pass rate", value: formatPercent(run.health_pct) },
+            { label: "Pass rate", value: run.total_tests ? formatPercent(run.health_pct) : "No tests ran" },
             { label: "Duration", value: formatDuration(run.wall_duration_ms) },
             ...(Object.keys(reports.static_links).length === 0
               ? [{ label: "Reports", value: <span className="text-ink-400">No reports for this run.</span> }]
@@ -330,11 +346,20 @@ export function RunDetailPage() {
             <p className="text-sm text-ink-400">No artifacts recorded.</p>
           ) : (
             <ul className="space-y-1 text-sm text-ink-300">
-              {reports.artifact_links.map((artifact) => (
-                <li key={artifact} className="font-mono text-xs">
-                  {artifact}
-                </li>
-              ))}
+              {reports.artifact_links.map((artifact) => {
+                const href = artifactHref(artifact);
+                return (
+                  <li key={artifact} className="font-mono text-xs">
+                    {href ? (
+                      <a href={href} target="_blank" rel="noreferrer" className="break-all text-brand-300 hover:underline">
+                        {artifact}
+                      </a>
+                    ) : (
+                      <span className="break-all">{artifact}</span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           ))}
       </Card>

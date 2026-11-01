@@ -17,6 +17,9 @@ import pytest
 
 # Tests must not read or overwrite a developer's saved AI settings (artifacts/ai_settings.json).
 os.environ.setdefault("TESTO_AI_SETTINGS_PATH", "")
+# Starlette's TestClient sends ``Host: testserver``; a token-less API only answers
+# loopback names and TESTO_ALLOWED_HOSTS (``testo_api.security.guard_host``).
+os.environ.setdefault("TESTO_ALLOWED_HOSTS", "testserver,testo.test")
 
 # Project root is parent of ``tests/``; ``pythonpath = .`` in pytest.ini also applies.
 _ROOT = Path(__file__).resolve().parents[1]

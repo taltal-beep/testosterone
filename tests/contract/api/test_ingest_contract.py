@@ -99,8 +99,10 @@ def test_other_formats_and_allure_attachments_upload(tmp_path: Path) -> None:
     assert resp.status_code == 201, resp.text
     body = resp.json()
     assert (body["tests"], body["passed"], body["failed"]) == (2, 1, 1)
-    stored = list((tmp_path / "static" / "history").rglob("s1-attachment.png"))
-    assert stored and stored[0].read_bytes() == b"PNG"
+    # Stored under a fresh ``<uuid>-attachment`` name, which the API serves sandboxed.
+    stored = list((tmp_path / "static" / "history").rglob("*-attachment.png"))
+    assert len(stored) == 1 and stored[0].read_bytes() == b"PNG"
+    assert stored[0].name != "s1-attachment.png"
 
 
 def test_stored_names_keep_safe_names_and_stay_unique() -> None:

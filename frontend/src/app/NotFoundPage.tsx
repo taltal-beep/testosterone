@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 
 import { MuscleShrug } from "../components/mascot";
-import { Button, EmptyState } from "../components/ui";
+import { EmptyState, buttonClasses } from "../components/ui";
+import { usePageTitle } from "../lib/usePageTitle";
 
 export function NotFoundPage() {
+  usePageTitle("Page not found");
   return (
     <EmptyState
       mascot={<MuscleShrug />}
@@ -11,8 +13,8 @@ export function NotFoundPage() {
       title="Page not found"
       message="There is nothing at this address."
       action={
-        <Link to="/">
-          <Button size="sm">Go to dashboard</Button>
+        <Link to="/" className={buttonClasses("primary", "sm")}>
+          Go to dashboard
         </Link>
       }
     />

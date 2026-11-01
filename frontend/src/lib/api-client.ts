@@ -88,6 +88,26 @@ function apiToken(): string | null {
   }
 }
 
+/** A non-2xx answer from the API, with its HTTP status. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+/**
+ * React Query retry policy: a 4xx (missing run, bad input) will answer the same
+ * again, so show it at once; network errors and 5xx get two more tries.
+ */
+export function shouldRetry(failureCount: number, error: unknown): boolean {
+  if (error instanceof ApiError && error.status >= 400 && error.status < 500) return false;
+  return failureCount < 2;
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const token = apiToken();
   const resp = await fetch(`${API_BASE}${path}`, {
@@ -108,7 +128,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     // beats "API error 405" in the UI (and tells visitors of the read-only static
     // build why an action did nothing).
     const body = (await resp.json().catch(() => null)) as { error?: { message?: string } } | null;
-    throw new Error(body?.error?.message ?? `API error ${resp.status}`);
+    throw new ApiError(body?.error?.message ?? `API error ${resp.status}`, resp.status);
   }
   if (resp.status === 204) return undefined as T;
   return (await resp.json()) as T;
@@ -153,23 +173,23 @@ export const apiClient = {
   getWhoAmI(): Promise<WhoAmI> {
     return api<WhoAmI>("/api/v1/auth/me");
   },
-  async listRuns(cycle?: string): Promise<RunListResponse> {
-    if (!cycle) return api<RunListResponse>("/api/v1/runs");
-    const data = await api<RunListResponse>(`/api/v1/runs?${new URLSearchParams({ cycle })}`);
+  async listRuns(cycle?: string, limit = 30): Promise<RunListResponse> {
+    const params = new URLSearchParams({ limit: String(limit), ...(cycle ? { cycle } : {}) });
+    const data = await api<RunListResponse>(`/api/v1/runs?${params}`);
     // The static build answers every /runs request with the full list; keep only this cycle's.
-    return { ...data, items: data.items.filter((run) => run.cycle === cycle) };
+    return { ...data, items: data.items.filter((run) => !cycle || run.cycle === cycle).slice(0, limit) };
   },
   getRun(runId: string): Promise<RunDetailResponse> {
-    return api<RunDetailResponse>(`/api/v1/runs/${runId}`);
+    return api<RunDetailResponse>(`/api/v1/runs/${encodeURIComponent(runId)}`);
   },
   getRunReports(runId: string): Promise<RunReportsResponse> {
-    return api<RunReportsResponse>(`/api/v1/runs/${runId}/reports`);
+    return api<RunReportsResponse>(`/api/v1/runs/${encodeURIComponent(runId)}/reports`);
   },
   getRunFailures(runId: string): Promise<RunFailuresResponse> {
-    return api<RunFailuresResponse>(`/api/v1/runs/${runId}/failures`);
+    return api<RunFailuresResponse>(`/api/v1/runs/${encodeURIComponent(runId)}/failures`);
   },
   getRunPyramid(runId: string): Promise<RunPyramidResponse> {
-    return api<RunPyramidResponse>(`/api/v1/runs/${runId}/pyramid`);
+    return api<RunPyramidResponse>(`/api/v1/runs/${encodeURIComponent(runId)}/pyramid`);
   },
   getDeltaComparison(currentRunId: string, baselineRunId: string): Promise<DeltaComparisonResponse> {
     const params = new URLSearchParams({
@@ -257,10 +277,10 @@ export const apiClient = {
     });
   },
   getRunAiSummary(runId: string): Promise<AiSummaryResponse> {
-    return api<AiSummaryResponse>(`/api/v1/runs/${runId}/ai-summary`);
+    return api<AiSummaryResponse>(`/api/v1/runs/${encodeURIComponent(runId)}/ai-summary`);
   },
   generateRunAiSummary(runId: string, forceRefresh = false): Promise<AiSummaryResponse> {
-    return api<AiSummaryResponse>(`/api/v1/runs/${runId}/ai-summary:generate`, {
+    return api<AiSummaryResponse>(`/api/v1/runs/${encodeURIComponent(runId)}/ai-summary:generate`, {
       method: "POST",
       body: JSON.stringify({ force_refresh: forceRefresh })
     });

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import mimetypes
 import threading
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
@@ -32,6 +33,7 @@ from testo_api.security import (
     add_security_headers,
     audit_write,
     cors_settings,
+    guard_host,
     guard_mutating_request,
     guard_read_request,
     is_loopback_host,
@@ -152,6 +154,8 @@ def create_app() -> FastAPI:
     app.include_router(resources_router)
 
     STATIC_HISTORY_ROOT.mkdir(parents=True, exist_ok=True)
+    # Stage logs (<stage>/run.log) open in the browser instead of downloading.
+    mimetypes.add_type("text/plain", ".log")
     app.mount("/history", StaticFiles(directory=STATIC_HISTORY_ROOT), name="history")
 
     built_ui = ui_dir()
@@ -171,7 +175,9 @@ def create_app() -> FastAPI:
     async def protect_reads(request: Request, call_next):  # type: ignore[no-redef]
         # A middleware, not a dependency, so the static mounts are covered too. In a
         # thread: with accounts on, checking the session reads the database.
-        refusal = await run_in_threadpool(route_report_request, request)
+        refusal = guard_host(request)
+        if refusal is None:
+            refusal = await run_in_threadpool(route_report_request, request)
         if refusal is None:
             refusal = await run_in_threadpool(guard_read_request, request)
         return refusal if refusal is not None else await call_next(request)

@@ -156,10 +156,12 @@ describe("DashboardPage", () => {
 
   it("leads with what needs attention: red cycles, new flaky tests, slower tests", async () => {
     stubOverviewFetch(overviewPayload(), {
-      cycles: 3,
+      cycles: 4,
       passing_cycles: 2,
       failing: [
-        { cycle: "web", run_id: "run-9", created_at: 1, branch: "main", failed_tests: 4, new_failures: 1, failing_runs: 3 }
+        { cycle: "web", run_id: "run-9", created_at: 1, branch: "main", failed_tests: 4, new_failures: 1, failing_runs: 3 },
+        // Red with no failing test: a stage crashed (e.g. a conftest import error).
+        { cycle: "docs", run_id: "run-8", created_at: 1, branch: null, failed_tests: 0, new_failures: 0, failing_runs: 1 }
       ],
       newly_flaky: [{ cycle: "web", key: "k1", name: "test_checkout", slowdown_ms: null, slowdown_pct: null }],
       slower: [{ cycle: "api", key: "k2", name: "test_search", slowdown_ms: 1500, slowdown_pct: 50 }]
@@ -167,9 +169,11 @@ describe("DashboardPage", () => {
     renderDashboard();
 
     const card = await screen.findByTestId("needs-attention");
-    expect(card).toHaveTextContent("2 of 3 cycles passed their latest run; 1 cycle is red.");
+    expect(card).toHaveTextContent("2 of 4 cycles passed their latest run; 2 cycles are red.");
     expect(screen.getByRole("link", { name: "web" })).toHaveAttribute("href", "/runs/run-9");
     expect(card).toHaveTextContent("4 tests failing, 1 new");
+    expect(card).toHaveTextContent("failed outside its tests");
+    expect(card).not.toHaveTextContent("0 tests failing");
     expect(screen.getByText("Red for 3 runs")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "test_checkout" })).toHaveAttribute("href", "/cycles/web/test?key=k1");
     expect(card).toHaveTextContent("api · +1.5 s (+50%)");

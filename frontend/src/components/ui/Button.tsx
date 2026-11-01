@@ -23,11 +23,19 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size;
 }
 
+/**
+ * The button look, for a link that navigates: wrapping a <Button> in a <Link>
+ * puts two tab stops (and a button inside a link) on one control.
+ */
+export function buttonClasses(variant: Variant = "primary", size: Size = "md"): string {
+  return `inline-flex items-center justify-center gap-1.5 rounded-xl font-semibold transition-colors disabled:cursor-not-allowed ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]}`;
+}
+
 export function Button({ variant = "primary", size = "md", className, type = "button", ...props }: ButtonProps) {
   return (
     <button
       type={type}
-      className={`inline-flex items-center justify-center gap-1.5 rounded-xl font-semibold transition-colors disabled:cursor-not-allowed ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]} ${className ?? ""}`}
+      className={`${buttonClasses(variant, size)} ${className ?? ""}`}
       {...props}
     />
   );

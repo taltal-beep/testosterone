@@ -1,7 +1,25 @@
 from __future__ import annotations
 
+import urllib.request
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import IO, Literal, Protocol
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Turn a redirect into an ``HTTPError``: following one would resend the
+    provider's ``Authorization`` / ``x-api-key`` header to wherever it points."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]  # noqa: ANN001, ANN201, ARG002, PLR0913
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
+def urlopen(req: urllib.request.Request, timeout: float) -> IO[bytes]:
+    """Send a provider request without following redirects (see ``_NoRedirect``)."""
+    return _OPENER.open(req, timeout=timeout)  # type: ignore[no-any-return]  # nosec: B310
+
 
 AiProviderName = Literal["openai", "anthropic", "openai_compatible"]
 

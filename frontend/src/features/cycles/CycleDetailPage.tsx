@@ -50,6 +50,7 @@ export function CycleDetailPage() {
     <section className="space-y-6">
       <PageHeader
         title={<span className="font-mono">{cycle.name}</span>}
+        documentTitle={cycle.name}
         subtitle={cycle.description ?? "No description."}
       />
 
