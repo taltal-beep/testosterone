@@ -344,7 +344,9 @@ class _ConsoleCycleListener:
                 "(may not complete if the process exits immediately).[/]"
             )
         elif report_id is not None:
-            self._console.print(f"[muted]Archived cycle report[/] [bold]{report_id}[/]")
+            self._console.print(
+                f"[muted]Recorded run[/] [bold]{report_id}[/] [muted](see it with `testo ui`)[/]"
+            )
 
 
 def _emit_cycle_trigger_event(*, ci: bool, plan: Plan, tr: TriggerResult) -> None:

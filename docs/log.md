@@ -2,7 +2,7 @@
 type: log
 status: current
 created: 2026-10-07
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Vault log
@@ -156,6 +156,10 @@ Added [Importer and Integration Bug Hunt - 2026-10-31](Specs%20&%20ADRs/Importer
 ## 2026-10-31: paid features to offer free
 
 Added [Paid Features to Offer Free - 2026-10-31](Roadmap%20&%20Strategy/Paid%20Features%20to%20Offer%20Free%20-%202026-10-31.md) to Roadmap & Strategy (competitor paywalls, twelve ranked ideas, licence and trademark rules), linked from the Index, the Product Roadmap and the docs site menu.
+
+## 2026-11-01: UI review fixes
+
+Added [UI Review Fixes - 2026-11-01](Specs%20&%20ADRs/UI%20Review%20Fixes%20-%202026-11-01.md) to Specs & ADRs (the five proposals built from the UI design review), linked from its README, the Index and the docs site menu.
 
 ## 2026-11-01: free copies of paid features
 

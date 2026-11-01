@@ -50,6 +50,11 @@ function RunProvenance({ run }: { run: RunProvenanceFields }) {
 }
 
 // Error codes that the user fixes on the AI settings page.
+/** How many tiers hold tests: a mix needs at least two. */
+function tierCount(mix: { unit: number; integration: number; e2e: number }): number {
+  return [mix.unit, mix.integration, mix.e2e].filter((n) => n > 0).length;
+}
+
 const AI_SETTINGS_ERROR_CODES = new Set(["ai_feature_disabled", "provider_misconfigured", "unsupported_provider_model"]);
 
 const AI_SUMMARY_ERROR_MESSAGES: Record<string, string> = {
@@ -257,10 +262,8 @@ export function RunDetailPage() {
         )}
       </Card>
 
-      <Card title="Reports">
-        {Object.keys(reports.static_links).length === 0 ? (
-          <p className="text-sm text-ink-400">No reports for this run.</p>
-        ) : (
+      {Object.keys(reports.static_links).length > 0 ? (
+        <Card title="Reports">
           <ul className="space-y-1 text-sm">
             {Object.entries(reports.static_links).map(([name, url]) => (
               <li key={name}>
@@ -270,18 +273,19 @@ export function RunDetailPage() {
               </li>
             ))}
           </ul>
-        )}
-      </Card>
+        </Card>
+      ) : null}
 
-      <Card title="Test mix">
-        {pyramidQuery.isLoading ? (
-          <p className="text-sm text-ink-300">Loading test mix…</p>
-        ) : pyramidQuery.isError || !pyramidQuery.data ? (
+      {/* A mix only means something with two or more tiers; an ingested run has one, so there is nothing to judge. */}
+      {pyramidQuery.isError ? (
+        <Card title="Test mix">
           <p className="text-sm text-danger-400">Couldn't load the test mix.</p>
-        ) : (
+        </Card>
+      ) : pyramidQuery.data && tierCount(pyramidQuery.data) >= 2 ? (
+        <Card title="Test mix">
           <TestPyramid {...pyramidQuery.data} />
-        )}
-      </Card>
+        </Card>
+      ) : null}
 
       <Card title="Details">
         <KeyValue
@@ -299,7 +303,10 @@ export function RunDetailPage() {
                   }
                 ]
               : []),
-            { label: "Duration", value: formatDuration(run.wall_duration_ms) }
+            { label: "Duration", value: formatDuration(run.wall_duration_ms) },
+            ...(Object.keys(reports.static_links).length === 0
+              ? [{ label: "Reports", value: <span className="text-ink-400">No reports for this run.</span> }]
+              : [])
           ]}
         />
       </Card>

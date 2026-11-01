@@ -82,6 +82,4 @@ data/
 /public/
 /.ci-history/
 /.demo/
-
-# mkdocs build output (NO_MKDOCS_2_WARNING=1 mkdocs build --strict)
-/site/
+site/
