@@ -17,7 +17,7 @@ testo --help
 
 Help is grouped into panels: **Run and report**, **Config**, **Diagnostics**, **Maintenance**, **About**.
 
-Extras: `pip install testo-core` is the CLI with pytest, Playwright, `command` and `junit` stages. Add `[bdd]` for `behave` and `behavex` stages (Behave, BehaveX and Allure-Behave), `[api]` for the REST API and UI backend, `[db]` for Postgres or MySQL, `[metrics]` for InfluxDB, `[otel]` for [OpenTelemetry export](#testo-otel). A `behave` stage without the extra fails with exit `3` and `executable not found: behave (... pip install 'testo-core[bdd]')`.
+Extras: `pip install testo-core` is the CLI with pytest, Playwright, `command` and `junit` stages. Add `[bdd]` for `behave` and `behavex` stages (Behave, BehaveX and Allure-Behave), `[api]` for the REST API and UI backend, `[db]` for Postgres or MySQL, `[metrics]` for InfluxDB, `[otel]` for [OpenTelemetry export](#testo-otel), `[mcp]` for the [MCP server](#testo-mcp). A `behave` stage without the extra fails with exit `3` and `executable not found: behave (... pip install 'testo-core[bdd]')`.
 
 ---
 
@@ -293,6 +293,51 @@ testo ui --port 9000 --no-open
 | `--open` / `--no-open` | `--open` | Open the default browser once the server is up |
 
 It starts `testo-api` bound to `127.0.0.1` only (for a shared server use the [Team Server](../Processes%20&%20Guides/Team%20Server.md)) and serves the UI that ships inside the wheel, or the build `TESTO_UI_DIR` points at. The UI's own origin (`http://127.0.0.1:<port>`, `http://localhost:<port>`) is added to `TESTO_CORS_ORIGINS` for this process so it can start runs; every other origin is still refused. Exit `2` when the `[api]` extra is missing or no built UI is found (a source checkout builds one with `scripts/build_ui_bundle.sh`, which needs Node 22).
+
+---
+
+## `testo mcp`
+
+Serve the run history to a coding agent (Claude Code, Claude Desktop, Cursor, any MCP client) over the [Model Context Protocol](https://modelcontextprotocol.io), so it can ask what failed, what's flaky and what changed instead of reading logs. Same history as the CLI: `DATABASE_URL`, else `database.url` in the config, else the SQLite file next to the project. Design: [MCP Server - 2026-11-01](../Specs%20&%20ADRs/MCP%20Server%20-%202026-11-01.md).
+
+```bash
+pip install 'testo-core[mcp]'
+testo mcp --config /path/to/project/testosterone.yaml     # stdio; the agent starts it
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--config` | auto-discover | The project's `testosterone.yaml`. Its folder becomes the working directory, so the database and run snapshots are found wherever the agent starts the server. Its `quarantine:` rules mark flaky tests that are already quarantined |
+| `--allow-writes` | off | Also register the write tools. Without it the server is read-only and they don't exist |
+
+Add it to the agent's MCP config. Claude Code: `claude mcp add testosterone -- testo mcp --config /path/to/project/testosterone.yaml`, or a `.mcp.json` in the project. Claude Desktop (`claude_desktop_config.json`) and Cursor (`.cursor/mcp.json`) take the same block:
+
+```json
+{
+  "mcpServers": {
+    "testosterone": {
+      "command": "testo",
+      "args": ["mcp", "--config", "/path/to/project/testosterone.yaml"]
+    }
+  }
+}
+```
+
+Use the full path to `testo` (e.g. `.venv/bin/testo`) when it isn't on the agent's `PATH`, and set `DATABASE_URL` under `"env"` for a Postgres history.
+
+| Tool | Returns |
+|------|---------|
+| `list_cycles()` | Every recorded cycle with its latest run's outcome and counts, and configured cycles never run |
+| `list_runs(cycle=None, limit=20)` | Recent runs, newest first (limit 1 to 100) |
+| `get_run(run_id)` | One run: counts, stages, failing tests (new breakages first), same-cause groups, rerun commands |
+| `failing_tests(cycle)` | The latest run's failing tests: first line of the message, failing since, new or flaky, marked cause, rerun commands |
+| `flaky_tests(cycle, window=20)` | Tests that passed and failed, flipping at least twice, in the last runs, with a `PFPF` history and whether they're quarantined |
+| `test_history(cycle, test)` | One test (name, full name or key; a partial name that matches one test) in each of the last 20 runs |
+| `compare_runs(baseline_id, current_id)` | Count and timing deltas, then per-test regressions, fixes, added and removed tests, regressions first |
+| `project_health(cycle=None)` | The [project health](../Specs%20&%20ADRs/Project%20Health%20-%202026-10-26.md) score, grade, signals, per-cycle health and top findings |
+| `mark_failure_cause(cycle, message, cause, note="")` | `--allow-writes` only. Marks why failures with this message happen in the cycle (`product_bug`, `test_bug`, `environment`, `flaky`, `other`), as the run page does; later failures like it inherit the cause |
+
+Answers are compact: messages are cut to their first line (300 characters), lists to 50 entries, and logs and traces are never returned. A bad argument or an unknown run, cycle or test comes back as a tool error the agent can read. The server reads the local history only; to ask a [team server](../Processes%20&%20Guides/Team%20Server.md), run `testo mcp` where its database is reachable (`DATABASE_URL`). Exit `2` when the `[mcp]` extra is missing (`The MCP server needs the mcp extra: pip install 'testo-core[mcp]'`) or `--config` doesn't exist.
 
 ---
 

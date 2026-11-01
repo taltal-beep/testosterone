@@ -61,6 +61,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import init_cmd as init_cmd_mod
     from testo_core.cli.commands import issues as issues_mod
     from testo_core.cli.commands import lease as lease_mod
+    from testo_core.cli.commands import mcp_cmd as mcp_mod
     from testo_core.cli.commands import notify as notify_mod
     from testo_core.cli.commands import otel as otel_mod
     from testo_core.cli.commands import plans as cycles_cmd
@@ -89,6 +90,11 @@ def _register_commands() -> None:
         help="Open the web UI on this machine's run history (http://127.0.0.1:8000).",
         rich_help_panel="Run and report",
     )(ui_cmd.ui)
+    app.command(
+        name="mcp",
+        help="Serve the run history to coding agents over MCP (stdio); --allow-writes for triage.",
+        rich_help_panel="Run and report",
+    )(mcp_mod.mcp)
     app.command(
         name="split",
         help="Split a cycle's tests into shards of about equal time (CI matrix, pool keys).",

@@ -172,3 +172,7 @@ Added [Better Flaky Signal - 2026-11-01](Specs%20&%20ADRs/Better%20Flaky%20Signa
 ## 2026-11-01: flaky test issues
 
 Added [Flaky Test Issues - 2026-11-01](Specs%20&%20ADRs/Flaky%20Test%20Issues%20-%202026-11-01.md) to Specs & ADRs (`TESTO_ISSUES=github`, `testo issues sync`), linked from its README and the docs site menu.
+
+## 2026-11-01: MCP server
+
+Added [MCP Server - 2026-11-01](Specs%20&%20ADRs/MCP%20Server%20-%202026-11-01.md) to Specs & ADRs (`testo mcp`), linked from its README and the docs site menu.
