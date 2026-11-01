@@ -67,6 +67,10 @@ inputs:
     description: "Open one issue per test that this run made flaky (skipped if an open issue has the same title). Needs `permissions: issues: write`."
     required: false
     default: "false"
+  coverage:
+    description: "Code coverage report(s) the tests write (Cobertura or JaCoCo XML, LCOV, Go cover profile), space-separated. Stored with the run; the summary and PR comment show line coverage and its change."
+    required: false
+    default: ""
   github-token:
     description: Token used for the pull request comment and flaky test issues.
     required: false
@@ -137,6 +141,7 @@ runs:
         TESTO_INPUT_ANNOTATIONS: ${{ inputs.annotations }}
         TESTO_INPUT_NOTIFY_WHEN: ${{ inputs.notify-when }}
         TESTO_INPUT_FLAKY_ISSUES: ${{ inputs.flaky-issues }}
+        TESTO_INPUT_COVERAGE: ${{ inputs.coverage }}
       run: |
         python "$GITHUB_ACTION_PATH/integrations/github-action/run_testo_action.py" \
           --config-path "$TESTO_INPUT_CONFIG_PATH" \
@@ -148,7 +153,8 @@ runs:
           --annotations "$TESTO_INPUT_ANNOTATIONS" \
           --notify-when "$TESTO_INPUT_NOTIFY_WHEN" \
           --flaky-issues "$TESTO_INPUT_FLAKY_ISSUES" \
-          --results "$TESTO_INPUT_RESULTS"
+          --results "$TESTO_INPUT_RESULTS" \
+          --coverage "$TESTO_INPUT_COVERAGE"
     - name: Save run history
       if: always() && steps.history.outputs.cache == 'true'
       uses: actions/cache/save@v6

@@ -160,15 +160,17 @@ def _from_items(items: Iterable[Mapping[str, Any]], stage: str | None) -> list[T
     return out
 
 
-def load_test_times(
+def load_test_items(
     cycle: str,
     *,
-    stage: str | None = None,
     server: str | None = None,
     token: str | None = None,
     window: int = 20,
-) -> list[TestTime]:
-    """The tests in ``cycle``'s last ``window`` runs (on this machine, or on ``server``)."""
+) -> list[dict[str, Any]]:
+    """Each test in ``cycle``'s last ``window`` runs, as the ``/analytics/tests`` items.
+
+    Read on this machine, or from ``server`` (a team server's history).
+    """
     if server:
         import requests
 
@@ -189,9 +191,20 @@ def load_test_times(
             items = resp.json().get("items") or []
         except (ValueError, AttributeError) as exc:
             raise SplitError(f"{url} answered with something that is not test times.") from exc
-        return _from_items(items, stage)
+        return [dict(item) for item in items if isinstance(item, Mapping)]
 
     from testo_core.services.test_history import list_cycle_tests
 
-    found = list_cycle_tests(cycle, window=window)
-    return _from_items((vars(t) for t in found.tests), stage)
+    return [dict(vars(t)) for t in list_cycle_tests(cycle, window=window).tests]
+
+
+def load_test_times(
+    cycle: str,
+    *,
+    stage: str | None = None,
+    server: str | None = None,
+    token: str | None = None,
+    window: int = 20,
+) -> list[TestTime]:
+    """The tests in ``cycle``'s last ``window`` runs (on this machine, or on ``server``)."""
+    return _from_items(load_test_items(cycle, server=server, token=token, window=window), stage)

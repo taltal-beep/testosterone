@@ -46,6 +46,7 @@ testo run --cycle sample-pytests --workers 8 --force
 | `--async-report-db` | | Archive in background thread with join timeout; **ignored when `--ci` is set** |
 | `--workers` | `-w` | Override parallel workers (e.g. BehaveX); 1 or more |
 | `--force` | `-f` | Run even when trigger would skip the cycle |
+| `--coverage` | | Code coverage report the tests write (repeatable): Cobertura or JaCoCo XML, LCOV, or a Go cover profile. Read when the stages finish; its line coverage is stored with the run and shown on the run page, the [PR comment](#testo-report) and the [digest](#testo-notify). A missing file only logs a warning. Not with `--cycle all` |
 
 > [!warning] Roadmap flags — not implemented yet
 > `--tag`, `--fail-fast`, `--dry-run` and `--reporter` were previously listed here but are **not present in `testo_core/cli/commands/run.py`**. The API layer already accepts `fail_fast` and `reporter_override` on `POST /api/v1/cycles/{cycle}/executions` (surfaced in the React Run panel); the CLI flags remain roadmap items. (Doc corrected 2026-07-04 during the Phase 5 UI redesign.)
@@ -100,6 +101,7 @@ testo ingest 'reports/*.xml' --cycle web-unit \
 | `--no-persist` | off | Parse only, record nothing |
 | `--server` | `$TESTO_SERVER_URL` | Upload to a [team server](../Processes%20&%20Guides/Team%20Server.md) instead of recording locally |
 | `--token` | `$TESTO_API_TOKEN` | The server's API token |
+| `--coverage` | none | Code coverage report to store with the run (repeatable, relative to `--repo`), as `testo run --coverage`. Checked first: no match or an unknown format is exit `2`. With `--server` only the totals are sent (the server recomputes the percentage) |
 
 Files it reads, with the command that writes each one (no extra package needed except where noted):
 
@@ -175,7 +177,7 @@ testo report pyramid <run-id>
 | `testo report open --id <uuid>` | Extract archive and regenerate/serve Allure |
 | `testo report compare` | Rich diff + Allure comparison (optional baseline/current UUIDs) |
 | `testo report native [ROUTINE]` | List or open BehaveX/pytest native HTML under stage dirs |
-| `testo report markdown [--cycle NAME \| --run-id ID] [--out FILE] [--run-url URL] [--baseline-branch BRANCH]` | The cycle's latest run (or one run) as GitHub-flavored Markdown: headline counts, per-stage table, failing tests, and per-test changes since its baseline: the latest run on `--baseline-branch`, else on the pull request's recorded target branch (`ci_base_ref`), else the cycle's previous run. The first line is a hidden `<!-- testo-summary:<cycle> -->` marker. Exit `2` when no run is recorded. The GitHub Action uses it for the job summary and the PR comment |
+| `testo report markdown [--cycle NAME \| --run-id ID] [--out FILE] [--run-url URL] [--baseline-branch BRANCH]` | The cycle's latest run (or one run) as GitHub-flavored Markdown: headline counts, per-stage table, failing tests, and per-test changes since its baseline: the latest run on `--baseline-branch`, else on the pull request's recorded target branch (`ci_base_ref`), else the cycle's previous run. When the run stored [coverage](#options), the headline adds it and its change against the same baseline (`coverage 81.2% (▼ 0.4)`). The first line is a hidden `<!-- testo-summary:<cycle> -->` marker. Exit `2` when no run is recorded. The GitHub Action uses it for the job summary and the PR comment |
 | `testo report annotations [--cycle NAME \| --run-id ID] [--workspace DIR] [--limit N] [-c CONFIG]` | The run's failing tests as GitHub Actions `::error file=…,line=…` workflow commands, so each failure shows on its line in the pull request's "Files changed". The location is the first stack-trace frame inside `--workspace` (default `.`), tried relative to the workspace, each stage's `target_repo` from the config, and the run's target repo. At most `--limit` (default `10`, GitHub's per-step cap) lines, then a `::notice` with the rest. Exit `2` when no run is recorded. The GitHub Action prints it by default. See [Alerts Where Developers Look - 2026-10-22](../Specs%20&%20ADRs/Alerts%20Where%20Developers%20Look%20-%202026-10-22.md) |
 | `testo report pyramid RUN_ID [-c CONFIG]` | ASCII unit/integration/e2e test pyramid for a completed run (`run_id`, not the archive UUID); stage→tier is the stage's `tier:` (default inferred from `equipment`: pytest→unit, behave→integration, behavex→e2e, playwright→e2e, jest→unit, vitest→unit, cypress→e2e) as recorded in the run when it executed; `-c` is only read for older runs that predate recorded tiers. See [Architecture Overview § Test pyramid](../Architecture/Architecture%20Overview.md#test-pyramid). |
 
@@ -397,6 +399,7 @@ export TESTO_SLACK_WEBHOOK_URL=...         # from a secret, never on the command
 testo notify --to slack --cycle nightly                      # only when it needs attention
 testo notify --to slack --to teams --cycle nightly --when change --run-url "$CI_JOB_URL"
 testo notify --to teams --cycle nightly --dry-run            # print the payload, send nothing
+testo notify --to slack --digest week --run-url https://testo.example.com   # weekly digest (cron)
 ```
 
 | Flag | Default | Meaning |
@@ -407,6 +410,7 @@ testo notify --to teams --cycle nightly --dry-run            # print the payload
 | `--title` | cycle name | Name in the message |
 | `--run-url` | none | "View run" link |
 | `--dry-run` | off | Print the JSON payloads instead of posting |
+| `--digest` | none | `week` or `day`: instead of one run, a digest of every cycle (or `--cycle`) over that period against the one before: runs, green builds, test pass rate, line coverage, tests that turned flaky, still fail, got fixed or got slower. `--run-url` becomes the "Open Testosterone" link; `--when` and `--run-id` don't apply. Run it from cron or a scheduled CI job; a period with no runs sends nothing |
 
 Exit `0` when sent or when there is nothing to report, `2` for a bad flag, a missing webhook variable or no recorded run, `3` when a webhook rejects the message or can't be reached (the error never includes the URL). The `slack` and `teams` [reporters](#reporter-types-reporters----reporter) send the same message right after `testo run`. See [Alerts Where Developers Look - 2026-10-22](../Specs%20&%20ADRs/Alerts%20Where%20Developers%20Look%20-%202026-10-22.md).
 
@@ -757,6 +761,29 @@ affected:
 
 ---
 
+## `testo backup` / `testo restore`
+
+Copy the whole run history (every database table and each run's stored results under `static/history/`) into one `.tar.gz`, and load it back, into the same or another database (SQLite, Postgres, MySQL).
+
+```bash
+testo backup                                   # ./testo-backup-<date>-<time>.tar.gz
+testo backup --out /backups/testo.tar.gz --no-files
+DATABASE_URL=postgresql://... testo restore testo-backup-20261101-090000.tar.gz
+testo restore old.tar.gz --replace --yes       # delete the current history first
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `backup --out` / `-o` | `testo-backup-<UTC time>.tar.gz` | Where to write it (written as `.partial`, then renamed) |
+| `backup --no-files` | off | Tables only, without the per-run result snapshots (Compare, flaky and the test page need those for old runs) |
+| `restore PATH` | required | A file `testo backup` wrote |
+| `restore --replace` | off | Empty the tables first. Without it, a database that already has runs is refused |
+| `restore --yes` / `-y` | off | Don't ask before `--replace` |
+
+Only columns today's tables have are written, so an older backup restores into a newer version. The AI settings file (it holds API keys) is never included; the `user_account` table holds password hashes, so keep backups as private as the database. Exit `0` on success, `2` for a file that isn't a backup or a database that already has runs, `3` when the database can't be reached.
+
+---
+
 ## `testo version`
 
 ```bash
@@ -787,6 +814,7 @@ testo-core installs a pytest plugin (entry point `pytest11`, `testo_core/pytest_
 | `--testo-shard I/N` | Run only shard I of N, split by time like [`testo split`](#testo-split) (also `$TESTO_SHARD`). Bad value or unreachable server: usage error (exit `4`), never a guess |
 | `--testo-affected` | Run only the tests the changes since the baseline branch can affect, like [`testo affected`](#testo-affected) (also `$TESTO_AFFECTED=1`); deselects the rest before `--testo-shard` splits. The summary lists what was picked and why, or why everything ran. A picked Python test that isn't collected runs everything; when only ignored files changed, no test runs and pytest exits `0` |
 | `--testo-affected-base REF` | Branch or commit `--testo-affected` diffs against (default as `testo affected --base`) |
+| `--testo-failed-first` | Run the tests that failed last time first, then flaky ones, then ones that failed in the last 20 runs, then the rest in pytest's order (also `$TESTO_FAILED_FIRST=1`). History comes from the same cycle as `--testo-timings` (local, or `--testo-server`). Applies after `--testo-affected` and `--testo-shard`; works with pytest-xdist. The summary says how many moved; when no history can be read, pytest's order is kept |
 | `--testo-timings CYCLE` | Cycle whose test times `--testo-shard` uses (default `$TESTO_CYCLE`, which `testo run` sets, else the rootdir's name; from `--testo-server` / `$TESTO_SERVER_URL` when set) |
 
 The session's JUnit XML (yours if `--junitxml` is set, else a temporary file in a `.testo-*` folder of the rootdir, removed afterwards) is recorded through the same path as `testo ingest`, into a `pytest` stage, and the run writes `artifacts/` like `testo ingest` does. One line in pytest's summary says where it went. Recording never changes pytest's exit code: a problem is reported on that line instead. The one exception is quarantine: when pytest exits `1` and every failed test matches the cycle's quarantine (the `quarantine:` rules of a `testosterone.yaml` cycle with that name, plus the stored list of [`testo quarantine`](#testo-quarantine), read from `--testo-server` when set), the session exits `0` and a `testo: exit 0 because every failed test is quarantined …` line names them. Nothing is recorded when no tests ran, or on a pytest-xdist worker (the controller records).
@@ -825,6 +853,9 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `TESTO_SERVER_URL`, `TESTO_API_TOKEN` | Team server for `testo lease`, `testo quarantine --server` (and `pytest --testo-server`) |
 | `TESTO_LEASE_DB_URL` | Database for local leases when it isn't the run-history one |
 | `TESTO_SHARD` | `I/N`: run only that shard of a pytest session ([`--testo-shard`](#pytest---testo)) |
+| `TESTO_REDACT` | `0` turns off hiding secrets in a run's stored results and logs (on by default: API keys, tokens, passwords, credentials in URLs, private keys) |
+| `TESTO_REDACT_PATTERNS` | Your own regular expressions to hide, one per line |
+| `TESTO_FAILED_FIRST` | `1`: same as [`--testo-failed-first`](#pytest---testo) |
 | `TESTO_CYCLE`, `TESTO_STAGE` | Set by `testo run` for each stage's process: which cycle and stage it is |
 | Reporter tokens | e.g. `REPORTPORTAL_TOKEN`, `SLACK_WEBHOOK` via `${env:…}` in YAML |
 

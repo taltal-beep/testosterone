@@ -48,7 +48,9 @@ def _parse_bool(value: str, *, default: bool) -> bool:
     return default
 
 
-def build_command(*, config_path: str, cycle: str, ci_mode: bool, persist: bool) -> list[str]:
+def build_command(
+    *, config_path: str, cycle: str, ci_mode: bool, persist: bool, coverage: str = ""
+) -> list[str]:
     cmd = ["testo", "run"]
     if config_path:
         cmd += ["--config", config_path]
@@ -58,6 +60,8 @@ def build_command(*, config_path: str, cycle: str, ci_mode: bool, persist: bool)
         cmd.append("--ci")
     if not persist:
         cmd.append("--no-persist")
+    for report in coverage.split():
+        cmd += ["--coverage", report]
     return cmd
 
 
@@ -84,7 +88,7 @@ def split_results(value: str) -> list[str]:
 
 
 def build_ingest_command(
-    *, results: list[str], cycle: str, ci_mode: bool, persist: bool
+    *, results: list[str], cycle: str, ci_mode: bool, persist: bool, coverage: str = ""
 ) -> list[str]:
     cmd = ["testo", "ingest", *results]
     if cycle and cycle != "all":
@@ -93,6 +97,8 @@ def build_ingest_command(
         cmd.append("--ci")
     if not persist:
         cmd.append("--no-persist")
+    for report in coverage.split():
+        cmd += ["--coverage", report]
     return cmd
 
 
@@ -420,6 +426,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--annotations", default="true")
     parser.add_argument("--notify-when", default="failure")
     parser.add_argument("--flaky-issues", default="false")
+    parser.add_argument("--coverage", default="")
     args = parser.parse_args(argv)
 
     persist = _parse_bool(args.persist, default=True)
@@ -434,6 +441,7 @@ def main(argv: list[str] | None = None) -> int:
             cycle=str(args.cycle or "").strip(),
             ci_mode=_parse_bool(args.ci_mode, default=True),
             persist=persist,
+            coverage=str(args.coverage or ""),
         )
     else:
         cmd = build_command(
@@ -441,6 +449,7 @@ def main(argv: list[str] | None = None) -> int:
             cycle=str(args.cycle or "").strip(),
             ci_mode=_parse_bool(args.ci_mode, default=True),
             persist=persist,
+            coverage=str(args.coverage or ""),
         )
     # ``auto``: comment when there is no config to opt in with (zero-config), keep the
     # old default (off) for configured runs.

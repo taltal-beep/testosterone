@@ -166,6 +166,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask About Tests
+         * @description One answer from the configured AI provider; nothing is stored.
+         */
+        post: operations["ask_about_tests_api_v1_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit": {
         parameters: {
             query?: never;
@@ -1039,6 +1059,53 @@ export interface components {
             /** Summary Text */
             summary_text: string | null;
         };
+        /** AskRequest */
+        AskRequest: {
+            /** Cycle */
+            cycle?: string | null;
+            /** History */
+            history?: components["schemas"]["AskTurnItem"][];
+            /** Question */
+            question: string;
+        };
+        /**
+         * AskResponse
+         * @description An AI answer to a question about the recorded test history.
+         */
+        AskResponse: {
+            /** Answer */
+            answer: string | null;
+            /** Answered At */
+            answered_at: number | null;
+            /** Context Stats */
+            context_stats: {
+                [key: string]: number;
+            };
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Model */
+            model: string | null;
+            /** Provider */
+            provider: string | null;
+            /** Question */
+            question: string;
+            /** Scope */
+            scope: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "answered" | "failed";
+        };
+        /** AskTurnItem */
+        AskTurnItem: {
+            /** Answer */
+            answer: string;
+            /** Question */
+            question: string;
+        };
         /** AttachmentItem */
         AttachmentItem: {
             /** Content Type */
@@ -1115,6 +1182,10 @@ export interface components {
             ci_provider?: string | null;
             /** Ci Ref Name */
             ci_ref_name?: string | null;
+            /** Coverage Covered */
+            coverage_covered?: string | null;
+            /** Coverage Total */
+            coverage_total?: string | null;
             /** Cycle */
             cycle: string;
             /** Files */
@@ -2278,6 +2349,12 @@ export interface components {
             broken: number | null;
             /** Commit */
             commit: string | null;
+            /** Coverage Covered */
+            coverage_covered: number | null;
+            /** Coverage Pct */
+            coverage_pct: number | null;
+            /** Coverage Total */
+            coverage_total: number | null;
             /** Created At */
             created_at: number;
             /** Cycle */
@@ -2874,6 +2951,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CycleTestsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ask_about_tests_api_v1_ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskResponse"];
                 };
             };
             /** @description Validation Error */

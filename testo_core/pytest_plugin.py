@@ -71,6 +71,10 @@ _AFFECTED = pytest.StashKey["frozenset[tuple[Path, str | None]] | None"]()
 _AFFECTED_NOTHING = pytest.StashKey[bool]()
 _AFFECTED_SUMMARY = pytest.StashKey["list[str]"]()
 _AFFECTED_SHOWN = 20
+_FAILED_FIRST_ENV = "TESTO_FAILED_FIRST"
+_FAILED_FIRST = pytest.StashKey["dict[str, int] | None"]()
+_FAILED_FIRST_SUMMARY = pytest.StashKey[str]()
+_WORKER_RANKS = "testo_failed_first_ranks"
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -148,11 +152,18 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "the pull request's target branch in CI, else origin/main).",
     )
     group.addoption(
+        "--testo-failed-first",
+        action="store_true",
+        default=False,
+        help="Run the tests that failed or flaked in the cycle's recent runs first, from the "
+        "recorded history (or --testo-server's); nothing is skipped. Also $TESTO_FAILED_FIRST=1.",
+    )
+    group.addoption(
         "--testo-timings",
         default=None,
         metavar="CYCLE",
-        help="Cycle whose test times --testo-shard uses (default: $TESTO_CYCLE, set by "
-        "`testo run`, else the rootdir's name).",
+        help="Cycle whose history --testo-shard and --testo-failed-first use (default: "
+        "$TESTO_CYCLE, set by `testo run`, else --testo-cycle, else the rootdir's name).",
     )
 
 
@@ -171,6 +182,7 @@ def pytest_configure(config: pytest.Config) -> None:
     config.stash[_RESOURCE_REQUEST] = _resource_request(config)
     _configure_shard(config)
     _configure_affected(config)
+    _configure_failed_first(config)
     # Before pytest's junitxml plugin reads the option, so it writes the report for us.
     if not _enabled(config) or config.option.xmlpath:
         return
@@ -318,7 +330,7 @@ def pytest_terminal_summary(
 ) -> None:
     for affected_line in config.stash.get(_AFFECTED_SUMMARY, []):
         terminalreporter.write_line(affected_line)
-    for key in (_SHARD_SUMMARY, _QUARANTINE_SUMMARY, _SUMMARY):
+    for key in (_SHARD_SUMMARY, _FAILED_FIRST_SUMMARY, _QUARANTINE_SUMMARY, _SUMMARY):
         line = config.stash.get(key, None)
         if line:
             terminalreporter.write_line(line)
@@ -460,12 +472,7 @@ def _configure_shard(config: pytest.Config) -> None:
         # The controller's times, so every worker keeps the same tests.
         config.stash[_SHARD_TIMINGS] = dict(json.loads(workerinput[_WORKER_TIMINGS]))
         return
-    cycle = (
-        config.getoption("testo_timings")
-        or os.environ.get("TESTO_CYCLE")
-        or config.rootpath.name
-        or "pytest"
-    ).strip()
+    cycle = _history_cycle(config)
     server = config.getoption("testo_server") or os.environ.get("TESTO_SERVER_URL") or None
     try:
         times = load_test_times(cycle, server=server, token=os.environ.get("TESTO_API_TOKEN"))
@@ -481,12 +488,26 @@ def _configure_shard(config: pytest.Config) -> None:
         )
 
 
+def _history_cycle(config: pytest.Config) -> str:
+    """The cycle whose recorded runs --testo-shard and --testo-failed-first read."""
+    return (
+        config.getoption("testo_timings")
+        or os.environ.get("TESTO_CYCLE")
+        or config.getoption("testo_cycle")
+        or config.rootpath.name
+        or "pytest"
+    ).strip()
+
+
 @pytest.hookimpl(optionalhook=True)
 def pytest_configure_node(node: Any) -> None:
-    """pytest-xdist: hand the controller's test times to each worker."""
+    """pytest-xdist: hand the controller's test times and ranks to each worker."""
     timings = node.config.stash.get(_SHARD_TIMINGS, None)
     if timings is not None:
         node.workerinput[_WORKER_TIMINGS] = json.dumps(timings)
+    ranks = node.config.stash.get(_FAILED_FIRST, None)
+    if ranks is not None:
+        node.workerinput[_WORKER_RANKS] = json.dumps(ranks)
 
 
 @pytest.hookimpl(trylast=True)  # after -k / -m, so the shards split what will run
@@ -494,6 +515,11 @@ def pytest_collection_modifyitems(
     session: pytest.Session, config: pytest.Config, items: list[pytest.Item]
 ) -> None:
     _keep_affected(config, items)
+    _keep_shard(config, items)
+    _put_failures_first(config, items)
+
+
+def _keep_shard(config: pytest.Config, items: list[pytest.Item]) -> None:
     shard = config.stash.get(_SHARD, None)
     if shard is None:
         return
@@ -616,3 +642,62 @@ def _keep_affected(config: pytest.Config, items: list[pytest.Item]) -> None:
         config.hook.pytest_deselected(items=deselected)
         items[:] = selected
     config.stash[_AFFECTED_NOTHING] = not selected
+
+
+# -- failed first ------------------------------------------------------------------
+
+
+def _configure_failed_first(config: pytest.Config) -> None:
+    config.stash[_FAILED_FIRST] = None
+    on = config.getoption("testo_failed_first") or os.environ.get(
+        _FAILED_FIRST_ENV, ""
+    ).strip().lower() in ("1", "true", "yes")
+    if not on:
+        return
+    workerinput = getattr(config, "workerinput", None)
+    if workerinput is not None and _WORKER_RANKS in workerinput:
+        # The controller's ranks, so every worker collects the same order.
+        config.stash[_FAILED_FIRST] = dict(json.loads(workerinput[_WORKER_RANKS]))
+        return
+    from testo_core.services.failed_first import rank_index
+    from testo_core.services.test_split import load_test_items
+
+    cycle = _history_cycle(config)
+    server = config.getoption("testo_server") or os.environ.get("TESTO_SERVER_URL") or None
+    try:
+        items = load_test_items(cycle, server=server, token=os.environ.get("TESTO_API_TOKEN"))
+    except Exception as exc:  # noqa: BLE001 - only the order is lost; the tests still run
+        config.stash[_FAILED_FIRST] = {}
+        config.stash[_FAILED_FIRST_SUMMARY] = (
+            f"testo: failed first: no history for cycle {cycle!r} ({exc}); kept pytest's order"
+        )
+        return
+    config.stash[_FAILED_FIRST] = rank_index(items)
+    if not items:
+        config.stash[_FAILED_FIRST_SUMMARY] = (
+            f"testo: failed first: cycle {cycle!r} has no recorded runs yet; kept pytest's order"
+        )
+
+
+def _put_failures_first(config: pytest.Config, items: list[pytest.Item]) -> None:
+    ranks = config.stash.get(_FAILED_FIRST, None)
+    if not ranks:
+        return
+    from testo_core.services.failed_first import FAILED_LAST, FAILED_RECENTLY, FLAKY, order
+    from testo_core.services.test_split import nodeid_names
+
+    positions, counts = order([item.nodeid for item in items], ranks, names_for=nodeid_names)
+    items[:] = [items[i] for i in positions]
+    if hasattr(config, "workerinput"):
+        return
+    parts = [
+        f"{counts[rank]} {label}"
+        for rank, label in (
+            (FAILED_LAST, "failed last time"),
+            (FLAKY, "flaky"),
+            (FAILED_RECENTLY, "failed recently"),
+        )
+        if counts.get(rank)
+    ]
+    moved = ", ".join(parts) if parts else "none of the collected tests failed recently"
+    config.stash[_FAILED_FIRST_SUMMARY] = f"testo: failed first: {moved}"

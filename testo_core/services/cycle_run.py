@@ -69,6 +69,8 @@ class CycleRunOptions:
     # Extra keys for the run record, e.g. CI provenance sent along with an
     # upload (the server's own environment says nothing about the client's CI).
     run_metadata: Mapping[str, str | None] | None = None
+    # Coverage reports the stages write (``--coverage``), read when they finish.
+    coverage_reports: Sequence[Path] = ()
 
 
 @dataclass(frozen=True)
@@ -155,6 +157,7 @@ class CycleRunService:
                 persist=opts.persist,
                 fail_fast=opts.fail_fast,
                 run_metadata=opts.run_metadata,
+                coverage_reports=opts.coverage_reports,
             )
             exit_code = int(result.exit_code)
             raw_run_id = result.extra.get("run_id")

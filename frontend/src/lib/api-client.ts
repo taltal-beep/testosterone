@@ -70,6 +70,8 @@ export type HealthFindingItem = Schemas["HealthFindingItem"];
 export type ReviewSkillItem = Schemas["ReviewSkillItem"];
 export type ReviewSkillsResponse = Schemas["ReviewSkillsResponse"];
 export type ProjectReviewResponse = Schemas["ProjectReviewResponse"];
+export type AskResponse = Schemas["AskResponse"];
+export type AskTurnItem = Schemas["AskTurnItem"];
 export type SkillResultItem = Schemas["SkillResultItem"];
 
 export type HealthReadyResponse = Schemas["HealthReadyResponse"];
@@ -270,6 +272,12 @@ export const apiClient = {
     return api<ProjectReviewResponse>("/api/v1/project-health/ai-review", {
       method: "POST",
       body: JSON.stringify({ cycle: cycle ?? null, skills })
+    });
+  },
+  askAboutTests(question: string, cycle: string | undefined, history: AskTurnItem[]): Promise<AskResponse> {
+    return api<AskResponse>("/api/v1/ask", {
+      method: "POST",
+      body: JSON.stringify({ question, cycle: cycle ?? null, history })
     });
   },
   getAiConfigStatus(): Promise<AiConfigStatus> {

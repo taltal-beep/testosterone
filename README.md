@@ -242,7 +242,8 @@ Details: [Troubleshooting and Error Codes](https://taltal-beep.github.io/testost
 | Ingest | `POST /ingest` (JUnit XML upload from `testo ingest --server`) |
 | Runs | `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/reports`, `GET /runs/{id}/pyramid` |
 | Analytics | `GET /analytics/delta`, `GET /analytics/delta/cases`, `GET /analytics/flaky`, `GET /dashboard/overview`, `GET /dashboard/runs/recent` |
-| AI (bring your own key) | `GET /ai/config/status`, `PUT /ai/config`, `GET /runs/{id}/ai-summary`, `POST /runs/{id}/ai-summary:generate` |
+| AI (bring your own key) | `GET /ai/config/status`, `PUT /ai/config`, `GET /runs/{id}/ai-summary`, `POST /runs/{id}/ai-summary:generate`, `POST /ask` |
+| Badge | `GET /badge.svg`, `GET /badge.json` (`?cycle=`) |
 | Health | `GET /health/live`, `GET /health/ready` |
 
 Interactive docs at `http://127.0.0.1:8000/docs` while `testo-api` runs.
