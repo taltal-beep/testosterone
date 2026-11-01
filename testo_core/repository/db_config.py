@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import os
-from functools import lru_cache
+import threading
 from typing import Final
 from urllib.parse import urlparse
 
 from sqlalchemy.engine import Engine
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import create_engine
 
 _DEFAULT_SQLITE_URL: Final[str] = "sqlite:///./testo_history.db"
 SUPPORTED_DATABASE_DIALECTS: Final[frozenset[str]] = frozenset({"sqlite", "postgresql", "mysql"})
@@ -86,17 +86,29 @@ def validate_database_url(url: str) -> str:
     return dialect
 
 
-@lru_cache(maxsize=8)
-def _build_engine(url: str) -> Engine:
-    dialect = validate_database_url(url)
-    kwargs: dict[str, object] = {"echo": False}
+# One engine (and so one connection pool) per database URL, kept until
+# reset_engine_cache() disposes it. A plain dict rather than lru_cache: evicting
+# an engine without dispose() would leave its pooled connections open.
+_ENGINES: dict[str, Engine] = {}
+_ENGINES_LOCK = threading.Lock()
 
+
+def engine_kwargs(url: str) -> dict[str, object]:
+    """``create_engine`` keyword arguments for ``url``'s dialect (shared by probes)."""
+    dialect = urlparse(url).scheme.lower().split("+", 1)[0]
     if dialect == "sqlite":
-        kwargs["connect_args"] = {"check_same_thread": False}
-    else:
-        kwargs["pool_pre_ping"] = True
+        return {"connect_args": {"check_same_thread": False}}
+    return {"pool_pre_ping": True}
 
-    return create_engine(url, **kwargs)
+
+def _build_engine(url: str) -> Engine:
+    with _ENGINES_LOCK:
+        engine = _ENGINES.get(url)
+        if engine is None:
+            validate_database_url(url)
+            engine = create_engine(url, echo=False, **engine_kwargs(url))
+            _ENGINES[url] = engine
+        return engine
 
 
 def get_engine() -> Engine:
@@ -104,25 +116,24 @@ def get_engine() -> Engine:
     return _build_engine(resolve_database_url())
 
 
-def create_db_and_tables() -> None:
-    """Create all registered SQLModel tables on the active engine (idempotent)."""
-    # Import registers ``RunRecord`` on ``SQLModel.metadata``.
-    from testo_core.repository.models import (  # noqa: F401
-        AuditEvent,
-        FailureTriage,
-        QueuedRun,
-        ReportArchive,
-        ResourceAction,
-        ResourceItemRow,
-        ResourceLease,
-        ResourceWaiter,
-        RunRecord,
-        UserAccount,
-    )
+def create_db_and_tables(engine: Engine | None = None) -> None:
+    """Bring the database (the active one by default) to the current schema (idempotent).
 
-    SQLModel.metadata.create_all(get_engine())
+    Runs the Alembic revisions in :mod:`testo_core.repository.migrations`; a
+    database built by ``create_all()`` before migrations existed is stamped at
+    the baseline first. Every store that opens the database calls this instead
+    of creating its own tables, so the migrations are the schema's one owner.
+    The name is kept for the callers and the public API.
+    """
+    from testo_core.repository.migrations import upgrade_to_head
+
+    upgrade_to_head(engine if engine is not None else get_engine())
 
 
 def reset_engine_cache() -> None:
-    """Clear the cached engine(s). Use in tests after changing ``DATABASE_URL``."""
-    _build_engine.cache_clear()
+    """Dispose and forget the cached engine(s). Use in tests after changing ``DATABASE_URL``."""
+    with _ENGINES_LOCK:
+        engines = list(_ENGINES.values())
+        _ENGINES.clear()
+    for engine in engines:
+        engine.dispose()

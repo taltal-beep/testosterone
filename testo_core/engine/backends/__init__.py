@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import logging
 import os
+import signal
 import subprocess
+import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 from testo_core.engine.log_buffer import ByteReader
 
@@ -48,6 +50,47 @@ class StageProcess(Protocol):
     def kill(self) -> None: ...
 
 
+class HostStageProcess(subprocess.Popen[bytes]):
+    """A host stage, started as the leader of its own process group.
+
+    Signals go to the whole group, so a timeout or Ctrl-C also stops what the stage
+    started (``sh -c 'server & pytest'``, pytest-xdist workers, browsers), not just
+    the direct child. On Windows the group is killed with ``taskkill /T``.
+    """
+
+    def send_signal(self, sig: int) -> None:
+        if sys.platform == "win32":
+            if sig in (signal.SIGTERM, getattr(signal, "SIGKILL", -1)):
+                self._taskkill(force=sig != signal.SIGTERM)
+                return
+            super().send_signal(sig)
+            return
+        try:
+            # After the leader is reaped its pid can't be a group id unless members
+            # remain, so this only reaches what the stage left behind.
+            os.killpg(self.pid, sig)
+        except ProcessLookupError:
+            pass
+        except OSError:
+            super().send_signal(sig)
+
+    def terminate(self) -> None:
+        self.send_signal(signal.SIGTERM)
+
+    def kill(self) -> None:
+        if sys.platform == "win32":
+            self._taskkill(force=True)
+            return
+        self.send_signal(signal.SIGKILL)
+
+    def _taskkill(self, *, force: bool) -> None:
+        argv = ["taskkill", "/T", "/PID", str(self.pid)] + (["/F"] if force else [])
+        try:
+            subprocess.run(argv, capture_output=True, timeout=10, check=False)  # noqa: S603
+        except (OSError, subprocess.SubprocessError):
+            super().kill() if force else super().terminate()
+
+
 def runner_kind() -> RunnerKind:
     raw = (os.environ.get(RUNNER_ENV) or "host").strip().lower()
     if raw in ("host", "container"):
@@ -68,7 +111,12 @@ def launch(
         from testo_core.engine.backends.container import RemoteStageProcess
 
         return RemoteStageProcess(argv, cwd=str(cwd), env=stage_env)
-    return subprocess.Popen(  # noqa: S603 - argv is built by trusted adapters
+    group: dict[str, Any] = (
+        {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}  # type: ignore[attr-defined]
+        if sys.platform == "win32"
+        else {"start_new_session": True}
+    )
+    return HostStageProcess(  # noqa: S603 - argv is built by trusted adapters
         list(argv),
         cwd=str(cwd),
         env=dict(env),
@@ -76,4 +124,5 @@ def launch(
         stderr=subprocess.STDOUT,
         bufsize=0,
         close_fds=True,
+        **group,
     )

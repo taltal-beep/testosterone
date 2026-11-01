@@ -75,11 +75,10 @@ class TriageStore:
     """Failure causes on a SQLAlchemy engine (the run-history DB by default)."""
 
     def __init__(self, engine: Any = None) -> None:
-        from testo_core.repository.db_config import get_engine
-        from testo_core.repository.models import FailureTriage
+        from testo_core.repository.db_config import create_db_and_tables, get_engine
 
         self._engine = engine if engine is not None else get_engine()
-        FailureTriage.__table__.create(self._engine, checkfirst=True)  # type: ignore[attr-defined]
+        create_db_and_tables(self._engine)
 
     def mark(
         self,

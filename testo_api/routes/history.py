@@ -47,6 +47,7 @@ def list_runs(limit: int = Query(30, ge=1, le=500), cycle: str | None = None) ->
             broken=s.broken,
             links_under_static=s.links_under_static,
             branch=s.branch,
+            commit=s.commit,
         )
         for s in sessions
     ]

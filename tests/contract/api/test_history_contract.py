@@ -127,8 +127,11 @@ def test_run_pyramid_contract(monkeypatch) -> None:  # noqa: ANN001
         "unit": 10,
         "integration": 0,
         "e2e": 0,
-        "shape": "irregular",
-        "message": "Not a clean pyramid: each tier should be smaller than the one below it.",
+        "shape": "healthy",
+        "message": (
+            "Every test counts as a unit test. Set `tier:` on a stage to sort integration"
+            " and end-to-end tests."
+        ),
     }
 
 

@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-06-25
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Specs & ADRs
@@ -21,6 +21,8 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Navy glass look and sidebar | [UI Restyle - 2026-10-19](UI%20Restyle%20-%202026-10-19.md) |
 | One engine, generated API types, blocking type checks | [Architecture Consolidation - 2026-10-06](Architecture%20Consolidation%20-%202026-10-06.md) |
 | Architecture review: read-side scaling, migrations, layering enforcement (proposals only) | [Architecture Review - 2026-10-31](Architecture%20Review%20-%202026-10-31.md) |
+| Importer and integration bug hunt: ranked findings, fixes and proposals | [Importer and Integration Bug Hunt - 2026-10-31](Importer%20and%20Integration%20Bug%20Hunt%20-%202026-10-31.md) |
+| Engine fixes from the bug hunt: one run of a cycle at a time, and the other proposals | [Engine Fixes - 2026-11-01](Engine%20Fixes%20-%202026-11-01.md) |
 | Interview-readiness batch (pull requests 67 to 91, v1.1.0) | [Interview Readiness Fixes - 2026-10-07](Interview%20Readiness%20Fixes%20-%202026-10-07.md) |
 | Docs vault as second brain, wiki generated from `docs/` | [Docs Vault and Wiki Sync - 2026-10-07](Docs%20Vault%20and%20Wiki%20Sync%20-%202026-10-07.md) |
 | Post-publish features: flaky tests, PR comments, plugins, adapters | [Open Source Features - 2026-10-19](Open%20Source%20Features%20-%202026-10-19.md) |
@@ -48,5 +50,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Product review second pass: every area except trust toward 10 | [Product to Ten - 2026-10-25](Product%20to%20Ten%20-%202026-10-25.md) |
 | Project health page: a repeatable test health score and an optional AI review of the tests | [Project Health - 2026-10-26](Project%20Health%20-%202026-10-26.md) |
 | README badge, asking about your tests, Jira issues from failures (and what was not built) | [Qualflare Follow-ups - 2026-10-26](Qualflare%20Follow-ups%20-%202026-10-26.md) |
+| UI design review: ranked design and UX findings with annotated screenshots, 7.5 / 10 | [UI Design Review - 2026-10-31](UI%20Design%20Review%20-%202026-10-31.md) |
+| UI review fixes: cycle results, run labels, Compare test list, test page charts, quieter cards | [UI Review Fixes - 2026-11-01](UI%20Review%20Fixes%20-%202026-11-01.md) |
 
 Older plans and incident write-ups (Allure 3 migration plan, reporters port, report-links fix, CLI–UI parity, the `doctor`/`clean`/`watch`/`init` restore) are in the [Archive](../Archive/README.md).

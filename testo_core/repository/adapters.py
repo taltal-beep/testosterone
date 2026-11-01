@@ -7,11 +7,12 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy import and_, delete, func
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, col, select
 
 from .base import BaseRunRepository
-from .models import RunRecord, RunStatus
+from .models import RunRecord, RunStatus, sync_promoted_columns
 
 
 def _utcnow() -> datetime:
@@ -39,12 +40,17 @@ class SQLModelRunRepository(BaseRunRepository):
         *,
         status: RunStatus = RunStatus.PENDING,
         metadata: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
     ) -> RunRecord:
-        rr = RunRecord(status=status, start_time=_utcnow(), metadata_={})
+        rr = RunRecord(
+            status=status, start_time=start_time or _utcnow(), end_time=end_time, metadata_={}
+        )
         base_md: dict[str, Any] = {"run_id": str(rr.id), "created_at": float(time.time())}
         if metadata:
             base_md.update(metadata)
         rr.metadata_ = base_md
+        sync_promoted_columns(rr)
         with Session(self._engine) as session:
             session.add(rr)
             session.commit()
@@ -80,6 +86,7 @@ class SQLModelRunRepository(BaseRunRepository):
                     end_time=now if status in {RunStatus.COMPLETED, RunStatus.FAILED} else None,
                     metadata_=(metadata or {}),
                 )
+                sync_promoted_columns(existing)
                 session.add(existing)
                 session.commit()
                 session.refresh(existing)
@@ -95,6 +102,7 @@ class SQLModelRunRepository(BaseRunRepository):
                 merged = dict(existing.metadata_ or {})
                 merged.update(metadata)
                 existing.metadata_ = merged
+            sync_promoted_columns(existing)
             session.add(existing)
             session.commit()
             session.refresh(existing)
@@ -107,6 +115,7 @@ class SQLModelRunRepository(BaseRunRepository):
             if existing is None:
                 return False
             existing.metadata_ = {**(existing.metadata_ or {}), **patch}
+            sync_promoted_columns(existing)
             session.add(existing)
             session.commit()
             return True
@@ -119,6 +128,55 @@ class SQLModelRunRepository(BaseRunRepository):
                 session.expunge(r)
             return rows
 
+    def list_runs(
+        self,
+        *,
+        cycle: str | None = None,
+        before: datetime | None = None,
+        limit: int = 30,
+    ) -> list[RunRecord]:
+        stmt = select(RunRecord)
+        if cycle is not None:
+            stmt = stmt.where(RunRecord.cycle == cycle)
+        if before is not None:
+            stmt = stmt.where(col(RunRecord.start_time) < before)
+        stmt = stmt.order_by(col(RunRecord.start_time).desc()).limit(max(0, int(limit)))
+        with Session(self._engine) as session:
+            rows = list(session.exec(stmt).all())
+            for r in rows:
+                session.expunge(r)
+            return rows
+
+    def latest_run_per_cycle(self) -> list[RunRecord]:
+        newest = (
+            select(RunRecord.cycle, func.max(RunRecord.start_time).label("start_time"))
+            .where(col(RunRecord.cycle).is_not(None))
+            .group_by(RunRecord.cycle)
+            .subquery()
+        )
+        stmt = (
+            select(RunRecord)
+            .join(
+                newest,
+                and_(
+                    col(RunRecord.cycle) == newest.c.cycle,
+                    col(RunRecord.start_time) == newest.c.start_time,
+                ),
+            )
+            .order_by(col(RunRecord.start_time).desc())
+        )
+        with Session(self._engine) as session:
+            rows = list(session.exec(stmt).all())
+            seen: set[str] = set()
+            out: list[RunRecord] = []
+            for r in rows:  # two runs of a cycle in the same microsecond: keep one
+                if r.cycle in seen:
+                    continue
+                seen.add(r.cycle or "")
+                session.expunge(r)
+                out.append(r)
+            return out
+
     def list_runs_by_status(self, status: RunStatus) -> list[RunRecord]:
         stmt = select(RunRecord).where(RunRecord.status == status)
         with Session(self._engine) as session:
@@ -127,11 +185,42 @@ class SQLModelRunRepository(BaseRunRepository):
                 session.expunge(r)
             return rows
 
+    def list_run_keys(self) -> list[tuple[str, str | None, datetime | None, RunStatus]]:
+        stmt = select(
+            RunRecord.id, RunRecord.cycle, RunRecord.start_time, RunRecord.status
+        ).order_by(col(RunRecord.start_time).desc())
+        with Session(self._engine) as session:
+            return [
+                (str(run_id), cycle, start_time, RunStatus(status))
+                for run_id, cycle, start_time, status in session.exec(stmt).all()
+            ]
+
+    def delete_runs(self, run_ids: list[str]) -> int:
+        ids: list[uuid.UUID] = []
+        for run_id in run_ids:
+            try:
+                ids.append(uuid.UUID(str(run_id)))
+            except ValueError:
+                continue  # not a run id this repository could have issued
+        if not ids:
+            return 0
+        deleted = 0
+        with Session(self._engine) as session:
+            for start in range(0, len(ids), 500):
+                chunk = ids[start : start + 500]
+                result = session.exec(  # type: ignore[call-overload]
+                    delete(RunRecord).where(col(RunRecord.id).in_(chunk))
+                )
+                deleted += int(result.rowcount or 0)
+            session.commit()
+        return deleted
+
     def bulk_update(self, records: list[RunRecord]) -> int:
         if not records:
             return 0
         with Session(self._engine) as session:
             for r in records:
+                sync_promoted_columns(r)
                 session.merge(r)
             session.commit()
             return len(records)

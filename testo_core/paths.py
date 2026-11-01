@@ -46,6 +46,23 @@ def resolve_data_root(*, package_dir: Path | None = None, cwd: Path | None = Non
     return (cwd or Path.cwd()).resolve() / DEFAULT_DATA_DIRNAME
 
 
+def safe_child_path(root: Path, child: str, *, label: str = "path segment") -> Path:
+    """Resolve one child path and reject values that escape ``root``."""
+    base = root.expanduser().resolve()
+    path = (base / str(child)).resolve()
+    try:
+        path.relative_to(base)
+    except ValueError as exc:
+        raise ValueError(f"{label} escapes root: {child!r}") from exc
+    return path
+
+
+def plan_artifacts_dir(artifacts_root: Path, plan: str | None = None) -> Path:
+    """Return ``<artifacts>/<plan>/`` (or ``<artifacts>/`` if ``plan`` is None)."""
+    root = artifacts_root.expanduser().resolve()
+    return safe_child_path(root, plan, label="plan name") if plan else root
+
+
 # Resolved once at import, so the CLI and the API use the directory they were started in.
 ORCHESTRATOR_ROOT: Final[Path] = resolve_data_root()
 STATIC_DIR: Final[Path] = ORCHESTRATOR_ROOT / "static"

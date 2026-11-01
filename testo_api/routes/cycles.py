@@ -15,6 +15,7 @@ from testo_api.models import (
     CycleExecutionAcceptedResponse,
     CycleExecutionRequest,
     CycleExecutionStatusResponse,
+    CycleLatestRun,
     CycleListResponse,
     CycleSummary,
     CycleTriggerSummary,
@@ -59,6 +60,23 @@ _HISTORY_DESCRIPTION = (
 )
 
 
+def _latest_run(run: CompletedRunView | None) -> CycleLatestRun | None:
+    if run is None:
+        return None
+    return CycleLatestRun(
+        run_id=run.run_id,
+        created_at=run.created_at,
+        status=run.status.value if run.status is not None else None,
+        returncode=run.returncode,
+        health_pct=run.health_pct,
+        total_tests=run.total_tests,
+        passed=run.passed,
+        failed=run.failed,
+        branch=run.branch,
+        commit=run.commit,
+    )
+
+
 def _history_summary(name: str, run: CompletedRunView) -> CycleSummary:
     return CycleSummary(
         name=name,
@@ -66,6 +84,7 @@ def _history_summary(name: str, run: CompletedRunView) -> CycleSummary:
         stage_count=len(run.stage_health),
         equipment=sorted({str(s.get("framework")) for s in run.stage_health if s.get("framework")}),
         source="history",
+        latest_run=_latest_run(run),
     )
 
 
@@ -88,20 +107,18 @@ def list_cycles(config_path: str | None = None) -> CycleListResponse:
     """Every cycle in the config (as ``testo cycles list``), then cycles that only have recorded runs."""
     cfg = _load_config_for_reads(config_path)
     configured = cfg.cycles if cfg else {}
+    latest = latest_run_per_cycle()
     items = [
         CycleSummary(
             name=cycle.name,
             description=cycle.description,
             stage_count=len(cycle.stages),
             equipment=sorted({stage.framework for stage in cycle.stages}),
+            latest_run=_latest_run(latest.get(cycle.name)),
         )
         for cycle in configured.values()
     ]
-    items += [
-        _history_summary(name, run)
-        for name, run in latest_run_per_cycle().items()
-        if name not in configured
-    ]
+    items += [_history_summary(name, run) for name, run in latest.items() if name not in configured]
     return CycleListResponse(
         items=items,
         config_path=str(cfg.source_path) if cfg and cfg.source_path else None,

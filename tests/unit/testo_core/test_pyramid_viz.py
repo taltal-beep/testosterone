@@ -44,3 +44,11 @@ def test_render_pyramid_lines_healthy_produces_three_tiers_plus_caption() -> Non
     assert len(lines) == 4
     assert all(len(line) == 33 for line in lines)
     assert "classic pyramid" in lines[-1]
+
+
+def test_unit_only_and_no_e2e_are_not_called_irregular() -> None:
+    from testo_core.reporting.pyramid_viz import PyramidModel, PyramidShape, classify_shape
+
+    assert classify_shape(PyramidModel(unit=4, integration=0, e2e=0))[0] is PyramidShape.HEALTHY
+    assert classify_shape(PyramidModel(unit=10, integration=5, e2e=0))[0] is PyramidShape.HEALTHY
+    assert classify_shape(PyramidModel(unit=5, integration=5, e2e=1))[0] is PyramidShape.IRREGULAR

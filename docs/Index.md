@@ -2,7 +2,7 @@
 type: index
 status: current
 created: 2026-06-25
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Testosterone docs
@@ -47,8 +47,13 @@ The notes are plain markdown. They open as an Obsidian vault, and are published 
 - [Technical Debt Tracker](Testing%20Workflows/Technical%20Debt%20Tracker.md): open backlog
 - [Project Review](project-review.md): whole-repo scorecard (architecture, code, tests, security, docs, CI) and verdict, 2026-10-24
 - [Architecture Review](Specs%20&%20ADRs/Architecture%20Review%20-%202026-10-31.md): ranked review of module boundaries, data model, scaling limits and extension points, with proposed next steps, 2026-10-31
+- [Importer and Integration Bug Hunt](Specs%20&%20ADRs/Importer%20and%20Integration%20Bug%20Hunt%20-%202026-10-31.md): ranked bugs found by feeding the importers malformed and real-tool reports, and in the Action, PR comment, alerts, OTel, affected selection and plugins, with fixes and proposals, 2026-10-31
 - [Product Review](product-review.md): product scorecard (positioning against Allure, ReportPortal, Currents and Trunk, onboarding, the red-build workflow, design, accessibility, copy) and the Now / Next / Later roadmap, 2026-10-24
 - [Feature Gaps and Quick Wins](Roadmap%20&%20Strategy/Feature%20Gaps%20and%20Quick%20Wins%20-%202026-10-31.md): what paid flaky-test and test-analytics tools do that Testosterone doesn't yet, ranked with effort, and the bugs a new user hits in the first ten minutes, 2026-10-31
+- [Paid Features to Offer Free](Roadmap%20&%20Strategy/Paid%20Features%20to%20Offer%20Free%20-%202026-10-31.md): which features competitors keep behind paid plans, the ones Testosterone could give away self-hosted, ranked, and the licence and trademark rules for copying ideas, 2026-10-31
+- [UI Design Review](Specs%20&%20ADRs/UI%20Design%20Review%20-%202026-10-31.md): the web UI as a piece of design (hierarchy, consistency, copy, charts, states, accessibility), ranked findings with annotated screenshots, 2026-10-31
+- [UI Review Fixes](Specs%20&%20ADRs/UI%20Review%20Fixes%20-%202026-11-01.md): what was built from the review's proposals (cycle results on the Cycles grid, run labels with time and branch, the Compare test list under the summary, test page charts, quieter cards), 2026-11-01
+- [Engine and CLI Bug Hunt](engine-cli-review.md): reproduced bugs in `testo`, config parsing, the engine, storage and the importers, what was fixed, and ranked proposals for the rest, 2026-10-31
 - [Agent Context Guide](Prompts%20&%20Snippets/Agent%20Context%20Guide.md): which note to read before changing what (for AI coding agents)
 
 ## The vault itself

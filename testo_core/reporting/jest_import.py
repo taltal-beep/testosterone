@@ -24,8 +24,10 @@ on a CI machine gets the same test ids as one made locally.
 from __future__ import annotations
 
 import json
+import ntpath
 import os
-from pathlib import Path, PurePath
+import re
+from pathlib import Path, PurePath, PureWindowsPath
 from typing import Any
 
 from testo_core.reporting.imported_results import make_result
@@ -49,16 +51,24 @@ def _framework(report: dict, tool: str) -> str:
     if tool in ("jest", "vitest"):
         return tool
     for file_result in report.get("testResults") or []:
-        for case in file_result.get("assertionResults") or []:
+        if not isinstance(file_result, dict):
+            continue
+        cases = file_result.get("assertionResults")
+        for case in cases if isinstance(cases, list) else []:
             # Vitest adds ``meta`` to every assertion; Jest never does.
             if isinstance(case, dict) and "meta" in case:
                 return "vitest"
     return "jest"
 
 
+# ``C:\\ci\\repo\\a.test.js``, ``C:/ci/...`` or ``\\\\server\\share\\...``: absolute on Windows.
+_WINDOWS_ABSOLUTE = re.compile(r"^(?:[A-Za-z]:[\\/]|\\\\)")
+
+
 def _relative_paths(names: list[str], root: Path | None) -> dict[str, str]:
     out: dict[str, str] = {}
     outside: list[str] = []
+    windows: list[str] = []
     for name in names:
         path = Path(name)
         if root is not None and path.is_absolute():
@@ -69,12 +79,23 @@ def _relative_paths(names: list[str], root: Path | None) -> dict[str, str]:
                 pass
         if path.is_absolute():
             outside.append(name)
+        elif _WINDOWS_ABSOLUTE.match(name):
+            # A report made on Windows read here: not absolute to this OS, but it is.
+            windows.append(name)
         else:
             out[name] = PurePath(name).as_posix()
     if outside:
         common = os.path.commonpath([str(PurePath(n).parent) for n in outside])
         for name in outside:
             out[name] = PurePath(os.path.relpath(name, common)).as_posix()
+    if windows:
+        try:
+            common = ntpath.commonpath([ntpath.dirname(n) for n in windows])
+        except ValueError:  # different drives
+            common = ""
+        for name in windows:
+            rel = ntpath.relpath(name, common) if common else ntpath.splitdrive(name)[1]
+            out[name] = PureWindowsPath(rel).as_posix().lstrip("/")
     return out
 
 
@@ -105,7 +126,8 @@ def jest_results_for_report(
         file_name = rel.get(str(file_result.get("name") or ""), "") or "(unknown file)"
         clock = file_result.get("startTime")
         clock = int(clock) if isinstance(clock, (int, float)) and clock > 0 else int(report_start)
-        cases = [c for c in file_result.get("assertionResults") or [] if isinstance(c, dict)]
+        raw_cases = file_result.get("assertionResults")
+        cases = [c for c in raw_cases if isinstance(c, dict)] if isinstance(raw_cases, list) else []
         if not cases:
             file_message = str(
                 file_result.get("message") or file_result.get("failureMessage") or ""
@@ -131,7 +153,10 @@ def jest_results_for_report(
         any_case_failed = False
         for case in cases:
             title = str(case.get("title") or "(unnamed)")
-            ancestors = [str(a) for a in case.get("ancestorTitles") or [] if str(a)]
+            raw_ancestors = case.get("ancestorTitles")
+            if not isinstance(raw_ancestors, list):
+                raw_ancestors = [raw_ancestors] if raw_ancestors else []
+            ancestors = [str(a) for a in raw_ancestors if str(a)]
             status = _STATUS.get(str(case.get("status")), "broken")
             failures = "\n\n".join(str(m) for m in case.get("failureMessages") or [] if m)
             retries = [str(r) for r in case.get("retryReasons") or [] if r]
@@ -141,7 +166,7 @@ def jest_results_for_report(
                 message = "Passed on retry. " + retries[0]
             try:
                 duration = int(round(float(case.get("duration") or 0)))
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 duration = 0
             result = make_result(
                 tool=tool,

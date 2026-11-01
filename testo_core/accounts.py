@@ -70,6 +70,14 @@ def _check_username(username: str) -> str:
     return name
 
 
+def check_new_account(username: str, role: str) -> str:
+    """Validate the name and role of an account about to be added (before asking for a
+    password); returns the cleaned name. :class:`AccountError` if either is bad."""
+    name = _check_username(username)
+    _check_role(role)
+    return name
+
+
 def _check_password(password: str) -> None:
     if len(password) < MIN_PASSWORD_LENGTH:
         raise AccountError(f"passwords need at least {MIN_PASSWORD_LENGTH} characters")
@@ -106,12 +114,10 @@ class AccountStore:
     """Accounts and audit events on a SQLAlchemy engine (the run-history DB by default)."""
 
     def __init__(self, engine: Any = None) -> None:
-        from testo_core.repository.db_config import get_engine
-        from testo_core.repository.models import AuditEvent, UserAccount
+        from testo_core.repository.db_config import create_db_and_tables, get_engine
 
         self._engine = engine if engine is not None else get_engine()
-        for table in (UserAccount.__table__, AuditEvent.__table__):  # type: ignore[attr-defined]
-            table.create(self._engine, checkfirst=True)
+        create_db_and_tables(self._engine)
 
     # --- accounts ---------------------------------------------------------
 

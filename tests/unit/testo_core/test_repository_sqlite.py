@@ -113,3 +113,39 @@ def test_merge_run_metadata_patches_existing_run(sqlite_repo) -> None:
 
 def test_merge_run_metadata_missing_run(sqlite_repo) -> None:
     assert sqlite_repo.merge_run_metadata("no-such-run", {"a": 1}) is False
+
+
+def test_promoted_columns_follow_metadata_on_every_write(sqlite_repo) -> None:
+    r = sqlite_repo.create_run(
+        status=RunStatus.COMPLETED,
+        metadata={"plan": "smoke", "health_pct": 50.0, "exit_code": 1, "git_branch": "feat"},
+    )
+    assert (r.cycle, r.health_pct, r.exit_code, r.branch) == ("smoke", 50.0, 1, "feat")
+    sqlite_repo.merge_run_metadata(r.id, {"snapshot_dir": "static/history/r/artifacts"})
+    again = sqlite_repo.get_run(r.id)
+    assert again is not None and again.snapshot_dir == "static/history/r/artifacts"
+    sqlite_repo.update_run_status(r.id, status=RunStatus.FAILED, metadata={"ci_ref_name": "main"})
+    assert sqlite_repo.get_run(r.id).branch == "main"
+
+
+def test_list_runs_filters_by_cycle_and_start_time_in_sql(sqlite_repo) -> None:
+    a = sqlite_repo.create_run(status=RunStatus.COMPLETED, metadata={"plan": "smoke"})
+    sqlite_repo.create_run(status=RunStatus.COMPLETED, metadata={"plan": "nightly"})
+    b = sqlite_repo.create_run(status=RunStatus.COMPLETED, metadata={"plan": "smoke"})
+
+    smoke = sqlite_repo.list_runs(cycle="smoke", limit=10)
+    assert [r.id for r in smoke] == [b.id, a.id]
+    assert [r.id for r in sqlite_repo.list_runs(cycle="smoke", limit=1)] == [b.id]
+    before_b = sqlite_repo.list_runs(cycle="smoke", before=b.start_time, limit=10)
+    assert [r.id for r in before_b] == [a.id]
+    assert sqlite_repo.list_runs(cycle="nope", limit=10) == []
+
+
+def test_latest_run_per_cycle_is_one_query_over_every_cycle(sqlite_repo) -> None:
+    sqlite_repo.create_run(status=RunStatus.COMPLETED, metadata={"plan": "smoke"})
+    n = sqlite_repo.create_run(status=RunStatus.COMPLETED, metadata={"plan": "nightly"})
+    s2 = sqlite_repo.create_run(status=RunStatus.FAILED, metadata={"plan": "smoke"})
+    sqlite_repo.create_run(status=RunStatus.COMPLETED, metadata={"no": "cycle"})
+
+    latest = sqlite_repo.latest_run_per_cycle()
+    assert [(r.cycle, r.id) for r in latest] == [("smoke", s2.id), ("nightly", n.id)]

@@ -8,8 +8,8 @@ export function NotFoundPage() {
   usePageTitle("Page not found");
   return (
     <EmptyState
-      headingLevel={1}
       mascot={<MuscleShrug />}
+      headingLevel="h1"
       title="Page not found"
       message="There is nothing at this address."
       action={
