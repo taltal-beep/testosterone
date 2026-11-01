@@ -13,6 +13,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 - Web UI: Compare lists which tests regressed, were fixed, added or removed right under the summary (open by default; the regression and improvement counts open the matching filter, each test links to its history, and the duplicate "Test time (sum)" row is dropped for single-stage runs); the test page's duration bars fill the card and open their run, flakiness is a line of flip rate over time, and outcomes use the same pills as runs; Test mix is shown only for runs with two or more tiers, an empty Reports card is a row in Details, and a recorded-only cycle has no Stages card
+- Web UI: each card on the Cycles page shows the cycle's latest result (status, pass rate, failing count, branch and commit, and a link to the run), and run labels on the Dashboard and Runs pages say when the run happened ("3 h ago") and which branch and commit it ran from; `GET /api/v1/cycles` items carry `latest_run`, and run items carry `commit`
 - Python 3.14 is tested in CI and listed in the package classifiers
 
 ### Fixed
@@ -34,6 +35,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `testo clean --yes` refuses to delete a folder that is the project (`artifacts_root: .`), the current, home or root folder, the config's folder or a parent of any of them, or a folder holding `.git`, `testosterone.yaml` or `pyproject.toml`. Before, `artifacts_root: .` deleted the whole project
 
 ### Changed
+- Result importers: a test listed more than once in one JUnit suite (pytest's teardown error before pytest 8) or run more than once in one `go test -json` file (`-count=N`) is now one result. A failure followed by a pass is flaky; otherwise the worst attempt wins. Totals for those reports go down. A suite that claims more tests than it lists now logs a note
 - Docs: an importer and integration bug hunt (`docs/Specs & ADRs/Importer and Integration Bug Hunt - 2026-10-31.md`) ranks what was found and fixed, with proposals for the rest
 - UI polish from the design review: Compare and dashboard highlights read as plain sentences ("Wall duration up 6.9 s", "1 more test passed", "Pass rate up 3.8 points"; no duplicate line when the metrics duration moved as much as the wall duration), the breadcrumb names the cycle, test or run on its page and says Testosterone, the Runs list says "96% passed" instead of "health 96%", the Compare filter chips read "Status change", the phone menu is opaque, and the 404 page has a page heading
 - Docs: a UI design review (`docs/Specs & ADRs/UI Design Review - 2026-10-31.md`) ranks 14 design and UX findings on the web UI with annotated screenshots and proposes fixes; linked from the Index and the docs site menu

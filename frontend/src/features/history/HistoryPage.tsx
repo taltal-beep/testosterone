@@ -93,7 +93,7 @@ export function HistoryPage() {
             <li key={run.run_id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
               <div className="flex min-w-0 items-center gap-3">
                 <StatusPill status={run.status ?? "unknown"} returncode={run.returncode} />
-                <RunLabel run={run} linked />
+                <RunLabel run={run} linked relative />
               </div>
               <span className="text-xs text-ink-400">
                 {run.health_pct != null ? `${formatPercent(run.health_pct)} passed` : ""}

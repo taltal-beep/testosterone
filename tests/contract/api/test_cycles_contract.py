@@ -147,6 +147,26 @@ def test_cycles_with_only_recorded_runs_are_listed_read_only(
     assert items[2]["stage_count"] == 1
 
 
+def test_list_cycles_carries_the_latest_run(
+    client: TestClient, config_path: Path, recorded: dict[str, CompletedRunView]
+) -> None:
+    """Each card shows its last result without a second request per cycle."""
+    recorded["smoke"] = _recorded_run("smoke")
+    recorded["web"] = _recorded_run("web")
+
+    items = client.get("/api/v1/cycles", params={"config_path": str(config_path)}).json()["items"]
+    by_name = {item["name"]: item for item in items}
+
+    assert by_name["full"]["latest_run"] is None
+    latest = by_name["smoke"]["latest_run"]
+    assert latest["run_id"] == "smoke-1"
+    assert latest["returncode"] == 1
+    assert latest["health_pct"] == 20.0
+    assert (latest["passed"], latest["failed"], latest["total_tests"]) == (1, 4, 5)
+    assert latest["branch"] is None and latest["commit"] is None
+    assert by_name["web"]["latest_run"]["run_id"] == "web-1"
+
+
 def test_recorded_cycle_has_a_detail_page(
     client: TestClient, config_path: Path, recorded: dict[str, CompletedRunView]
 ) -> None:
