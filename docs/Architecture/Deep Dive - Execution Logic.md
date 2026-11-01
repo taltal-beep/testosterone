@@ -300,7 +300,7 @@ See [Scale Runs and Stages - 2026-10-24](../Specs%20&%20ADRs/Scale%20Runs%20and%
 | Framework | What `workers: N` does |
 |-----------|------------------------|
 | `behavex` | `--parallel-processes N --parallel-scheme feature`, unless `args:` already set them. |
-| `pytest` | `-n N` when N > 1 **and** pytest-xdist is importable by the `pytest` on PATH (the adapter reads its shebang and probes that interpreter). Without xdist it logs one warning and runs serially. A `-n`/`--numprocesses` or `-p no:xdist` in `args:` wins. |
+| `pytest` | `-n N` when N > 1 **and** pytest-xdist is importable by the `pytest` on PATH (the adapter reads its shebang and probes that interpreter). Without xdist it runs serially: with one warning when the stage or `defaults:` sets `workers`, quietly on the built-in default of 4. A `-n`/`--numprocesses` or `-p no:xdist` in `args:` wins. |
 | `playwright` | `--workers=N`, unless `args:` set `--workers`/`-j` (this replaces `workers` in `playwright.config`). |
 | `jest`, `vitest` | `--maxWorkers=N`, unless `args:` set it (Jest: also `-w`, `--runInBand`/`-i`; Vitest: also `--pool`, `--no-file-parallelism`). |
 | `behave` | Nothing — native behave is single-process. Setting `workers:` on the stage loads fine but logs a warning. |

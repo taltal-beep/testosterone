@@ -65,6 +65,8 @@ class Defaults:
     timeout_s: float | None = 600.0
     workers: int = 4
     extra_env: tuple[tuple[str, str], ...] = ()
+    # True when ``defaults:`` sets ``workers`` itself (not the built-in 4).
+    workers_explicit: bool = False
 
 
 @dataclass(frozen=True)
@@ -104,6 +106,9 @@ class Stage:
     resources: StageResources | None = None
     # ``workers: auto``: as many workers as the pool has free keys when the stage starts.
     workers_auto: bool = False
+    # True when the stage or ``defaults:`` sets ``workers``. A pytest stage on the
+    # built-in default runs serially without a warning when pytest-xdist is missing.
+    workers_explicit: bool = True
 
 
 @dataclass(frozen=True)

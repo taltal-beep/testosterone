@@ -173,3 +173,11 @@ Added [UI Review Fixes - 2026-11-01](Specs%20&%20ADRs/UI%20Review%20Fixes%20-%20
 ## 2026-11-01: engine fixes
 
 Added [Engine Fixes - 2026-11-01](Specs%20&%20ADRs/Engine%20Fixes%20-%202026-11-01.md) to Specs & ADRs (what each approved bug-hunt proposal changed), linked from its README and the docs site menu.
+
+## 2026-11-01: easy setup
+
+Added [Easy Setup - 2026-11-01](Specs%20&%20ADRs/Easy%20Setup%20-%202026-11-01.md) to Specs & ADRs (`testo init` that detects the stack, and the follow-ups for the Action, CI snippets and a PR comment preview), linked from its README and the docs site menu.
+
+## 2026-11-01: setup snippets
+
+Added [Setup Snippets](Processes%20&%20Guides/Setup%20Snippets.md) to Processes & Guides (generated copy-paste CI setup per runner and CI system), linked from the Index, Getting Started, CI-CD Pipeline Setup and the docs site menu.

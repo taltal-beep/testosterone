@@ -29,6 +29,7 @@ The notes are plain markdown. They open as an Obsidian vault, and are published 
 ## Testing and CI
 
 - [QA Strategies](Testing%20Workflows/QA%20Strategies.md): how runs are defined, triggered, logged, and how the orchestrator tests itself
+- [Setup Snippets](Processes%20&%20Guides/Setup%20Snippets.md): copy-paste CI setup for each runner (pytest, Jest, Vitest, Playwright, Go, .NET, Maven, Gradle, RSpec, PHPUnit) on GitHub Actions, GitLab CI, Jenkins and CircleCI, no config file needed
 - [CI-CD Pipeline Setup](Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md): GitHub Action, GitLab template, runner image, test tiers
 - [Team Server](Processes%20&%20Guides/Team%20Server.md): one shared history for every CI job, with `testo ingest --server`, the UI and Postgres in Docker
 - [Shared Resource Pools](Processes%20&%20Guides/Shared%20Resource%20Pools.md): give each parallel worker its own VM, device or test account with `testo lease`, safely across laptops

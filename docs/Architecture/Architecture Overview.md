@@ -189,7 +189,7 @@ Details and examples: [Command Reference § Exit codes](../CLI%20Commands/Comman
 
 ## Configuration as the single source of truth
 
-`testosterone.yaml` drives cycles, defaults (`artifacts_root`, `timeout_s` above 0 or `null` for no limit, `workers` 1 or more; anything else is a config error, as in the JSON Schema), optional `database.url`, optional `history.retention` (`days`, `runs_per_cycle`: when stored runs expire; see [`testo clean --history`](../CLI%20Commands/Command%20Reference.md#testo-clean---history)), `reporters:`, and per-cycle `tags`, `trigger`, and `stages`. The interactive wizard is `testo init`; non-interactive scaffold is `testo config init`.
+`testosterone.yaml` drives cycles, defaults (`artifacts_root`, `timeout_s` above 0 or `null` for no limit, `workers` 1 or more; anything else is a config error, as in the JSON Schema), optional `database.url`, optional `history.retention` (`days`, `runs_per_cycle`: when stored runs expire; see [`testo clean --history`](../CLI%20Commands/Command%20Reference.md#testo-clean---history)), `reporters:`, and per-cycle `tags`, `trigger`, and `stages`. `testo init` writes one from the test runners it detects (plus the CI workflow); `testo init --interactive` is the question-by-question wizard and `testo config init` a fixed starter file.
 
 ### Persistence
 

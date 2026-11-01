@@ -94,6 +94,7 @@ nav:
       - Command Reference: CLI Commands/Command Reference.md
       - Troubleshooting and Error Codes: CLI Commands/Troubleshooting and Error Codes.md
       - CI-CD Pipeline Setup: Processes & Guides/CI-CD Pipeline Setup.md
+      - Setup Snippets: Processes & Guides/Setup Snippets.md
       - Team Server: Processes & Guides/Team Server.md
       - Shared Resource Pools: Processes & Guides/Shared Resource Pools.md
       - Setup Prompts: Prompts & Snippets/Setup Prompts.md
@@ -132,6 +133,7 @@ nav:
       - Playwright Adapter: Specs & ADRs/Playwright Adapter - 2026-10-19.md
       - Playwright JSON Import: Specs & ADRs/Playwright JSON Import - 2026-10-22.md
       - Runner Coverage: Specs & ADRs/Runner Coverage - 2026-10-26.md
+      - Easy Setup: Specs & ADRs/Easy Setup - 2026-11-01.md
       - Qualflare Follow-ups: Specs & ADRs/Qualflare Follow-ups - 2026-10-26.md
       - BehaveX Reports: Specs & ADRs/BehaveX Reports - 2026-10-21.md
       - Config JSON Schema: Specs & ADRs/Config JSON Schema - 2026-10-22.md

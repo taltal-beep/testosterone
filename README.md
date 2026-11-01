@@ -198,7 +198,8 @@ Built-in `equipment`: `pytest`, `behave`, `behavex`, `playwright`, `command` and
 JUnit XML another step wrote; what `testo ingest` uses). `behave` and `behavex` need
 `pip install 'testo-core[bdd]'`. A package can add more (see [Plugins](#optional-integrations)).
 
-`testo config validate` checks the file; `testo init` writes one interactively. The full
+`testo init` writes one for you (it detects pytest, Jest, Vitest, Go, .NET, Maven, Gradle, RSpec
+and PHPUnit, and also writes the GitHub Actions workflow); `testo config validate` checks it. The full
 schema and every flag are in [Command Reference](https://taltal-beep.github.io/testosterone/docs/cli-commands/command-reference/).
 
 ## CLI
