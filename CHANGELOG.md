@@ -38,6 +38,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - PR comment and job summary: a backtick in a test name (which in a fork's pull request its author controls) ended the code span, so `@user` mentions and HTML after it rendered live. Names are now fenced so nothing inside can close them, and stage, runner and branch cells are plain text. A cycle name with `-->` can no longer end the comment marker
 
 ### Added
+- `testo export-site` writes the web UI and recent runs as a read-only static site for GitHub Pages or any file host, and the GitHub Action's `static-site: "true"` uploads it for an `actions/deploy-pages` job. The UI bundled in the wheel now works under any path, so one build serves `testo ui` and the site. The `api` extra adds `httpx`
 - `testo plugins new NAME` writes a working plugin package (framework adapter, reporter, entry points, a cycle and a test) to start a runner or reporter from
 - `testo server init [--domain testo.example.com] [--admin NAME]` writes a team server's `docker-compose.yml` and a private `.env` with a generated token; `--domain` adds Caddy for automatic HTTPS, `--admin` turns on accounts. A server with `TESTO_AUTH=accounts` and no accounts creates `TESTO_ADMIN_USER` / `TESTO_ADMIN_PASSWORD` as its first admin when it starts
 - `testo doctor` and the web UI's sidebar say when a newer testo-core is on PyPI (asked at most once a day, never in CI, off with `TESTO_NO_UPDATE_CHECK=1`); new `GET /api/v1/version`
