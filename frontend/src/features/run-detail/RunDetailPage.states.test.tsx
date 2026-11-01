@@ -183,6 +183,18 @@ describe("RunDetailPage states", () => {
     expect(await screen.findByText("Couldn't load the test mix.")).toBeInTheDocument();
   });
 
+  it("shows the test mix only when the run has two or more tiers", async () => {
+    stubApi(defaultRoutes());
+    const { unmount } = renderAt();
+    expect(await screen.findByRole("heading", { name: "Test mix" })).toBeInTheDocument();
+    unmount();
+
+    stubApi(defaultRoutes({ "/api/v1/runs/run-1/pyramid": { ...PYRAMID, unit: 0, integration: 0, e2e: 6, shape: "top_heavy" } }));
+    renderAt();
+    await screen.findByRole("heading", { name: "Reports" });
+    expect(screen.queryByRole("heading", { name: "Test mix" })).not.toBeInTheDocument();
+  });
+
   it("leaves failing tests and the AI summary off a passed run", async () => {
     stubApi(defaultRoutes({ "/api/v1/runs/run-1": { run: { ...RUN, returncode: 0, total_tests: 6, failed: 0 } } }));
     renderAt();

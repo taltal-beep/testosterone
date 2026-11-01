@@ -54,6 +54,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import clean as clean_mod
     from testo_core.cli.commands import config as config_cmd
     from testo_core.cli.commands import config_db as config_db_cmd
+    from testo_core.cli.commands import demo as demo_mod
     from testo_core.cli.commands import diff_cli as diff_cli_mod
     from testo_core.cli.commands import doctor as doctor_mod
     from testo_core.cli.commands import flaky as flaky_mod
@@ -88,6 +89,11 @@ def _register_commands() -> None:
         help="Open the web UI on this machine's run history (http://127.0.0.1:8000).",
         rich_help_panel="Run and report",
     )(ui_cmd.ui)
+    app.command(
+        name="demo",
+        help="Record eight sample runs (a flaky test, a new failure, a slower test) and open the UI.",
+        rich_help_panel="Run and report",
+    )(demo_mod.demo)
     app.command(
         name="split",
         help="Split a cycle's tests into shards of about equal time (CI matrix, pool keys).",
@@ -197,7 +203,7 @@ def _register_commands() -> None:
     )(doctor_mod.doctor)
     app.command(
         name="clean",
-        help="Remove artifacts/temp; optional Docker prune (--yes, --docker).",
+        help="Remove artifacts/temp (--yes, --docker) or expired run history (--history).",
         rich_help_panel="Maintenance",
     )(clean_mod.clean)
     app.command(
@@ -215,14 +221,55 @@ def _register_commands() -> None:
 _register_commands()
 
 
+def _click_exception_types() -> tuple[type[BaseException], ...]:
+    """``ClickException`` from Click, and from the copy newer Typer vendors.
+
+    Typer 0.2x ships its own ``typer._click`` instead of depending on Click, so
+    a usage error can be either class depending on the installed Typer.
+    """
+    import importlib
+
+    found: list[type[BaseException]] = []
+    for module_name in ("click.exceptions", "typer._click.exceptions"):
+        try:
+            module = importlib.import_module(module_name)
+        except ImportError:
+            continue
+        exc_type = getattr(module, "ClickException", None)
+        if isinstance(exc_type, type) and exc_type not in found:
+            found.append(exc_type)
+    return tuple(found)
+
+
+def _show_usage_error(exc: BaseException) -> None:
+    """Print a usage error the way Typer does in standalone mode."""
+    try:
+        from typer import rich_utils
+
+        rich_utils.rich_format_error(exc)  # type: ignore[arg-type]
+    except Exception:  # noqa: BLE001 - fall back to Click's plain message
+        show = getattr(exc, "show", None)
+        if callable(show):
+            show()
+
+
 def main(argv: list[str] | None = None) -> int:
     """Public main entry-point referenced by ``[project.scripts] testo``."""
+    usage_errors = _click_exception_types()
     try:
         result = app(args=argv, standalone_mode=False)
     except typer.Exit as exc:
         return int(exc.exit_code or 0)
     except SystemExit as exc:
         return int(exc.code or 0)
+    except typer.Abort:
+        typer.echo("Aborted.", err=True)
+        return 1
+    except usage_errors as exc:
+        # A mistyped command or option, or bare ``testo``: print the message
+        # (or the help) instead of a traceback, with Click's exit code.
+        _show_usage_error(exc)
+        return int(getattr(exc, "exit_code", 2))
 
     # In ``standalone_mode=False`` Click captures ``typer.Exit`` and returns
     # its exit code instead of raising. Treat the result as an exit code if

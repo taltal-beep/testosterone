@@ -28,7 +28,19 @@ describe("CyclesPage", () => {
               description: "Pytest suite for the sample target repo.",
               stage_count: 1,
               equipment: ["pytest"],
-              source: "config"
+              source: "config",
+              latest_run: {
+                run_id: "run-1234abcd",
+                created_at: Date.now() / 1000 - 3 * 3600,
+                status: "completed",
+                returncode: 1,
+                health_pct: 80,
+                total_tests: 10,
+                passed: 8,
+                failed: 2,
+                branch: "main",
+                commit: "9c23517abcdef"
+              }
             },
             {
               name: "sample-all-frameworks",
@@ -61,6 +73,49 @@ describe("CyclesPage", () => {
     expect(screen.getByText("Recorded")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Run" })).toHaveLength(2);
     expect(screen.getByText(/Defined in \/repo\/testosterone.yaml/)).toBeInTheDocument();
+  });
+
+  it("shows each cycle's latest result on its card", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              name: "sample-pytests",
+              description: null,
+              stage_count: 1,
+              equipment: ["pytest"],
+              source: "config",
+              latest_run: {
+                run_id: "run-1234abcd",
+                created_at: Date.now() / 1000 - 3 * 3600,
+                status: "completed",
+                returncode: 1,
+                health_pct: 80,
+                total_tests: 10,
+                passed: 8,
+                failed: 2,
+                branch: "main",
+                commit: "9c23517abcdef"
+              }
+            },
+            { name: "never-ran", description: null, stage_count: 1, equipment: ["pytest"], source: "config", latest_run: null }
+          ],
+          config_path: "/repo/testosterone.yaml"
+        })
+      })
+    );
+
+    renderPage();
+
+    const card = await screen.findByTestId("latest-run-sample-pytests");
+    expect(card).toHaveTextContent("80% passed");
+    expect(card).toHaveTextContent("2 failing");
+    expect(card).toHaveTextContent("main @ 9c23517");
+    expect(screen.getByRole("link", { name: "3 h ago" })).toHaveAttribute("href", "/runs/run-1234abcd");
+    expect(screen.getByText("No runs recorded yet.")).toBeInTheDocument();
   });
 
   it("says what to check when cycles can't be loaded", async () => {

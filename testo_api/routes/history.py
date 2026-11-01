@@ -46,6 +46,7 @@ def list_runs(limit: int = 30, cycle: str | None = None) -> RunListResponse:
             broken=s.broken,
             links_under_static=s.links_under_static,
             branch=s.branch,
+            commit=s.commit,
         )
         for s in sessions
     ]

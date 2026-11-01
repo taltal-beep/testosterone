@@ -11,20 +11,29 @@ out without a warning; fixtures in containers are not shown.
 
 from __future__ import annotations
 
+import re
 import shutil
 import uuid
 from pathlib import Path
 from typing import Any
 
-_SIDE_FILES = frozenset(
-    {"environment.properties", "environment.xml", "categories.json", "executor.json"}
-)
+_SIDE_FILES = frozenset({"environment.properties", "categories.json", "executor.json"})
+
+
+# Allure adapters name attachments ``<uuid>-attachment.<ext>`` (or ``<uuid>-attachment``).
+_ATTACHMENT = re.compile(r"^.+-attachment(\.[A-Za-z0-9]+)*$")
 
 
 def is_allure_side_file(path: Path) -> bool:
-    """An Allure results folder's file that is not a test result (skipped quietly)."""
+    """An Allure results folder's file that is not a test result (skipped quietly).
+
+    Only Allure's own names: ``my-attachment-tests.xml`` is still read as a report.
+    """
     name = path.name
-    return name.endswith("-container.json") or "-attachment" in name or name in _SIDE_FILES
+    if name.endswith("-container.json") or _ATTACHMENT.match(name) or name in _SIDE_FILES:
+        return True
+    # environment.xml is Allure's only inside an Allure results folder.
+    return name == "environment.xml" and any(path.parent.glob("*-result.json"))
 
 
 def is_allure_result(path: Path, data: Any) -> bool:
@@ -72,6 +81,10 @@ def copy_allure_result(
             continue
         candidate = folder / source
         target = results_dir / source
+        # A symlink pointing out of the folder (``x-attachment.txt -> /etc/hostname``) would
+        # copy that file into the run's artifacts; only files really inside it count.
+        if folder not in candidate.resolve().parents:
+            continue
         if candidate.is_file() and not target.exists():
             shutil.copyfile(candidate, target)
             copied += 1

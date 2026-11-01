@@ -5,6 +5,8 @@ export type RunUiStatus =
   | "failed"
   | "aborted"
   | "completed"
+  | "broken"
+  | "skipped"
   | "unknown";
 
 const STATUS_STYLES: Record<RunUiStatus, { dot: string; text: string; label: string }> = {
@@ -14,6 +16,9 @@ const STATUS_STYLES: Record<RunUiStatus, { dot: string; text: string; label: str
   completed: { dot: "bg-success-400", text: "text-success-300", label: "Completed" },
   failed: { dot: "bg-danger-400", text: "text-danger-300", label: "Failed" },
   aborted: { dot: "bg-warn-400", text: "text-warn-300", label: "Aborted" },
+  // Test outcomes, so a test's history uses the same pill as a run's.
+  broken: { dot: "bg-danger-300", text: "text-danger-300", label: "Broken" },
+  skipped: { dot: "bg-warn-400", text: "text-warn-300", label: "Skipped" },
   unknown: { dot: "bg-ink-500", text: "text-ink-400", label: "Unknown" }
 };
 

@@ -2,119 +2,20 @@
 
 from __future__ import annotations
 
-import json
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-from testo_core.engine.crash_signatures import crash_in_text
-from testo_core.reporting.paths import plan_artifacts_dir
+from testo_core.paths import plan_artifacts_dir
+from testo_core.reporting.allure_cases import case_key, case_stage, label_value, load_cases
 from testo_core.repository.models import ReportArchive
 
-
-def _case_key(data: dict[str, Any]) -> str:
-    for k in ("historyId", "fullName", "uuid"):
-        v = data.get(k)
-        if v is not None and str(v).strip():
-            return str(v).strip()
-    name = data.get("name")
-    return str(name) if name is not None else json.dumps(data, sort_keys=True, default=str)[:200]
-
-
-def _case_duration_ms(data: dict[str, Any]) -> int | None:
-    start, stop = data.get("start"), data.get("stop")
-    if isinstance(start, int) and isinstance(stop, int) and stop >= start:
-        return int(stop - start)
-    return None
-
-
-def _label_value(labels: Any, name: str) -> str:
-    if not isinstance(labels, list):
-        return ""
-    for lab in labels:
-        if isinstance(lab, dict) and str(lab.get("name")) == name:
-            v = lab.get("value")
-            return str(v).strip() if v is not None else ""
-    return ""
-
-
-def _case_message(data: dict[str, Any]) -> str:
-    """First non-empty line of the failure message (or trace), for lists and grouping."""
-    details = data.get("statusDetails")
-    if not isinstance(details, dict):
-        return ""
-    text = str(details.get("message") or details.get("trace") or "")
-    line = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")
-    return line[:300]
-
-
-def _case_crash(data: dict[str, Any], status: str) -> str:
-    """``"stack_overflow"`` / ``"crash"`` when a failed case's message or trace shows one, else ``""``."""
-    if status not in ("failed", "broken"):
-        return ""
-    details = data.get("statusDetails")
-    if not isinstance(details, dict):
-        return ""
-    text = f"{details.get('message') or ''}\n{details.get('trace') or ''}"
-    found = crash_in_text(text)
-    return found.kind if found else ""
-
-
-def _case_stage(path: Path, plan_root: Path) -> str:
-    """The stage a result file belongs to: the folder just above ``allure-results``."""
-    parts = path.relative_to(plan_root).parts
-    if "allure-results" in parts:
-        idx = parts.index("allure-results")
-        if idx > 0:
-            return parts[idx - 1]
-    return ""
-
-
-def _case_group(data: dict[str, Any]) -> str:
-    """Stable grouping key (module / suite) for dashboard tables."""
-
-    labels = data.get("labels") or []
-    pkg = _label_value(labels, "package")
-    if pkg:
-        return pkg[:100]
-    ps, su = _label_value(labels, "parentSuite"), _label_value(labels, "suite")
-    if ps and su:
-        return f"{ps} › {su}"[:100]
-    if ps:
-        return ps[:100]
-    fn = str(data.get("fullName") or data.get("name") or "")
-    if "#" in fn:
-        return fn.split("#", 1)[0][:100]
-    parts = fn.rsplit(".", 1)
-    if len(parts) == 2 and parts[0] and "." in parts[0]:
-        return parts[0][:100]
-    return "(ungrouped)"
-
-
-def _load_cases(plan_root: Path) -> dict[str, dict[str, Any]]:
-    out: dict[str, dict[str, Any]] = {}
-    if not plan_root.is_dir():
-        return out
-    for path in plan_root.rglob("*-result.json"):
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError, TypeError):
-            continue
-        key = _case_key(data)
-        st = str(data.get("status") or "unknown").lower()
-        out[key] = {
-            "name": str(data.get("name") or data.get("fullName") or key)[:120],
-            "full_name": str(data.get("fullName") or ""),
-            "group": _case_group(data),
-            "status": st,
-            "duration_ms": _case_duration_ms(data),
-            "message": _case_message(data),
-            "stage": _case_stage(path, plan_root),
-            "framework": _label_value(data.get("labels"), "framework"),
-            "crash": _case_crash(data, st),
-        }
-    return out
+# The parser lives in reporting.allure_cases; these names stay for the modules that import them.
+_case_key = case_key
+_case_stage = case_stage
+_label_value = label_value
+_load_cases = load_cases
 
 
 CaseChangeKind = Literal["added", "removed", "regression", "fix", "status_change"]

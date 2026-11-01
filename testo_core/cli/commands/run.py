@@ -70,6 +70,7 @@ def run(
         None,
         "--workers",
         "-w",
+        min=1,
         help="Override the default worker count for parallel-aware frameworks (e.g. BehaveX).",
     ),
     force: bool = typer.Option(

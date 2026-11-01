@@ -10,7 +10,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from testo_core.reporting.paths import plan_artifacts_dir
+from testo_core.paths import plan_artifacts_dir
 
 
 def _empty_metrics() -> dict[str, int | None]:

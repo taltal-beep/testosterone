@@ -11,6 +11,10 @@ Status mapping:
     FAIL            -> failed
     SKIP, NOT RUN   -> skipped
 
+A failed suite teardown fails every test in that suite and below that had
+passed (as ``robot`` reports it: "Parent suite teardown failed"); output.xml
+keeps the tests' own PASS, so this is applied here.
+
 ``full_name`` is Robot's own long name (``Suite.Sub Suite.Test Name``), which
 is what ``robot --test`` takes to rerun a test.
 """
@@ -45,7 +49,7 @@ def _timing(status: ET.Element, fallback_ms: int) -> tuple[int, int]:
         start = iso_ms(status.get("start"), fallback_ms)
         try:
             elapsed = int(round(float(status.get("elapsed") or 0) * 1000))
-        except ValueError:
+        except (ValueError, OverflowError):
             elapsed = 0
         return start, elapsed
     legacy_start = _legacy_ms(status.get("starttime"))
@@ -60,8 +64,11 @@ def robot_results_for_root(
 ) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
 
-    def visit(suite: ET.Element, path: tuple[str, ...]) -> None:
+    def visit(suite: ET.Element, path: tuple[str, ...], teardown: str | None) -> None:
         names = (*path, suite.get("name") or "Suite")
+        own = _failed_teardown(suite)
+        if own is not None:
+            teardown = own
         for test in suite.findall("test"):
             status_node = test.find("status")
             if status_node is None:
@@ -70,6 +77,9 @@ def robot_results_for_root(
             status = _STATUS.get((status_node.get("status") or "").upper(), "broken")
             start, elapsed = _timing(status_node, fallback_ms)
             message = (status_node.text or "").strip() or None
+            if teardown is not None and status == "passed":
+                status = "failed"
+                message = f"Parent suite teardown failed:\n{teardown}".strip()
             tags = [t.text for t in test.findall("tag") if t.text]
             tags += [t.text for t in test.findall("tags/tag") if t.text]
             out.append(
@@ -89,11 +99,25 @@ def robot_results_for_root(
                 )
             )
         for child in suite.findall("suite"):
-            visit(child, names)
+            visit(child, names, teardown)
 
     for suite in root.findall("suite"):
-        visit(suite, ())
+        visit(suite, (), None)
     return out
+
+
+def _failed_teardown(suite: ET.Element) -> str | None:
+    """The message of ``suite``'s own failed teardown keyword, else ``None``.
+
+    Robot 7 writes ``<kw type="TEARDOWN">``; Robot 4-6 ``<kw type="teardown">``.
+    """
+    for kw in suite.findall("kw"):
+        if (kw.get("type") or "").lower() != "teardown":
+            continue
+        status = kw.find("status")
+        if status is not None and (status.get("status") or "").upper() == "FAIL":
+            return (status.text or "").strip()
+    return None
 
 
 def robot_results_for_file(path: Path, *, tool: str) -> list[dict[str, Any]]:

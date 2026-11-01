@@ -68,9 +68,11 @@ class PlaywrightFileResults:
     notes: tuple[str, ...]
 
 
-def _clean(text: str | None) -> str | None:
+def _clean(text: Any) -> str | None:
     if not text:
         return None
+    if not isinstance(text, str):
+        text = str(text)
     text = _ANSI.sub("", text).strip()
     if len(text) > _MAX_TRACE_CHARS:
         text = text[:_MAX_TRACE_CHARS] + "\n… (truncated)"
@@ -89,7 +91,7 @@ def _start_ms(value: Any, fallback_ms: int) -> int:
 def _ms(value: Any) -> int:
     try:
         return max(0, int(round(float(value or 0))))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return 0
 
 
@@ -190,10 +192,14 @@ def _test_status(test: dict, attempts: list[dict]) -> tuple[str, bool]:
     return ("broken" if last == "broken" else "failed"), False
 
 
+def _dicts(value: Any) -> list[dict]:
+    return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
+
+
 def _walk(suite: dict, titles: tuple[str, ...]):
-    for spec in suite.get("specs") or []:
+    for spec in _dicts(suite.get("specs")):
         yield titles, spec
-    for child in suite.get("suites") or []:
+    for child in _dicts(suite.get("suites")):
         yield from _walk(child, (*titles, str(child.get("title") or "")))
 
 
@@ -202,12 +208,13 @@ def _results_for_report(
 ) -> tuple[list[dict], int]:
     results: list[dict] = []
     flaky_count = 0
-    for top in report.get("suites") or []:
+    for top in _dicts(report.get("suites")):
         file_title = str(top.get("file") or top.get("title") or "")
         for titles, spec in _walk(top, ()):
             spec_title = str(spec.get("title") or "(unnamed)")
-            tags = [str(t).lstrip("@") for t in spec.get("tags") or []]
-            for test in spec.get("tests") or []:
+            raw_tags = spec.get("tags")
+            tags = [str(t).lstrip("@") for t in raw_tags] if isinstance(raw_tags, list) else []
+            for test in _dicts(spec.get("tests")):
                 project = str(test.get("projectName") or "")
                 attempts = [a for a in test.get("results") or [] if isinstance(a, dict)]
                 status, flaky = _test_status(test, attempts)
@@ -348,7 +355,7 @@ def playwright_results_for_file(
     errors come back in ``notes``.
     """
     try:
-        report = json.loads(path.read_text(encoding="utf-8"))
+        report = json.loads(path.read_text(encoding="utf-8-sig"))
     except json.JSONDecodeError as exc:
         raise ValueError(f"not valid JSON ({exc})") from exc
     if not isinstance(report, dict) or not isinstance(report.get("suites"), list):

@@ -20,6 +20,9 @@ What becomes a result:
   ``ImportPath``; that output becomes the package result's trace.
 
 A test's output lines become its trace; the first ``file.go:N:`` line is its message.
+
+A test that ran more than once (``go test -count=3``) is one result: a failure
+followed by a final pass is flaky, otherwise the worst run wins.
 """
 
 from __future__ import annotations
@@ -45,6 +48,7 @@ class _Test:
     action: str | None = None
     elapsed_ms: int = 0
     output: list[str] = field(default_factory=list)
+    attempts: list[str] = field(default_factory=list)
 
 
 def _events(text: str) -> list[dict[str, Any]]:
@@ -91,7 +95,7 @@ def is_gotest_text(text: str) -> bool:
 def _elapsed_ms(value: Any) -> int:
     try:
         return max(0, int(round(float(value or 0) * 1000)))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return 0
 
 
@@ -118,22 +122,26 @@ def gotest_results_for_text(text: str, *, tool: str, fallback_ms: int) -> list[d
             test.output.append(str(event.get("Output") or ""))
         elif action in _STATUS:
             test.action = action
-            test.elapsed_ms = _elapsed_ms(event.get("Elapsed"))
+            test.elapsed_ms += _elapsed_ms(event.get("Elapsed"))
+            test.attempts.append(action)
 
     finished = {k: t for k, t in tests.items() if t.action in _STATUS}
     parents = {(p, n.rsplit("/", 1)[0]) for p, n in finished if "/" in n}
     failing_children = {
         (p, n.rsplit("/", 1)[0])
         for (p, n), t in finished.items()
-        if "/" in n and t.action == "fail"
+        if "/" in n and _final_action(t)[0] == "fail"
     }
 
     results: list[dict[str, Any]] = []
     for key, test in finished.items():
-        if key in parents and not (test.action == "fail" and key not in failing_children):
+        if key in parents and not (
+            _final_action(test)[0] == "fail" and key not in failing_children
+        ):
             continue
         results.append(_result(test, tool=tool))
-    failed_packages = {p for (p, _), t in finished.items() if t.action == "fail"}
+    # Any failed run fails the package, even when a later run passed (flaky).
+    failed_packages = {p for (p, _), t in finished.items() if "fail" in t.attempts}
     for (package, _), test in tests.items():
         # Started, never finished, and its package failed: the -timeout or a crash.
         if test.action is None and (packages.get(package) or _Test("", "", 0)).action == "fail":
@@ -166,11 +174,23 @@ def gotest_results_for_text(text: str, *, tool: str, fallback_ms: int) -> list[d
     return results
 
 
+def _final_action(test: _Test) -> tuple[str, bool]:
+    """The action a test that ran ``len(attempts)`` times ends with, and whether it was flaky."""
+    runs = test.attempts or [str(test.action)]
+    if "fail" in runs and runs[-1] == "pass":
+        return "pass", True
+    for action in ("fail", "pass", "skip"):
+        if action in runs:
+            return action, False
+    return str(test.action), False
+
+
 def _result(test: _Test, *, tool: str, status: str | None = None) -> dict[str, Any]:
+    action, flaky = _final_action(test)
     lines = [line.rstrip("\n") for line in test.output]
     body = [line for line in lines if not _HEADER.match(line)]
     message = next((line.strip() for line in body if _LOCATION.match(line)), None)
-    if message is None and test.action != "pass":
+    if message is None and (action != "pass" or flaky):
         message = next((line.strip() for line in body if line.strip()), None)
     trace = "\n".join(body).strip() or None
     leaf = test.name.rsplit("/", 1)[-1]
@@ -180,12 +200,15 @@ def _result(test: _Test, *, tool: str, status: str | None = None) -> dict[str, A
         language="go",
         name=leaf,
         full_name=f"{test.package}.{test.name}" if test.package else test.name,
-        status=status or _STATUS[str(test.action)],
+        status=status or _STATUS[action],
         start_ms=test.start_ms,
         duration_ms=test.elapsed_ms,
         suite=test.package or "go",
-        message=message if test.action != "pass" else None,
-        trace=trace if test.action != "pass" else None,
+        message=(f"Passed on rerun. {message or ''}".strip() if flaky else message)
+        if action != "pass" or flaky
+        else None,
+        trace=trace if action != "pass" or flaky else None,
+        flaky=flaky,
         labels=[{"name": "subSuite", "value": test.name.rsplit("/", 1)[0]}]
         if "/" in test.name
         else [],

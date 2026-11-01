@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Crash Detection - 2026-10-31
@@ -19,13 +19,13 @@ Scope came from a user idea ("see if there is stuck overflow in the test"). Two 
 
 - **One table of signatures** in `testo_core/engine/crash_signatures.py`: each runtime's own stack overflow line (Python, Java/Kotlin, JavaScript, Go, Rust, .NET, Ruby, AddressSanitizer), plus native crash lines (`Segmentation fault`, AddressSanitizer `SEGV`). Two kinds only: `stack_overflow` and `crash`. A stack overflow beats the segfault it often causes. Go's nil-pointer panic ("segmentation violation") is an ordinary panic and is not matched.
 - **Engine stages:** a `CrashScanner` sits on the stage's output stream (line by line, never raises) and the exit status is checked for crash signals (`SIGSEGV`, `SIGBUS`, `SIGILL`, `SIGABRT`, `SIGFPE`, as `-N` or `128+N`) and the Windows stack overflow / access violation codes. The output wins over the status, since it says why. The result is `crash_kind` / `crash_detail` on `StageResult`, stored with the stage in the run record and `plan_result.json`, and in `stage_finished`.
-- **Tests, engine or imported:** the failing test's message and trace go through the same table when results are read (`report_archive_diff._load_cases`), so JUnit, Jest, go test, TRX and every other import get it with no importer change.
+- **Tests, engine or imported:** the failing test's message and trace go through the same table when results are parsed (`reporting/allure_cases.load_cases`) and the kind is stored in the `test_result` table's `crash` column (revision `0004`), so JUnit, Jest, go test, TRX and every other import get it with no importer change.
 - **Only failures are flagged.** A passed stage or test is never classified, so a test that expects `RecursionError` stays green. A timed-out stage keeps what it printed but not its exit signal (we killed it).
 - **Where it shows:** a red "Stack overflow" / "Crashed" badge on the run page's failing tests and stages (with the evidence line under the stage), `💥 stack overflow` in the PR comment, a `crash:` line in the CLI's stage panel, and `crash_detected=` in the AI failure summary's evidence.
 
 ## Consequences
 
-- No schema change: the stage fields live in the run record's JSON metadata and the test kind is computed when results are read, so older runs get test badges too.
+- The stage fields live in the run record's JSON metadata. The test kind is a `test_result` column (revision `0004`); rows stored before it keep `""` and show no badge, while older runs first read from their snapshot get it.
 - False positives are possible only where a failing test's output quotes one of these lines; the evidence line is always shown so a reader can tell.
 - C/C++ without AddressSanitizer only ever reads as "Crashed": a segfault doesn't say whether the stack ran out.
 - Not done: stuck/no-output detection (option B), stack dumps of a hung process, a per-cycle "crashes" trend.

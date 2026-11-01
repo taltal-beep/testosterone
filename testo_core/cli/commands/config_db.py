@@ -103,19 +103,16 @@ def config_db(
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT)) from exc
 
     try:
-        from urllib.parse import urlparse
-
         from sqlalchemy import create_engine, text
 
-        dialect = urlparse(resolved_url).scheme.lower().split("+", 1)[0]
-        eng_kwargs: dict[str, object] = {}
-        if dialect == "sqlite":
-            eng_kwargs["connect_args"] = {"check_same_thread": False}
-        else:
-            eng_kwargs["pool_pre_ping"] = True
-        probe = create_engine(resolved_url, **eng_kwargs)
-        with probe.connect() as conn:
-            conn.execute(text("SELECT 1"))
+        from testo_core.repository.db_config import engine_kwargs
+
+        probe = create_engine(resolved_url, **engine_kwargs(resolved_url))
+        try:
+            with probe.connect() as conn:
+                conn.execute(text("SELECT 1"))
+        finally:
+            probe.dispose()
     except Exception as exc:
         # Broad on purpose: any driver/URL/connection error maps to exit 3 with its message.
         logger.debug("database connection check failed", exc_info=True)

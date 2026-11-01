@@ -16,6 +16,7 @@ from typing import Any
 
 from testo_core import plugins
 from testo_core.config.errors import ConfigValidationError
+from testo_core.config.if_expr import problem as if_problem
 from testo_core.config.schema import (
     DEFAULT_TIER_BY_FRAMEWORK,
     PARALLEL_FRAMEWORKS,
@@ -38,13 +39,13 @@ def parse_defaults(raw: Any, *, config_dir: Path) -> Defaults:
         raise ConfigValidationError("'defaults:' must be a mapping.")
     target_repo = _resolve_path(raw.get("target_repo", "."), config_dir=config_dir)
     artifacts_root = _resolve_path(raw.get("artifacts_root", "artifacts"), config_dir=config_dir)
-    timeout_s = raw.get("timeout_s", 600.0)
-    workers = int(raw.get("workers", 4))
+    timeout_s = parse_timeout(raw.get("timeout_s", 600.0), where="defaults")
+    workers = parse_workers(raw.get("workers", 4), where="defaults")
     extra_env = _normalise_env(raw.get("extra_env"))
     return Defaults(
         target_repo=target_repo,
         artifacts_root=artifacts_root,
-        timeout_s=float(timeout_s) if timeout_s is not None else None,
+        timeout_s=timeout_s,
         workers=workers,
         extra_env=extra_env,
     )
@@ -69,6 +70,7 @@ def parse_cycle(
         parse_stage(stage_raw=item, defaults=defaults, config_dir=config_dir, pools=pools)
         for item in stages_raw
     )
+    _check_unique_stage_names(stages, cycle_name=cycle_name)
     trigger = _parse_trigger(cycle_raw.get("trigger"), cycle_name=cycle_name)
     quarantine = shared_quarantine + parse_quarantine(
         cycle_raw.get("quarantine"), where=f"cycle {cycle_name!r}"
@@ -84,6 +86,24 @@ def parse_cycle(
         quarantine=quarantine,
         max_parallel_stages=max_parallel_stages,
     )
+
+
+def _check_unique_stage_names(stages: tuple[Stage, ...], *, cycle_name: str) -> None:
+    # Each stage writes to artifacts/<cycle>/<stage>/; two stages with one name (or
+    # names that differ only in case, one folder on macOS and Windows) would wipe
+    # each other's results.
+    seen: dict[str, str] = {}
+    for stage in stages:
+        key = stage.name.casefold()
+        if key in seen:
+            same = (
+                "the same name" if seen[key] == stage.name else f"{seen[key]!r} and {stage.name!r}"
+            )
+            raise ConfigValidationError(
+                f"cycle {cycle_name!r}: two stages have {same}; stage names must be "
+                "unique (ignoring case), since each stage gets its own artifacts folder."
+            )
+        seen[key] = stage.name
 
 
 def _parse_max_parallel_stages(raw: Any, *, cycle_name: str, stages: tuple[Stage, ...]) -> int:
@@ -269,7 +289,11 @@ def parse_stage(
             f"stage {name!r}: resources per: test works with pytest only; use per: worker "
             "or per: stage."
         )
-    workers = defaults.workers if workers_auto else int(stage_raw.get("workers", defaults.workers))
+    workers = (
+        defaults.workers
+        if workers_auto
+        else parse_workers(stage_raw.get("workers", defaults.workers), where=f"stage {name!r}")
+    )
     # Plugin adapters get ``workers`` in build_argv and decide for themselves.
     if (
         "workers" in stage_raw
@@ -281,11 +305,14 @@ def parse_stage(
             name,
             framework,
         )
-    timeout_raw = stage_raw.get("timeout_s", defaults.timeout_s)
-    timeout_s = float(timeout_raw) if timeout_raw is not None else None
+    timeout_s = parse_timeout(
+        stage_raw.get("timeout_s", defaults.timeout_s), where=f"stage {name!r}"
+    )
     if_expr = stage_raw.get("if")
     if if_expr is not None and not isinstance(if_expr, str):
         raise ConfigValidationError(f"stage {name!r}: 'if' must be a string.")
+    if if_expr is not None and (why := if_problem(if_expr)):
+        raise ConfigValidationError(f"stage {name!r}: 'if: {if_expr}' is not supported: {why}.")
 
     extra_env = _normalise_env(stage_raw.get("extra_env")) or defaults.extra_env
 
@@ -346,6 +373,51 @@ def parse_stage(
     )
 
 
+def parse_timeout(value: Any, *, where: str) -> float | None:
+    """``timeout_s``: seconds above zero, or null for no limit (as the JSON Schema says)."""
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise ConfigValidationError(f"{where}: 'timeout_s' must be a number of seconds or null.")
+    try:
+        seconds = float(value)
+    except ValueError:
+        raise ConfigValidationError(
+            f"{where}: 'timeout_s' must be a number of seconds or null (got {value!r})."
+        ) from None
+    if not seconds > 0 or seconds == float("inf"):
+        raise ConfigValidationError(
+            f"{where}: 'timeout_s' must be above 0 (got {value!r}); use null for no limit."
+        )
+    return seconds
+
+
+def parse_workers(value: Any, *, where: str) -> int:
+    """``workers``: a whole number, 1 or more (as the JSON Schema says)."""
+    if isinstance(value, bool):
+        raise ConfigValidationError(f"{where}: 'workers' must be a whole number, 1 or more.")
+    try:
+        workers = int(value)
+    except (TypeError, ValueError):
+        raise ConfigValidationError(
+            f"{where}: 'workers' must be a whole number, 1 or more (got {value!r})."
+        ) from None
+    if workers < 1 or (isinstance(value, float) and value != workers):
+        raise ConfigValidationError(
+            f"{where}: 'workers' must be a whole number, 1 or more (got {value!r})."
+        )
+    return workers
+
+
+def parse_version(value: Any) -> int:
+    """Top-level ``version``: only 1 exists so far."""
+    if isinstance(value, bool) or (value != 1 and str(value).strip() != "1"):
+        raise ConfigValidationError(
+            f"unsupported config 'version: {value}'; this testo-core reads version 1."
+        )
+    return 1
+
+
 def _resolve_path(value: Any, *, config_dir: Path) -> Path:
     if value is None:
         return config_dir
@@ -373,5 +445,17 @@ def _normalise_env(value: Any) -> tuple[tuple[str, str], ...]:
         raise ConfigValidationError("'extra_env' must be a mapping of strings.")
     out: list[tuple[str, str]] = []
     for k, v in value.items():
-        out.append((str(k), str(v)))
+        if isinstance(v, (Mapping, list, tuple, set)):
+            raise ConfigValidationError(
+                f"'extra_env' value for {k!r} must be a string, number or boolean, "
+                f"not a {type(v).__name__}."
+            )
+        # YAML's null / true / false would otherwise reach the process as "None" / "True".
+        if v is None:
+            text = ""
+        elif isinstance(v, bool):
+            text = "true" if v else "false"
+        else:
+            text = str(v)
+        out.append((str(k), text))
     return tuple(out)

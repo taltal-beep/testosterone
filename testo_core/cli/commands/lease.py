@@ -87,8 +87,14 @@ def _pool(name: str, config: Path | None) -> ResourcePool:
 
 
 def _backend(server: str | None) -> LeaseBackend:
-    from testo_core.resources.client import backend_from_env
+    import os
 
+    from testo_core.cli.server_url import server_url_problem
+    from testo_core.resources.client import SERVER_URL_ENV, backend_from_env
+
+    problem = server_url_problem(server or os.environ.get(SERVER_URL_ENV))
+    if problem:
+        raise _fail(problem, EngineExitCode.INVALID_INPUT)
     return backend_from_env(server=server)
 
 

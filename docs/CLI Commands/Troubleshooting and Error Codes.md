@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Troubleshooting and Error Codes
@@ -21,9 +21,11 @@ Defined in `testo_core/engine/exit_codes.py` as `EngineExitCode`. The process ex
 |------|------|---------|----------------|
 | `0` | `SUCCESS` | Run completed; all stage return codes zero | Pass; or cycle **skipped by trigger** (resting) |
 | `1` | `DOMAIN_FAILURE` | Tests or framework reported failure | Non-zero pytest/behave/behavex exit |
-| `2` | `INVALID_INPUT` | Config or CLI validation failed | Missing YAML, bad schema, unknown cycle, tag mismatch |
+| `2` | `INVALID_INPUT` | Config or CLI validation failed | Missing YAML, bad schema, unknown cycle, tag mismatch; a mistyped command or option, or bare `testo` (prints the error or the help, no traceback) |
 | `3` | `INFRA_FAILURE` | Infrastructure / runtime dependency failure | Return code `127` (missing binary); `124` (stage timeout); report DB archive failure; Docker/Allure CLI failures |
 | `4` | `INTERNAL_ERROR` | Unexpected engine error | Orchestrator `internal_failure` on uncaught engine exception; empty return-code list in classifier |
+| `130` | `INTERRUPTED` | Stopped by Ctrl-C (SIGINT) | The running stages were stopped, later stages skipped, and the run recorded as failed with `interrupted_by: SIGINT` in its metadata |
+| `143` | `TERMINATED` | Stopped by SIGTERM | A CI job's cancel button or `kill`; handled like `130` |
 
 ### Classification logic
 
@@ -36,7 +38,7 @@ Defined in `testo_core/engine/exit_codes.py` as `EngineExitCode`. The process ex
 - Any other non-zero return code → **1**
 - Otherwise → **0**
 
-Stage timeouts emit `returncode=124` and `timed_out=true`. Engine internal failures set `internal_failure=true` on the stage result (NDJSON `stage_finished` includes both fields).
+Stage timeouts emit `returncode=124` and `timed_out=true`. Each host stage runs in its own process group, so a timeout stops everything the stage started (a server it launched, pytest-xdist workers, browsers), not just the direct child. A stage stopped by a signal gets `returncode` 130 or 143 and `error: stopped by SIGINT` (or `SIGTERM`); `130` / `143` come from `run_plan`, never from `classify_exit_code`. A second Ctrl-C kills the stages outright, a third raises `KeyboardInterrupt`. Engine internal failures set `internal_failure=true` on the stage result (NDJSON `stage_finished` includes both fields).
 
 ### Commands that use exit codes
 
@@ -149,6 +151,8 @@ Written to the artifact `events.ndjson` when `run_plan(fail_fast=True)` aborts a
 {"event":"plan_aborted","plan":"sample-pytests","reason":"fail_fast","completed_stages":1}
 ```
 
+A run stopped by Ctrl-C or SIGTERM writes the same event with `"reason":"signal"` and `"signal":"SIGINT"` (or `"SIGTERM"`), then `plan_finished` with `exit_code` 130 or 143.
+
 ---
 
 ## Log and artifact map
@@ -220,6 +224,8 @@ testo config validate --config path/to/testosterone.yaml
 **Symptoms**
 
 - `cycle 'x' not found. Available: ...`
+- `the config defines several cycles; pick one with --cycle. Available: ...` (`testo run` with no `--cycle`)
+- `Error: No such command 'x'.` or `Error: No such option: --x` after a `Usage:` line (a mistyped command or flag; also exit 2)
 - `plan 'x' has no stages enabled in this environment`
 
 **Debug**
