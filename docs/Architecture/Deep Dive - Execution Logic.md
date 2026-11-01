@@ -213,6 +213,8 @@ artifacts/<cycle>/<stage>/
   allure-results/<framework>/   # wiped and recreated each stage
 ```
 
+When the run ends, `run_plan` removes any other stage folder under `artifacts/<cycle>/` (one with a `run.log` or `allure-results/`) that this run didn't write: a stage removed, renamed, or skipped by `if:` or `fail_fast`. So the reporters, archive and history snapshot that read the cycle folder afterwards only see this run's stages. A second run of the same cycle waits for the first ([Engine Fixes - 2026-11-01](../Specs%20&%20ADRs/Engine%20Fixes%20-%202026-11-01.md)).
+
 Steps:
 
 1. `get_adapter(stage.framework)` → `PytestAdapter` | `BehaveAdapter` | `BehaveXAdapter` | `PlaywrightAdapter` | `CommandAdapter` (argv = `stage.args` verbatim) | `JunitAdapter` (no process, see the post-stage hook below), or a `testo.frameworks` plugin adapter
