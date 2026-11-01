@@ -296,3 +296,19 @@ def test_stage_change_note_when_the_suite_was_recorded_another_way() -> None:
     assert note is not None and "unit → junit" in note
     assert md.stage_change_note(before, replace(before, run_id="r0")) is None
     assert md.stage_change_note(now, None) is None
+
+
+def test_auto_quarantined_tests_are_listed() -> None:
+    run = _run("r2", created_at=2.0, returncode=1)
+    summary = md.RunSummary(
+        run=run,
+        previous=None,
+        failing=("test_race",),
+        changes=(),
+        auto_quarantined=("test_race",),
+    )
+
+    text = md.render_markdown(summary)
+
+    assert "🔇 **Quarantined automatically** (flaky, failed here): `test_race`" in text
+    assert "🔇" not in md.render_markdown(replace(summary, auto_quarantined=()))

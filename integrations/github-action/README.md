@@ -66,6 +66,9 @@ steps:
   [team server](https://taltal-beep.github.io/testosterone/docs/processes-and-guides/team-server/)
   (`testo ingest --server`), with the token from a secret (`${{ secrets.TESTO_API_TOKEN }}`).
   The summary and comment still come from the Actions-cache history; a failed upload is a warning
+- `history-artifact` (optional, default `true`): with the cached history (`history: auto`), also
+  upload the SQLite file as a `testo-history-<workflow>-<job>-...` artifact kept 7 days, so
+  `testo ui --from-github` opens the CI history on your machine. `false` skips it
 - `ai-summary` (optional, default `false`): add an AI summary of the failures to a failed run's
   summary and comment (`testo report markdown --ai`). Set the provider in the step's `env`:
   `TESTO_AI_PROVIDER` (`openai`, `anthropic`, `openai_compatible`), `TESTO_AI_MODEL`,

@@ -14,6 +14,12 @@ own once the test passed each of its last :func:`release_after` runs of the
 cycle (``TESTO_QUARANTINE_RELEASE_AFTER``, default 10, ``0`` turns it off).
 A retried pass doesn't count. Glob entries stay until someone removes them.
 
+With ``TESTO_QUARANTINE_AUTO`` set to a flip rate (``0.3``), a test that is
+flaky at that rate or more and failed in the run just recorded is added on its
+own (``added_by`` ``testo``), so the next run doesn't fail on it; the pull
+request comment lists it. Names with ``*``, ``?`` or ``[`` (pytest's
+``test_x[1]``) are stored escaped (``test_x[[]1]``) and still released.
+
 Everything that reads the list from a run is best-effort: a database error is
 logged once and the run goes on with the config rules alone.
 """
@@ -23,6 +29,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Final
@@ -66,6 +73,22 @@ class QuarantineEntry:
 def is_glob(test: str) -> bool:
     """``test`` has ``fnmatch`` wildcards, so it isn't one test's name."""
     return any(ch in _GLOB_CHARS for ch in test)
+
+
+_ESCAPED_CHAR = re.compile(r"\[([*?\[])\]")
+
+
+def escape_name(name: str) -> str:
+    """A pattern that matches exactly *name*: ``*``, ``?`` and ``[`` in brackets."""
+    return re.sub(r"([*?\[])", r"[\1]", name)
+
+
+def literal_name(test: str) -> str | None:
+    """The one test name *test* matches: itself, an escaped name, or ``None`` for a real glob."""
+    if not is_glob(test):
+        return test
+    name = _ESCAPED_CHAR.sub(lambda m: m.group(1), test)
+    return name if escape_name(name) == test else None
 
 
 def _id(cycle: str, test: str) -> str:
@@ -252,9 +275,10 @@ def releasable(cycle: str, *, store: QuarantineStore, after: int) -> list[Quaran
         return []
     out: list[QuarantineEntry] = []
     for entry in store.list(cycle):
-        if entry.is_glob:
+        name = literal_name(entry.test)
+        if name is None:
             continue
-        outcomes = _recent_outcomes(cycle, entry.test, after)
+        outcomes = _recent_outcomes(cycle, name, after)
         if len(outcomes) >= after and all(o == "pass" for o in outcomes):
             out.append(entry)
     return out
@@ -289,6 +313,93 @@ def release_after_run(*, cycle: str, run_id: str) -> None:
         auto_release(cycle)
     except Exception as exc:  # noqa: BLE001 - never let the release pass change a run's outcome
         logger.warning("quarantine: auto-release after run %s of %s failed: %s", run_id, cycle, exc)
+
+
+# --- auto-quarantine ------------------------------------------------------------
+
+AUTO_ENV: Final[str] = "TESTO_QUARANTINE_AUTO"
+
+
+def auto_threshold() -> float:
+    """The flip rate (0-1) at which a failing flaky test is quarantined; 0 is off (the default)."""
+    raw = os.getenv(AUTO_ENV, "").strip().rstrip("%")
+    if not raw:
+        return 0.0
+    try:
+        value = float(raw)
+    except ValueError:
+        logger.warning("quarantine: %s=%r is not a flip rate like 0.3; off", AUTO_ENV, raw)
+        return 0.0
+    # "30" means 30%.
+    return min(1.0, value / 100 if value > 1 else max(0.0, value))
+
+
+def auto_quarantine(
+    cycle: str, *, store: QuarantineStore | None = None, threshold: float | None = None
+) -> list[QuarantineEntry]:
+    """Quarantine the tests of *cycle* that are flaky at *threshold* or more and failed last run.
+
+    Only tests that failed in the latest run: one that was released after clean
+    runs comes back only when it fails again. Tests a rule already covers, and
+    tests that fail every time (broken, not flaky), are left alone.
+    """
+    from testo_core.engine.quarantine import matching_rule
+    from testo_core.services.flaky_service import find_flaky_tests
+
+    threshold = auto_threshold() if threshold is None else threshold
+    if threshold <= 0:
+        return []
+    store = store or QuarantineStore()
+    rules = store.rules(cycle)
+    added: list[QuarantineEntry] = []
+    for test in find_flaky_tests(cycle=cycle).flaky:
+        if test.flip_rate < threshold or test.last_status not in ("failed", "broken"):
+            continue
+        if matching_rule(rules, name=test.name, full_name=test.full_name):
+            continue
+        entry = store.add(
+            cycle=cycle,
+            test=escape_name(test.name),
+            reason=f"automatic: flip rate {test.flip_rate:.0%} over {test.runs} runs "
+            f"({'; '.join(test.reasons)})",
+            added_by=AUTO_RELEASE_ACTOR,
+        )
+        rules = (*rules, entry.rule())
+        added.append(entry)
+        record_audit(username=AUTO_RELEASE_ACTOR, method="POST", cycle=cycle, test=entry.test)
+        logger.info("quarantine: added %s in %s (flip rate %.2f)", test.name, cycle, test.flip_rate)
+    return added
+
+
+def auto_quarantined_since(
+    cycle: str, since: float, *, store: QuarantineStore | None = None
+) -> list[str]:
+    """Tests of *cycle* quarantined automatically at or after *since* (epoch seconds).
+
+    For the pull request comment. Never raises; an unreadable list is no list.
+    """
+    try:
+        entries = (store or QuarantineStore()).list(cycle)
+    except Exception:  # noqa: BLE001
+        return []
+    return sorted(
+        literal_name(e.test) or e.test
+        for e in entries
+        if e.added_by == AUTO_RELEASE_ACTOR and e.added_at.timestamp() >= since
+    )
+
+
+def quarantine_after_run(*, cycle: str, run_id: str) -> None:
+    """Hook after a recorded run: release, then :func:`auto_quarantine`. Never raises."""
+    release_after_run(cycle=cycle, run_id=run_id)
+    if auto_threshold() <= 0:
+        return
+    try:
+        auto_quarantine(cycle)
+    except Exception as exc:  # noqa: BLE001 - never let the quarantine pass change a run's outcome
+        logger.warning(
+            "quarantine: auto-quarantine after run %s of %s failed: %s", run_id, cycle, exc
+        )
 
 
 # --- audit ------------------------------------------------------------------------

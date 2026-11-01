@@ -13,7 +13,16 @@ One Testosterone server that every CI job uploads its test results to, so the wh
 
 ## Start it
 
-From a checkout of the repository (`deploy/server/docker-compose.yml`: the `testo-server` image, which is the API with the web UI built in, plus Postgres):
+Quickest, from any machine with Docker and `pip install testo-core`:
+
+```bash
+testo server init --domain testo.example.com --admin ada   # both optional
+cd testo-server && docker compose up -d
+```
+
+[`testo server init`](../CLI%20Commands/Command%20Reference.md#testo-server-init) writes the compose file below, a `.env` (mode 600) with a generated `TESTO_API_TOKEN` and Postgres password, and prints what to run next; secrets are never printed. `--domain` adds [Caddy](https://caddyserver.com), which gets the HTTPS certificate by itself (ports 80 and 443 open, DNS pointing at the machine), and keeps the server's own port on `127.0.0.1`. `--admin NAME` turns on [accounts](#accounts) and the server creates that admin on its first start (`TESTO_ADMIN_USER` / `TESTO_ADMIN_PASSWORD` in `.env`), so nobody needs `docker compose exec` for the first user.
+
+Or from a checkout of the repository (`deploy/server/docker-compose.yml`: the `testo-server` image, which is the API with the web UI built in, plus Postgres):
 
 ```bash
 export TESTO_API_TOKEN="$(openssl rand -hex 32)"   # keep it: CI needs it to upload
@@ -35,6 +44,7 @@ Open <http://localhost:8000> and sign in with the token on the `/login` page. Th
 | `TESTO_RUN_QUEUE` | `memory` | Where `queued` runs wait. `memory`: a restart drops them. `db`: they are also rows in the database (`queued_run`) and are queued again when the server starts, so a restart or upgrade loses nothing that hadn't started. A run that was already running is not repeated; it shows as failed in the history |
 | `TESTO_ALLOWED_HOSTS` | unset | Only matters without a token: extra `Host` names a token-less API answers (it otherwise answers only `localhost`, `127.0.0.1` and `::1`, so a DNS-rebinding page can't read it). With a token, or `TESTO_ALLOW_UNAUTHENTICATED=1`, any name is answered |
 | `FORWARDED_ALLOW_IPS` | unset | Behind an HTTPS reverse proxy, the proxy's address, so the session cookie is marked `Secure` |
+| `TESTO_ADMIN_USER`, `TESTO_ADMIN_PASSWORD` | unset | With `TESTO_AUTH=accounts` and no account yet: the server creates this admin when it starts. Once any account exists they are ignored, so changing them never resets a password |
 | `POSTGRES_PASSWORD` | `testo` | Database password (internal to the compose network) |
 | `TESTO_SERVER_PORT` | `8000` | Port on the host |
 | `TESTO_SERVER_TAG` | `1` | Image tag to pull |
@@ -162,6 +172,17 @@ The database schema is upgraded in place when the server starts: the API runs th
 With a `history:` section in the server's `testosterone.yaml` (`retention: {days: 90, runs_per_cycle: 200}`, either limit alone is fine) the server deletes expired runs, their per-test rows and their report copies at startup and every 6 hours; without it history is kept forever. The same pruning runs by hand as [`testo clean --history`](../CLI%20Commands/Command%20Reference.md#testo-clean---history).
 
 The image sets `TESTO_UI_DIR=/app/ui`, which makes the API serve the built React UI at `/` (unknown paths fall back to `index.html`, so `/runs/<id>` loads directly). With a token set, the UI may write to its own origin; without one, only the `TESTO_CORS_ORIGINS` allow-list may, and `*` in that list counts only when a token is set.
+
+## Backups
+
+The compose file's `backup` service runs [`testo backup`](../CLI%20Commands/Command%20Reference.md#testo-backup--testo-restore) when it starts and then every `TESTO_BACKUP_EVERY_S` seconds (default a day), keeping the newest `TESTO_BACKUP_KEEP` files (default `7`) in the `testo_data` volume under `/data/backups`. Each is the whole history: every table and each run's stored results. Copy them off the machine, since a backup on the same disk doesn't survive losing it:
+
+```bash
+docker compose cp backup:/data/backups ./testo-backups
+docker compose run --rm --entrypoint testo backup restore /data/backups/testo-<time>.tar.gz --replace --yes
+```
+
+They hold password hashes when [accounts](#accounts) are on; keep them as private as the database. Don't want it: `docker compose up -d --scale backup=0`.
 
 ## Limits today
 

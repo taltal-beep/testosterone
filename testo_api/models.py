@@ -624,6 +624,13 @@ class HealthLiveResponse(ApiModel):
     status: Literal["ok"]
 
 
+class VersionResponse(ApiModel):
+    version: str
+    # Newest testo-core on PyPI; null when unknown (offline, CI, TESTO_NO_UPDATE_CHECK=1).
+    latest: str | None = None
+    update_available: bool = False
+
+
 class ReadinessCheck(ApiModel):
     status: Literal["ok", "degraded"]
     detail: str | None = None

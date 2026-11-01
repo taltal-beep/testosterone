@@ -176,6 +176,10 @@ artifacts/<cycle>/
 
 ## Failure-point playbook
 
+### A module is missing (exit 2)
+
+`No module named 'fastapi'. This needs the api extra (fastapi): pip install 'testo-core[api]'`: a command needs an optional extra that isn't installed. `testo-core`'s own metadata names the extra, so the line is the fix. For a core dependency (`yaml`, `typer`, ...) it says to `pip install --force-reinstall testo-core`: the environment is broken, often by an interrupted upgrade. A module testo-core doesn't depend on still shows the full traceback.
+
 ### Config not found (exit 2)
 
 **Symptoms**

@@ -36,6 +36,7 @@ export type QuarantineItem = Schemas["QuarantineItem"];
 export type QuarantineRequest = Schemas["QuarantineRequest"];
 export type QuarantineListResponse = Schemas["QuarantineListResponse"];
 export type PyramidShape = RunPyramidResponse["shape"];
+export type VersionResponse = Schemas["VersionResponse"];
 
 export type DeltaMetricNode = Schemas["DeltaMetricNode"];
 export type DeltaClassification = DeltaMetricNode["classification"];
@@ -282,6 +283,9 @@ export const apiClient = {
   },
   freeResource(pool: string, item: string): Promise<void> {
     return api<void>("/api/v1/resources/items/release", { method: "POST", body: JSON.stringify({ pool, item }) });
+  },
+  getVersion(): Promise<VersionResponse> {
+    return api<VersionResponse>("/api/v1/version");
   },
   getDashboardAttention(): Promise<DashboardAttentionResponse> {
     return api<DashboardAttentionResponse>("/api/v1/dashboard/attention");

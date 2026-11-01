@@ -190,10 +190,11 @@ class CycleRunService:
             from testo_core.services.flaky_issues import sync_after_run
 
             sync_after_run(cycle=effective_plan.name, run_id=run_id)
-            # TESTO_QUARANTINE_RELEASE_AFTER clean runs release a stored entry; best-effort.
-            from testo_core.services.quarantine_store import release_after_run
+            # TESTO_QUARANTINE_RELEASE_AFTER clean runs release a stored entry, and
+            # TESTO_QUARANTINE_AUTO adds failing flaky tests; best-effort.
+            from testo_core.services.quarantine_store import quarantine_after_run
 
-            release_after_run(cycle=effective_plan.name, run_id=run_id)
+            quarantine_after_run(cycle=effective_plan.name, run_id=run_id)
 
         if (
             trigger is not None
