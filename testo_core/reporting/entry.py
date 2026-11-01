@@ -99,15 +99,16 @@ def dispatch_report(
 
     if generate_only:
         console.print(
-            "[dim]``--generate-only``: static files only. Run ``testo report`` without that flag "
+            "[dim]`--generate-only`: static files only. Run `testo report` without that flag "
             "for a local HTTP server (avoids browser file:// restrictions).[/]"
         )
         return int(EngineExitCode.SUCCESS)
 
     if shutil.which("allure") is None:
         console.print(
-            "[fail]Allure CLI is required to open the dashboard after ``allure generate``. "
-            "Install from https://allurereport.org/docs/install/ or use ``--generate-only``.[/]"
+            "[fail]Opening the report needs the Allure CLI (`allure`). "
+            "Install it from https://allurereport.org/docs/install/, or run "
+            "`testo report --generate-only` and open index.html yourself.[/]"
         )
         return int(EngineExitCode.INFRA_FAILURE)
 

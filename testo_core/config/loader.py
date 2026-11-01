@@ -17,6 +17,7 @@ single anonymous plan called ``default``.
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import tomllib
 from pathlib import Path
@@ -106,7 +107,14 @@ def load_config(path: Path) -> TestosteroneConfig:
     else:
         raw = _read_yaml(path)
 
-    return _build_config(raw, source=path)
+    cfg = _build_config(raw, source=path)
+    if isinstance(raw, dict) and "cycles" in raw:
+        from testo_core.config.unknown_keys import unknown_keys
+
+        found = unknown_keys(raw)
+        if found:
+            cfg = dataclasses.replace(cfg, warnings=tuple(found))
+    return cfg
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:

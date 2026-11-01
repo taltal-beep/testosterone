@@ -157,6 +157,8 @@ class TestosteroneConfig:
     resources: dict[str, ResourcePool] = field(default_factory=dict)
     # Top-level ``affected:``: how changed files map to tests (`testo affected`).
     affected: AffectedConfig = field(default_factory=AffectedConfig)
+    # Keys the loader ignored ("unknown key 'cycles.web.triger' is ignored; did you mean ...").
+    warnings: tuple[str, ...] = ()
 
     @property
     def plans(self) -> dict[str, Plan]:

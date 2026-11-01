@@ -16,6 +16,7 @@ from typing import Any
 
 from testo_core import plugins
 from testo_core.config.errors import ConfigValidationError
+from testo_core.config.if_expr import problem as if_problem
 from testo_core.config.schema import (
     DEFAULT_TIER_BY_FRAMEWORK,
     PARALLEL_FRAMEWORKS,
@@ -310,6 +311,8 @@ def parse_stage(
     if_expr = stage_raw.get("if")
     if if_expr is not None and not isinstance(if_expr, str):
         raise ConfigValidationError(f"stage {name!r}: 'if' must be a string.")
+    if if_expr is not None and (why := if_problem(if_expr)):
+        raise ConfigValidationError(f"stage {name!r}: 'if: {if_expr}' is not supported: {why}.")
 
     extra_env = _normalise_env(stage_raw.get("extra_env")) or defaults.extra_env
 
@@ -442,5 +445,17 @@ def _normalise_env(value: Any) -> tuple[tuple[str, str], ...]:
         raise ConfigValidationError("'extra_env' must be a mapping of strings.")
     out: list[tuple[str, str]] = []
     for k, v in value.items():
-        out.append((str(k), str(v)))
+        if isinstance(v, (Mapping, list, tuple, set)):
+            raise ConfigValidationError(
+                f"'extra_env' value for {k!r} must be a string, number or boolean, "
+                f"not a {type(v).__name__}."
+            )
+        # YAML's null / true / false would otherwise reach the process as "None" / "True".
+        if v is None:
+            text = ""
+        elif isinstance(v, bool):
+            text = "true" if v else "false"
+        else:
+            text = str(v)
+        out.append((str(k), text))
     return tuple(out)
