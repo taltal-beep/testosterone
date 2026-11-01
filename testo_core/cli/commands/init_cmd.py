@@ -278,7 +278,7 @@ def _first_run(*, console: Console, repo: Path, cycle: str, config: Path) -> int
                 console=console,
                 reports=reports,
                 cycle=cycle,
-                stage="imported",
+                stage="junit",
                 tier="unit",
                 repo=repo,
                 config_path=config,
