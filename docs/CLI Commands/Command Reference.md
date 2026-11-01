@@ -318,6 +318,31 @@ The runs show a flaky test (`test_apply_coupon`), a new failure in the latest ru
 
 ---
 
+## `testo try`
+
+See the pull request comment your latest results would get, before you add anything to CI. It records the result files as a run in a throwaway copy of your history and prints what [`testo report markdown`](#subcommands) (the job summary and the GitHub Action's comment) says about them. The command-line partner of the `/try` page.
+
+```bash
+pytest --junitxml=test-results/junit.xml; testo try    # the files your last run left here
+testo try reports/junit.xml --cycle api                # these files, compared with cycle `api`
+testo try --from-github                                # the latest GitHub Actions run's artifacts
+testo try --from-github --run-id 123456 --out comment.md
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `REPORTS...` | found | Result files, folders or globs; none = every result file in `--repo` that git doesn't track, as [`testo ingest`](#testo-ingest) finds them |
+| `--repo` | `.` | The project |
+| `--cycle` | folder name | The cycle to compare with |
+| `--from-github` | off | Download the artifacts of the latest finished workflow run with the [GitHub CLI](https://cli.github.com) (`gh run download`) and preview the result files in them. The workflow must upload them (`actions/upload-artifact`) |
+| `--run-id` | latest | With `--from-github`: this run |
+| `--baseline-branch` | default branch | Compare with this branch's latest run, as a pull request into it would |
+| `--out`, `-o` | stdout | Write the comment to a file |
+
+Nothing is recorded: the run goes into a new temporary folder with its own SQLite file and `.testo/` (deleted afterwards). When your history is a local SQLite file (`DATABASE_URL` or `database.url`, else `./testo_history.db`), it is copied in first, so the preview shows what changed since your earlier runs; otherwise it is a first run's comment. No config is read, so reporters and alerts don't fire. Exit `0` with a preview, even when tests failed; `2` when there are no result files or `--from-github` can't download them.
+
+---
+
 ## `testo notify`
 
 Send a recorded run to Slack and/or Microsoft Teams: pass/fail counts, then new regressions, newly flaky tests, failing tests and fixed tests (10 names per list).

@@ -69,7 +69,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import report as report_cmd
     from testo_core.cli.commands import run as run_cmd
     from testo_core.cli.commands import split as split_mod
-    from testo_core.cli.commands import ui_cmd
+    from testo_core.cli.commands import try_cmd, ui_cmd
     from testo_core.cli.commands import users as users_cmd
     from testo_core.cli.commands import version as version_cmd
     from testo_core.cli.commands import watch as watch_mod
@@ -94,6 +94,11 @@ def _register_commands() -> None:
         help="Record eight sample runs (a flaky test, a new failure, a slower test) and open the UI.",
         rich_help_panel="Run and report",
     )(demo_mod.demo)
+    app.command(
+        name="try",
+        help="Preview the pull request comment your latest results would get; records nothing.",
+        rich_help_panel="Run and report",
+    )(try_cmd.try_comment)
     app.command(
         name="split",
         help="Split a cycle's tests into shards of about equal time (CI matrix, pool keys).",

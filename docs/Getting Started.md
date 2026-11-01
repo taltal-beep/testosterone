@@ -134,6 +134,8 @@ pip install testo-core
 testo ingest 'reports/**/*.xml' --cycle web-unit
 ```
 
+Before touching CI, `testo try` shows the pull request comment your latest results would get, without recording anything (`--from-github` uses your last GitHub Actions run's artifacts).
+
 Copy-paste versions for each runner and each CI system (GitHub Actions, GitLab CI, Jenkins, CircleCI) are in [Setup Snippets](Processes%20&%20Guides/Setup%20Snippets.md).
 
 With no arguments, `testo ingest` finds the result files itself and names the cycle after the folder. In GitHub Actions, the action does the same when the repository has no `testosterone.yaml`: put `- uses: taltal-beep/testosterone@v1` with `if: ${{ !cancelled() }}` after your test step and it records the results, keeps the history in the Actions cache and comments on the pull request ([details](Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md#github-action)).
