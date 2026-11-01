@@ -63,8 +63,8 @@ Status: **fixed** means merged or in an open fix PR (number given). **proposal**
 | L6 | Summary | The runner column wasn't escaped, a cycle name with `-->` ended the comment marker, and list items showed `\|`. | fixed #226 |
 | L7 | pytest JUnit | A test that passes and then errors in teardown is written as **two** `<testcase>` entries with the same name, so it counts as 2 tests (1 passed, 1 broken). | fixed (P3) |
 | L8 | Go | With `-count=2`, or reruns in one file, attempts of the same test overwrite each other, so a fail-then-pass test isn't flagged flaky. | fixed (P3) |
-| L9 | Action | `cycle: all` publishes the summary, annotations and alert of the last cycle only. | proposal P4 |
-| L10 | Action | `${{ inputs.* }}` are pasted into the composite step's bash, so a `"` or `$(…)` in an input (`cycle: ${{ github.head_ref }}`) runs as shell. | proposal P5 |
+| L9 | Action | `cycle: all` publishes the summary, annotations and alert of the last cycle only. | fixed (P4) |
+| L10 | Action | `${{ inputs.* }}` are pasted into the composite step's bash, so a `"` or `$(…)` in an input (`cycle: ${{ github.head_ref }}`) runs as shell. | fixed (P5) |
 | L11 | OTel | `test.case.name` is the same for every parametrized case, and an endpoint with no scheme exits 3 instead of 2. | fixed (P6) |
 | L12 | JUnit | A suite's `tests="5"` with only 1 `<testcase>` gives no warning, and a naive `timestamp` is read as local time. | count warning added (P2); naive timestamps stay local time, which is what pytest and Surefire write |
 

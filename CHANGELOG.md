@@ -9,13 +9,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Security
+- GitHub Action: inputs reach its shell steps as environment variables instead of being pasted into the script, so a `"` or `$(...)` in an input (`cycle: ${{ github.head_ref }}`) can no longer run commands
 - PR comment and job summary: a backtick in a test name (which in a fork's pull request its author controls) ended the code span, so `@user` mentions and HTML after it rendered live. Names are now fenced so nothing inside can close them, and stage, runner and branch cells are plain text. A cycle name with `-->` can no longer end the comment marker
 
 ### Added
+- Web UI: each card on the Cycles page shows the cycle's latest result (status, pass rate, failing count, branch and commit, and a link to the run), and run labels on the Dashboard and Runs pages say when the run happened ("3 h ago") and which branch and commit it ran from; `GET /api/v1/cycles` items carry `latest_run`, and run items carry `commit`
 - Python 3.14 is tested in CI and listed in the package classifiers
 
 ### Fixed
 - OpenTelemetry export: each case of a parametrized test gets its own `test.case.name` (`tests.test_math#test_add[1-2]`; they all had the same one), and an HTTP endpoint without a scheme (`collector:4318`) is reported as bad input (exit `2`) instead of a failed send (exit `3`)
+- GitHub Action: `cycle: all` publishes a job summary, PR comment, annotations and alert for every cycle (it did only the last one), and `package` accepts several requirements separated by spaces (`testo-core pytest-xdist`)
 - Result importers no longer crash or silently drop results on odd files. A file with unexpected field types (Jest, Playwright, RSpec, k6) or a JUnit `time="inf"` used to crash the whole import and lose every other file's results; now that one file is skipped and logged. A `<testsuite>` nested in a root `<testsuite>` is read (it counted 0 tests), UTF-16 XML is read, XML that isn't JUnit (an HTML error page) is reported instead of counting 0 tests, a report whose name contains `-attachment` is no longer skipped as an Allure attachment, Maven Surefire reruns (`flakyFailure`, `rerunFailure`) mark the test flaky, and a JUnit failure message is capped like its trace
 - Two stages with the same name in one cycle (or names that differ only in case) are a config error: the second stage wiped the first one's results, so a failed test could disappear from the run. Each stage's `run.log` now holds only the latest run instead of growing with every run (it was copied whole into every run's history snapshot)
 - Robot Framework: a failed suite teardown fails that suite's passed tests, as `robot` reports them ("Parent suite teardown failed"); `output.xml` keeps their own PASS, so they counted as passed
