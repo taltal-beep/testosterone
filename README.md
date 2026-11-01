@@ -39,7 +39,8 @@ testo init        # finds your test runners, writes testosterone.yaml and a GitH
 testo ui          # what broke, what's flaky, what got slower
 ```
 
-`testo init --dry-run` shows the files first. Only want to record? `pytest --testo`, or `testo ingest` after any runner.
+`testo init --dry-run` shows the files first; `testo init --pr` also opens the pull request that
+adds them. Only want to record? `pytest --testo`, or `testo ingest` after any runner.
 
 No tests at hand? `testo demo` records eight sample runs (a flaky test, a new failure, a slower
 test) and opens the UI on them. More ways in, from Jest to `go test`, are in the [Quickstart](#quickstart).
@@ -98,7 +99,7 @@ The shortest path, for pytest, Jest, Vitest, Playwright, Go, .NET, Maven, Gradle
 ```bash
 pip install testo-core
 testo init --dry-run   # what it would write: testosterone.yaml, .github/workflows/testosterone.yml, .gitignore lines
-testo init             # writes them and records a first run; then commit and push
+testo init --pr        # writes them, records a first run and opens a pull request (needs gh; without it, prints the git commands)
 ```
 
 No Python project? `uvx --from testo-core testo init` or `pipx run --spec testo-core testo init` runs it without

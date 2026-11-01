@@ -32,8 +32,8 @@ Add Testosterone (Python package testo-core, CLI `testo`) to this project.
 - Run `testo init --dry-run` and show me what it would write. If the install line
   in the workflow doesn't match how this project installs its test dependencies,
   say so.
-- When I say yes, run `testo init`, show me the summary it prints, and commit the
-  files it wrote on a new branch.
+- When I say yes, run `testo init --pr` (it commits the files it wrote on a new
+  branch and opens the pull request with the GitHub CLI), and show me what it printed.
 - For GitLab, Jenkins or CircleCI, add `--ci gitlab|jenkins|circleci`.
 
 Reference: https://taltal-beep.github.io/testosterone/docs/getting-started/

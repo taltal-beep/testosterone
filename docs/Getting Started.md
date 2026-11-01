@@ -11,7 +11,7 @@ Add Testosterone to a project you already have, in about five minutes: install i
 
 You need Python 3.11 or newer and a project with tests. The examples use pytest; other runners are at [step 6](#6-add-other-test-runners).
 
-**Start here:** `pip install testo-core && testo init` does steps 2, 3 and 5 for you: it detects your test runners (pytest, Jest, Vitest, Playwright, Go, .NET, Maven, Gradle, RSpec, PHPUnit), writes `testosterone.yaml` and `.github/workflows/testosterone.yml`, and records a first run. `testo init --dry-run` shows the files first. Tests in several folders (a monorepo)? `testo init --scan --check` finds each one and checks it with its runner. Details: [Command Reference § testo init](CLI%20Commands/Command%20Reference.md#testo-init).
+**Start here:** `pip install testo-core && testo init` does steps 2, 3 and 5 for you: it detects your test runners (pytest, Jest, Vitest, Playwright, Go, .NET, Maven, Gradle, RSpec, PHPUnit), writes `testosterone.yaml` and `.github/workflows/testosterone.yml`, and records a first run. `testo init --dry-run` shows the files first, and `testo init --pr` also commits them on a new branch and opens the pull request. Tests in several folders (a monorepo)? `testo init --scan --check` finds each one and checks it with its runner. Details: [Command Reference § testo init](CLI%20Commands/Command%20Reference.md#testo-init).
 
 ## 1. Install
 
