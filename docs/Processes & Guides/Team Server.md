@@ -125,7 +125,16 @@ pip install testo-core
 testo ingest 'reports/**/*.xml' --cycle web-unit --server "$TESTO_SERVER_URL" --token "$TESTO_API_TOKEN"
 ```
 
-GitHub Actions:
+GitHub Actions, with the Action (it keeps the job summary and pull request comment too):
+
+```yaml
+      - uses: taltal-beep/testosterone@v1
+        with:
+          server-url: https://testo.example.com
+          server-token: ${{ secrets.TESTO_API_TOKEN }}
+```
+
+`testo init --server https://testo.example.com` writes those lines and, with the GitHub CLI and `$TESTO_API_TOKEN` set, stores the secret. Or as a plain step:
 
 ```yaml
       - run: npx jest --ci --json --outputFile=jest.json   # your tests, plus Jest's own report

@@ -37,6 +37,8 @@ def test_action_contract_has_required_inputs_outputs() -> None:
         "flaky-issues",
         "coverage",
         "github-token",
+        "server-url",
+        "server-token",
     }
     assert set(payload["outputs"].keys()) == {"exit_code", "summary_json", "summary_path", "status"}
 

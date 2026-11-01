@@ -196,6 +196,13 @@ def init(
         help="Then commit the written files on a new branch, push it and open a pull request "
         "(needs git and the GitHub CLI; without gh, prints the commands left).",
     ),
+    server: str = typer.Option(
+        "",
+        "--server",
+        help="Also upload every CI run to this team server (https://...). The workflow reads "
+        "the token from the TESTO_API_TOKEN secret; with gh and $TESTO_API_TOKEN set, "
+        "init stores the secret too.",
+    ),
     dependabot: bool = typer.Option(
         False,
         "--dependabot",
@@ -234,6 +241,12 @@ def init(
         )
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
+    from testo_core.cli.server_url import server_url_problem
+
+    server_url = (server or "").strip().rstrip("/")
+    problem = server_url_problem(server_url) if server_url else None
+    if problem:
+        raise typer.BadParameter(problem, param_hint="--server")
     cycle_name = (cycle or "").strip() or project_setup.cycle_name_for(repo)
     if scan:
         _print_stages(console, facts)
@@ -261,7 +274,9 @@ def init(
             # Never edit someone's pipeline: write ours next to it and say how to wire it in.
             target = repo / side_file
             ci_hint = _INCLUDE_HINTS[ci_kind]
-        text = ci_templates.ci_file_text(ci_kind, facts, cycle=cycle_name, branch=branch)
+        text = ci_templates.ci_file_text(
+            ci_kind, facts, cycle=cycle_name, branch=branch, server=server_url
+        )
         files.append((target, text, target.exists() and not force))
     if dependabot:
         from testo_core.services.setup_pr import DEPENDABOT_PATH, dependabot_yaml
@@ -301,6 +316,9 @@ def init(
         gitignore.write_text(before + sep + block, encoding="utf-8")
         console.print(f"[ok]Added {', '.join(missing)} to .gitignore[/]")
 
+    if server_url:
+        _server_secret(console, repo=repo, ci_kind=ci_kind, server=server_url)
+
     code = 0
     if run_first:
         code = _first_run(console=console, repo=repo, cycle=cycle_name, config=config_path)
@@ -322,6 +340,32 @@ def init(
     )
     console.print(f"  testo run --cycle {cycle_name}")
     raise typer.Exit(code=code)
+
+
+def _server_secret(console: Console, *, repo: Path, ci_kind: str, server: str) -> None:
+    """``--server``: store ``$TESTO_API_TOKEN`` as the repository secret the workflow reads."""
+    from testo_core.services.ci_templates import SERVER_TOKEN_SECRET
+    from testo_core.services.setup_pr import set_repo_secret
+
+    if ci_kind != "github":
+        console.print(
+            f"To upload to {server} from {ci_kind}, add `--server {server}` to the testo ingest "
+            f"step and give the job a {SERVER_TOKEN_SECRET} variable (masked)."
+        )
+        return
+    token = os.environ.get(SERVER_TOKEN_SECRET, "").strip()
+    if not token:
+        console.print(
+            f"The workflow uploads to {server} with the {SERVER_TOKEN_SECRET} secret. Add it "
+            f"(Settings → Secrets and variables → Actions), or run init again with "
+            f"{SERVER_TOKEN_SECRET} set and gh installed to store it."
+        )
+        return
+    error = set_repo_secret(repo, SERVER_TOKEN_SECRET, token)
+    if error:
+        console.print(f"[warn]Couldn't store the {SERVER_TOKEN_SECRET} secret: {error}[/]")
+    else:
+        console.print(f"[ok]Stored {SERVER_TOKEN_SECRET} as a repository secret[/]")
 
 
 def _publish(console: Console, *, repo: Path, files: list[str], base: str, cycle: str) -> bool:

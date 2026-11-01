@@ -42,9 +42,11 @@ def detect_ci(repo: Path) -> str | None:
     return None
 
 
-def ci_file_text(system: str, facts: ProjectFacts, *, cycle: str, branch: str) -> str:
+def ci_file_text(
+    system: str, facts: ProjectFacts, *, cycle: str, branch: str, server: str = ""
+) -> str:
     if system == "github":
-        return github_workflow(facts, cycle=cycle, branch=branch)
+        return github_workflow(facts, cycle=cycle, branch=branch, server=server)
     if system == "gitlab":
         return gitlab_ci(facts, cycle=cycle)
     if system == "jenkins":
@@ -159,8 +161,17 @@ def _github_setup(facts: ProjectFacts, language: str) -> list[str]:
     return out
 
 
-def github_workflow(facts: ProjectFacts, *, cycle: str, branch: str = "main") -> str:
-    """``.github/workflows/testosterone.yml``: set up the stacks, then run *cycle* with the Action."""
+SERVER_TOKEN_SECRET = "TESTO_API_TOKEN"
+
+
+def github_workflow(
+    facts: ProjectFacts, *, cycle: str, branch: str = "main", server: str = ""
+) -> str:
+    """``.github/workflows/testosterone.yml``: set up the stacks, then run *cycle* with the Action.
+
+    With *server*, each run is also uploaded to that team server, with the token
+    from the ``TESTO_API_TOKEN`` repository secret.
+    """
     names = ", ".join(s.label for s in facts.stacks) or "your tests"
     lines = [
         f"# Written by `testo init`. Runs the {_q(cycle)} cycle from testosterone.yaml ({names})",
@@ -191,6 +202,11 @@ def github_workflow(facts: ProjectFacts, *, cycle: str, branch: str = "main") ->
     if "python" in _languages(facts.stacks):
         # The Action installs testo into this Python, so pytest sees the project's packages.
         lines.append(f"          python-version: {_q(facts.python_version)}")
+    if server:
+        lines += [
+            f"          server-url: {_q(server)}  # also upload each run to the team server",
+            f"          server-token: ${{{{ secrets.{SERVER_TOKEN_SECRET} }}}}",
+        ]
     return "\n".join(lines) + "\n"
 
 

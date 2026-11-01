@@ -133,6 +133,22 @@ def open_setup_pr(
     return SetupPrResult(branch=branch, url=url)
 
 
+def set_repo_secret(repo: Path, name: str, value: str) -> str | None:
+    """``gh secret set NAME`` for *repo*'s GitHub repository, value on stdin. Returns an error."""
+    if shutil.which("gh") is None:
+        return "the GitHub CLI (https://cli.github.com) isn't installed"
+    proc = subprocess.run(  # noqa: S603 — fixed argv; the value goes on stdin, never argv
+        ["gh", "secret", "set", name],  # noqa: S607
+        cwd=repo,
+        input=value,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    return None if proc.returncode == 0 else (proc.stderr.strip() or "gh secret set failed")
+
+
 DEPENDABOT_PATH = ".github/dependabot.yml"
 
 

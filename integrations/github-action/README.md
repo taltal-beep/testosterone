@@ -62,6 +62,10 @@ steps:
 - `coverage` (optional): coverage report(s) your tests write, space-separated (Cobertura or
   JaCoCo XML, LCOV, Go cover profile). Line coverage is stored with the run, and the summary and
   PR comment show it and how much it moved against the baseline
+- `server-url`, `server-token` (optional): also upload each recorded run to a
+  [team server](https://taltal-beep.github.io/testosterone/docs/processes-and-guides/team-server/)
+  (`testo ingest --server`), with the token from a secret (`${{ secrets.TESTO_API_TOKEN }}`).
+  The summary and comment still come from the Actions-cache history; a failed upload is a warning
 - `github-token` (optional, default `${{ github.token }}`): token for the comment and issues
 
 The summary is `testo report markdown`: pass/fail counts, a per-stage table, failing tests and

@@ -71,6 +71,14 @@ inputs:
     description: "Code coverage report(s) the tests write (Cobertura or JaCoCo XML, LCOV, Go cover profile), space-separated. Stored with the run; the summary and PR comment show line coverage and its change."
     required: false
     default: ""
+  server-url:
+    description: "Also upload each recorded run to this Testosterone team server (e.g. https://testo.example.com), as `testo ingest --server` does. The job summary and comment still come from the Actions-cache history."
+    required: false
+    default: ""
+  server-token:
+    description: "The team server's API token. Pass a secret (secrets.TESTO_API_TOKEN)."
+    required: false
+    default: ""
   github-token:
     description: Token used for the pull request comment and flaky test issues.
     required: false
@@ -117,6 +125,7 @@ runs:
           --history "$TESTO_INPUT_HISTORY" \
           --config-path "$TESTO_INPUT_CONFIG_PATH"
     - name: Restore run history
+      id: restore
       if: steps.history.outputs.cache == 'true'
       uses: actions/cache/restore@v6
       with:
@@ -142,6 +151,10 @@ runs:
         TESTO_INPUT_NOTIFY_WHEN: ${{ inputs.notify-when }}
         TESTO_INPUT_FLAKY_ISSUES: ${{ inputs.flaky-issues }}
         TESTO_INPUT_COVERAGE: ${{ inputs.coverage }}
+        TESTO_INPUT_SERVER_URL: ${{ inputs.server-url }}
+        TESTO_INPUT_SERVER_TOKEN: ${{ inputs.server-token }}
+        TESTO_HISTORY_CACHED: ${{ steps.history.outputs.cache }}
+        TESTO_HISTORY_RESTORED_KEY: ${{ steps.restore.outputs.cache-matched-key }}
       run: |
         python "$GITHUB_ACTION_PATH/integrations/github-action/run_testo_action.py" \
           --config-path "$TESTO_INPUT_CONFIG_PATH" \

@@ -546,6 +546,8 @@ The first run (`--no-run` skips it): result files a test run already left in the
 
 **Straight to a pull request (`--pr`).** After writing (and the first run), switches to a new branch `testosterone-setup` (`-2`, `-3`... if taken), commits only the files it wrote (`git commit -- <paths>`, so anything else you had staged stays staged), pushes it to `origin` and opens a pull request into the default branch with the [GitHub CLI](https://cli.github.com) (`gh pr create`). Without `gh`, or when a step fails (no `origin`, push refused), it prints the commands left to run; the exit code stays the first run's. The pull request's own comment has no baseline yet: once it is merged and the workflow has run on the default branch, later pull requests are compared with that run.
 
+**A team server (`--server URL`).** The GitHub workflow also uploads every run to that [team server](../Processes%20&%20Guides/Team%20Server.md) (the Action's `server-url` and `server-token: ${{ secrets.TESTO_API_TOKEN }}` inputs). With the GitHub CLI and `$TESTO_API_TOKEN` set, init stores it as the repository secret (`gh secret set`, the value on stdin, never printed); otherwise it says which secret to add. For GitLab, Jenkins and CircleCI it prints the `--server` flag to add. A URL that isn't `http(s)://...` is exit `2`.
+
 **Dependabot (`--dependabot`).** Also writes `.github/dependabot.yml` with weekly `github-actions` updates, when the project has none. `taltal-beep/testosterone@v1` moves to each 1.x release by itself; this keeps `actions/checkout` and the setup actions current.
 ---
 

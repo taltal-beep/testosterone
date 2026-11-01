@@ -118,3 +118,48 @@ def test_dependabot_is_written_only_when_asked_and_missing(repo: Path) -> None:
 
     config = yaml.safe_load((repo / ".github" / "dependabot.yml").read_text())
     assert config["updates"][0]["package-ecosystem"] == "github-actions"
+
+
+def test_server_writes_upload_inputs_and_stores_the_token_secret(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    gh = bin_dir / "gh"
+    gh.write_text(f'#!/bin/sh\necho "$@" > "{bin_dir}/gh-args"\ncat > "{bin_dir}/gh-stdin"\n')
+    gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.setenv("TESTO_API_TOKEN", "tok-123")
+
+    result = CliRunner().invoke(
+        app, ["init", "--dir", str(repo), "--no-run", "--server", "https://testo.example.com/"]
+    )
+
+    assert result.exit_code == 0, result.output
+    step = yaml.safe_load((repo / ".github/workflows/testosterone.yml").read_text())["jobs"][
+        "tests"
+    ]["steps"][-1]
+    assert step["with"]["server-url"] == "https://testo.example.com"
+    assert step["with"]["server-token"] == "${{ secrets.TESTO_API_TOKEN }}"
+    assert (bin_dir / "gh-args").read_text().strip() == "secret set TESTO_API_TOKEN"
+    assert (bin_dir / "gh-stdin").read_text() == "tok-123"
+    assert "tok-123" not in result.output
+
+
+def test_server_without_a_token_says_which_secret_to_add(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("TESTO_API_TOKEN", raising=False)
+
+    result = CliRunner().invoke(
+        app, ["init", "--dir", str(repo), "--no-run", "--server", "https://testo.example.com"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "TESTO_API_TOKEN secret" in result.output
+
+
+def test_server_must_be_a_url(repo: Path) -> None:
+    result = CliRunner().invoke(app, ["init", "--dir", str(repo), "--server", "testo.example"])
+
+    assert result.exit_code == 2
