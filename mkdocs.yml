@@ -94,6 +94,7 @@ nav:
       - Command Reference: CLI Commands/Command Reference.md
       - Troubleshooting and Error Codes: CLI Commands/Troubleshooting and Error Codes.md
       - CI-CD Pipeline Setup: Processes & Guides/CI-CD Pipeline Setup.md
+      - Setup Snippets: Processes & Guides/Setup Snippets.md
       - Team Server: Processes & Guides/Team Server.md
       - Shared Resource Pools: Processes & Guides/Shared Resource Pools.md
       - Setup Prompts: Prompts & Snippets/Setup Prompts.md
