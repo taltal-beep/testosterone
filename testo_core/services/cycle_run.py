@@ -176,6 +176,13 @@ class CycleRunService:
                     background=opts.async_report_db,
                 )
 
+        if opts.persist and run_id:
+            # Outside the cycle lock: it talks to GitHub. Off unless TESTO_ISSUES=github;
+            # best-effort, never changes the exit code.
+            from testo_core.services.flaky_issues import sync_after_run
+
+            sync_after_run(cycle=effective_plan.name, run_id=run_id)
+
         if (
             trigger is not None
             and trigger.persist_snapshot_after_run
