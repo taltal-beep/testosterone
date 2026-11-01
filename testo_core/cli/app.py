@@ -50,6 +50,7 @@ def _register_commands() -> None:
     only the lightweight Typer + Rich surface is loaded here.
     """
     from testo_core.cli.commands import affected as affected_mod
+    from testo_core.cli.commands import ai as ai_mod
     from testo_core.cli.commands import backup as backup_mod
     from testo_core.cli.commands import badge as badge_mod
     from testo_core.cli.commands import clean as clean_mod
@@ -195,6 +196,12 @@ def _register_commands() -> None:
         name="pool",
         help="Compare resource pools with the keys that really exist (read-only, your own commands).",
         rich_help_panel="Run and report",
+    )
+    app.add_typer(
+        ai_mod.app,
+        name="ai",
+        help="AI failure summaries: set up a provider, check it, summarize a failed run.",
+        rich_help_panel="Config",
     )
     app.add_typer(
         users_cmd.app,

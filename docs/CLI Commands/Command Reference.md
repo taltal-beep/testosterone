@@ -178,6 +178,7 @@ testo report pyramid <run-id>
 | `testo report compare` | Rich diff + Allure comparison (optional baseline/current UUIDs) |
 | `testo report native [ROUTINE]` | List or open BehaveX/pytest native HTML under stage dirs |
 | `testo report markdown [--cycle NAME \| --run-id ID] [--out FILE] [--run-url URL] [--baseline-branch BRANCH]` | The cycle's latest run (or one run) as GitHub-flavored Markdown: headline counts, per-stage table, failing tests, and per-test changes since its baseline: the latest run on `--baseline-branch`, else on the pull request's recorded target branch (`ci_base_ref`), else the cycle's previous run. When the run stored [coverage](#options), the headline adds it and its change against the same baseline (`coverage 81.2% (▼ 0.4)`). The first line is a hidden `<!-- testo-summary:<cycle> -->` marker. Exit `2` when no run is recorded. The GitHub Action uses it for the job summary and the PR comment |
+| `testo report markdown --ai` | Also adds an AI summary of the failures (a quoted block before the footer, HTML and `@` escaped) to a failed run, generated and stored like the UI's (see [`testo ai`](#testo-ai)). When the provider is off or doesn't answer, one line says why; the exit code doesn't change |
 | `testo report annotations [--cycle NAME \| --run-id ID] [--workspace DIR] [--limit N] [-c CONFIG]` | The run's failing tests as GitHub Actions `::error file=…,line=…` workflow commands, so each failure shows on its line in the pull request's "Files changed". The location is the first stack-trace frame inside `--workspace` (default `.`), tried relative to the workspace, each stage's `target_repo` from the config, and the run's target repo. At most `--limit` (default `10`, GitHub's per-step cap) lines, then a `::notice` with the rest. Exit `2` when no run is recorded. The GitHub Action prints it by default. See [Alerts Where Developers Look - 2026-10-22](../Specs%20&%20ADRs/Alerts%20Where%20Developers%20Look%20-%202026-10-22.md) |
 | `testo report pyramid RUN_ID [-c CONFIG]` | ASCII unit/integration/e2e test pyramid for a completed run (`run_id`, not the archive UUID); stage→tier is the stage's `tier:` (default inferred from `equipment`: pytest→unit, behave→integration, behavex→e2e, playwright→e2e, jest→unit, vitest→unit, cypress→e2e) as recorded in the run when it executed; `-c` is only read for older runs that predate recorded tiers. See [Architecture Overview § Test pyramid](../Architecture/Architecture%20Overview.md#test-pyramid). |
 
@@ -604,6 +605,7 @@ testo init --stack jest --stack go --cycle web --no-run
 testo init --interactive        # the older wizard: asks for each value, writes only the config
 testo init --scan               # monorepo: a stage per runner in every project folder; asks first
 testo init --scan --check       # also ask each runner which tests it would run (runs none)
+testo init --pr                 # then commit the files on a new branch, push it and open a pull request
 ```
 
 | Detected from | Stack (`--stack`) | Stage it writes |
@@ -636,6 +638,32 @@ What it writes, in the project folder (`--dir`, default here):
 A file that exists is kept unless `--force`; a kept `testosterone.yaml` with one cycle gives the workflow its cycle name.
 
 The first run (`--no-run` skips it): result files a test run already left in the project (JUnit XML, Jest/Vitest/Playwright/RSpec JSON, `.trx`, `go test -json`, Robot `output.xml`, `allure-results`; recognised by content, files git tracks are skipped as fixtures) are recorded like `testo ingest` would. When there are none, the new cycle runs once. Exit code `0` once a run is recorded, even if some of its tests failed; `2` when no runner was found, `--check` found no tests in any stage, `--scan` wasn't confirmed, or an option is wrong.
+
+
+**Straight to a pull request (`--pr`).** After writing (and the first run), switches to a new branch `testosterone-setup` (`-2`, `-3`... if taken), commits only the files it wrote (`git commit -- <paths>`, so anything else you had staged stays staged), pushes it to `origin` and opens a pull request into the default branch with the [GitHub CLI](https://cli.github.com) (`gh pr create`). Without `gh`, or when a step fails (no `origin`, push refused), it prints the commands left to run; the exit code stays the first run's. The pull request's own comment has no baseline yet: once it is merged and the workflow has run on the default branch, later pull requests are compared with that run.
+
+**A team server (`--server URL`).** The GitHub workflow also uploads every run to that [team server](../Processes%20&%20Guides/Team%20Server.md) (the Action's `server-url` and `server-token: ${{ secrets.TESTO_API_TOKEN }}` inputs). With the GitHub CLI and `$TESTO_API_TOKEN` set, init stores it as the repository secret (`gh secret set`, the value on stdin, never printed); otherwise it says which secret to add. For GitLab, Jenkins and CircleCI it prints the `--server` flag to add. A URL that isn't `http(s)://...` is exit `2`.
+
+**Pull requests from forks (`--forks`).** A fork's pull request runs with a read-only token, so the comment can't be posted from it. With `--forks` the test workflow sets the Action's `comment-artifact: "true"` (and drops `pull-requests: write`), and init also writes `.github/workflows/testosterone-comment.yml`: a `workflow_run` workflow that downloads the `testo-comment` artifact and posts it with `post-comments-from`. It checks out no code from the fork, posts only files that start with the `<!-- testo-summary:` marker (size-capped, `@` mentions defused), and finds the pull request by the tested commit, never from the artifact. GitHub only; ignored for other CI systems.
+
+**Dependabot (`--dependabot`).** Also writes `.github/dependabot.yml` with weekly `github-actions` updates, when the project has none. `taltal-beep/testosterone@v1` moves to each 1.x release by itself; this keeps `actions/checkout` and the setup actions current.
+---
+
+## `testo ai`
+
+AI failure summaries from the command line, with the same settings file as the UI's AI settings page (`TESTO_AI_SETTINGS_PATH`, default `artifacts/ai_settings.json`).
+
+```bash
+testo ai setup                    # picks a provider this machine already has
+testo ai setup --provider openai_compatible --base-url http://localhost:11434/v1 --model llama3.2
+testo ai status
+testo ai summary [--cycle NAME | --run-id ID] [--refresh]
+```
+
+- **`setup`** detects, in order: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY` (Gemini's free tier through its OpenAI-compatible endpoint), then the Claude Code CLI. `--provider`, `--model`, `--base-url` and `--key-env` override. Only the *name* of the key's environment variable is saved, never the key. Exit `2` when nothing is found.
+- **`status`** prints the provider, model, where the settings came from and whether the key variable is set.
+- **`summary`** prints the AI summary of the latest failed run (of `--cycle`, or `--run-id`), generating and storing it on first use so the UI shows the same. Exit `2` when there is no failed run or the provider can't answer.
+- **In CI**, set `TESTO_AI_PROVIDER` (`openai`, `anthropic`, `openai_compatible`, `claude_code`) with `TESTO_AI_MODEL`, `TESTO_AI_BASE_URL`, `TESTO_AI_KEY_ENV` and `TESTO_AI_TIMEOUT_S` (default `60`): they win over the settings file. The GitHub Action's `ai-summary: "true"` input adds the summary to the job summary and comment (`testo report markdown --ai`).
 
 ---
 

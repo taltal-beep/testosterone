@@ -62,6 +62,23 @@ steps:
 - `coverage` (optional): coverage report(s) your tests write, space-separated (Cobertura or
   JaCoCo XML, LCOV, Go cover profile). Line coverage is stored with the run, and the summary and
   PR comment show it and how much it moved against the baseline
+- `server-url`, `server-token` (optional): also upload each recorded run to a
+  [team server](https://taltal-beep.github.io/testosterone/docs/processes-and-guides/team-server/)
+  (`testo ingest --server`), with the token from a secret (`${{ secrets.TESTO_API_TOKEN }}`).
+  The summary and comment still come from the Actions-cache history; a failed upload is a warning
+- `ai-summary` (optional, default `false`): add an AI summary of the failures to a failed run's
+  summary and comment (`testo report markdown --ai`). Set the provider in the step's `env`:
+  `TESTO_AI_PROVIDER` (`openai`, `anthropic`, `openai_compatible`), `TESTO_AI_MODEL`,
+  `TESTO_AI_BASE_URL`, and the key from a secret (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or
+  `TESTO_AI_KEY_ENV` naming another variable). A provider that doesn't answer is one line, not a failure
+- `comment-artifact` (optional, default `false`): on `pull_request` events, upload the comment as
+  a `testo-comment` artifact instead of posting it (output `comment_dir`), for pull requests from
+  forks, whose token is read-only. A second workflow posts it with `post-comments-from`
+- `post-comments-from` (optional): in a `workflow_run` workflow, only post the comments a
+  `comment-artifact` run left in this folder, on the open pull request whose head is the commit
+  that run tested (never a number from the artifact). Files must start with the
+  `<!-- testo-summary:` marker; `@` mentions are defused. Runs nothing else.
+  `testo init --forks` writes both workflows; see [Pull requests from forks](#pull-requests-from-forks)
 - `github-token` (optional, default `${{ github.token }}`): token for the comment and issues
 
 The summary is `testo report markdown`: pass/fail counts, a per-stage table, failing tests and
@@ -75,6 +92,7 @@ a `database.url` / team server shared between jobs.
 - `status` (`success`, `failure`, `invalid_input`, `infra_failure`, `internal_error`)
 - `summary_json`: the final `plan_finished` (or `error`) NDJSON event
 - `summary_path`: the same JSON saved under `$RUNNER_TEMP/testo-summary.json`
+- `comment_dir`: with `comment-artifact` on a pull request, the folder with the comment files
 
 ## Usage
 
@@ -93,6 +111,50 @@ jobs:
 
 with `permissions: { contents: read, pull-requests: write }` on the job for the comment
 (add `issues: write` for `flaky-issues`).
+
+## Pull requests from forks
+
+A fork's pull request gets a read-only `GITHUB_TOKEN`, so the comment can't be posted from its
+run. Leave it as an artifact there and post it from a `workflow_run` workflow, which runs in
+your repository with a token that can write and checks out no code from the fork:
+
+```yaml
+# .github/workflows/testosterone.yml (the test workflow)
+      - uses: taltal-beep/testosterone@v1
+        with:
+          cycle: unit
+          comment-on-pr: "true"
+          comment-artifact: "true"
+```
+
+```yaml
+# .github/workflows/testosterone-comment.yml
+name: Testosterone comment
+on:
+  workflow_run:
+    workflows: [Testosterone]
+    types: [completed]
+permissions:
+  actions: read
+  pull-requests: write
+jobs:
+  comment:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        continue-on-error: true  # no artifact: nothing to comment
+        with:
+          name: testo-comment
+          path: testo-comment
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+      - uses: taltal-beep/testosterone@v1
+        with:
+          post-comments-from: testo-comment
+```
+
+`testo init --forks` writes both.
 
 ## Migrating from the v1.0 `uqo` action
 

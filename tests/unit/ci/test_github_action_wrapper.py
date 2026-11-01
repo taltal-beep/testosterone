@@ -524,3 +524,81 @@ def test_has_config_sees_pyproject_tables(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text("[tool.testosterone]\nversion = 1\n")
     assert module.has_config(tmp_path, "")
     assert module.has_config(tmp_path / "nope", "ci/testo.yaml")
+
+
+def _plain_env(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    for key, value in _github_env(tmp_path, event="push").items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("GITHUB_WORKSPACE", str(tmp_path))
+    monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    for key in ("TESTO_HISTORY_CACHED", "TESTO_HISTORY_RESTORED_KEY", "TESTO_INPUT_SERVER_URL"):
+        monkeypatch.delenv(key, raising=False)
+
+
+def test_server_url_uploads_the_recorded_results_after_the_local_run(
+    tmp_path: Path,
+    monkeypatch,  # noqa: ANN001
+) -> None:
+    module = _load_wrapper_module()
+    calls: list[list[str]] = []
+    envs: list[dict] = []
+    fake = _fake_run(calls)
+
+    def recording_run(cmd, **kwargs):  # noqa: ANN001
+        envs.append(dict(kwargs.get("env") or {}))
+        return fake(cmd, **kwargs)
+
+    monkeypatch.setattr(module.subprocess, "run", recording_run)
+    _plain_env(tmp_path, monkeypatch)
+    monkeypatch.setenv("TESTO_SERVER_URL", "https://old.example")  # must not divert the local run
+    monkeypatch.setenv("TESTO_INPUT_SERVER_URL", "https://testo.example.com")
+    monkeypatch.setenv("TESTO_INPUT_SERVER_TOKEN", "s3cret")
+
+    assert module.main(["--annotations", "false", "--results", "junit.xml"]) == 0
+
+    assert calls[0][:3] == ["testo", "ingest", "junit.xml"]
+    assert "TESTO_SERVER_URL" not in envs[0]
+    upload = calls[-1]
+    assert upload[:3] == ["testo", "ingest", "junit.xml"]
+    assert upload[upload.index("--server") + 1] == "https://testo.example.com"
+    assert upload[upload.index("--cycle") + 1] == "my-repo"
+    assert "s3cret" not in upload  # the token goes in the environment, not argv
+    assert envs[-1]["TESTO_API_TOKEN"] == "s3cret"
+
+
+def test_a_cycle_run_uploads_its_stage_results(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    module = _load_wrapper_module()
+    calls: list[list[str]] = []
+    monkeypatch.setattr(module.subprocess, "run", _fake_run(calls, plan="unit"))
+    _plain_env(tmp_path, monkeypatch)
+    (tmp_path / "testosterone.yaml").write_text(
+        "version: 1\ncycles:\n  unit:\n    stages:\n      - {name: api, equipment: pytest}\n",
+        encoding="utf-8",
+    )
+    stage_results = tmp_path / "artifacts" / "unit" / "api" / "allure-results"
+    stage_results.mkdir(parents=True)
+    monkeypatch.setenv("TESTO_INPUT_SERVER_URL", "https://testo.example.com")
+
+    module.main(["--annotations", "false"])
+
+    upload = calls[-1]
+    assert upload[:3] == ["testo", "ingest", str(stage_results)]
+    assert upload[upload.index("--stage") + 1] == "api"
+
+
+def test_empty_history_restore_is_said_in_the_job_summary(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    module = _load_wrapper_module()
+    monkeypatch.setattr(module.subprocess, "run", _fake_run([]))
+    _plain_env(tmp_path, monkeypatch)
+    monkeypatch.setenv("TESTO_HISTORY_CACHED", "true")
+    monkeypatch.setenv("TESTO_HISTORY_RESTORED_KEY", "")
+
+    module.main(["--annotations", "false"])
+
+    assert "No earlier run history" in (tmp_path / "summary.md").read_text(encoding="utf-8")
+    assert (
+        module.history_note({"TESTO_HISTORY_CACHED": "true", "TESTO_HISTORY_RESTORED_KEY": "k"})
+        is None
+    )
+    assert module.history_note({"TESTO_HISTORY_CACHED": "false"}) is None

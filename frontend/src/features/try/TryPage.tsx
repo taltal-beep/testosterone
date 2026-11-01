@@ -113,7 +113,7 @@ function Results({ report, names }: { report: JunitReport; names: string[] }) {
           and records a first run:
         </p>
         <pre className="mt-2 overflow-x-auto rounded-xl bg-ink-950/80 p-3 font-mono text-xs text-ink-100" data-testid="try-setup">
-          {"pip install 'testo-core[api]'\ntesto init --dry-run   # see the files first\ntesto init\ntesto ui"}
+          {"pip install 'testo-core[api]'\ntesto init --dry-run   # see the files first\ntesto init --pr        # write them and open the pull request\ntesto ui"}
         </pre>
         <p className="mt-2 text-xs text-ink-400">
           No Python? <code className="font-mono">uvx --from testo-core testo init</code>. Only want to record results

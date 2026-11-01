@@ -42,9 +42,17 @@ def detect_ci(repo: Path) -> str | None:
     return None
 
 
-def ci_file_text(system: str, facts: ProjectFacts, *, cycle: str, branch: str) -> str:
+def ci_file_text(
+    system: str,
+    facts: ProjectFacts,
+    *,
+    cycle: str,
+    branch: str,
+    server: str = "",
+    forks: bool = False,
+) -> str:
     if system == "github":
-        return github_workflow(facts, cycle=cycle, branch=branch)
+        return github_workflow(facts, cycle=cycle, branch=branch, server=server, forks=forks)
     if system == "gitlab":
         return gitlab_ci(facts, cycle=cycle)
     if system == "jenkins":
@@ -159,8 +167,24 @@ def _github_setup(facts: ProjectFacts, language: str) -> list[str]:
     return out
 
 
-def github_workflow(facts: ProjectFacts, *, cycle: str, branch: str = "main") -> str:
-    """``.github/workflows/testosterone.yml``: set up the stacks, then run *cycle* with the Action."""
+SERVER_TOKEN_SECRET = "TESTO_API_TOKEN"
+
+
+def github_workflow(
+    facts: ProjectFacts,
+    *,
+    cycle: str,
+    branch: str = "main",
+    server: str = "",
+    forks: bool = False,
+) -> str:
+    """``.github/workflows/testosterone.yml``: set up the stacks, then run *cycle* with the Action.
+
+    With *server*, each run is also uploaded to that team server, with the token
+    from the ``TESTO_API_TOKEN`` repository secret. With *forks*, the comment is
+    left as an artifact for :func:`comment_workflow` to post, so pull requests
+    from forks (read-only token) get one too.
+    """
     names = ", ".join(s.label for s in facts.stacks) or "your tests"
     lines = [
         f"# Written by `testo init`. Runs the {_q(cycle)} cycle from testosterone.yaml ({names})",
@@ -173,7 +197,11 @@ def github_workflow(facts: ProjectFacts, *, cycle: str, branch: str = "main") ->
         "  pull_request:",
         "permissions:",
         "  contents: read",
-        "  pull-requests: write  # the pull request comment",
+        *(
+            ["  # The comment is posted by testosterone-comment.yml, which can write."]
+            if forks
+            else ["  pull-requests: write  # the pull request comment"]
+        ),
         "jobs:",
         "  tests:",
         "    runs-on: ubuntu-latest",
@@ -188,10 +216,63 @@ def github_workflow(facts: ProjectFacts, *, cycle: str, branch: str = "main") ->
         f"          cycle: {_q(cycle)}",
         '          comment-on-pr: "true"',
     ]
+    if forks:
+        lines.append('          comment-artifact: "true"  # posted by testosterone-comment.yml')
     if "python" in _languages(facts.stacks):
         # The Action installs testo into this Python, so pytest sees the project's packages.
         lines.append(f"          python-version: {_q(facts.python_version)}")
+    if server:
+        lines += [
+            f"          server-url: {_q(server)}  # also upload each run to the team server",
+            f"          server-token: ${{{{ secrets.{SERVER_TOKEN_SECRET} }}}}",
+        ]
     return "\n".join(lines) + "\n"
+
+
+COMMENT_WORKFLOW_PATH = ".github/workflows/testosterone-comment.yml"
+
+
+def comment_workflow(workflow_name: str = "Testosterone") -> str:
+    """The ``workflow_run`` workflow that posts the comment a fork's run left as an artifact.
+
+    It runs in the base repository with a token that can write, checks out no
+    code from the fork and only posts files that look like Testosterone comments,
+    on the pull request whose head is the commit that was tested.
+    """
+    return (
+        "\n".join(
+            [
+                "# Written by `testo init --forks`. Pull requests from forks get a read-only token,",
+                "# so the test workflow leaves its comment as an artifact and this one posts it.",
+                "# It runs no code from the pull request.",
+                "# Docs: https://taltal-beep.github.io/testosterone/docs/",
+                "name: Testosterone comment",
+                "on:",
+                "  workflow_run:",
+                f"    workflows: [{_q(workflow_name)}]",
+                "    types: [completed]",
+                "permissions:",
+                "  actions: read  # download the artifact",
+                "  pull-requests: write  # the comment",
+                "jobs:",
+                "  comment:",
+                "    if: github.event.workflow_run.event == 'pull_request'",
+                "    runs-on: ubuntu-latest",
+                "    steps:",
+                "      - uses: actions/download-artifact@v4",
+                "        continue-on-error: true  # no artifact: nothing to comment",
+                "        with:",
+                "          name: testo-comment",
+                "          path: testo-comment",
+                "          run-id: ${{ github.event.workflow_run.id }}",
+                "          github-token: ${{ github.token }}",
+                f"      - uses: {ACTION_REF}",
+                "        with:",
+                "          post-comments-from: testo-comment",
+            ]
+        )
+        + "\n"
+    )
 
 
 # --- other CI systems: the project's own test command, then `testo ingest` -------------------

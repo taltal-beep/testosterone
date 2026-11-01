@@ -19,6 +19,11 @@ for monorepos, shows the stages it found and asks before writing. ``--check``
 asks each runner to list its tests (:mod:`testo_core.services.stage_check`) and
 leaves out stages that have none.
 
+``testo init --pr`` then commits what it wrote on a new branch, pushes it and
+opens a pull request (:mod:`testo_core.services.setup_pr`); ``--dependabot``
+also writes ``.github/dependabot.yml``; ``--forks`` adds the workflow that
+posts the comment on pull requests from forks.
+
 ``testo init --interactive`` is the older question-by-question wizard.
 """
 
@@ -186,6 +191,30 @@ def init(
     path: Path | None = typer.Option(
         None, "--path", help="With --interactive: output path (prompted when omitted)."
     ),
+    open_pr: bool = typer.Option(
+        False,
+        "--pr",
+        help="Then commit the written files on a new branch, push it and open a pull request "
+        "(needs git and the GitHub CLI; without gh, prints the commands left).",
+    ),
+    server: str = typer.Option(
+        "",
+        "--server",
+        help="Also upload every CI run to this team server (https://...). The workflow reads "
+        "the token from the TESTO_API_TOKEN secret; with gh and $TESTO_API_TOKEN set, "
+        "init stores the secret too.",
+    ),
+    forks: bool = typer.Option(
+        False,
+        "--forks",
+        help="GitHub: also comment on pull requests from forks (their token is read-only): "
+        "the test workflow uploads the comment and a second workflow posts it.",
+    ),
+    dependabot: bool = typer.Option(
+        False,
+        "--dependabot",
+        help="Also write .github/dependabot.yml (weekly GitHub Actions updates) when there is none.",
+    ),
 ) -> None:
     """Detect the project's test runners, write testosterone.yaml and the CI workflow, record a first run."""
     if interactive:
@@ -219,6 +248,12 @@ def init(
         )
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
+    from testo_core.cli.server_url import server_url_problem
+
+    server_url = (server or "").strip().rstrip("/")
+    problem = server_url_problem(server_url) if server_url else None
+    if problem:
+        raise typer.BadParameter(problem, param_hint="--server")
     cycle_name = (cycle or "").strip() or project_setup.cycle_name_for(repo)
     if scan:
         _print_stages(console, facts)
@@ -246,8 +281,20 @@ def init(
             # Never edit someone's pipeline: write ours next to it and say how to wire it in.
             target = repo / side_file
             ci_hint = _INCLUDE_HINTS[ci_kind]
-        text = ci_templates.ci_file_text(ci_kind, facts, cycle=cycle_name, branch=branch)
+        text = ci_templates.ci_file_text(
+            ci_kind, facts, cycle=cycle_name, branch=branch, server=server_url, forks=forks
+        )
         files.append((target, text, target.exists() and not force))
+    if forks and ci_kind == "github":
+        poster = repo / ci_templates.COMMENT_WORKFLOW_PATH
+        files.append((poster, ci_templates.comment_workflow(), poster.exists() and not force))
+    elif forks:
+        console.print("[muted]--forks only changes GitHub Actions workflows; ignored.[/]")
+    if dependabot:
+        from testo_core.services.setup_pr import DEPENDABOT_PATH, dependabot_yaml
+
+        bot = repo / DEPENDABOT_PATH
+        files.append((bot, dependabot_yaml(), bot.exists()))
 
     if dry_run:
         for target, text, keep in files:
@@ -281,19 +328,80 @@ def init(
         gitignore.write_text(before + sep + block, encoding="utf-8")
         console.print(f"[ok]Added {', '.join(missing)} to .gitignore[/]")
 
+    if server_url:
+        _server_secret(console, repo=repo, ci_kind=ci_kind, server=server_url)
+
     code = 0
     if run_first:
         code = _first_run(console=console, repo=repo, cycle=cycle_name, config=config_path)
 
-    added = " ".join(str(t.relative_to(repo)) for t, _, keep in files if not keep)
+    written = [t.relative_to(repo).as_posix() for t, _, keep in files if not keep]
+    if missing:
+        written.append(".gitignore")
+    if open_pr:
+        if _publish(console, repo=repo, files=written, base=branch, cycle=cycle_name):
+            raise typer.Exit(code=code)
+        written = []  # _publish already said what is left to do
     console.print("\nNext:")
-    if added:
-        console.print(f"  git add {added} .gitignore && git commit -m 'ci: add Testosterone'")
+    if written:
+        added = " ".join(written)
+        console.print(f"  git add {added} && git commit -m 'ci: add Testosterone'")
+        console.print("  (or next time: testo init --pr)")
     console.print(
         "  testo ui          # the run history in your browser (pip install 'testo-core\\[api]')"
     )
     console.print(f"  testo run --cycle {cycle_name}")
     raise typer.Exit(code=code)
+
+
+def _server_secret(console: Console, *, repo: Path, ci_kind: str, server: str) -> None:
+    """``--server``: store ``$TESTO_API_TOKEN`` as the repository secret the workflow reads."""
+    from testo_core.services.ci_templates import SERVER_TOKEN_SECRET
+    from testo_core.services.setup_pr import set_repo_secret
+
+    if ci_kind != "github":
+        console.print(
+            f"To upload to {server} from {ci_kind}, add `--server {server}` to the testo ingest "
+            f"step and give the job a {SERVER_TOKEN_SECRET} variable (masked)."
+        )
+        return
+    token = os.environ.get(SERVER_TOKEN_SECRET, "").strip()
+    if not token:
+        console.print(
+            f"The workflow uploads to {server} with the {SERVER_TOKEN_SECRET} secret. Add it "
+            f"(Settings → Secrets and variables → Actions), or run init again with "
+            f"{SERVER_TOKEN_SECRET} set and gh installed to store it."
+        )
+        return
+    error = set_repo_secret(repo, SERVER_TOKEN_SECRET, token)
+    if error:
+        console.print(f"[warn]Couldn't store the {SERVER_TOKEN_SECRET} secret: {error}[/]")
+    else:
+        console.print(f"[ok]Stored {SERVER_TOKEN_SECRET} as a repository secret[/]")
+
+
+def _publish(console: Console, *, repo: Path, files: list[str], base: str, cycle: str) -> bool:
+    """``--pr``: branch, commit, push, pull request. True when the pull request is open."""
+    from testo_core.services.setup_pr import open_setup_pr
+
+    if not files:
+        console.print("\nNothing new was written, so there is no pull request to open.")
+        return False
+    console.print(f"\nOpening a pull request into {base} with: {', '.join(files)}")
+    result = open_setup_pr(repo, files=files, base=base, cycle=cycle)
+    if result.url:
+        console.print(f"[ok]Opened {result.url}[/] (branch {result.branch})")
+        console.print(
+            "Its comment has no baseline yet: merge it, and pull requests after the first "
+            f"run on {base} are compared with it."
+        )
+        return True
+    console.print(f"[warn]Couldn't finish the pull request: {result.error}[/]")
+    if result.todo:
+        console.print("Left to do:")
+        for line in result.todo:
+            console.print(f"  {line}", markup=False, highlight=False)
+    return False
 
 
 def _print_stages(console: Console, facts: ProjectFacts) -> None:
