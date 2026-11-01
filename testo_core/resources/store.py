@@ -39,7 +39,6 @@ WAITER_TTL_S: Final[float] = 30.0
 FORGET_AFTER_S: Final[float] = 7 * 24 * 3600.0
 _RESEEN_AFTER_S: Final[float] = 3600.0
 # (database URL, table) pairs whose columns are known to be up to date.
-_COLUMNS_CHECKED: set[tuple[str, str]] = set()
 
 
 @dataclass(frozen=True)
@@ -136,23 +135,11 @@ class LeaseStore:
     """Leases on a SQLAlchemy engine (the run-history DB by default)."""
 
     def __init__(self, engine: Any = None) -> None:
-        from testo_core.repository.db_config import get_engine
-        from testo_core.repository.models import (
-            ResourceAction,
-            ResourceItemRow,
-            ResourceLease,
-            ResourceWaiter,
-        )
+        from testo_core.repository.db_config import create_db_and_tables, get_engine
 
         self._engine = engine if engine is not None else get_engine()
-        tables = (
-            ResourceItemRow.__table__,  # type: ignore[attr-defined]
-            ResourceLease.__table__,  # type: ignore[attr-defined]
-            ResourceWaiter.__table__,  # type: ignore[attr-defined]
-            ResourceAction.__table__,  # type: ignore[attr-defined]
-        )
-        for table in tables:
-            _create_table(self._engine, table)
+        # Migrations own the schema (and add the columns this table gained over time).
+        create_db_and_tables(self._engine)
 
     # -- taking and giving back -------------------------------------------------
 
@@ -536,53 +523,6 @@ class LeaseStore:
                 session.commit()
             except IntegrityError:  # two clients described a new pool at once; one is enough
                 session.rollback()
-
-
-def _create_table(engine: Any, table: Any) -> None:
-    """Create ``table`` if missing. Parallel workers start at once, so another may win the race."""
-    from sqlalchemy import inspect
-    from sqlalchemy.exc import DatabaseError
-
-    try:
-        table.create(engine, checkfirst=True)
-    except DatabaseError:
-        if not inspect(engine).has_table(table.name):
-            raise
-    _add_missing_columns(engine, table)
-
-
-def _add_missing_columns(engine: Any, table: Any) -> None:
-    """Add columns these tables gained after a database first created them (no migrations here)."""
-    from sqlalchemy import inspect, text
-    from sqlalchemy.exc import DatabaseError
-
-    checked = (str(engine.url), table.name)
-    if checked in _COLUMNS_CHECKED:
-        return
-    have = {c["name"] for c in inspect(engine).get_columns(table.name)}
-    for column in table.columns:
-        if column.name in have:
-            continue
-        default = column.default.arg if column.default is not None else None
-        if isinstance(default, bool):
-            literal = "true" if default else "false"
-        elif isinstance(default, (int, float)):
-            literal = repr(default)
-        else:
-            literal = "''"
-        kind = column.type.compile(dialect=engine.dialect)
-        try:
-            with engine.begin() as conn:
-                conn.execute(
-                    text(
-                        f"ALTER TABLE {table.name} ADD COLUMN {column.name} {kind} "
-                        f"NOT NULL DEFAULT {literal}"
-                    )
-                )
-        except DatabaseError:  # another worker added it first
-            if column.name not in {c["name"] for c in inspect(engine).get_columns(table.name)}:
-                raise
-    _COLUMNS_CHECKED.add(checked)
 
 
 def _lease(row: Any, item: ResourceItem | None, *, clean: bool = False) -> Lease:
