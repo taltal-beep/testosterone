@@ -62,8 +62,15 @@ services:
       TESTO_BACKUP_EVERY_S: ${TESTO_BACKUP_EVERY_S:-86400}
     volumes:
       - testo_data:/data
+    # Healthy while the newest backup is younger than two intervals.
     healthcheck:
-      disable: true
+      test:
+        - CMD-SHELL
+        - find /data/backups -name 'testo-*.tar.gz' -mmin -$$((TESTO_BACKUP_EVERY_S / 30 + 1)) | grep -q .
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     depends_on:
       postgres:
         condition: service_healthy
