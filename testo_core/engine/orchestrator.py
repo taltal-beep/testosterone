@@ -176,6 +176,12 @@ def run_plan(
 
     renderer.handle(PlanFinished(result=plan_result))
 
+    # Before anything is recorded or reported: hide secrets a test printed into its
+    # results or logs (TESTO_REDACT=0 turns it off; TESTO_REDACT_PATTERNS adds your own).
+    from testo_core.security.redaction import redact_run_artifacts
+
+    redact_run_artifacts(plan_artifacts)
+
     if persist:
         from testo_core.persistence import composite_backend
 
