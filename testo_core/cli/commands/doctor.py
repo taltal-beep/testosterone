@@ -159,6 +159,24 @@ def doctor(
     else:
         table.add_row("Database", "[dim]SKIP[/]", "no database.url / DATABASE_URL")
 
+    from testo_core.services.update_check import check as update_check
+    from testo_core.services.update_check import enabled as update_check_enabled
+
+    update = update_check()
+    if update.available:
+        table.add_row(
+            "testo-core",
+            "[warn]WARN[/]",
+            f"{update.latest} is out (you have {update.current}): pip install -U testo-core",
+        )
+    else:
+        detail = update.current
+        if update.latest:
+            detail += " (the newest)"
+        elif not update_check_enabled():
+            detail += " (update check off: CI or TESTO_NO_UPDATE_CHECK)"
+        table.add_row("testo-core", "[ok]PASS[/]", detail)
+
     console.print(table)
     if hard_fail:
         console.print("[fail]One or more required checks failed.[/]")

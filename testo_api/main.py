@@ -29,6 +29,7 @@ from testo_api.routes.project_health import router as project_health_router
 from testo_api.routes.quarantine import router as quarantine_router
 from testo_api.routes.resources import router as resources_router
 from testo_api.routes.triage import router as triage_router
+from testo_api.routes.version import router as version_router
 from testo_api.security import (
     accounts_enabled,
     add_security_headers,
@@ -154,6 +155,7 @@ def create_app() -> FastAPI:
     app.include_router(triage_router)
     app.include_router(quarantine_router)
     app.include_router(resources_router)
+    app.include_router(version_router)
 
     STATIC_HISTORY_ROOT.mkdir(parents=True, exist_ok=True)
     # Stage logs (<stage>/run.log) open in the browser instead of downloading.

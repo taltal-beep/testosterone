@@ -315,6 +315,16 @@ def main(argv: list[str] | None = None) -> int:
         # (or the help) instead of a traceback, with Click's exit code.
         _show_usage_error(exc)
         return int(getattr(exc, "exit_code", 2))
+    except ModuleNotFoundError as exc:
+        from testo_core.cli.missing_module import missing_module_hint
+
+        hint = missing_module_hint(exc.name)
+        if hint is None:
+            raise
+        typer.echo(f"No module named {exc.name!r}. {hint}", err=True)
+        from testo_core.engine.exit_codes import EngineExitCode
+
+        return int(EngineExitCode.INVALID_INPUT)
 
     # In ``standalone_mode=False`` Click captures ``typer.Exit`` and returns
     # its exit code instead of raising. Treat the result as an exit code if

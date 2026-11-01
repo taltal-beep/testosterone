@@ -63,13 +63,9 @@ def ui(
     """Serve the web UI and the API on http://127.0.0.1:PORT for this machine's run history."""
     if (repo or run_id) and not from_github:
         raise typer.BadParameter("only with --from-github", param_hint="--repo/--run-id")
-    try:
-        import uvicorn  # type: ignore[import-not-found]  # noqa: F401
-
-        from testo_api.ui import ui_dir
-    except ModuleNotFoundError:
-        typer.echo("The web UI needs the API extra: pip install 'testo-core[api]'", err=True)
-        raise typer.Exit(int(EngineExitCode.INVALID_INPUT)) from None
+    if not _api_extra_ready():
+        raise typer.Exit(int(EngineExitCode.INVALID_INPUT))
+    from testo_api.ui import ui_dir
 
     if ui_dir() is None:
         typer.echo(_BUILD_HINT, err=True)
@@ -113,3 +109,48 @@ def _use_github_history(*, repo: str | None, run_id: str | None) -> None:
         f"History from {artifact.name} (workflow run {artifact.run_id}, {artifact.created_at}). "
         "Runs, tests, flaky and Compare work; HTML reports and attachments stay in CI."
     )
+
+
+def _has_api_extra() -> bool:
+    import importlib
+
+    importlib.invalidate_caches()
+    try:
+        import fastapi  # noqa: F401
+        import uvicorn  # type: ignore[import-not-found]  # noqa: F401
+    except ModuleNotFoundError:
+        return False
+    return True
+
+
+def _api_extra_ready() -> bool:
+    """True when the ``api`` extra is importable; in a terminal, offer to install it first."""
+    import subprocess
+    import sys
+
+    if _has_api_extra():
+        return True
+    from testo_core import __version__
+
+    spec = f"testo-core[api]=={__version__}"
+    typer.echo("The web UI needs the api extra (FastAPI and uvicorn).", err=True)
+    if not (sys.stdin.isatty() and sys.stdout.isatty()) or not typer.confirm(
+        f"Install it into this Python now ({sys.executable} -m pip install '{spec}')?",
+        default=True,
+    ):
+        typer.echo(f"Install it with: pip install '{spec}'", err=True)
+        return False
+    proc = subprocess.run(  # noqa: S603 — this interpreter's pip, fixed argv
+        [sys.executable, "-m", "pip", "install", spec], check=False
+    )
+    if proc.returncode != 0:
+        typer.echo(
+            f"pip couldn't install it (exit {proc.returncode}). With pipx: "
+            "pipx install --force 'testo-core[api]'; with uv: uvx --from 'testo-core[api]' testo ui",
+            err=True,
+        )
+        return False
+    if _has_api_extra():
+        return True
+    typer.echo("Installed. Run `testo ui` again.", err=True)
+    return False

@@ -300,7 +300,7 @@ testo ui --from-github       # the history the GitHub Action keeps, via the gh C
 | `--repo OWNER/NAME` | this checkout's | With `--from-github`: another repository |
 | `--run-id ID` | newest | With `--from-github`: the history saved by that workflow run |
 
-It starts `testo-api` bound to `127.0.0.1` only (for a shared server use the [Team Server](../Processes%20&%20Guides/Team%20Server.md)) and serves the UI that ships inside the wheel, or the build `TESTO_UI_DIR` points at. The UI's own origin (`http://127.0.0.1:<port>`, `http://localhost:<port>`) is added to `TESTO_CORS_ORIGINS` for this process so it can start runs; every other origin is still refused. Exit `2` when the `[api]` extra is missing or no built UI is found (a source checkout builds one with `scripts/build_ui_bundle.sh`, which needs Node 22).
+Without the `[api]` extra, in a terminal it offers to install it into the running Python (`python -m pip install 'testo-core[api]==<this version>'`) and goes on; elsewhere it prints the command. It starts `testo-api` bound to `127.0.0.1` only (for a shared server use the [Team Server](../Processes%20&%20Guides/Team%20Server.md)) and serves the UI that ships inside the wheel, or the build `TESTO_UI_DIR` points at. The UI's own origin (`http://127.0.0.1:<port>`, `http://localhost:<port>`) is added to `TESTO_CORS_ORIGINS` for this process so it can start runs; every other origin is still refused. Exit `2` when the `[api]` extra is missing or no built UI is found (a source checkout builds one with `scripts/build_ui_bundle.sh`, which needs Node 22).
 
 ---
 
@@ -537,6 +537,8 @@ testo doctor -c testosterone.yaml
 ```
 
 **Output:** Rich table with Check / Status / Detail rows (`PASS`, `FAIL`, `WARN`, `SKIP`).
+
+The `testo-core` row says when PyPI has a newer release (`WARN`, with the `pip install -U` line; never a failure). The check asks `https://pypi.org/pypi/testo-core/json` at most once a day (the answer is cached in `~/.cache/testosterone/update-check.json`), sends nothing about the project, and is off in CI (`CI`, `GITHUB_ACTIONS`, `GITLAB_CI`, ... set) and with `TESTO_NO_UPDATE_CHECK=1`. The web UI's sidebar shows the same (`GET /api/v1/version`).
 
 Exits **2** on hard failures (config or missing required executables) — see [Troubleshooting and Error Codes § Commands that use exit codes](Troubleshooting%20and%20Error%20Codes.md#commands-that-use-exit-codes).
 
@@ -882,6 +884,7 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | Variable | Effect |
 |----------|--------|
 | `DATABASE_URL` | Overrides `database.url` in YAML for archives / list |
+| `TESTO_NO_UPDATE_CHECK` | `1` stops `testo doctor` and the UI from asking PyPI whether a newer testo-core is out (already off in CI) |
 | `TESTO_HOME` | Where per-run report copies (`static/`, `static_reports/`) are written. Default: `./.testo` for a `pip install`, the repository root for a source checkout ([Architecture Overview § Artifact layout](../Architecture/Architecture%20Overview.md#artifact-layout)) |
 | `INFLUXDB_URL`, `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, `INFLUXDB_BUCKET` | Push run KPIs to InfluxDB after each run |
 | `PROMETHEUS_PUSHGATEWAY_URL`, `PROMETHEUS_JOB_NAME` | Push run KPIs to a Prometheus Pushgateway after each run |
