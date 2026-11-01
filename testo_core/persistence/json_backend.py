@@ -50,6 +50,8 @@ class JsonBackend:
                         "error": s.error,
                         "quarantined": list(s.quarantined),
                         "waived_returncode": s.waived_returncode,
+                        "crash_kind": s.crash_kind,
+                        "crash_detail": s.crash_detail,
                         **{
                             k: v
                             for k, v in stage_health_by_name.get(s.stage_name, {}).items()

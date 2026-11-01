@@ -15,6 +15,7 @@ from testo_core.paths import plan_artifacts_dir
 from testo_core.persistence.failure_context import failure_metadata
 from testo_core.persistence.health import compute_stage_health, run_test_totals
 from testo_core.repository.models import RunStatus
+from testo_core.security.redaction import redact_text
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +136,8 @@ class DbBackend:
                             "duration_s": s.duration_s,
                             "quarantined": list(s.quarantined),
                             "waived_returncode": s.waived_returncode,
+                            "crash_kind": s.crash_kind,
+                            "crash_detail": redact_text(s.crash_detail) if s.crash_detail else None,
                             **{
                                 k: v
                                 for k, v in stage_health_by_name.get(s.stage_name, {}).items()
