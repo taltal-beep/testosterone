@@ -123,6 +123,7 @@ nav:
       - Ingest and Team Server: Specs & ADRs/Ingest and Team Server - 2026-10-22.md
       - UI Restyle: Specs & ADRs/UI Restyle - 2026-10-19.md
       - UI Design Review: Specs & ADRs/UI Design Review - 2026-10-31.md
+      - Engineering Health Review: Specs & ADRs/Engineering Health Review - 2026-10-31.md
       - UI Review Fixes: Specs & ADRs/UI Review Fixes - 2026-11-01.md
       - Open Source Features: Specs & ADRs/Open Source Features - 2026-10-19.md
       - GitHub Action PR Comment: Specs & ADRs/GitHub Action PR Comment - 2026-10-19.md
@@ -137,6 +138,7 @@ nav:
       - Flaky Test Quarantine: Specs & ADRs/Flaky Test Quarantine - 2026-10-22.md
       - Alerts Where Developers Look: Specs & ADRs/Alerts Where Developers Look - 2026-10-22.md
       - OpenTelemetry Export: Specs & ADRs/OpenTelemetry Export - 2026-10-30.md
+      - Crash Detection: Specs & ADRs/Crash Detection - 2026-10-31.md
       - Docs Vault and Wiki Sync: Specs & ADRs/Docs Vault and Wiki Sync - 2026-10-07.md
       - Interview Readiness Fixes: Specs & ADRs/Interview Readiness Fixes - 2026-10-07.md
       - Architecture Consolidation: Specs & ADRs/Architecture Consolidation - 2026-10-06.md

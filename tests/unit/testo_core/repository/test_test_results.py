@@ -29,6 +29,7 @@ def _case(status: str, **extra: object) -> dict[str, object]:
         "message": "",
         "stage": "unit",
         "framework": "pytest",
+        "crash": "",
     }
     case.update(extra)
     return case
@@ -36,7 +37,10 @@ def _case(status: str, **extra: object) -> dict[str, object]:
 
 def test_rows_round_trip_as_the_case_map(tmp_path: Path) -> None:
     store = _store(tmp_path)
-    cases = {"a": _case("passed"), "b": _case("failed", name="test_b", message="boom")}
+    cases = {
+        "a": _case("passed"),
+        "b": _case("failed", name="test_b", message="boom", crash="stack_overflow"),
+    }
 
     assert store.replace("run-1", cases) == 2
 

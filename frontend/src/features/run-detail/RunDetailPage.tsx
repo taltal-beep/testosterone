@@ -6,6 +6,7 @@ import { API_BASE, apiClient } from "../../lib/api-client";
 import { Badge, Button, Card, KeyValue, PageHeader, Spinner, StatusPill, TestPyramid, buttonClasses } from "../../components/ui";
 import { countLabel, describeExitCode, formatDuration, formatPercent, formatRunLabel } from "../../lib/format";
 import { AI_SUMMARY_SNAPSHOT_MESSAGE, IS_STATIC_BUILD } from "../../lib/static-backend";
+import { CrashBadge } from "./CrashBadge";
 import { FailingTestsCard } from "./FailingTestsCard";
 
 type RunProvenanceFields = {
@@ -246,32 +247,40 @@ export function RunDetailPage() {
         ) : (
           <ul className="space-y-2 text-sm">
             {(run.stage_health ?? []).map((stage) => (
-              <li key={stage.name} className="flex items-center justify-between gap-2">
-                <span className="text-ink-100">
-                  {stage.name}
-                  {stage.framework ? <span className="ml-2 text-xs text-ink-400">{stage.framework}</span> : null}
-                </span>
-                <span className="flex items-center gap-2">
-                  {artifactHref(`${stage.name}/run.log`) ? (
-                    <a
-                      href={artifactHref(`${stage.name}/run.log`) ?? undefined}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`Log of ${stage.name}`}
-                      className="text-xs text-brand-300 hover:underline"
-                    >
-                      Log
-                    </a>
-                  ) : null}
-                  {stage.total_tests != null && (
-                    <span className="text-xs text-ink-400">
-                      {stage.passed ?? 0}/{stage.total_tests}
-                    </span>
-                  )}
-                  <Badge tone={stage.health_pct == null ? "neutral" : stage.health_pct >= 100 ? "success" : stage.health_pct > 0 ? "warn" : "danger"}>
-                    {formatPercent(stage.health_pct)}
-                  </Badge>
-                </span>
+              <li key={stage.name} className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-ink-100">
+                    {stage.name}
+                    {stage.framework ? <span className="ml-2 text-xs text-ink-400">{stage.framework}</span> : null}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <CrashBadge kind={stage.crash_kind} />
+                    {artifactHref(`${stage.name}/run.log`) ? (
+                      <a
+                        href={artifactHref(`${stage.name}/run.log`) ?? undefined}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`Log of ${stage.name}`}
+                        className="text-xs text-brand-300 hover:underline"
+                      >
+                        Log
+                      </a>
+                    ) : null}
+                    {stage.total_tests != null && (
+                      <span className="text-xs text-ink-400">
+                        {stage.passed ?? 0}/{stage.total_tests}
+                      </span>
+                    )}
+                    <Badge tone={stage.health_pct == null ? "neutral" : stage.health_pct >= 100 ? "success" : stage.health_pct > 0 ? "warn" : "danger"}>
+                      {formatPercent(stage.health_pct)}
+                    </Badge>
+                  </span>
+                </div>
+                {stage.crash_detail ? (
+                  <p className="break-words font-mono text-xs text-danger-300" data-testid="stage-crash">
+                    {stage.crash_detail}
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>

@@ -169,6 +169,9 @@ class StageHealth(ApiModel):
     broken: int | None = None
     skipped: int | None = None
     health_pct: float | None = None
+    # A failed stage's stack overflow or crash: "stack_overflow" | "crash", and the line that showed it.
+    crash_kind: str | None = None
+    crash_detail: str | None = None
 
 
 class RunDetail(ApiModel):
@@ -266,6 +269,8 @@ class FailingTestItem(ApiModel):
     new: bool
     # The cause marked for this message in this cycle, on this failure or an earlier one like it.
     triage: TriageItem | None = None
+    # "stack_overflow" | "crash" when the failure's message or trace shows one.
+    crash_kind: str | None = None
 
 
 class FailureGroupItem(ApiModel):
