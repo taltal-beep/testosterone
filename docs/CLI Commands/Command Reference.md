@@ -621,7 +621,7 @@ testo -v
 
 ## `pytest --testo`
 
-testo-core installs a pytest plugin (entry point `pytest11`, `testo_core/pytest_plugin.py`). It does nothing unless asked:
+testo-core installs a pytest plugin (entry point `pytest11`, `testo_core/pytest_plugin.py`). The `pytest-testo` package ([`integrations/pytest-testo/`](https://github.com/taltal-beep/testosterone/tree/main/integrations/pytest-testo)) installs the same thing under a `pytest-*` name. It does nothing unless asked:
 
 | Option | Effect |
 |--------|--------|
