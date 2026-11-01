@@ -32,6 +32,7 @@ def _stage() -> Stage:
             pool=ResourcePool(name="vms", items=(ResourceItem(id="vm-1"),)), per="test"
         ),
         workers_auto=True,
+        workers_explicit=False,
     )
 
 
@@ -63,7 +64,9 @@ def test_workers_override_changes_only_workers() -> None:
 
     (overridden,) = apply_workers_override(_plan(stage), [stage], 7).stages
 
-    assert overridden == dataclasses.replace(stage, workers=7, workers_auto=False)
+    assert overridden == dataclasses.replace(
+        stage, workers=7, workers_auto=False, workers_explicit=True
+    )
 
 
 def test_fixture_covers_every_stage_field() -> None:

@@ -32,13 +32,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from testo_core.config.schema import QuarantineRule, Stage
+from testo_core.engine import interrupt
 from testo_core.engine.backends import RunnerError, StageProcess, launch
+from testo_core.engine.crash_signatures import CrashScanner, stage_crash
 from testo_core.engine.log_buffer import LogBuffer, drain_stream_into_buffer, merged_env
 from testo_core.engine.quarantine import WAIVABLE_RETURNCODE, QuarantineVerdict
 from testo_core.engine.quarantine import evaluate as evaluate_quarantine
 from testo_core.engine.result import StageResult
+from testo_core.frameworks import pytest_adapter
 from testo_core.frameworks.base import FrameworkAdapter, get_adapter
-from testo_core.reporting.paths import plan_artifacts_dir, safe_child_path
+from testo_core.paths import plan_artifacts_dir, safe_child_path
 
 if TYPE_CHECKING:
     from testo_core.reporting.junit_import import JunitImportResult
@@ -311,11 +314,14 @@ def _run_process_stage(
     quarantine: tuple[QuarantineRule, ...],
     testo_env: Mapping[str, str],
 ) -> StageResult:
+    workers = stage.workers
+    if adapter.name == "pytest" and not stage.workers_explicit:
+        workers = pytest_adapter.default_workers(workers)
     argv = adapter.build_argv(
         target_repo=target_repo,
         results_dir=results_dir,
         stage_args=stage.args,
-        workers=stage.workers,
+        workers=workers,
     )
 
     env = merged_env(parent_env if parent_env is not None else os.environ, stage.extra_env)
@@ -349,7 +355,14 @@ def _run_process_stage(
     timed_out = False
     error: str | None = None
 
-    with LogBuffer(log_path=log_path, on_chunk=on_chunk) as buffer:
+    scanner = CrashScanner()
+
+    def scan_then_forward(chunk: bytes) -> None:
+        scanner.feed(chunk)
+        if on_chunk is not None:
+            on_chunk(chunk)
+
+    with LogBuffer(log_path=log_path, on_chunk=scan_then_forward) as buffer:
         try:
             proc = launch(
                 argv,
@@ -392,7 +405,10 @@ def _run_process_stage(
         )
         reader.start()
 
+        interrupt.register(proc)
         try:
+            if interrupt.requested() is not None:  # the signal came while it was starting
+                proc.terminate()
             returncode = proc.wait(timeout=stage.timeout_s)
         except subprocess.TimeoutExpired:
             timed_out = True
@@ -401,6 +417,16 @@ def _run_process_stage(
             # Timeout contract: rc 124 regardless of the signal the process
             # died from (docs/CLI Commands/Troubleshooting and Error Codes.md).
             returncode = 124
+        finally:
+            interrupt.unregister(proc)
+        stopped_by = interrupt.requested()
+        if stopped_by is not None and not timed_out:
+            error = f"stopped by {interrupt.signal_name(stopped_by)}"
+            returncode = 128 + stopped_by  # 130 for Ctrl-C, 143 for SIGTERM, like a shell
+        if timed_out or stopped_by is not None:
+            # Only when Testosterone stopped the stage: a stage may leave a server
+            # running on purpose for the next one.
+            _sweep_group(proc)
 
         reader.join(timeout=2.0)
         finished_at = time.time()
@@ -433,6 +459,10 @@ def _run_process_stage(
             waived_returncode, returncode = returncode, 0
         _append_run_log(log_path, _quarantine_log_lines(verdict))
 
+    crash = stage_crash(scanner.finish(), returncode=returncode, timed_out=timed_out)
+    if crash is not None:
+        _append_run_log(log_path, [f"[testo] crash detection: {crash.describe()}"])
+
     duration = max(0.0, finished_at - started_at)
     return StageResult(
         stage_name=stage.name,
@@ -451,6 +481,8 @@ def _run_process_stage(
         target_repo=target_repo,
         quarantined=quarantined,
         waived_returncode=waived_returncode,
+        crash_kind=crash.kind if crash else None,
+        crash_detail=crash.describe() if crash else None,
     )
 
 
@@ -538,6 +570,14 @@ def _record_junit_stage(
         quarantined=quarantined,
         waived_returncode=waived_returncode,
     )
+
+
+def _sweep_group(proc: StageProcess) -> None:
+    """Kill whatever the stage left running in its process group after it exited."""
+    try:
+        proc.kill()
+    except (ProcessLookupError, OSError):
+        pass
 
 
 def _terminate(proc: StageProcess) -> int:

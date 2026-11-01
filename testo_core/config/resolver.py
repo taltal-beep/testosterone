@@ -14,10 +14,28 @@ import os
 import re
 from collections.abc import Mapping
 
+from testo_core.config import if_expr
 from testo_core.config.errors import UNSPECIFIED_PLAN, PlanNotFoundError
 from testo_core.config.schema import Plan, Stage, TestosteroneConfig
 
-_ENV_PATTERN = re.compile(r"\$\{env:(?P<name>[A-Za-z_][A-Za-z0-9_]*)(?::-(?P<default>[^}]*))?\}")
+# With TESTO_RUNNER=container a stage runs in a throwaway container that must never
+# see the server's own credentials, so ``${env:...}`` can't copy them in either.
+_SERVER_SECRET_NAME = re.compile(
+    r"^(TESTO_.*|DATABASE_URL|POSTGRES_.*|.*(_API_KEY|_TOKEN|_SECRET|_PASSWORD|_DB_URL))$",
+    re.IGNORECASE,
+)
+
+
+def interpolation_env() -> Mapping[str, str]:
+    """The variables ``${env:...}`` reads: this process's, minus the server's
+    secrets when stages run in containers (``TESTO_RUNNER=container``)."""
+    # Read directly (not engine.backends.runner_kind): config sits below the engine.
+    if (os.environ.get("TESTO_RUNNER") or "host").strip().lower() != "container":
+        return os.environ
+    return {k: v for k, v in os.environ.items() if not _SERVER_SECRET_NAME.match(k)}
+
+
+_ENV_PATTERN = if_expr.ENV_PATTERN
 
 
 def resolve_plan(config: TestosteroneConfig, *, plan_name: str | None) -> Plan:
@@ -42,7 +60,7 @@ def resolve_stages_for_plan(
     env: Mapping[str, str] | None = None,
 ) -> tuple[Stage, ...]:
     """Return only the stages that survive ``${env:...}`` interpolation and ``if`` filtering."""
-    env_map = env if env is not None else os.environ
+    env_map = env if env is not None else interpolation_env()
     out: list[Stage] = []
     for stage in plan.stages:
         if not _eval_if(stage.if_expr, env=env_map):
@@ -63,33 +81,9 @@ def resolve_stages_for_plan(
 
 def _interpolate(value: str, *, env: Mapping[str, str]) -> str:
     """Replace every ``${env:NAME[:-DEFAULT]}`` token with its value."""
-
-    def repl(match: re.Match[str]) -> str:
-        name = match.group("name")
-        default = match.group("default") or ""
-        return env.get(name, default)
-
-    return _ENV_PATTERN.sub(repl, value)
+    return if_expr.interpolate(value, env=env)
 
 
 def _eval_if(expr: str | None, *, env: Mapping[str, str]) -> bool:
-    """Evaluate a simple ``if`` expression.
-
-    Supported grammar (intentionally tiny — never uses ``eval``):
-
-    * ``${env:VAR}`` is interpolated first.
-    * ``LHS == "RHS"`` / ``LHS != "RHS"``  → string compare.
-    * Bare interpolated string → truthy when non-empty/non-zero.
-    """
-    if expr is None or not expr.strip():
-        return True
-
-    text = _interpolate(expr, env=env).strip()
-
-    for op in ("==", "!="):
-        if op in text:
-            lhs, rhs = (part.strip().strip('"').strip("'") for part in text.split(op, 1))
-            return (lhs == rhs) if op == "==" else (lhs != rhs)
-
-    falsy = {"", "0", "false", "no", "off"}
-    return text.lower() not in falsy
+    """Evaluate a stage's ``if:`` (grammar in :mod:`testo_core.config.if_expr`)."""
+    return if_expr.evaluate(expr, env=env)

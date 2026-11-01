@@ -13,6 +13,7 @@ artifact redaction off with ``TESTO_REDACT=0``.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -23,41 +24,44 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 REDACTED = "***REDACTED***"
-_REDACTED = REDACTED
-
 PATTERNS_ENV = "TESTO_REDACT_PATTERNS"
 SWITCH_ENV = "TESTO_REDACT"
 
 _TOKEN_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.DOTALL),
-    re.compile(r"sk-[A-Za-z0-9_\-]{8,}"),
+    # Private key blocks first, before anything inside them matches on its own.
     re.compile(
-        r"(?:api[_-]?key|token|secret)\s*[:=]\s*([\"'])?([A-Za-z0-9_\-]{8,})(\1)?", re.IGNORECASE
+        r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?(?:-----END [A-Z0-9 ]*PRIVATE KEY-----|$)",
+        re.DOTALL,
     ),
-    re.compile(r"(?:password|passwd|pwd)\s*[:=]\s*([\"'])?[^\s\"',;\\]{6,}(\1)?", re.IGNORECASE),
-    re.compile(r"Bearer\s+[A-Za-z0-9_\-.=]{8,}", re.IGNORECASE),
-    re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
-    re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b"),
-    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}\b"),
-    re.compile(r"\bgithub_pat_[A-Za-z0-9_]{30,}\b"),
-    re.compile(r"\bglpat-[A-Za-z0-9_\-]{20,}\b"),
-    re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}\b"),
+    # Well-known token formats: OpenAI/Anthropic, GitHub, GitLab, npm, Slack, AWS, Google.
+    re.compile(r"sk-[A-Za-z0-9_\-]{8,}"),
+    re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})"),
+    re.compile(r"\bglpat-[A-Za-z0-9_\-]{16,}"),
+    re.compile(r"\bnpm_[A-Za-z0-9]{30,}"),
+    re.compile(r"\bxox[abposr]-[A-Za-z0-9\-]{10,}"),
+    re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"),
+    re.compile(r"\bAIza[A-Za-z0-9_\-]{30,}"),
+    # JSON Web Tokens (three base64url parts).
+    re.compile(r"\beyJ[A-Za-z0-9_\-]{5,}\.[A-Za-z0-9_\-]{5,}\.[A-Za-z0-9_\-]*"),
+    # key=value / key: value / "key": "value" for secret-sounding keys.
+    re.compile(
+        r"(?:api[_-]?key|access[_-]?key|token|secret|passw(?:or)?d|passwd|credentials?)"
+        r"[\"']?\s*[:=]\s*([\"'])?([^\s\"',;\\]{6,})(\1)?",
+        re.IGNORECASE,
+    ),
+    re.compile(r"(?:Bearer|Basic)\s+[A-Za-z0-9_\-.~+/=]{8,}", re.IGNORECASE),
     re.compile(r"https://hooks\.slack\.com/services/[A-Za-z0-9/_\-]+"),
-    re.compile(r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}"),
-    # user:password in a URL (keeps the scheme and host, so the message still makes sense)
-    re.compile(r"(?<=://)[^/\s:@\"'\\]+:[^/\s@\"'\\]+(?=@)"),
 )
 _SENSITIVE_KEY_PATTERN = re.compile(
-    r"(^|[_\-\s])(api[_\-\s]?key|token|secret|authorization|password)([_\-\s]|$)",
+    r"(^|[_\-\s])(api[_\-\s]?key|token|secret|authorization|passw(or)?d|passwd|"
+    r"credentials?|private[_\-\s]?key|privatekey|cookie|database[_\-\s]?url|dsn)([_\-\s]|$)",
     re.IGNORECASE,
 )
+_REDACTED = REDACTED
 
-# Artifact files worth scanning: text a runner or importer wrote. Others (traces,
-# screenshots, videos) are binary and left alone.
-TEXT_SUFFIXES = frozenset(
-    {".json", ".xml", ".log", ".txt", ".out", ".err", ".html", ".md", ".ndjson", ".trx", ".csv"}
-)
-MAX_FILE_BYTES = 50 * 1024 * 1024
+
+# Passwords in URLs: scheme://user:password@host keeps the user name.
+_URL_PASSWORD = re.compile(r"(?<=://)([^/\s:@\"'\\]+):[^/\s@\"'\\]+(?=@)")
 
 
 def extra_patterns(env: Mapping[str, str] | None = None) -> tuple[re.Pattern[str], ...]:
@@ -76,8 +80,8 @@ def extra_patterns(env: Mapping[str, str] | None = None) -> tuple[re.Pattern[str
 
 
 def redact_text(text: str, patterns: Iterable[re.Pattern[str]] | None = None) -> str:
-    """``text`` with every match of the built-in (and ``TESTO_REDACT_PATTERNS``) patterns hidden."""
-    redacted = text
+    """``text`` with every built-in (and ``TESTO_REDACT_PATTERNS``) match hidden."""
+    redacted = _URL_PASSWORD.sub(lambda m: f"{m.group(1)}:{_REDACTED}", text)
     for pattern in (*_TOKEN_PATTERNS, *(extra_patterns() if patterns is None else patterns)):
         redacted = pattern.sub(_REDACTED, redacted)
     return redacted
@@ -111,6 +115,39 @@ def redact_error_message(exc: Exception) -> str:
     return redact_text(str(exc))
 
 
+# Artifact files worth scanning: text a runner or importer wrote. Others (traces,
+# screenshots, videos) are binary and left alone.
+TEXT_SUFFIXES = frozenset(
+    {".json", ".xml", ".log", ".txt", ".out", ".err", ".html", ".md", ".ndjson", ".trx", ".csv"}
+)
+MAX_FILE_BYTES = 50 * 1024 * 1024
+
+
+def _clean_json(text: str, patterns: tuple[re.Pattern[str], ...]) -> str:
+    """``text`` redacted; for a JSON file whose text edit broke it, redact value by value."""
+    clean = redact_text(text, patterns)
+    try:
+        json.loads(clean)
+        return clean
+    except ValueError:
+        pass
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return clean  # wasn't valid JSON to begin with
+    return json.dumps(_redact_json(data, patterns), ensure_ascii=False)
+
+
+def _redact_json(value: Any, patterns: tuple[re.Pattern[str], ...]) -> Any:
+    if isinstance(value, str):
+        return redact_text(value, patterns)
+    if isinstance(value, dict):
+        return {k: _redact_json(v, patterns) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redact_json(v, patterns) for v in value]
+    return value
+
+
 def artifact_redaction_enabled(env: Mapping[str, str] | None = None) -> bool:
     raw = ((env if env is not None else os.environ).get(SWITCH_ENV) or "").strip().lower()
     return raw not in {"0", "false", "no", "off"}
@@ -137,7 +174,10 @@ def redact_run_artifacts(root: Path, env: Mapping[str, str] | None = None) -> in
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
-        clean = redact_text(text, patterns)
+        if path.suffix.lower() == ".json":
+            clean = _clean_json(text, patterns)
+        else:
+            clean = redact_text(text, patterns)
         if clean == text:
             continue
         try:

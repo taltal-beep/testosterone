@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from testo_core.history.read_model import latest_run_per_cycle, list_recent_runs
+from testo_core.history.read_model import latest_run_per_cycle, list_cycle_runs
 from testo_core.history.views import CompletedRunView
 from testo_core.reporting.pyramid_data import build_pyramid_model
 from testo_core.reporting.pyramid_viz import PyramidModel, PyramidShape, classify_shape
@@ -34,7 +34,6 @@ from testo_core.services.test_history import TestSummary
 BUILD_WINDOW = 20
 # Items listed per kind in "What to fix first".
 MAX_FINDINGS = 5
-_SCAN_LIMIT = 500
 _FAILED = frozenset({"failed", "broken"})
 
 # How hard each share of bad tests pulls its signal down: 2% flaky tests cost
@@ -228,6 +227,11 @@ def _signals(data: list[_CycleData]) -> list[HealthSignal]:
     ]
 
 
+def _duration(ms: int) -> str:
+    """``850 ms``, ``13.9 s``: how the UI writes durations."""
+    return f"{ms} ms" if ms < 1000 else f"{ms / 1000:.1f} s"
+
+
 def _findings(data: list[_CycleData]) -> list[HealthFinding]:
     """Red cycles first, then flaky, slower, quarantined and skipped tests."""
     found: list[HealthFinding] = []
@@ -239,7 +243,11 @@ def _findings(data: list[_CycleData]) -> list[HealthFinding]:
                     kind="red_cycle",
                     cycle=d.run.cycle or "",
                     title=f"{d.run.cycle} is red",
-                    detail=f"{failing} test{'s' if failing != 1 else ''} failing in the latest run.",
+                    detail=(
+                        f"{failing} test{'s' if failing != 1 else ''} failing in the latest run."
+                        if failing
+                        else "No test failed: a stage failed outside its tests. Its log says why."
+                    ),
                     run_id=d.run.run_id,
                 )
             )
@@ -262,8 +270,8 @@ def _findings(data: list[_CycleData]) -> list[HealthFinding]:
             kind="slower",
             cycle=d.run.cycle or "",
             title=t.name,
-            detail=f"Got slower by {t.slowdown_ms} ms"
-            + (f" (+{t.slowdown_pct}%)." if t.slowdown_pct is not None else "."),
+            detail=f"Got slower by {_duration(t.slowdown_ms or 0)}"
+            + (f" (+{round(t.slowdown_pct)}%)." if t.slowdown_pct is not None else "."),
             test_key=t.key,
         )
         for d, t in slower[:MAX_FINDINGS]
@@ -295,14 +303,13 @@ def _findings(data: list[_CycleData]) -> list[HealthFinding]:
 
 
 def _cycle_data(cycle: str | None) -> list[_CycleData]:
-    latest = latest_run_per_cycle(limit=_SCAN_LIMIT)
+    latest = latest_run_per_cycle()
     if cycle is not None:
         latest = {cycle: latest[cycle]} if cycle in latest else {}
-    recent = list_recent_runs(limit=_SCAN_LIMIT)
     return [
         _CycleData(
             run=run,
-            history=[r for r in recent if r.cycle == name][:BUILD_WINDOW],
+            history=list_cycle_runs(name, limit=BUILD_WINDOW),
             tests=test_history.list_cycle_tests(name).tests,
             quarantined=_quarantined(run),
         )

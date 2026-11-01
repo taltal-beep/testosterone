@@ -54,7 +54,7 @@ def test_generate_sends_the_prompt_and_parses_text_and_usage(
             }
         )
 
-    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+    monkeypatch.setattr("testo_core.services.ai.provider_base.urlopen", _urlopen)
     result = _provider().generate(AiGenerationRequest(prompt="why?", max_output_tokens=50))
 
     assert seen["url"] == "https://api.anthropic.com/v1/messages"
@@ -74,7 +74,9 @@ def test_generate_sends_the_prompt_and_parses_text_and_usage(
 
 @pytest.mark.parametrize("body", [{"content": []}, {"content": [{"text": ""}]}, {}])
 def test_empty_content_is_unavailable(monkeypatch: pytest.MonkeyPatch, body: dict) -> None:
-    monkeypatch.setattr("urllib.request.urlopen", lambda req, timeout: _Response(body))  # noqa: ARG005
+    monkeypatch.setattr(
+        "testo_core.services.ai.provider_base.urlopen", lambda req, timeout: _Response(body)
+    )  # noqa: ARG005
     with pytest.raises(ProviderUnavailableError, match="did not include summary content"):
         _provider().generate(AiGenerationRequest(prompt="x"))
 
@@ -93,7 +95,7 @@ def test_http_errors_map_to_provider_errors(
     def _urlopen(req, timeout):  # noqa: ANN001,ANN202, ARG001
         raise urllib.error.HTTPError(req.full_url, code, "err", {}, io.BytesIO(b"{}"))
 
-    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+    monkeypatch.setattr("testo_core.services.ai.provider_base.urlopen", _urlopen)
     with pytest.raises(error):
         _provider().generate(AiGenerationRequest(prompt="x"))
 
@@ -102,13 +104,13 @@ def test_timeout_and_network_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     def _timeout(req, timeout):  # noqa: ANN001,ANN202, ARG001
         raise TimeoutError
 
-    monkeypatch.setattr("urllib.request.urlopen", _timeout)
+    monkeypatch.setattr("testo_core.services.ai.provider_base.urlopen", _timeout)
     with pytest.raises(ProviderTimeoutError):
         _provider().generate(AiGenerationRequest(prompt="x"))
 
     def _offline(req, timeout):  # noqa: ANN001,ANN202, ARG001
         raise urllib.error.URLError("Name or service not known")
 
-    monkeypatch.setattr("urllib.request.urlopen", _offline)
+    monkeypatch.setattr("testo_core.services.ai.provider_base.urlopen", _offline)
     with pytest.raises(ProviderUnavailableError, match="Anthropic request failed"):
         _provider().generate(AiGenerationRequest(prompt="x"))

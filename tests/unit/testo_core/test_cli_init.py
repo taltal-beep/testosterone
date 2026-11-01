@@ -24,7 +24,7 @@ def test_init_writes_loadable_config(
     out = tmp_path / "testosterone.yaml"
     result = runner.invoke(
         app,
-        ["init", "--path", str(out)],
+        ["init", "--interactive", "--path", str(out)],
         input="\n".join([".", "artifacts", "4", "600", "smoke", ""]) + "\n",
     )
     assert result.exit_code == 0, result.stdout
@@ -43,7 +43,7 @@ def test_init_includes_database_url_when_provided(
     out = tmp_path / "testosterone.yaml"
     result = runner.invoke(
         app,
-        ["init", "--path", str(out)],
+        ["init", "--interactive", "--path", str(out)],
         input="\n".join([".", "artifacts", "4", "600", "nightly", "sqlite:///cli_init.db"]) + "\n",
     )
     assert result.exit_code == 0, result.stdout
@@ -58,7 +58,7 @@ def test_init_aborts_without_overwrite(
     out = tmp_path / "testosterone.yaml"
     out.write_text("version: 1\n", encoding="utf-8")
 
-    result = runner.invoke(app, ["init", "--path", str(out)], input="n\n")
+    result = runner.invoke(app, ["init", "--interactive", "--path", str(out)], input="n\n")
     assert result.exit_code == int(EngineExitCode.INVALID_INPUT)
     assert out.read_text(encoding="utf-8") == "version: 1\n"
 
@@ -72,7 +72,7 @@ def test_init_overwrite_confirmed(
 
     result = runner.invoke(
         app,
-        ["init", "--path", str(out)],
+        ["init", "--interactive", "--path", str(out)],
         input="y\n" + "\n".join([".", "artifacts", "4", "600", "smoke", ""]) + "\n",
     )
     assert result.exit_code == 0, result.stdout

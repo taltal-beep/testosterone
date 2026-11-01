@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-03
-updated: 2026-10-07
+updated: 2026-11-01
 ---
 
 # E2E Harness Operations
@@ -46,6 +46,8 @@ GitLab external:
 - `TESTO_E2E_GITLAB_TOKEN`
 - `TESTO_E2E_GITLAB_GROUP_ID`
 - `TESTO_E2E_GITLAB_BASE_URL` (optional, defaults to `https://gitlab.com/api/v4`)
+
+The scheduled `nightly-external.yml` job also needs the repository variable (not secret) `TESTO_E2E_ENABLED=true`. Without it the run shows as skipped, so a green nightly always means the suite ran. The nightly schedule is paused for now (the workflow runs only when started by hand from the Actions tab); uncomment the `schedule:` lines in the workflow to bring it back.
 
 ## Isolation and naming
 

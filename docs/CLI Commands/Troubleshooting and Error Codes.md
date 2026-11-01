@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Troubleshooting and Error Codes
@@ -24,6 +24,8 @@ Defined in `testo_core/engine/exit_codes.py` as `EngineExitCode`. The process ex
 | `2` | `INVALID_INPUT` | Config or CLI validation failed | Missing YAML, bad schema, unknown cycle, tag mismatch; a mistyped command or option, or bare `testo` (prints the error or the help, no traceback) |
 | `3` | `INFRA_FAILURE` | Infrastructure / runtime dependency failure | Return code `127` (missing binary); `124` (stage timeout); report DB archive failure; Docker/Allure CLI failures |
 | `4` | `INTERNAL_ERROR` | Unexpected engine error | Orchestrator `internal_failure` on uncaught engine exception; empty return-code list in classifier |
+| `130` | `INTERRUPTED` | Stopped by Ctrl-C (SIGINT) | The running stages were stopped, later stages skipped, and the run recorded as failed with `interrupted_by: SIGINT` in its metadata |
+| `143` | `TERMINATED` | Stopped by SIGTERM | A CI job's cancel button or `kill`; handled like `130` |
 
 ### Classification logic
 
@@ -36,7 +38,7 @@ Defined in `testo_core/engine/exit_codes.py` as `EngineExitCode`. The process ex
 - Any other non-zero return code → **1**
 - Otherwise → **0**
 
-Stage timeouts emit `returncode=124` and `timed_out=true`. Engine internal failures set `internal_failure=true` on the stage result (NDJSON `stage_finished` includes both fields).
+Stage timeouts emit `returncode=124` and `timed_out=true`. Each host stage runs in its own process group, so a timeout stops everything the stage started (a server it launched, pytest-xdist workers, browsers), not just the direct child. A stage stopped by a signal gets `returncode` 130 or 143 and `error: stopped by SIGINT` (or `SIGTERM`); `130` / `143` come from `run_plan`, never from `classify_exit_code`. A second Ctrl-C kills the stages outright, a third raises `KeyboardInterrupt`. Engine internal failures set `internal_failure=true` on the stage result (NDJSON `stage_finished` includes both fields).
 
 ### Commands that use exit codes
 
@@ -125,6 +127,7 @@ Emitted by `CIRenderer` and `_NdjsonRecorder`.
 When the executor sets an error string (timeout, missing binary):
 
 - `error` may appear on the in-memory result; the NDJSON mirror in `orchestrator` includes `error` when present on `StageResult`. The mirror also carries `internal_failure` (true only for orchestrator-caught engine exceptions). `CIRenderer` stdout omits both keys.
+- `crash_kind` (`"stack_overflow"`, `"crash"` or `null`) names a failed stage that died of a stack overflow or a crash; the orchestrator mirror adds `crash_detail`, the line that showed it. See [Stack overflow or crash](#stack-overflow-or-crash-exit-1).
 
 ### `plan_finished`
 
@@ -147,6 +150,8 @@ Written to the artifact `events.ndjson` when `run_plan(fail_fast=True)` aborts a
 ```json
 {"event":"plan_aborted","plan":"sample-pytests","reason":"fail_fast","completed_stages":1}
 ```
+
+A run stopped by Ctrl-C or SIGTERM writes the same event with `"reason":"signal"` and `"signal":"SIGINT"` (or `"SIGTERM"`), then `plan_finished` with `exit_code` 130 or 143.
 
 ---
 
@@ -314,6 +319,22 @@ tail -100 artifacts/<cycle>/<stage>/run.log
 
 - Increase `timeout_s` in `defaults:` or per-stage in YAML
 - Fix hanging test; use `testo run --stream` locally to watch live output
+
+---
+
+### Stack overflow or crash (exit 1)
+
+**Symptoms**
+
+- A red **Stack overflow** or **Crashed** badge on the stage or the failing test on the run page, and `💥 stack overflow` / `💥 crashed` in the PR comment
+- `crash_kind` / `crash_detail` on the stage (`stage_finished` NDJSON, `plan_result.json`, the run record), a `crash:` line in the CLI's stage panel, and `[testo] crash detection: …` at the end of `run.log`
+
+Testosterone looks for each runtime's own stack overflow line (Python `RecursionError`, Java/Kotlin `StackOverflowError`, JavaScript `Maximum call stack size exceeded`, Go `goroutine stack exceeds`, Rust `has overflowed its stack`, .NET `Stack overflow.`, Ruby `SystemStackError`, AddressSanitizer `stack-overflow`), for a native crash (`Segmentation fault`, AddressSanitizer `SEGV`), and for a process killed by `SIGSEGV`, `SIGBUS`, `SIGILL`, `SIGABRT` or `SIGFPE` (or Windows `0xC00000FD` / `0xC0000005`). Only failed stages and failed tests are flagged. The table is in `testo_core/engine/crash_signatures.py`; why it works this way: [Crash Detection - 2026-10-31](../Specs%20&%20ADRs/Crash%20Detection%20-%202026-10-31.md).
+
+**Fix**
+
+- Stack overflow: look for recursion with no base case, or two functions calling each other, in the repeating frames of the trace
+- Crash: run the test under a debugger or AddressSanitizer; a crash is a bug in native code (or a C extension), not a failed assertion
 
 ---
 

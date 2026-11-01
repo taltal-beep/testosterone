@@ -12,8 +12,9 @@ from testo_core.history.report_links import local_report_links
 from testo_core.history.views import CompletedRunView, RunSessionView, view_from_record
 from testo_core.repository.db import get_repository
 
-# Recent runs searched when listing one cycle's, so a quiet cycle still shows its history.
-_CYCLE_SCAN = 500
+# Most runs of one cycle any analytics asks for; a per-cycle bound, not a bound on the
+# whole table, so a busy cycle no longer hides a quiet one's history.
+CYCLE_HISTORY_LIMIT = 500
 
 
 def list_recent_runs(*, limit: int = 30) -> list[CompletedRunView]:
@@ -22,15 +23,36 @@ def list_recent_runs(*, limit: int = 30) -> list[CompletedRunView]:
     return [v for v in views if v is not None]
 
 
-def latest_run_per_cycle(*, limit: int = 500) -> dict[str, CompletedRunView]:
-    """The newest run of every cycle among the last ``limit`` runs, newest cycle first.
+def list_cycle_runs(
+    cycle: str, *, limit: int = CYCLE_HISTORY_LIMIT, before_run_id: str | None = None
+) -> list[CompletedRunView]:
+    """``cycle``'s runs, newest first; with ``before_run_id`` only the runs recorded before that run.
+
+    Filtered in SQL on the ``cycle`` and ``start_time`` columns, so it costs the same
+    whatever the other cycles are doing. An unknown ``before_run_id`` gives no runs.
+    """
+    repo = get_repository()
+    before = None
+    if before_run_id is not None:
+        anchor = repo.get_run(before_run_id)
+        if anchor is None or anchor.start_time is None:
+            return []
+        before = anchor.start_time
+    records = repo.list_runs(cycle=cycle, before=before, limit=limit)
+    views = (view_from_record(r) for r in records)
+    return [v for v in views if v is not None]
+
+
+def latest_run_per_cycle() -> dict[str, CompletedRunView]:
+    """The newest run of every cycle, newest cycle first (one query, every cycle).
 
     Cycles recorded by ``testo ingest`` or another server exist only here, not in
     ``testosterone.yaml``.
     """
     latest: dict[str, CompletedRunView] = {}
-    for run in list_recent_runs(limit=limit):
-        if run.cycle and run.cycle not in latest:
+    for record in get_repository().latest_run_per_cycle():
+        run = view_from_record(record)
+        if run is not None and run.cycle and run.cycle not in latest:
             latest[run.cycle] = run
     return latest
 
@@ -49,9 +71,7 @@ def get_run_metadata(*, run_id: str) -> dict[str, Any] | None:
 
 def list_run_sessions(*, limit: int = 30, cycle: str | None = None) -> list[RunSessionView]:
     """Recent runs with the report links available for each, optionally only ``cycle``'s."""
-    runs = list_recent_runs(limit=_CYCLE_SCAN if cycle else limit)
-    if cycle:
-        runs = [r for r in runs if r.cycle == cycle][: max(1, limit)]
+    runs = list_cycle_runs(cycle, limit=max(1, limit)) if cycle else list_recent_runs(limit=limit)
     return [
         RunSessionView(
             run_id=r.run_id,

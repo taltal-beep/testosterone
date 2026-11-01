@@ -8,10 +8,11 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from testo_core import paths
 from testo_core.cli.app import app
 from testo_core.history.views import CompletedRunView
 from testo_core.repository.models import RunStatus
-from testo_core.services import flaky_service, run_alerts, run_digest
+from testo_core.services import run_alerts, run_digest
 
 DAY = 86400.0
 NOW = 100 * DAY
@@ -96,7 +97,7 @@ def history(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> list[CompletedRu
                 encoding="utf-8",
             )
     runs.reverse()  # newest first, like the repository
-    monkeypatch.setattr(flaky_service.paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
     monkeypatch.setattr(run_digest, "list_recent_runs", lambda *, limit: runs)
     return runs
 

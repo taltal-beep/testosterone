@@ -61,6 +61,11 @@ def validate(
         "--check-executables/--no-check-executables",
         help="Verify required test executables (pytest/behave/behavex) are available on PATH.",
     ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Fail (exit 2) when the config has keys nothing reads, instead of warning.",
+    ),
 ) -> None:
     """Load + resolve the config and print 'ok' (or exit non-zero with an error)."""
     from testo_core.cli.ui.console import default_console
@@ -73,6 +78,11 @@ def validate(
     except ConfigError as exc:
         console.print(f"[fail]config error:[/] {exc}")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT)) from exc
+
+    for message in cfg.warnings:
+        console.print(f"[{'fail' if strict else 'yellow'}]warning:[/] {message}")
+    if strict and cfg.warnings:
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
     if check_executables:
         missing = _missing_executables(cfg)

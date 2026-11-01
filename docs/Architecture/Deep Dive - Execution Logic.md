@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-10-26
+updated: 2026-11-01
 ---
 
 # Deep Dive — Execution Logic
@@ -213,6 +213,8 @@ artifacts/<cycle>/<stage>/
   allure-results/<framework>/   # wiped and recreated each stage
 ```
 
+When the run ends, `run_plan` removes any other stage folder under `artifacts/<cycle>/` (one with a `run.log` or `allure-results/`) that this run didn't write: a stage removed, renamed, or skipped by `if:` or `fail_fast`. So the reporters, archive and history snapshot that read the cycle folder afterwards only see this run's stages. A second run of the same cycle waits for the first ([Engine Fixes - 2026-11-01](../Specs%20&%20ADRs/Engine%20Fixes%20-%202026-11-01.md)).
+
 Steps:
 
 1. `get_adapter(stage.framework)` → `PytestAdapter` | `BehaveAdapter` | `BehaveXAdapter` | `PlaywrightAdapter` | `CommandAdapter` (argv = `stage.args` verbatim) | `JunitAdapter` (no process, see the post-stage hook below), or a `testo.frameworks` plugin adapter
@@ -221,6 +223,8 @@ Steps:
    - `TESTO_SHARED_ALLURE_RESULTS_DIR` → Allure output dir
    - `TESTO_ARTIFACTS_ROOT` → artifacts root
    - `TESTO_LAST_TEST_TYPE` → framework name
+
+`extra_env` values are read like a shell would want them: YAML `true` / `false` become `true` / `false`, `null` becomes an empty string, and a list or mapping is a config error. A stage's `if:` (evaluated by `testo_core/config/if_expr.py` before the run) is `${env:VAR}` alone or one `==` / `!=` comparison; the operator is found before `${env:...}` is replaced, so a value containing `==` can't change it, and `and` / `or` / `not` / parentheses are a config error.
 
 ### Process model
 
@@ -296,7 +300,7 @@ See [Scale Runs and Stages - 2026-10-24](../Specs%20&%20ADRs/Scale%20Runs%20and%
 | Framework | What `workers: N` does |
 |-----------|------------------------|
 | `behavex` | `--parallel-processes N --parallel-scheme feature`, unless `args:` already set them. |
-| `pytest` | `-n N` when N > 1 **and** pytest-xdist is importable by the `pytest` on PATH (the adapter reads its shebang and probes that interpreter). Without xdist it logs one warning and runs serially. A `-n`/`--numprocesses` or `-p no:xdist` in `args:` wins. |
+| `pytest` | `-n N` when N > 1 **and** pytest-xdist is importable by the `pytest` on PATH (the adapter reads its shebang and probes that interpreter). Without xdist it runs serially: with one warning when the stage or `defaults:` sets `workers`, quietly on the built-in default of 4. A `-n`/`--numprocesses` or `-p no:xdist` in `args:` wins. |
 | `playwright` | `--workers=N`, unless `args:` set `--workers`/`-j` (this replaces `workers` in `playwright.config`). |
 | `jest`, `vitest` | `--maxWorkers=N`, unless `args:` set it (Jest: also `-w`, `--runInBand`/`-i`; Vitest: also `--pool`, `--no-file-parallelism`). |
 | `behave` | Nothing — native behave is single-process. Setting `workers:` on the stage loads fine but logs a warning. |

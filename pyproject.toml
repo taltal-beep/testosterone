@@ -29,7 +29,7 @@ keywords = [
     "github-actions",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Framework :: Pytest",
     "Intended Audience :: Developers",
@@ -50,6 +50,7 @@ classifiers = [
 dependencies = [
     "python-dotenv>=1.0.0",
     "sqlmodel>=0.0.24",
+    "alembic>=1.13.0",
     "requests>=2.34.2",
     "allure-pytest>=2.15.0",
     "allure-python-commons>=2.16.2",
@@ -105,12 +106,16 @@ docs = [
     "mkdocs-material>=9.7.7,<10",
 ]
 dev = [
+    "import-linter>=2.0",
     "pytest>=9.0.0",
     "pytest-cov>=5.0.0",
+    "pytest-xdist>=3.6.0",
     "httpx>=0.27.0",
     "jsonschema>=4.0.0",
     "build>=1.2.0",
-    "ruff>=0.15.0",
+    # One ruff for CI and the pre-commit hook (tests/contract/ci/test_ruff_pin.py
+    # checks .pre-commit-config.yaml matches); bump both together.
+    "ruff==0.17.3",
     "mypy>=2.1.0",
     "pre-commit>=4.0.0",
     # The dev profile installs every extra so the test suite covers the full
@@ -196,3 +201,70 @@ ignore = [
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
+
+# Layer check (`lint-imports`, run in the CI `format` job): the layer table in
+# ARCHITECTURE.md as contracts. Each ignore_imports is a known, documented exception.
+[tool.importlinter]
+root_packages = ["testo_core", "testo_api"]
+exclude_type_checking_imports = true
+
+[[tool.importlinter.contracts]]
+name = "testo_core does not import testo_api (the CLI's `testo ui` starts the server lazily)"
+type = "forbidden"
+source_modules = ["testo_core"]
+forbidden_modules = ["testo_api"]
+ignore_imports = ["testo_core.cli.commands.ui_cmd -> testo_api.*"]
+
+[[tool.importlinter.contracts]]
+name = "testo_api does not import the CLI"
+type = "forbidden"
+source_modules = ["testo_api"]
+forbidden_modules = ["testo_core.cli"]
+
+[[tool.importlinter.contracts]]
+name = "nothing below the analytics imports services or cli (db_backend's CI provenance lookup is the one exception)"
+type = "forbidden"
+source_modules = [
+    "testo_core.paths",
+    "testo_core.config",
+    "testo_core.frameworks",
+    "testo_core.engine",
+    "testo_core.persistence",
+    "testo_core.repository",
+    "testo_core.history",
+    "testo_core.resources",
+]
+forbidden_modules = ["testo_core.services", "testo_core.cli"]
+ignore_imports = ["testo_core.persistence.db_backend -> testo_core.services.ci_provenance"]
+
+[[tool.importlinter.contracts]]
+name = "repository is the bottom: it imports only config (database.url) and paths"
+type = "forbidden"
+source_modules = ["testo_core.repository"]
+forbidden_modules = [
+    "testo_core.engine",
+    "testo_core.frameworks",
+    "testo_core.reporting",
+    "testo_core.persistence",
+    "testo_core.history",
+    "testo_core.services",
+    "testo_core.cli",
+    "testo_core.resources",
+]
+
+[[tool.importlinter.contracts]]
+name = "paths, config and frameworks sit under engine, persistence, history and reporting (the plugin loader's reporter base class is the one exception)"
+type = "forbidden"
+source_modules = ["testo_core.paths", "testo_core.config", "testo_core.frameworks"]
+forbidden_modules = [
+    "testo_core.engine",
+    "testo_core.persistence",
+    "testo_core.history",
+    "testo_core.reporting",
+]
+ignore_imports = ["testo_core.plugins -> testo_core.reporting.reporters.base"]
+
+[[tool.importlinter.contracts]]
+name = "persistence (write side) and history (read side) do not import each other"
+type = "independence"
+modules = ["testo_core.persistence", "testo_core.history"]

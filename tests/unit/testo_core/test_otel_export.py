@@ -26,6 +26,8 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (  # noqa: E4
 )
 from opentelemetry.trace import StatusCode  # noqa: E402
 
+from tests._history_fakes import cycle_runs_from
+
 T0 = 1_760_000_000.0  # run start, seconds
 MS = int(T0 * 1000)
 
@@ -216,7 +218,7 @@ def test_otel_reporter_needs_a_recorded_run(tmp_path: Path) -> None:
 
 
 def test_otel_cli_dry_run_and_errors(snapshot: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(otel_export, "list_recent_runs", lambda *, limit: [_run()])
+    monkeypatch.setattr(otel_export, "list_cycle_runs", cycle_runs_from([_run()]))
 
     dry = CliRunner().invoke(app, ["otel", "--cycle", "api", "--dry-run"])
     assert dry.exit_code == 0, dry.output
@@ -278,7 +280,7 @@ def test_endpoint_without_scheme_is_bad_input(monkeypatch: pytest.MonkeyPatch) -
 def test_cli_endpoint_without_scheme_exits_2(
     snapshot: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(otel_export, "list_recent_runs", lambda *, limit: [_run()])
+    monkeypatch.setattr(otel_export, "list_cycle_runs", cycle_runs_from([_run()]))
     result = CliRunner().invoke(app, ["otel", "--cycle", "api", "--endpoint", "collector:4318"])
     assert result.exit_code == 2
     assert "must be a URL" in result.output

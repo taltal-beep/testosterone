@@ -1,8 +1,17 @@
-"""GitHub Actions wrapper around ``testo run --ci``.
+"""GitHub Actions wrapper around ``testo run --ci`` and ``testo ingest --ci``.
 
-Runs one cycle (or every cycle, for ``all``), echoes the NDJSON event stream, and turns the final
-``plan_finished`` event into step outputs (``exit_code``, ``status``,
-``summary_json``, ``summary_path``).
+With a ``testosterone.yaml`` it runs one cycle (or every cycle, for ``all``).
+With no config file at all, or when the ``results`` input names files, it
+records result files an earlier step wrote instead (``testo ingest``; with no
+``results`` it finds them itself), so a workflow needs no config to get the
+summary and the pull request comment. Either way it echoes the NDJSON event
+stream and turns the final ``plan_finished`` event into step outputs
+(``exit_code``, ``status``, ``summary_json``, ``summary_path``).
+
+Before that, ``prepare-history`` decides where the run history lives: unless
+``DATABASE_URL`` or the config's ``database.url`` says otherwise, a SQLite
+file under ``~/.cache/testosterone`` that the action restores from and saves
+to the Actions cache, so each run is compared with the ones before it.
 
 With the run persisted, it also renders the run as Markdown
 (``testo report markdown``) for the job summary and, when asked, for one
@@ -54,6 +63,106 @@ def build_command(
     for report in coverage.split():
         cmd += ["--coverage", report]
     return cmd
+
+
+CONFIG_NAMES = ("testosterone.yaml", "testosterone.yml")
+HISTORY_DIR = Path("~/.cache/testosterone")
+
+
+def has_config(workspace: Path, config_path: str) -> bool:
+    """Whether a Testosterone config is given or would be discovered in *workspace*."""
+    if config_path:
+        return True
+    if any((workspace / name).is_file() for name in CONFIG_NAMES):
+        return True
+    try:
+        pyproject = (workspace / "pyproject.toml").read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return "[tool.testosterone]" in pyproject
+
+
+def split_results(value: str) -> list[str]:
+    """The ``results`` input: patterns separated by newlines or spaces."""
+    return [part for part in str(value or "").split() if part]
+
+
+def build_ingest_command(
+    *, results: list[str], cycle: str, ci_mode: bool, persist: bool, coverage: str = ""
+) -> list[str]:
+    cmd = ["testo", "ingest", *results]
+    if cycle and cycle != "all":
+        cmd += ["--cycle", cycle]
+    if ci_mode:
+        cmd.append("--ci")
+    if not persist:
+        cmd.append("--no-persist")
+    for report in coverage.split():
+        cmd += ["--coverage", report]
+    return cmd
+
+
+def _slug(value: str) -> str:
+    return "".join(c if c.isalnum() or c in "-_." else "-" for c in value).strip("-") or "job"
+
+
+def prepare_history(*, history: str, config_path: str, env: dict[str, str]) -> dict[str, str]:
+    """Step outputs that say whether to cache the run history, where, and under which key.
+
+    ``database_url`` is always set: the user's own ``DATABASE_URL`` when there is
+    one (so passing it on changes nothing), else the cached SQLite file. Only the
+    database is cached (per-run report copies would grow the cache every run).
+    """
+    outputs = {
+        "cache": "false",
+        "dir": "",
+        "key": "",
+        "restore_prefix": "",
+        "database_url": env.get("DATABASE_URL", ""),
+    }
+    if (
+        history.strip().lower() in {"off", "false", "no", "0"}
+        or env.get("DATABASE_URL", "").strip()
+    ):
+        return outputs
+    workspace = Path(env.get("GITHUB_WORKSPACE") or ".")
+    try:
+        from testo_core.config.database_section import (
+            database_url_from_discovered_config,
+            extract_database_url_from_mapping,
+            load_raw_config_dict,
+        )
+
+        if config_path:
+            raw = load_raw_config_dict(workspace / config_path)
+            configured = extract_database_url_from_mapping(raw)
+        else:
+            configured = database_url_from_discovered_config(cwd=workspace)
+    except Exception:  # noqa: BLE001 - an older testo-core or a broken config: no cache, no harm
+        return outputs
+    if configured:
+        return outputs
+    folder = HISTORY_DIR.expanduser()
+    folder.mkdir(parents=True, exist_ok=True)
+    prefix = "testo-history-{}-{}-".format(
+        _slug(env.get("GITHUB_WORKFLOW", "")), _slug(env.get("GITHUB_JOB", ""))
+    )
+    # The step id too: a job that uses the action twice saves two caches, not one twice.
+    run = "{}-{}-{}".format(
+        env.get("GITHUB_RUN_ID", "0"),
+        env.get("GITHUB_RUN_ATTEMPT", "1"),
+        _slug(env.get("GITHUB_ACTION", "")),
+    )
+    outputs.update(
+        {
+            "cache": "true",
+            "dir": str(folder),
+            "key": prefix + run,
+            "restore_prefix": prefix,
+            "database_url": f"sqlite:///{(folder / 'testo_history.db').as_posix()}",
+        }
+    )
+    return outputs
 
 
 def _extract_summary(stdout: str, *, fallback_exit_code: int) -> dict[str, Any]:
@@ -302,6 +411,9 @@ def open_flaky_issues(*, cycle: str, token: str, env: dict[str, str]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["prepare-history"]:
+        return _prepare_history_main(argv[1:])
     parser = argparse.ArgumentParser(description="Run a Testosterone cycle in GitHub Actions.")
     parser.add_argument("--config-path", default="")
     parser.add_argument("--cycle", default="")
@@ -309,7 +421,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--persist", default="true")
     parser.add_argument("--summary-path", default="")
     parser.add_argument("--job-summary", default="true")
-    parser.add_argument("--comment-on-pr", default="false")
+    parser.add_argument("--comment-on-pr", default="auto")
+    parser.add_argument("--results", default="")
     parser.add_argument("--annotations", default="true")
     parser.add_argument("--notify-when", default="failure")
     parser.add_argument("--flaky-issues", default="false")
@@ -317,12 +430,33 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     persist = _parse_bool(args.persist, default=True)
-    cmd = build_command(
-        config_path=str(args.config_path or "").strip(),
-        cycle=str(args.cycle or "").strip(),
-        ci_mode=_parse_bool(args.ci_mode, default=True),
-        persist=persist,
-        coverage=str(args.coverage or ""),
+    config_path = str(args.config_path or "").strip()
+    results = split_results(args.results)
+    workspace = Path(os.environ.get("GITHUB_WORKSPACE") or ".")
+    # No config to run, or result files named: record what an earlier step wrote.
+    ingest = bool(results) or not has_config(workspace, config_path)
+    if ingest:
+        cmd = build_ingest_command(
+            results=results,
+            cycle=str(args.cycle or "").strip(),
+            ci_mode=_parse_bool(args.ci_mode, default=True),
+            persist=persist,
+            coverage=str(args.coverage or ""),
+        )
+    else:
+        cmd = build_command(
+            config_path=config_path,
+            cycle=str(args.cycle or "").strip(),
+            ci_mode=_parse_bool(args.ci_mode, default=True),
+            persist=persist,
+            coverage=str(args.coverage or ""),
+        )
+    # ``auto``: comment when there is no config to opt in with (zero-config), keep the
+    # old default (off) for configured runs.
+    comment = (
+        ingest
+        if str(args.comment_on_pr).strip().lower() == "auto"
+        else _parse_bool(args.comment_on_pr, default=False)
     )
 
     proc = subprocess.run(cmd, check=False, capture_output=True, text=True, env=os.environ.copy())  # noqa: S603
@@ -359,22 +493,26 @@ def main(argv: list[str] | None = None) -> int:
     finished = summary.get("event") == "plan_finished"
     if persist and not finished:
         _warn(
-            "testo run did not finish a run (exit code "
+            f"testo {'ingest' if ingest else 'run'} did not finish a run (exit code "
             f"{proc.returncode}); no summary, comment, annotations or alert were published"
         )
     if persist and finished:
         env = os.environ.copy()
         requested = str(args.cycle or "").strip()
         # ``all`` runs every cycle: each gets its own summary, comment, annotations and alert.
-        if requested == "all":
+        if requested == "all" and not ingest:
             cycles = finished_cycles(proc.stdout or "")
         else:
-            cycles = [requested or str(summary.get("plan") or "")]
+            cycles = [
+                str(summary.get("plan") or "")
+                if ingest
+                else requested or str(summary.get("plan") or "")
+            ]
         for cycle in cycles:
             publish_summary(
                 cycle=cycle,
                 job_summary=_parse_bool(args.job_summary, default=True),
-                comment=_parse_bool(args.comment_on_pr, default=False),
+                comment=comment,
                 env=env,
             )
             if not cycle:
@@ -386,6 +524,24 @@ def main(argv: list[str] | None = None) -> int:
                 open_flaky_issues(cycle=cycle, token=env.get("TESTO_GITHUB_TOKEN", ""), env=env)
 
     return int(proc.returncode)
+
+
+def _prepare_history_main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Decide where the action keeps run history.")
+    parser.add_argument("--history", default="auto")
+    parser.add_argument("--config-path", default="")
+    args = parser.parse_args(argv)
+    outputs = prepare_history(
+        history=str(args.history),
+        config_path=str(args.config_path or "").strip(),
+        env=dict(os.environ),
+    )
+    github_output = os.getenv("GITHUB_OUTPUT")
+    if github_output:
+        _write_github_outputs(Path(github_output), values=outputs)
+    if outputs["cache"] == "true":
+        print(f"Run history: {outputs['dir']} (kept between runs in the Actions cache)")
+    return 0
 
 
 if __name__ == "__main__":

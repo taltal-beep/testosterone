@@ -155,6 +155,17 @@ def test_a_removed_user_is_signed_out(accounts: AccountStore) -> None:
     assert client.get(_READ).status_code == 401
 
 
+def test_adding_a_removed_name_again_does_not_revive_old_cookies(
+    accounts: AccountStore,
+) -> None:
+    client = _signed_in("vera")
+    accounts.remove("vera")
+    # A new person gets the name; their row starts at session version 1 again.
+    accounts.add("vera", _PASSWORD, "viewer")
+    assert client.get(_READ).status_code == 401
+    assert _signed_in("vera").get(_READ).status_code == 200
+
+
 def test_a_tampered_cookie_is_refused(accounts: AccountStore) -> None:
     client = _signed_in("vera")
     value = client.cookies["testo_session"]

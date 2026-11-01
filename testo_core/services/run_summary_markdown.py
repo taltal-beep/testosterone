@@ -11,16 +11,17 @@ same text can be rebuilt for any past run.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from typing import Any
 
-from testo_core import paths
-from testo_core.history.read_model import get_run, list_recent_runs
+from testo_core.engine.crash_signatures import label as crash_label
+from testo_core.history.cases import cases_for_run
+from testo_core.history.read_model import get_run, list_cycle_runs, list_recent_runs
 from testo_core.history.views import CompletedRunView
-from testo_core.services.report_archive_diff import CaseChange, _load_cases, diff_case_maps
+from testo_core.services.report_archive_diff import CaseChange, diff_case_maps
 
 MAX_ROWS = 20
-_SCAN_LIMIT = 500
 _FAILED = frozenset({"failed", "broken"})
 _CHANGE_ORDER = {"regression": 0, "added": 1, "fix": 2, "removed": 3, "status_change": 4}
 _CHANGE_TALLY = {
@@ -57,6 +58,8 @@ class RunSummary:
     # False when ``previous`` has no stored test results (it crashed, or its
     # snapshot was pruned): then "no test changed" would be a guess.
     compared: bool = True
+    # Failing test name -> "stack_overflow" | "crash" (engine/crash_signatures.py).
+    crashes: Mapping[str, str] = field(default_factory=dict)
 
     @property
     def baseline_label(self) -> str:
@@ -66,13 +69,11 @@ class RunSummary:
 
 
 def _cases(run: CompletedRunView | None) -> dict[str, dict[str, Any]]:
-    if run is None or not run.snapshot_dir:
-        return {}
-    return _load_cases(paths.ORCHESTRATOR_ROOT / run.snapshot_dir)
+    return cases_for_run(run) if run is not None else {}
 
 
-def _cycle_runs(cycle: str) -> list[CompletedRunView]:
-    return [r for r in list_recent_runs(limit=_SCAN_LIMIT) if r.cycle == cycle]
+def _cycle_runs(cycle: str, *, before_run_id: str | None = None) -> list[CompletedRunView]:
+    return list_cycle_runs(cycle, before_run_id=before_run_id)
 
 
 def pick_baseline(
@@ -107,11 +108,7 @@ def load_run_summary(
         run = get_run(run_id=run_id)
         if run is None:
             return None
-        older = (
-            [r for r in _cycle_runs(run.cycle) if r.created_at < run.created_at]
-            if run.cycle
-            else []
-        )
+        older = _cycle_runs(run.cycle, before_run_id=run.run_id) if run.cycle else []
     elif cycle:
         runs = _cycle_runs(cycle)
         if not runs:
@@ -128,6 +125,11 @@ def load_run_summary(
     failing = tuple(
         sorted(str(c["name"]) for c in current_cases.values() if c["status"] in _FAILED)
     )
+    crashes = {
+        str(c["name"]): str(c["crash"])
+        for c in current_cases.values()
+        if c["status"] in _FAILED and c.get("crash")
+    }
     changes: tuple[CaseChange, ...] = ()
     compared = False
     if previous is not None:
@@ -147,6 +149,7 @@ def load_run_summary(
         changes=changes,
         baseline_branch=from_branch,
         compared=compared,
+        crashes=crashes,
     )
 
 
@@ -231,6 +234,8 @@ def render_markdown(summary: RunSummary, *, run_url: str | None = None) -> str:
             result = "✅ pass" if s.get("returncode") == 0 else "❌ fail"
             if s.get("quarantined"):
                 result += f" · {len(s['quarantined'])} quarantined"
+            if s.get("crash_kind"):
+                result += f" · 💥 {crash_label(str(s['crash_kind'])).lower()}"
             duration = s.get("duration_s")
             lines.append(
                 f"| {_escape(str(s.get('name', '?')))} | {_escape(str(s.get('framework') or ''))} "
@@ -246,7 +251,9 @@ def render_markdown(summary: RunSummary, *, run_url: str | None = None) -> str:
         lines.append("")
         quarantined = {str(n) for s in run.stage_health for n in (s.get("quarantined") or []) if n}
         lines += [
-            f"- {_code(n)}" + (" _(quarantined)_" if n in quarantined else "")
+            f"- {_code(n)}"
+            + (f" 💥 _{crash_label(summary.crashes[n]).lower()}_" if n in summary.crashes else "")
+            + (" _(quarantined)_" if n in quarantined else "")
             for n in summary.failing[:MAX_ROWS]
         ]
         if len(summary.failing) > MAX_ROWS:

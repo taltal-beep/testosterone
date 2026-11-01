@@ -8,7 +8,7 @@ from typing import Final
 from urllib.parse import urlparse
 
 from sqlalchemy.engine import Engine
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import create_engine
 
 _DEFAULT_SQLITE_URL: Final[str] = "sqlite:///./testo_history.db"
 SUPPORTED_DATABASE_DIALECTS: Final[frozenset[str]] = frozenset({"sqlite", "postgresql", "mysql"})
@@ -116,23 +116,18 @@ def get_engine() -> Engine:
     return _build_engine(resolve_database_url())
 
 
-def create_db_and_tables() -> None:
-    """Create all registered SQLModel tables on the active engine (idempotent)."""
-    # Import registers ``RunRecord`` on ``SQLModel.metadata``.
-    from testo_core.repository.models import (  # noqa: F401
-        AuditEvent,
-        FailureTriage,
-        QueuedRun,
-        ReportArchive,
-        ResourceAction,
-        ResourceItemRow,
-        ResourceLease,
-        ResourceWaiter,
-        RunRecord,
-        UserAccount,
-    )
+def create_db_and_tables(engine: Engine | None = None) -> None:
+    """Bring the database (the active one by default) to the current schema (idempotent).
 
-    SQLModel.metadata.create_all(get_engine())
+    Runs the Alembic revisions in :mod:`testo_core.repository.migrations`; a
+    database built by ``create_all()`` before migrations existed is stamped at
+    the baseline first. Every store that opens the database calls this instead
+    of creating its own tables, so the migrations are the schema's one owner.
+    The name is kept for the callers and the public API.
+    """
+    from testo_core.repository.migrations import upgrade_to_head
+
+    upgrade_to_head(engine if engine is not None else get_engine())
 
 
 def reset_engine_cache() -> None:

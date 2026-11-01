@@ -2246,6 +2246,17 @@
       },
       "FailingTestItem": {
         "properties": {
+          "crash_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crash Kind"
+          },
           "duration_ms": {
             "anyOf": [
               {
@@ -2325,7 +2336,8 @@
           "failing_since_run_id",
           "flaky",
           "new",
-          "triage"
+          "triage",
+          "crash_kind"
         ],
         "title": "FailingTestItem",
         "type": "object"
@@ -4358,6 +4370,17 @@
             "title": "Artifact Links",
             "type": "array"
           },
+          "artifacts_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifacts Url"
+          },
           "static_links": {
             "additionalProperties": {
               "type": "string"
@@ -4369,7 +4392,8 @@
         "required": [
           "allure_server_url",
           "static_links",
-          "artifact_links"
+          "artifact_links",
+          "artifacts_url"
         ],
         "title": "RunReportsResponse",
         "type": "object"
@@ -4429,6 +4453,28 @@
               }
             ],
             "title": "Broken"
+          },
+          "crash_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crash Detail"
+          },
+          "crash_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crash Kind"
           },
           "failed": {
             "anyOf": [
@@ -4509,7 +4555,9 @@
           "failed",
           "broken",
           "skipped",
-          "health_pct"
+          "health_pct",
+          "crash_kind",
+          "crash_detail"
         ],
         "title": "StageHealth",
         "type": "object"
@@ -6652,6 +6700,8 @@
             "required": false,
             "schema": {
               "default": 30,
+              "maximum": 500,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }

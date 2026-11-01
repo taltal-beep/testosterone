@@ -4,6 +4,14 @@ branding:
   icon: activity
   color: blue
 inputs:
+  results:
+    description: "Result files to record instead of running a cycle (globs, space or newline separated). Empty with no testosterone.yaml in the workspace = find them (JUnit XML, Jest/Vitest/Playwright JSON, .trx, go test -json, ...)."
+    required: false
+    default: ""
+  history:
+    description: "`auto` keeps the run history (SQLite) in the Actions cache between runs unless DATABASE_URL or database.url is set; `off` doesn't."
+    required: false
+    default: auto
   config-path:
     description: Path to testosterone.yaml (empty = discovery from the workspace root).
     required: false
@@ -33,9 +41,9 @@ inputs:
     required: false
     default: "true"
   comment-on-pr:
-    description: "On pull_request events, keep one comment per cycle on the pull request with the same summary. Needs `permissions: pull-requests: write`."
+    description: "On pull_request events, keep one comment per cycle on the pull request with the same summary. Needs `permissions: pull-requests: write`. `auto` = on when there is no testosterone.yaml (recording results), off when running a cycle."
     required: false
-    default: "false"
+    default: auto
   annotations:
     description: Print failing tests as annotations, shown inline on the pull request diff. Needs no permission.
     required: false
@@ -81,7 +89,7 @@ runs:
   using: composite
   steps:
     - name: Setup Python
-      uses: actions/setup-python@v7
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       with:
         python-version: ${{ inputs.python-version }}
     - name: Install testo
@@ -95,10 +103,29 @@ runs:
         # One or more requirements, space separated: "testo-core pytest-xdist".
         read -r -a packages <<< "$TESTO_INPUT_PACKAGE"
         python -m pip install "${packages[@]}"
+    - name: Prepare run history
+      id: history
+      shell: bash
+      env:
+        TESTO_INPUT_HISTORY: ${{ inputs.history }}
+        TESTO_INPUT_CONFIG_PATH: ${{ inputs.config-path }}
+      run: |
+        python "$GITHUB_ACTION_PATH/run_testo_action.py" prepare-history \
+          --history "$TESTO_INPUT_HISTORY" \
+          --config-path "$TESTO_INPUT_CONFIG_PATH"
+    - name: Restore run history
+      if: steps.history.outputs.cache == 'true'
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ steps.history.outputs.dir }}
+        key: ${{ steps.history.outputs.key }}
+        restore-keys: ${{ steps.history.outputs.restore_prefix }}
     - name: Run testo
       id: run_testo
       shell: bash
       env:
+        DATABASE_URL: ${{ steps.history.outputs.database_url }}
+        TESTO_INPUT_RESULTS: ${{ inputs.results }}
         TESTO_GITHUB_TOKEN: ${{ inputs.github-token }}
         TESTO_SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook }}
         TESTO_TEAMS_WEBHOOK_URL: ${{ inputs.teams-webhook }}
@@ -113,7 +140,7 @@ runs:
         TESTO_INPUT_FLAKY_ISSUES: ${{ inputs.flaky-issues }}
         TESTO_INPUT_COVERAGE: ${{ inputs.coverage }}
       run: |
-        python "${{ github.action_path }}/run_testo_action.py" \
+        python "$GITHUB_ACTION_PATH/run_testo_action.py" \
           --config-path "$TESTO_INPUT_CONFIG_PATH" \
           --cycle "$TESTO_INPUT_CYCLE" \
           --ci-mode "$TESTO_INPUT_CI_MODE" \
@@ -123,4 +150,11 @@ runs:
           --annotations "$TESTO_INPUT_ANNOTATIONS" \
           --notify-when "$TESTO_INPUT_NOTIFY_WHEN" \
           --flaky-issues "$TESTO_INPUT_FLAKY_ISSUES" \
+          --results "$TESTO_INPUT_RESULTS" \
           --coverage "$TESTO_INPUT_COVERAGE"
+    - name: Save run history
+      if: always() && steps.history.outputs.cache == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ steps.history.outputs.dir }}
+        key: ${{ steps.history.outputs.key }}

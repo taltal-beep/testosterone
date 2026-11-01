@@ -13,6 +13,8 @@ import dataclasses
 import json
 import logging
 import os
+import shutil
+import signal
 import time
 from collections import deque
 from collections.abc import Callable, Mapping, Sequence
@@ -21,6 +23,7 @@ from pathlib import Path
 from typing import Protocol
 
 from testo_core.config.schema import Plan, Stage
+from testo_core.engine import interrupt
 from testo_core.engine.events import (
     EngineEvent,
     PlanFinished,
@@ -29,9 +32,9 @@ from testo_core.engine.events import (
     StageStarted,
 )
 from testo_core.engine.executor import run_stage
-from testo_core.engine.exit_codes import classify_exit_code
+from testo_core.engine.exit_codes import EngineExitCode, classify_exit_code
 from testo_core.engine.result import PlanResult, StageResult
-from testo_core.reporting.paths import plan_artifacts_dir
+from testo_core.paths import plan_artifacts_dir
 
 logger = logging.getLogger(__name__)
 
@@ -120,30 +123,40 @@ def run_plan(
             recorder.write(_stage_finished_payload(stage_result))
 
         def abort(completed: int) -> None:
+            stopped_by = interrupt.requested()
             recorder.write(
                 {
                     "event": "plan_aborted",
                     "plan": plan.name,
-                    "reason": "fail_fast",
+                    "reason": "fail_fast" if stopped_by is None else "signal",
                     "completed_stages": completed,
+                    **({} if stopped_by is None else {"signal": interrupt.signal_name(stopped_by)}),
                 }
             )
 
-        if max_parallel == 1:
-            stage_results = _run_sequential(
-                plan, start=start, execute=execute, finish=finish, abort=abort, fail_fast=fail_fast
-            )
-        else:
-            stage_results = _run_parallel(
-                plan,
-                max_parallel=max_parallel,
-                start=start,
-                execute=execute,
-                finish=finish,
-                abort=abort,
-                fail_fast=fail_fast,
-            )
+        with interrupt.stop_on_signals():
+            if max_parallel == 1:
+                stage_results = _run_sequential(
+                    plan,
+                    start=start,
+                    execute=execute,
+                    finish=finish,
+                    abort=abort,
+                    fail_fast=fail_fast,
+                )
+            else:
+                stage_results = _run_parallel(
+                    plan,
+                    max_parallel=max_parallel,
+                    start=start,
+                    execute=execute,
+                    finish=finish,
+                    abort=abort,
+                    fail_fast=fail_fast,
+                )
+        stopped_by = interrupt.requested()
 
+        _remove_stale_stage_dirs(plan_artifacts, ran={s.stage_name for s in stage_results})
         finished_at = time.time()
         rcs = [s.returncode for s in stage_results]
         exit_code = classify_exit_code(
@@ -151,6 +164,15 @@ def run_plan(
             infra_error=None,
             internal_failure=any(s.internal_failure for s in stage_results),
         )
+        metadata = dict(run_metadata) if run_metadata else {}
+        if stopped_by is not None:
+            # Recorded (as failed, with the signal in its metadata), then exit 130 / 143.
+            exit_code = (
+                EngineExitCode.TERMINATED
+                if stopped_by == signal.SIGTERM
+                else EngineExitCode.INTERRUPTED
+            )
+            metadata["interrupted_by"] = interrupt.signal_name(stopped_by)
         target_repos = {s.target_repo for s in stage_results if s.target_repo is not None}
         target_repo = next(iter(target_repos)) if len(target_repos) == 1 else None
         plan_result = PlanResult(
@@ -164,7 +186,7 @@ def run_plan(
             aggregate_returncode=max(rcs, default=0),
             exit_code=exit_code,
             target_repo=target_repo,
-            extra={"run_metadata": dict(run_metadata)} if run_metadata else {},
+            extra={"run_metadata": metadata} if metadata else {},
         )
 
         recorder.write(
@@ -218,6 +240,23 @@ def _with_coverage(plan_result: PlanResult, reports: Sequence[Path]) -> PlanResu
     return dataclasses.replace(plan_result, extra={**plan_result.extra, "run_metadata": metadata})
 
 
+def _remove_stale_stage_dirs(plan_dir: Path, *, ran: set[str]) -> None:
+    """Delete stage folders this run didn't write (a stage removed, renamed, skipped by
+    ``if:`` or by ``fail_fast``), so the reports, archive and history snapshot that read
+    ``plan_dir`` after the run only see this run's stages."""
+    keep = {name.casefold() for name in ran}
+    for child in plan_dir.iterdir():
+        if not child.is_dir() or child.is_symlink() or child.name.casefold() in keep:
+            continue
+        # Only folders the executor makes; anything else under the cycle folder stays.
+        if not ((child / "run.log").is_file() or (child / "allure-results").is_dir()):
+            continue
+        try:
+            shutil.rmtree(child)
+        except OSError:
+            logger.warning("could not remove stale stage folder %s", child, exc_info=True)
+
+
 def _run_sequential(
     plan: Plan,
     *,
@@ -230,6 +269,9 @@ def _run_sequential(
     """The default: one stage at a time, in config order, on the calling thread."""
     results: list[StageResult] = []
     for idx, stage in enumerate(plan.stages, start=1):
+        if interrupt.requested() is not None:
+            abort(idx - 1)
+            break
         start(idx, stage)
         result = execute(stage)
         results.append(result)
@@ -263,6 +305,8 @@ def _run_parallel(
     aborted = False
     with ThreadPoolExecutor(max_workers=max_parallel, thread_name_prefix="testo-stage") as pool:
         while pending or running:
+            if interrupt.requested() is not None:
+                aborted = True
             while pending and not aborted and len(running) < max_parallel:
                 idx, stage = pending.popleft()
                 start(idx, stage)
@@ -320,6 +364,8 @@ def _stage_finished_payload(stage_result: StageResult) -> dict[str, object]:
         "internal_failure": stage_result.internal_failure,
         "quarantined": list(stage_result.quarantined),
         "waived_returncode": stage_result.waived_returncode,
+        "crash_kind": stage_result.crash_kind,
+        "crash_detail": stage_result.crash_detail,
     }
 
 

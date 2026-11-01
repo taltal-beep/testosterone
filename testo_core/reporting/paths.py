@@ -1,26 +1,23 @@
-"""Path helpers shared by the reporting submodules."""
+"""Path helpers shared by the reporting submodules.
+
+``safe_child_path`` and ``plan_artifacts_dir`` live in :mod:`testo_core.paths` (the layout
+every layer shares) and are re-exported here for the reporting code and older imports.
+"""
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
 
+from testo_core.paths import plan_artifacts_dir, safe_child_path
 
-def safe_child_path(root: Path, child: str, *, label: str = "path segment") -> Path:
-    """Resolve one child path and reject values that escape ``root``."""
-    base = root.expanduser().resolve()
-    path = (base / str(child)).resolve()
-    try:
-        path.relative_to(base)
-    except ValueError as exc:
-        raise ValueError(f"{label} escapes root: {child!r}") from exc
-    return path
-
-
-def plan_artifacts_dir(artifacts_root: Path, plan: str | None = None) -> Path:
-    """Return ``<artifacts>/<plan>/`` (or ``<artifacts>/`` if ``plan`` is None)."""
-    root = artifacts_root.expanduser().resolve()
-    return safe_child_path(root, plan, label="plan name") if plan else root
+__all__ = [
+    "discover_latest_plan_dir",
+    "discover_plan_dirs",
+    "plan_artifacts_dir",
+    "relpath_for_display",
+    "safe_child_path",
+]
 
 
 def discover_plan_dirs(artifacts_root: Path) -> list[Path]:

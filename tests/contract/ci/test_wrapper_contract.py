@@ -20,6 +20,8 @@ def test_action_contract_has_required_inputs_outputs() -> None:
         Path("integrations/github-action/action.yml").read_text(encoding="utf-8")
     )
     assert set(payload["inputs"].keys()) == {
+        "results",
+        "history",
         "config-path",
         "cycle",
         "ci-mode",

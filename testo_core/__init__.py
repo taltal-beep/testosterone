@@ -2,26 +2,32 @@
 
 The new narrow surface is :class:`testo_core.config.Plan` /
 :class:`testo_core.config.Stage` plus :func:`testo_core.engine.run_plan`.
-The database helpers (``get_repository``, ``RunRecord`` …) are exposed via
-PEP 562 lazy loading so ``import testo_core`` does NOT pull in SQLAlchemy
-until a consumer actually touches them.
+Every name is exposed via PEP 562 lazy loading, so ``import testo_core`` (which
+pytest does for every run through the ``pytest11`` plugin) loads no config,
+engine or SQLAlchemy code until a consumer actually touches a name. Loading
+them eagerly also hid those modules from pytest-cov, which starts after plugins.
 """
 
 from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-# Narrow, fast-loading facade for the new CLI-first world.
-from testo_core.config import Plan, Stage, TestosteroneConfig  # noqa: F401
-from testo_core.engine.exit_codes import EngineExitCode  # noqa: F401
+if TYPE_CHECKING:
+    from testo_core.config import Plan as Plan
+    from testo_core.config import Stage as Stage
+    from testo_core.config import TestosteroneConfig as TestosteroneConfig
+    from testo_core.engine.exit_codes import EngineExitCode as EngineExitCode
 
-# Database names that used to be re-exported eagerly from this module.  Each
-# entry maps the exported attribute to its real module path.  PEP 562
-# :func:`__getattr__` resolves them on first access so ``import testo_core``
-# stays under ~50 ms even when SQLAlchemy is installed.
+# Each entry maps the exported attribute to its real module path. PEP 562
+# :func:`__getattr__` resolves them on first access, so ``import testo_core``
+# loads nothing else.
 _LAZY_EXPORTS: dict[str, str] = {
+    "Plan": "testo_core.config",
+    "Stage": "testo_core.config",
+    "TestosteroneConfig": "testo_core.config",
+    "EngineExitCode": "testo_core.engine.exit_codes",
     "get_repository": "testo_core.repository.db",
     "reset_repository_cache": "testo_core.repository.db",
     "create_db_and_tables": "testo_core.repository.db_config",
@@ -33,17 +39,11 @@ _LAZY_EXPORTS: dict[str, str] = {
 }
 
 
-__all__ = [
-    "EngineExitCode",
-    "Plan",
-    "Stage",
-    "TestosteroneConfig",
-    *_LAZY_EXPORTS.keys(),
-]
+__all__ = [*_LAZY_EXPORTS.keys()]
 
 
 def __getattr__(name: str) -> Any:
-    """PEP 562 lazy attribute resolver for the database names above."""
+    """PEP 562 lazy attribute resolver for the names above."""
     module_path = _LAZY_EXPORTS.get(name)
     if module_path is None:
         raise AttributeError(f"module 'testo_core' has no attribute {name!r}")

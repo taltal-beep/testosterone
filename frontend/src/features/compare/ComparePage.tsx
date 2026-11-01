@@ -109,7 +109,8 @@ export function ComparePage() {
   const changesRef = useRef<HTMLElement>(null);
   const runsQuery = useQuery({
     queryKey: ["runs"],
-    queryFn: () => apiClient.listRuns()
+    // Enough history to pick an older baseline than the newest page.
+    queryFn: () => apiClient.listRuns(undefined, 200)
   });
 
   const options = useMemo(() => runsQuery.data?.items ?? [], [runsQuery.data?.items]);
