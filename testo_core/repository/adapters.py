@@ -39,8 +39,12 @@ class SQLModelRunRepository(BaseRunRepository):
         *,
         status: RunStatus = RunStatus.PENDING,
         metadata: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
     ) -> RunRecord:
-        rr = RunRecord(status=status, start_time=_utcnow(), metadata_={})
+        rr = RunRecord(
+            status=status, start_time=start_time or _utcnow(), end_time=end_time, metadata_={}
+        )
         base_md: dict[str, Any] = {"run_id": str(rr.id), "created_at": float(time.time())}
         if metadata:
             base_md.update(metadata)

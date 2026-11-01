@@ -305,7 +305,7 @@ def _go(results: list[dict]) -> _FileResults:
 def _decode(raw: bytes) -> tuple[bytes, str]:
     """``raw`` as UTF-8 bytes and text. UTF-16 files (Windows PowerShell's default) are re-encoded."""
     if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
-        text = raw.decode("utf-16")
+        text = raw.decode("utf-16").lstrip("\ufeff \t\r\n")
         # The XML declaration still says UTF-16; expat reads the bytes as given.
         text = re.sub(r"^(<\?xml[^>]*?encoding=)([\"'])utf-16\2", r"\1\2utf-8\2", text, flags=re.I)
         return text.encode("utf-8"), text
@@ -324,7 +324,10 @@ def _results_for_any(
     raw, text = _decode(path.read_bytes())
     head = text.lstrip()[:1]
     if head == "<":
-        root = ET.fromstring(raw)  # noqa: S314 — stage-owned file, expat ignores external entities
+        # Whitespace (or a BOM, then whitespace) before ``<?xml`` is an expat error
+        # ("XML or text declaration not at start of entity"); a stray newline from a
+        # shell redirect shouldn't make the report unreadable.
+        root = ET.fromstring(raw.removeprefix(b"\xef\xbb\xbf").lstrip())  # noqa: S314 — stage-owned file, expat ignores external entities
         from testo_core.reporting.robot_import import is_robot_root, robot_results_for_root
         from testo_core.reporting.trx_import import is_trx_root, trx_results_for_root
 

@@ -97,6 +97,8 @@ class DbBackend:
 
             record = repo.create_run(
                 status=status,
+                start_time=datetime.fromtimestamp(result.started_at, tz=UTC),
+                end_time=datetime.fromtimestamp(result.finished_at, tz=UTC),
                 metadata={
                     "plan": result.plan_name,
                     "target_repo": str(result.target_repo)
