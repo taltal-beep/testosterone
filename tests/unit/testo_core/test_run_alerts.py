@@ -10,6 +10,7 @@ import pytest
 import requests
 from typer.testing import CliRunner
 
+from testo_core import paths
 from testo_core.cli.app import app
 from testo_core.history.views import CompletedRunView
 from testo_core.reporting.collector import CollectedResults
@@ -203,7 +204,7 @@ def recorded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> list[tuple[str,
                 json.dumps({"historyId": name, "name": name, "status": status}), encoding="utf-8"
             )
     for module in (md, flaky_service):
-        monkeypatch.setattr(module.paths, "ORCHESTRATOR_ROOT", tmp_path)
+        monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
         monkeypatch.setattr(module, "list_cycle_runs", cycle_runs_from(runs))
     monkeypatch.setattr(
         md, "get_run", lambda *, run_id: next(r for r in runs if r.run_id == run_id)

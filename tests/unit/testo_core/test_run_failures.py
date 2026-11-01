@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from testo_core import paths
 from testo_core.history.views import CompletedRunView
 from testo_core.repository.db_config import reset_engine_cache
 from testo_core.repository.models import RunStatus
@@ -66,7 +67,7 @@ def history(monkeypatch, tmp_path: Path):  # noqa: ANN001, ANN201
     # Failure causes are read from the run-history DB; keep it in the test's folder.
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'history.db'}")
     reset_engine_cache()
-    monkeypatch.setattr(run_failures.paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
     monkeypatch.setattr(run_failures, "list_cycle_runs", cycle_runs_from(runs))
     monkeypatch.setattr(run_failures, "get_run", lambda *, run_id: by_id.get(run_id))
     return tmp_path, by_id
@@ -160,7 +161,7 @@ def test_a_pull_request_is_judged_against_its_target_branch(monkeypatch, tmp_pat
     runs = [pr, other_pr, main, pr_before]
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'history.db'}")
     reset_engine_cache()
-    monkeypatch.setattr(run_failures.paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
     monkeypatch.setattr(run_failures, "list_cycle_runs", cycle_runs_from(runs))
     monkeypatch.setattr(run_failures, "get_run", lambda *, run_id: pr if run_id == "pr2" else None)
     fail, ok = ("failed", "boom"), ("passed", "")

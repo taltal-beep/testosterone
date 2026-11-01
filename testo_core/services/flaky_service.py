@@ -5,10 +5,9 @@ passed and failed and its outcome flipped at least twice. One flip is a plain
 regression or fix, which Compare already shows; flipping back and forth is the
 signal that the test, not the code, is unreliable.
 
-Per-test outcomes come from each run's own artifact snapshot (the Allure
-``*-result.json`` files :class:`~testo_core.persistence.db_backend.DbBackend`
-copies per run), so this works on every database backend and needs no schema
-change. The CLI (``testo flaky``) and the API (``/analytics/flaky``) both call
+Per-test outcomes come from the ``test_result`` rows each run stores
+(:mod:`testo_core.history.cases`; older runs are read from their artifact
+snapshot once and stored), so this works on every database backend. The CLI (``testo flaky``) and the API (``/analytics/flaky``) both call
 :func:`find_flaky_tests`.
 """
 
@@ -17,10 +16,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from testo_core import paths
+from testo_core.history.cases import cases_for_run
 from testo_core.history.read_model import list_cycle_runs
 from testo_core.history.views import CompletedRunView
-from testo_core.services.report_archive_diff import _load_cases
 
 DEFAULT_WINDOW = 20
 MIN_FLIPS = 2
@@ -89,9 +87,7 @@ def classify(key: str, observations: list[dict[str, Any]]) -> FlakyTest | None:
 
 
 def _cases_for_run(run: CompletedRunView) -> dict[str, dict[str, Any]]:
-    if not run.snapshot_dir:
-        return {}
-    return _load_cases(paths.ORCHESTRATOR_ROOT / run.snapshot_dir)
+    return cases_for_run(run)
 
 
 def _cycle_runs(cycle: str, *, limit: int | None = None) -> list[CompletedRunView]:
