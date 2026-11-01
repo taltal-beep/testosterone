@@ -59,6 +59,15 @@ def xdist_available() -> bool:
     return bool(_pytest_can_import("xdist"))
 
 
+def default_workers(workers: int) -> int:
+    """Workers for a stage that never set ``workers``: serial when pytest-xdist is missing.
+
+    The built-in default is 4, so without this every first run of a project that
+    doesn't use pytest-xdist warned about a setting the user never wrote.
+    """
+    return workers if workers <= 1 or xdist_available() else 1
+
+
 def warn_if_allure_missing() -> None:
     """Explain the ``unrecognized arguments: --alluredir`` that follows otherwise.
 

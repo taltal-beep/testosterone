@@ -1,8 +1,9 @@
 name: nightly-external
 
 # Real-provider lifecycle suite (tier_external): provisions and tears down
-# throwaway GitHub/GitLab resources. It needs TESTO_E2E_* repository secrets;
-# without them the job skips with a notice instead of failing every night.
+# throwaway GitHub/GitLab resources. It needs TESTO_E2E_* repository secrets
+# and the repository variable TESTO_E2E_ENABLED=true. Until both are set the
+# job shows as skipped, not as a green run that tested nothing.
 
 on:
   schedule:
@@ -18,6 +19,7 @@ permissions:
 
 jobs:
   external_nightly:
+    if: vars.TESTO_E2E_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:

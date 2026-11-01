@@ -39,6 +39,7 @@ from testo_core.engine.log_buffer import LogBuffer, drain_stream_into_buffer, me
 from testo_core.engine.quarantine import WAIVABLE_RETURNCODE, QuarantineVerdict
 from testo_core.engine.quarantine import evaluate as evaluate_quarantine
 from testo_core.engine.result import StageResult
+from testo_core.frameworks import pytest_adapter
 from testo_core.frameworks.base import FrameworkAdapter, get_adapter
 from testo_core.paths import plan_artifacts_dir, safe_child_path
 
@@ -313,11 +314,14 @@ def _run_process_stage(
     quarantine: tuple[QuarantineRule, ...],
     testo_env: Mapping[str, str],
 ) -> StageResult:
+    workers = stage.workers
+    if adapter.name == "pytest" and not stage.workers_explicit:
+        workers = pytest_adapter.default_workers(workers)
     argv = adapter.build_argv(
         target_repo=target_repo,
         results_dir=results_dir,
         stage_args=stage.args,
-        workers=stage.workers,
+        workers=workers,
     )
 
     env = merged_env(parent_env if parent_env is not None else os.environ, stage.extra_env)

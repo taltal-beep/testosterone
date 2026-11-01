@@ -197,3 +197,12 @@ def test_no_warning_when_allure_plugin_loads(
     with caplog.at_level("WARNING", logger=pytest_adapter.__name__):
         pytest_adapter.warn_if_allure_missing()
     assert caplog.text == ""
+
+
+def test_default_workers_go_serial_quietly_without_xdist() -> None:
+    assert pytest_adapter.default_workers(4) == 1
+
+
+def test_default_workers_keep_their_value_with_xdist(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(pytest_adapter, "xdist_available", lambda: True)
+    assert pytest_adapter.default_workers(4) == 4

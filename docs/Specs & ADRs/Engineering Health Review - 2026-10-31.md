@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Engineering Health Review - 2026-10-31
@@ -50,7 +50,7 @@ The engineering base is healthy. The fast suite (1286 tests) passes in random or
 
 ## Proposals
 
-Ranked. None are started; each is a separate small PR unless marked.
+Ranked, as written on 2026-10-31. All were taken up on 2026-11-01: see [Follow-up](#follow-up-2026-11-01).
 
 | # | Severity | Finding | Proposal | Size |
 |---|----------|---------|----------|------|
@@ -64,6 +64,23 @@ Ranked. None are started; each is a separate small PR unless marked.
 | D4 | Low | **One moderate `npm audit` advisory.** `minimatch` below 11.0.1 (ReDoS) under ESLint and `typescript-eslint`. Dev tooling only, nothing ships to users. An `overrides` entry breaks their peer ranges | Wait for ESLint and `typescript-eslint` to move to `minimatch` 11 | — |
 | D6 | Low | **The pre-commit hook and CI run different ruff versions.** `.pre-commit-config.yaml` pins ruff `v0.15.0`; CI installs `ruff>=0.15.0`, today 0.17.3. They agree on the repo now, but ruff changes its format style yearly, and then a hook-formatted commit fails `ruff format --check` in CI. Dependabot doesn't bump pre-commit revs | Pin ruff to one version in the `dev` extra and the hook, and bump both together (or run `pre-commit autoupdate` in the weekly deps PR) | XS |
 | D5 | Low | **Two Postgres versions.** The root `docker-compose.yml` uses `postgres:15-alpine`, the team server compose file `postgres:16-alpine` | Use one version in both | XS |
+
+## Follow-up, 2026-11-01
+
+Taltal asked for all of the proposals. What each one became, in one pull request:
+
+| # | Outcome |
+|---|---------|
+| U1 | Done. A stage carries `workers_explicit`; on the built-in default a pytest stage without `pytest-xdist` runs serially without a warning. `workers` on the stage, in `defaults:` or `--workers` still warns |
+| C6 | Done, by a different fix than proposed: `import testo_core` no longer loads `config` and `engine` eagerly (they resolve on first use), so the `pytest11` plugin imports nothing measurable before pytest-cov starts. `config/schema.py` now reports 99%, `engine/events.py` and `engine/result.py` 100%. `pytest_plugin.py` itself still loads before coverage starts and shows 14%; its function bodies are measured when they run |
+| C7 | Done without a token: the nightly job runs only when the repository variable `TESTO_E2E_ENABLED` is `true`, so until Taltal adds the secrets and the variable it shows as skipped, not green |
+| C8 | Done. `pytest-xdist` is in the `dev` extra and CI runs the fast suite with `-n auto` (1617 tests in 66 s on 4 cores, coverage 86.9%) |
+| D2 | Done. The three Dockerfiles use `python:3.13-slim-trixie` (Debian 13) as literal `FROM` lines Dependabot can read, the server's UI stage `node:22-trixie-slim`; Dependabot has `docker` and `docker-compose` ecosystems (Postgres majors stay manual) |
+| D5 | Done. Both compose files use `postgres:16-alpine`; an old local volume needs a dump and restore or `docker compose down -v` |
+| D6 | Done. ruff is pinned (`ruff==0.17.3`) in the `dev` extra and the hook; `tests/contract/ci/test_ruff_pin.py` fails when they differ |
+| P1 | Nothing to change yet, rechecked: `openapi-typescript` 7.13.0 still has peer `typescript ^5.x`, `typescript-eslint` 8.72.1 `<6.1.0`; TypeScript is at 7.0.2. #106 stays open as the tracker |
+| D3 | Nothing to change yet: FastAPI's test client still uses `httpx` |
+| D4 | Nothing to change yet: the same `minimatch` advisory, now listed under 13 dev-only packages (ESLint, `typescript-eslint` and `openapi-typescript` chains); none ship to users |
 
 ## Related
 
