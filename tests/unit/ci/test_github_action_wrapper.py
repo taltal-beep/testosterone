@@ -463,6 +463,7 @@ def test_with_a_config_comment_stays_off_by_default(tmp_path: Path, monkeypatch)
         monkeypatch.setenv(key, value)
     (tmp_path / "testosterone.yaml").write_text("version: 1\n", encoding="utf-8")
     monkeypatch.setenv("GITHUB_WORKSPACE", str(tmp_path))
+    monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
 
     module.main(["--annotations", "false"])

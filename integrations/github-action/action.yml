@@ -106,7 +106,7 @@ runs:
         TESTO_INPUT_HISTORY: ${{ inputs.history }}
         TESTO_INPUT_CONFIG_PATH: ${{ inputs.config-path }}
       run: |
-        python "${{ github.action_path }}/run_testo_action.py" prepare-history \
+        python "$GITHUB_ACTION_PATH/run_testo_action.py" prepare-history \
           --history "$TESTO_INPUT_HISTORY" \
           --config-path "$TESTO_INPUT_CONFIG_PATH"
     - name: Restore run history
