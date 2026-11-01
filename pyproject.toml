@@ -29,7 +29,7 @@ keywords = [
     "github-actions",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Framework :: Pytest",
     "Intended Audience :: Developers",
