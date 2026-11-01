@@ -357,7 +357,7 @@ testo badge --cycle web --format json --out public/testo-badge.json   # a shield
 | `--format` | `svg` | `svg`: the image. `json`: what `https://img.shields.io/endpoint?url=<its URL>` reads, for shields.io's styles and logos |
 | `--label` | `tests` | Left-hand text |
 
-Exit `0`, or `2` for a bad `--format`. A [team server](../Processes%20&%20Guides/Team%20Server.md) serves the same badge live at `GET /api/v1/badge.svg?cycle=web` and `GET /api/v1/badge.json?cycle=web` (cached 5 minutes). Those are reads like any other: with `TESTO_PROTECT_READS` on, a public README can't load them, so publish the file `testo badge` writes instead. Put it in a README with:
+Exit `0`, or `2` for a bad `--format`. With no run of `--cycle`, the grey badge is still written and a warning names the closest recorded cycle (`testo flaky` does the same). A [team server](../Processes%20&%20Guides/Team%20Server.md) serves the same badge live at `GET /api/v1/badge.svg?cycle=web` and `GET /api/v1/badge.json?cycle=web` (cached 5 minutes). Those are reads like any other: with `TESTO_PROTECT_READS` on, a public README can't load them, so publish the file `testo badge` writes instead. Put it in a README with:
 
 ```markdown
 [![tests](https://you.github.io/project/testo-badge.svg)](https://you.github.io/project/)
@@ -518,8 +518,9 @@ testo split --cycle flows --shards 4 --json                # every shard, with i
 | `--stage` | all | Only this stage's tests |
 | `--server` | `$TESTO_SERVER_URL` | Read the times from a team server (token from `$TESTO_API_TOKEN`) |
 | `--window` | `20` | Recent runs to take the times from |
+| `--allow-empty` | off | With `--index`, exit `0` and print nothing when the shard has no tests (fewer tests than shards) |
 
-Tests with no recorded time count as a typical (median) test; with no history at all the split is round robin. The split depends only on which tests there are and their times, not their order, so every shard that sees the same history picks the same tests. Exit codes: `2` for a bad `--index` or unreadable `--tests`, `3` when the server can't be reached, `1` when there is nothing to split.
+Tests with no recorded time count as a typical (median) test; with no history at all the split is round robin. The split depends only on which tests there are and their times, not their order, so every shard that sees the same history picks the same tests. Exit codes: `2` for a bad `--index` or unreadable `--tests`, `3` when the server can't be reached, `1` when there is nothing to split or (without `--allow-empty`) the `--index` shard is empty, since an empty `pytest $(testo split ...)` would run every test. A `--server` (or `$TESTO_SERVER_URL`) that isn't an `http(s)://host` URL exits `2` here and in `testo ingest` and `testo lease`.
 
 ---
 

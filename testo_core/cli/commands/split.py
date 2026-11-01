@@ -57,6 +57,12 @@ def split(
     ),
     window: int = typer.Option(20, "--window", min=1, help="Recent runs to take the times from."),
     as_json: bool = typer.Option(False, "--json", help="Print every shard as JSON."),
+    allow_empty: bool = typer.Option(
+        False,
+        "--allow-empty",
+        help="With --index, exit 0 (printing nothing) when the shard has no tests. "
+        "Default: exit 1, since `pytest $(testo split ...)` would run every test.",
+    ),
 ) -> None:
     """Split tests into shards that take about the same time, longest tests first."""
     from rich.markup import escape
@@ -72,6 +78,12 @@ def split(
     )
 
     console = default_console()
+    from testo_core.cli.server_url import server_url_problem
+
+    problem = server_url_problem(server or os.environ.get("TESTO_SERVER_URL"))
+    if problem:
+        console.print(f"[fail]{escape(problem)}[/]")
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
     if index is not None and index > shards:
         console.print(f"[fail]--index {index} is more than --shards {shards}.[/]")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
@@ -104,7 +116,19 @@ def split(
         names_for=lambda test: nodeid_names(test) if "::" in test else (test,),
     )
     if index is not None:
-        for test in plan.shard(index).tests:
+        picked = plan.shard(index).tests
+        if not picked:
+            # An empty $(testo split ...) makes `pytest $(...)` run every test.
+            message = (
+                f"nothing to run on shard {index} of {shards} ({len(names)} tests for "
+                f"{shards} shards)"
+            )
+            if allow_empty:
+                print(f"warning: {message}", file=sys.stderr)
+                return
+            console.print(f"[fail]{escape(message)}; pass --allow-empty to exit 0 instead.[/]")
+            raise typer.Exit(code=int(EngineExitCode.DOMAIN_FAILURE))
+        for test in picked:
             typer.echo(test)
         return
     if as_json:
