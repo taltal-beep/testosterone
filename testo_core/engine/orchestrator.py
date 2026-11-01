@@ -13,6 +13,7 @@ import dataclasses
 import json
 import logging
 import os
+import shutil
 import signal
 import time
 from collections import deque
@@ -152,6 +153,7 @@ def run_plan(
                 )
         stopped_by = interrupt.requested()
 
+        _remove_stale_stage_dirs(plan_artifacts, ran={s.stage_name for s in stage_results})
         finished_at = time.time()
         rcs = [s.returncode for s in stage_results]
         exit_code = classify_exit_code(
@@ -207,6 +209,23 @@ def run_plan(
             )
 
     return plan_result
+
+
+def _remove_stale_stage_dirs(plan_dir: Path, *, ran: set[str]) -> None:
+    """Delete stage folders this run didn't write (a stage removed, renamed, skipped by
+    ``if:`` or by ``fail_fast``), so the reports, archive and history snapshot that read
+    ``plan_dir`` after the run only see this run's stages."""
+    keep = {name.casefold() for name in ran}
+    for child in plan_dir.iterdir():
+        if not child.is_dir() or child.is_symlink() or child.name.casefold() in keep:
+            continue
+        # Only folders the executor makes; anything else under the cycle folder stays.
+        if not ((child / "run.log").is_file() or (child / "allure-results").is_dir()):
+            continue
+        try:
+            shutil.rmtree(child)
+        except OSError:
+            logger.warning("could not remove stale stage folder %s", child, exc_info=True)
 
 
 def _run_sequential(
