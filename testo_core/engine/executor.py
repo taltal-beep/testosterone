@@ -39,7 +39,7 @@ from testo_core.engine.quarantine import WAIVABLE_RETURNCODE, QuarantineVerdict
 from testo_core.engine.quarantine import evaluate as evaluate_quarantine
 from testo_core.engine.result import StageResult
 from testo_core.frameworks.base import FrameworkAdapter, get_adapter
-from testo_core.reporting.paths import plan_artifacts_dir, safe_child_path
+from testo_core.paths import plan_artifacts_dir, safe_child_path
 
 if TYPE_CHECKING:
     from testo_core.reporting.junit_import import JunitImportResult

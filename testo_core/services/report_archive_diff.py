@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from testo_core.paths import plan_artifacts_dir
 from testo_core.reporting.allure_cases import case_key, case_stage, label_value, load_cases
-from testo_core.reporting.paths import plan_artifacts_dir
 from testo_core.repository.models import ReportArchive
 
 # The parser lives in reporting.allure_cases; these names stay for the modules that import them.

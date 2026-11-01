@@ -371,8 +371,8 @@ def run_configured_reporters_for_cycle(
 
 def push_metrics(*, plan: Plan, artifacts_root: Path, run_id: str | None) -> None:
     """Push the cycle's test KPIs to InfluxDB / Prometheus when configured (best-effort, logged)."""
+    from testo_core.paths import plan_artifacts_dir
     from testo_core.reporting.integrations import push_run_metrics_if_configured
-    from testo_core.reporting.paths import plan_artifacts_dir
 
     results_root = plan_artifacts_dir(artifacts_root, plan.name)
     for target, ok, message in push_run_metrics_if_configured(
@@ -395,7 +395,7 @@ def snapshot_native_reports(*, plan: Plan, artifacts_root: Path, run_id: str | N
 
     from testo_core import paths
     from testo_core.frameworks.base import get_adapter
-    from testo_core.reporting.paths import plan_artifacts_dir
+    from testo_core.paths import plan_artifacts_dir
 
     plan_dir = plan_artifacts_dir(artifacts_root, plan.name)
     for stage in plan.stages:

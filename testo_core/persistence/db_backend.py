@@ -11,9 +11,9 @@ from typing import Any
 
 from testo_core import paths
 from testo_core.engine.result import PlanResult
+from testo_core.paths import plan_artifacts_dir
 from testo_core.persistence.failure_context import failure_metadata
 from testo_core.persistence.health import compute_stage_health, run_test_totals
-from testo_core.reporting.paths import plan_artifacts_dir
 from testo_core.repository.models import RunStatus
 
 logger = logging.getLogger(__name__)
