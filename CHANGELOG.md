@@ -15,6 +15,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Python 3.14 is tested in CI and listed in the package classifiers
 
 ### Fixed
+- OpenTelemetry export: each case of a parametrized test gets its own `test.case.name` (`tests.test_math#test_add[1-2]`; they all had the same one), and an HTTP endpoint without a scheme (`collector:4318`) is reported as bad input (exit `2`) instead of a failed send (exit `3`)
 - Result importers no longer crash or silently drop results on odd files. A file with unexpected field types (Jest, Playwright, RSpec, k6) or a JUnit `time="inf"` used to crash the whole import and lose every other file's results; now that one file is skipped and logged. A `<testsuite>` nested in a root `<testsuite>` is read (it counted 0 tests), UTF-16 XML is read, XML that isn't JUnit (an HTML error page) is reported instead of counting 0 tests, a report whose name contains `-attachment` is no longer skipped as an Allure attachment, Maven Surefire reruns (`flakyFailure`, `rerunFailure`) mark the test flaky, and a JUnit failure message is capped like its trace
 - Two stages with the same name in one cycle (or names that differ only in case) are a config error: the second stage wiped the first one's results, so a failed test could disappear from the run. Each stage's `run.log` now holds only the latest run instead of growing with every run (it was copied whole into every run's history snapshot)
 - Robot Framework: a failed suite teardown fails that suite's passed tests, as `robot` reports them ("Parent suite teardown failed"); `output.xml` keeps their own PASS, so they counted as passed
@@ -33,6 +34,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `testo clean --yes` refuses to delete a folder that is the project (`artifacts_root: .`), the current, home or root folder, the config's folder or a parent of any of them, or a folder holding `.git`, `testosterone.yaml` or `pyproject.toml`. Before, `artifacts_root: .` deleted the whole project
 
 ### Changed
+- Docs: the README, Getting Started and Team Server examples record Jest through its own `--json` report instead of `jest-junit`, which drops a test file that fails to compile
 - Docs: an importer and integration bug hunt (`docs/Specs & ADRs/Importer and Integration Bug Hunt - 2026-10-31.md`) ranks what was found and fixed, with proposals for the rest
 - UI polish from the design review: Compare and dashboard highlights read as plain sentences ("Wall duration up 6.9 s", "1 more test passed", "Pass rate up 3.8 points"; no duplicate line when the metrics duration moved as much as the wall duration), the breadcrumb names the cycle, test or run on its page and says Testosterone, the Runs list says "96% passed" instead of "health 96%", the Compare filter chips read "Status change", the phone menu is opaque, and the 404 page has a page heading
 - Docs: a UI design review (`docs/Specs & ADRs/UI Design Review - 2026-10-31.md`) ranks 14 design and UX findings on the web UI with annotated screenshots and proposes fixes; linked from the Index and the docs site menu
