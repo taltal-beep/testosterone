@@ -91,7 +91,7 @@ Variables: `TESTO_CONFIG_PATH` (empty = discovery), `TESTO_CYCLE` (empty = the o
 Tier selection is marker-driven and shared between local runs and GitHub Actions:
 
 - Fast required gate:
-  - `python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1 --no-cov`
+  - `python -m pytest -q -n auto -m "tier_fast and not quarantined" --maxfail=1 --no-cov` (CI runs it on every core with `pytest-xdist`, which the `dev` extra installs)
 - Heavy optional gate:
   - `python -m pytest -q -m "tier_heavy and not tier_external" --maxfail=1 --durations=25`
 - External nightly/release gate:

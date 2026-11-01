@@ -13,7 +13,7 @@ def test_github_fast_workflow_has_required_gate_command() -> None:
     runs = [step.get("run", "") for step in job["steps"] if isinstance(step, dict)]
     fast = [r for r in runs if '-m "tier_fast and not quarantined"' in r]
     assert len(fast) == 1
-    assert 'python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1' in fast[0]
+    assert 'python -m pytest -q -n auto -m "tier_fast and not quarantined" --maxfail=1' in fast[0]
     # The coverage gate in pytest.ini must stay active on the fast suite.
     assert "--no-cov" not in fast[0]
 
