@@ -8,7 +8,9 @@
 [![Docs](https://img.shields.io/badge/docs-site-blue)](https://taltal-beep.github.io/testosterone/docs/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**Live demo: <https://taltal-beep.github.io/testosterone/>** · **Docs: <https://taltal-beep.github.io/testosterone/docs/>** · **Try it with your own JUnit file: <https://taltal-beep.github.io/testosterone/try>** (read in your browser, nothing uploaded)
+**▶ Try it now, no install: drop a JUnit XML file on <https://taltal-beep.github.io/testosterone/try>** and see what failed, what's flaky and what's slow. It's read in your browser; nothing is uploaded.
+
+**Live demo: <https://taltal-beep.github.io/testosterone/>** · **Docs: <https://taltal-beep.github.io/testosterone/docs/>**
 
 [![Dashboard: health, failed, pass count and duration cards with trends for the latest run, rollups, quick links and the recent self-test and fake-api runs](docs/assets/screenshots/dashboard.png)](https://taltal-beep.github.io/testosterone/)
 
@@ -41,37 +43,21 @@ More ways in, from Jest to `go test`, are in the [Quickstart](#quickstart).
 
 ## What's new
 
-New in 1.5.0:
+1.5.0 adds `testo affected` (run only the tests a change can affect), OpenTelemetry export and
+`testo pool` for VM pools. 1.4.0 brought `testo ingest` for Jest, Vitest, .NET, Go, Robot,
+Allure, RSpec, k6 and Xcode results, `pytest --testo` and the GitHub Action at
+`uses: taltal-beep/testosterone@v1`. Every change is in [CHANGELOG.md](CHANGELOG.md).
 
-- **Run only the tests a change can affect.** `testo affected` lists them with the reason each
-  was picked, and `pytest --testo-affected` runs just those. Anything it can't map runs everything.
-- **Send runs to OpenTelemetry.** A run, its stages and its tests become one trace in Datadog,
-  Grafana Tempo, Honeycomb or Jaeger (`pip install 'testo-core[otel]'`, standard `OTEL_*` variables).
-- **Manage VM pools from the command line.** `testo pool status` compares a pool with the keys that
-  really exist, and `testo pool add`, `remove` and `sweep` run your own provider commands, as a dry
-  run unless you pass `--apply`, with every command logged. Testosterone never runs them on its own.
+## Who it's for
 
-New in 1.4.0: `testo ingest` for Jest, Vitest, .NET, Go, Robot, Allure, RSpec, k6 and Xcode results,
-`pytest --testo`, a dashboard that leads with what needs attention, triage memory, traces and
-flakiness on the test page, resource pools and time-based shards, `testo badge`, and the GitHub
-Action at `uses: taltal-beep/testosterone@v1`.
+- **Teams whose CI goes red and someone has to ask "is this new, flaky or just slow?"** Testosterone
+  answers that from the JUnit XML (or Jest, Playwright, `go test`, .NET...) results you already have.
+- **People who want it self-hosted and free**: a `pip install` on a laptop, or one
+  `docker compose up` for a shared team server. No account, no cloud, MIT licensed.
 
-New in 1.3.0: failing tests first on the run page, `testo ui`, a page per test, pull request
-comments judged against the target branch, owners and issue links for flaky tests, less timing
-noise, and opt-in team-server accounts, queue, parallel stages and runner containers.
-
-New in 1.2.0: `testo ingest` for any runner's JUnit XML, the team server, a lighter install
-(Behave moved to the `bdd` extra), flaky test detection, pull request comments, plugins and
-`equipment: playwright`.
-
-<details>
-<summary><strong>See the new commands</strong>: <code>testo flaky</code>, <code>testo report markdown</code> and <code>testo plugins</code> on the fake-api cycle</summary>
-
-![Terminal recording: testo flaky finds the flaky fake-api test with its pass and fail history, testo report markdown prints the run as a pull request comment, and testo plugins lists the built-in frameworks and reporters](docs/assets/demo/cli-whats-new.gif)
-
-</details>
-
-Full list in [CHANGELOG.md](CHANGELOG.md).
+Not the right pick if you want a hosted SaaS with nothing to run, or full manual test case
+management. The [comparison page](https://taltal-beep.github.io/testosterone/docs/compared-with-other-tools/)
+says which tool fits better then.
 
 ## Why
 
@@ -235,6 +221,13 @@ schema and every flag are in [Command Reference](https://taltal-beep.github.io/t
 Exit codes: `0` success (or trigger-skipped), `1` tests failed, `2` invalid input,
 `3` infrastructure failure, `4` internal error.
 Details: [Troubleshooting and Error Codes](https://taltal-beep.github.io/testosterone/docs/cli-commands/troubleshooting-and-error-codes/).
+
+<details>
+<summary><strong>See it in a terminal</strong>: <code>testo flaky</code>, <code>testo report markdown</code> and <code>testo plugins</code> on the fake-api cycle</summary>
+
+![Terminal recording: testo flaky finds the flaky fake-api test with its pass and fail history, testo report markdown prints the run as a pull request comment, and testo plugins lists the built-in frameworks and reporters](docs/assets/demo/cli-whats-new.gif)
+
+</details>
 
 ## API
 
