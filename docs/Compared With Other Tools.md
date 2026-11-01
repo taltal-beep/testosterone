@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-25
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Compared with other tools
@@ -21,7 +21,7 @@ Features and prices of the other tools change often. This page describes them as
 | Price | Free, MIT | Free | Free self-hosted; paid cloud | Paid, by usage | Free tier, then paid | Paid, part of Datadog |
 | Runners | Any that writes JUnit XML, plus pytest, Behave, BehaveX and Playwright adapters | Most, through Allure adapters | Most, through agents | Playwright, Cypress | Most, through JUnit upload | Most, through Datadog libraries |
 | History across runs | Yes, with per-test diffs between any two runs | One run, with an optional history folder | Yes | Yes | Yes | Yes |
-| Flaky test detection | Yes, plus quarantine in config | Retries only | Yes | Yes | Yes | Yes |
+| Flaky test detection | Yes, plus quarantine from config, the UI or the CLI | Retries only | Yes | Yes | Yes | Yes |
 | Per-test history page | Yes: outcomes, flake rate over time, duration, owner | Per run | Yes | Yes | Yes | Yes |
 | Traces, screenshots and videos | Playwright attachments on the test page | Yes, the richest per-run view | Yes | Yes, streamed live | Not its focus | Through Datadog APM |
 | Runs the tests for you | Yes (`testo run`, cycles of stages) | No | No | Orchestrates Playwright and Cypress | No | No |

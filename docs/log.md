@@ -176,3 +176,7 @@ Added [Flaky Test Issues - 2026-11-01](Specs%20&%20ADRs/Flaky%20Test%20Issues%20
 ## 2026-11-01: MCP server
 
 Added [MCP Server - 2026-11-01](Specs%20&%20ADRs/MCP%20Server%20-%202026-11-01.md) to Specs & ADRs (`testo mcp`), linked from its README and the docs site menu.
+
+## 2026-11-01: quarantine from the UI
+
+Added [Quarantine From the UI - 2026-11-01](Specs%20&%20ADRs/Quarantine%20From%20the%20UI%20-%202026-11-01.md) to Specs & ADRs (gap G2, quick win Q8), linked from its README, the Index and the docs site menu; [Flaky Test Quarantine - 2026-10-22](Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md) now points to it.

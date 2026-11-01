@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-06-25
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # QA Strategies
@@ -81,7 +81,7 @@ cycles:
 
 Validation: a `command` stage needs `args`, and `junit_xml` patterns must be relative and stay inside `target_repo`. `junit_xml` also works on pytest/Behave stages.
 
-**Quarantine** (top-level and/or per cycle): failures of the listed tests don't fail their stage. The tests still run and still show as failed in results, reports, Compare and the PR comment.
+**Quarantine** (top-level and/or per cycle): failures of the listed tests don't fail their stage. The tests still run and still show as failed in results, reports, Compare and the PR comment. Without editing this file, the UI's Quarantine button or [`testo quarantine`](../CLI%20Commands/Command%20Reference.md#testo-quarantine) adds a test to a list kept in the run history, which runs add to these rules.
 
 ```yaml
 quarantine:                       # every cycle

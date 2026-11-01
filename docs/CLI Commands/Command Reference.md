@@ -273,7 +273,7 @@ testo flaky --cycle nightly --new --json     # only tests the latest run made fl
 
 A test is flaky when, within the window, it passed on a retry inside one run, passed and failed on the same commit, or both passed and failed with its outcome changing at least twice on one branch (skipped runs are ignored; runs that recorded no branch count as one branch). The Why column (`"reasons"` in `--json`) says which. One change is a regression or a fix, which `testo summary` shows. A test that failed each of its last 3 runs is listed under "Broken, not flaky" (`"broken"` in `--json`) instead, and `--fail-on-flaky` ignores it; see [Better Flaky Signal - 2026-11-01](../Specs%20&%20ADRs/Better%20Flaky%20Signal%20-%202026-11-01.md). Exit `2` when fewer than two runs with per-test results exist. Reads run-history records (`run_id`s) and each run's artifact snapshot, the same data as `GET /api/v1/analytics/flaky?cycle=<name>` and the Flaky tests card on the cycle page. See [Open Source Features - 2026-10-19](../Specs%20&%20ADRs/Open%20Source%20Features%20-%202026-10-19.md).
 
-The table's Quarantined column (and `"quarantined"` in `--json`) shows which flaky tests match the cycle's [`quarantine:` rules](../Testing%20Workflows/QA%20Strategies.md#defining-work-in-testosteroneyaml); for the others it prints a `quarantine:` snippet to paste. A quarantined test's failures don't fail `testo run`; see [Flaky Test Quarantine - 2026-10-22](../Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md).
+The table's Quarantined column (and `"quarantined"` in `--json`) shows which flaky tests match the cycle's [`quarantine:` rules](../Testing%20Workflows/QA%20Strategies.md#defining-work-in-testosteroneyaml) or the list kept in this machine's run history ([`testo quarantine`](#testo-quarantine)). For the others it prints a `testo quarantine add --cycle <cycle> "<name>"` line per test, which needs no config file, and the `quarantine:` snippet for those who keep the list in `testosterone.yaml`. A quarantined test's failures don't fail `testo run`, `testo ingest` or `pytest --testo`; see [Flaky Test Quarantine - 2026-10-22](../Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md) and [Quarantine From the UI - 2026-11-01](../Specs%20&%20ADRs/Quarantine%20From%20the%20UI%20-%202026-11-01.md).
 
 ---
 
@@ -387,6 +387,31 @@ testo issues sync --cycle nightly --new --repo acme/shop
 - **Close.** An open issue with the cycle's marker is commented on and closed as completed when its test is no longer flaky in the last 20 runs and passed each of its last `TESTO_ISSUES_CLOSE_AFTER` runs (default `10`). Issues without the marker are never touched.
 
 Exit `0` when the pass ran, `2` with no repository or (without `--dry-run`) no token, `3` when GitHub refused a request or couldn't be reached. After a run the pass is best-effort: an error is one `testo issues:` warning line on stderr and never changes the run's exit code. The token needs `issues: write` ([CI-CD Pipeline Setup](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md#github-action)). Design: [Flaky Test Issues - 2026-11-01](../Specs%20&%20ADRs/Flaky%20Test%20Issues%20-%202026-11-01.md).
+
+---
+
+## `testo quarantine`
+
+Quarantine a test without a config change: it still runs and is reported, but its failure no longer fails the run. The list lives in the run-history database (table `quarantined_test`), the same one the UI's **Quarantine** button and `/api/v1/quarantine` change, and every run of the cycle adds it to the `quarantine:` rules of `testosterone.yaml`.
+
+```bash
+testo quarantine add --cycle web-unit "test_refund_flaky" --reason "#412" --owner @pay
+testo quarantine add --cycle web-unit "tests.payments#*"     # a glob, matched like quarantine: rules
+testo quarantine list --cycle web-unit
+testo quarantine remove --cycle web-unit "test_refund_flaky"
+testo quarantine add --cycle web-unit "test_x" --server https://testo.example.com   # the team server's list
+```
+
+| Command / flag | Meaning |
+|------|---------|
+| `add TEST --cycle C` | Add `TEST` (the name or full name runs record, or an `fnmatch` glob) to cycle `C`'s list; adding it again replaces the entry. `--reason`, `--owner` are free text |
+| `remove TEST --cycle C` | Release the entry, spelled as `list` shows it. Exit `1` when it isn't in the list |
+| `list [--cycle C] [--json]` | Entries, newest first. `testosterone.yaml` rules aren't listed |
+| `--server URL` | Change the list on a [team server](../Processes%20&%20Guides/Team%20Server.md) instead of this machine's (default `$TESTO_SERVER_URL`, token from `$TESTO_API_TOKEN`; writes need a `runner` account or the token). Exit `2` when the server refuses, `3` when it can't be reached |
+
+Where the list is applied: `testo run`, `testo ingest` and the server's runs and ingest, all through `CycleRunService` (an ingest cycle also gets the `quarantine:` rules of a `testosterone.yaml` cycle with the same name). `testo ingest --server` exits with the server's verdict, so the server's list decides. `pytest --testo` checks the session itself (below). The GitHub Action runs `testo run` on the job's own cached history, so it uses that history's list and the config, not a team server's. A run with `--no-persist` reads only `testosterone.yaml`. Matching and the "exit `1` only" rule are the same as for config rules; reading the list is best-effort (a database error is one log line, and the run keeps its config rules).
+
+An entry whose test is an exact name is released on its own once the test passed, on the first try, in each of its last `TESTO_QUARANTINE_RELEASE_AFTER` runs of the cycle (default `10`; `0` turns it off). Skipped runs don't count; globs are never released on their own. With `TESTO_AUTH=accounts` the audit log records CLI changes and releases (user `testo`, method `RELEASE`) next to the API's. Design: [Quarantine From the UI - 2026-11-01](../Specs%20&%20ADRs/Quarantine%20From%20the%20UI%20-%202026-11-01.md).
 
 ---
 
@@ -665,7 +690,7 @@ testo-core installs a pytest plugin (entry point `pytest11`, `testo_core/pytest_
 | `--testo-affected-base REF` | Branch or commit `--testo-affected` diffs against (default as `testo affected --base`) |
 | `--testo-timings CYCLE` | Cycle whose test times `--testo-shard` uses (default `$TESTO_CYCLE`, which `testo run` sets, else the rootdir's name; from `--testo-server` / `$TESTO_SERVER_URL` when set) |
 
-The session's JUnit XML (yours if `--junitxml` is set, else a temporary file in a `.testo-*` folder of the rootdir, removed afterwards) is recorded through the same path as `testo ingest`, into a `pytest` stage, and the run writes `artifacts/` like `testo ingest` does. One line in pytest's summary says where it went. Recording never changes pytest's exit code: a problem is reported on that line instead. Nothing is recorded when no tests ran, or on a pytest-xdist worker (the controller records).
+The session's JUnit XML (yours if `--junitxml` is set, else a temporary file in a `.testo-*` folder of the rootdir, removed afterwards) is recorded through the same path as `testo ingest`, into a `pytest` stage, and the run writes `artifacts/` like `testo ingest` does. One line in pytest's summary says where it went. Recording never changes pytest's exit code: a problem is reported on that line instead. The one exception is quarantine: when pytest exits `1` and every failed test matches the cycle's quarantine (the `quarantine:` rules of a `testosterone.yaml` cycle with that name, plus the stored list of [`testo quarantine`](#testo-quarantine), read from `--testo-server` when set), the session exits `0` and a `testo: exit 0 because every failed test is quarantined …` line names them. Nothing is recorded when no tests ran, or on a pytest-xdist worker (the controller records).
 
 ---
 
@@ -694,10 +719,11 @@ The v1.0 `uqo` command (including its `uqo run --config` headless format with `-
 | `TESTO_ISSUES_LABELS` | Comma-separated labels on the issues (default `flaky-test`; empty for none) |
 | `TESTO_ISSUES_ASSIGN` | `1`: assign the test's CODEOWNERS users |
 | `TESTO_ISSUES_CLOSE_AFTER` | Passing runs in a row before an issue is closed (default `10`) |
+| `TESTO_QUARANTINE_RELEASE_AFTER` | Clean passing runs in a row before a stored quarantine entry for one test is released (default `10`; `0`: never). See [`testo quarantine`](#testo-quarantine) |
 | `TESTO_UI_URL` | Base URL of the web UI, for the test page link in issues |
 | `GITHUB_API_URL` | GitHub API for issues (default `https://api.github.com`; GitHub Enterprise Server: `https://<host>/api/v3`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_SERVICE_NAME` | Where `testo otel` and the `otel` reporter send traces (the standard OpenTelemetry variables, `*_TRACES_*` forms too) |
-| `TESTO_SERVER_URL`, `TESTO_API_TOKEN` | Team server for `testo lease` (and `pytest --testo-server`) |
+| `TESTO_SERVER_URL`, `TESTO_API_TOKEN` | Team server for `testo lease`, `testo quarantine --server` (and `pytest --testo-server`) |
 | `TESTO_LEASE_DB_URL` | Database for local leases when it isn't the run-history one |
 | `TESTO_SHARD` | `I/N`: run only that shard of a pytest session ([`--testo-shard`](#pytest---testo)) |
 | `TESTO_CYCLE`, `TESTO_STAGE` | Set by `testo run` for each stage's process: which cycle and stage it is |
