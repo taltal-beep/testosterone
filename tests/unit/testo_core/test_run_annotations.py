@@ -8,11 +8,13 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from testo_core import paths
 from testo_core.cli.app import app
 from testo_core.history.views import CompletedRunView
 from testo_core.repository.models import RunStatus
 from testo_core.services import run_annotations as ann
 from testo_core.services import run_summary_markdown as md
+from tests._history_fakes import cycle_runs_from
 
 PYTEST_TRACE = (
     "def test_bad():\n>       helper(1)\n\ntests/test_x.py:5: \n_ _ _\n\n"
@@ -111,9 +113,8 @@ def test_report_annotations_cli(
         "      - name: unit\n        equipment: pytest\n        target_repo: app\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr(ann.paths, "ORCHESTRATOR_ROOT", root)
-    monkeypatch.setattr(md.paths, "ORCHESTRATOR_ROOT", root)
-    monkeypatch.setattr(md, "list_recent_runs", lambda *, limit: [run])
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", root)
+    monkeypatch.setattr(md, "list_cycle_runs", cycle_runs_from([run]))
     monkeypatch.chdir(repo)
 
     result = CliRunner().invoke(app, ["report", "annotations", "--cycle", "api"])

@@ -280,7 +280,7 @@ def test_endpoint_without_scheme_is_bad_input(monkeypatch: pytest.MonkeyPatch) -
 def test_cli_endpoint_without_scheme_exits_2(
     snapshot: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(otel_export, "list_recent_runs", lambda *, limit: [_run()])
+    monkeypatch.setattr(otel_export, "list_cycle_runs", cycle_runs_from([_run()]))
     result = CliRunner().invoke(app, ["otel", "--cycle", "api", "--endpoint", "collector:4318"])
     assert result.exit_code == 2
     assert "must be a URL" in result.output
