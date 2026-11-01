@@ -117,10 +117,10 @@ describe("AIIntegrationSettingsPage", () => {
     });
   });
 
-  it("offers the local Claude Code CLI without asking for a key", async () => {
+  it("offers the local Claude Code CLI without asking for a key, and switches AI on when picked", async () => {
     const put = vi.fn();
     const status = {
-      enabled: true,
+      enabled: false,
       configured: false,
       provider: "openai",
       model: "gpt-4.1-mini",
@@ -154,6 +154,6 @@ describe("AIIntegrationSettingsPage", () => {
     expect(screen.queryByLabelText("API key source")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Save settings" }));
     await waitFor(() => expect(put).toHaveBeenCalled());
-    expect(put.mock.calls[0][0]).toMatchObject({ provider: "claude_code", model: "sonnet", timeout_s: 120 });
+    expect(put.mock.calls[0][0]).toMatchObject({ enabled: true, provider: "claude_code", model: "sonnet", timeout_s: 120 });
   });
 });

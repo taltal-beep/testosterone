@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { apiClient, type AskTurnItem } from "../../lib/api-client";
 import { Badge, Button, Card, PageHeader, Spinner } from "../../components/ui";
 import { IS_STATIC_BUILD } from "../../lib/static-backend";
 import { CyclePicker } from "../health/ProjectHealthPage";
+import { AiNotReadyNote } from "../../components/AiNotReadyNote";
 
 export const SUGGESTED_QUESTIONS = [
   "What broke in the latest runs, and is it new?",
@@ -113,13 +114,7 @@ export function AskPage() {
             provider (a free Gemini key works).
           </p>
         ) : aiStatus.data && !aiReady ? (
-          <p className="mt-3 rounded-xl border border-warn-500/30 bg-warn-500/10 px-3 py-2 text-sm text-warn-200">
-            AI is not set up yet.{" "}
-            <Link to="/settings/ai" className="font-semibold text-brand-300 hover:underline">
-              Open AI settings
-            </Link>{" "}
-            to add a provider (a free Gemini key works).
-          </p>
+          <AiNotReadyNote status={aiStatus.data} />
         ) : null}
 
         <div className="mt-4 space-y-4" aria-live="polite">

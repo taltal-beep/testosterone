@@ -167,9 +167,11 @@ export function AIIntegrationSettingsPage() {
             value={effectiveForm.provider}
             onChange={(event) => {
               // A model name belongs to one provider, so switching provider resets it.
+              // Picking a provider means you want AI on, so it also ticks Enable (untick to keep it off).
               const provider = event.target.value as Provider;
               setFormState((prev) => ({
                 ...prev,
+                enabled: true,
                 provider,
                 model: PROVIDER_DEFAULTS[provider].model,
                 timeout_s: PROVIDER_DEFAULTS[provider].timeoutS,
