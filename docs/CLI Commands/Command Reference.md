@@ -331,7 +331,7 @@ Use the full path to `testo` (e.g. `.venv/bin/testo`) when it isn't on the agent
 | `list_runs(cycle=None, limit=20)` | Recent runs, newest first (limit 1 to 100) |
 | `get_run(run_id)` | One run: counts, stages, failing tests (new breakages first), same-cause groups, rerun commands |
 | `failing_tests(cycle)` | The latest run's failing tests: first line of the message, failing since, new or flaky, marked cause, rerun commands |
-| `flaky_tests(cycle, window=20)` | Tests that passed and failed, flipping at least twice, in the last runs, with a `PFPF` history and whether they're quarantined |
+| `flaky_tests(cycle, window=20)` | Flaky tests in the last runs with why (passed on retry, mixed results on one commit, flips on one branch), a `PFPF` history and whether they're quarantined; tests failing each of their last 3 runs come back as `broken` |
 | `test_history(cycle, test)` | One test (name, full name or key; a partial name that matches one test) in each of the last 20 runs |
 | `compare_runs(baseline_id, current_id)` | Count and timing deltas, then per-test regressions, fixes, added and removed tests, regressions first |
 | `project_health(cycle=None)` | The [project health](../Specs%20&%20ADRs/Project%20Health%20-%202026-10-26.md) score, grade, signals, per-cycle health and top findings |

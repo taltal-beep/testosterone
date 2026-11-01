@@ -212,7 +212,11 @@ class HistoryTools:
         return {"run": _run_summary(run), **self._failures(run)}
 
     def flaky_tests(self, cycle: str, window: int = 20) -> dict[str, Any]:
-        """Tests that both passed and failed, flipping at least twice, in the cycle's last `window` runs (2-100)."""
+        """Flaky tests in the cycle's last `window` runs (2-100), each with why; broken tests listed apart.
+
+        Flaky: passed on a retry, passed and failed on one commit, or flipped twice on one branch.
+        Broken: failed each of its last 3 runs (a real failure, not flakiness).
+        """
         from testo_core.engine.quarantine import matching_rule
         from testo_core.services.flaky_service import find_flaky_tests
 
@@ -237,8 +241,19 @@ class HistoryTools:
                 ),
                 "quarantined": bool(rules)
                 and matching_rule(rules, name=t.name, full_name=t.full_name) is not None,
+                "reasons": list(t.reasons),
             }
             for t in report.flaky[:MAX_ITEMS]
+        ]
+        broken = [
+            {
+                "name": b.name,
+                "full_name": b.full_name,
+                "group": b.group,
+                "failing_runs": b.failing_runs,
+                "message": _short(b.message),
+            }
+            for b in report.broken[:MAX_ITEMS]
         ]
         return {
             "cycle": report.cycle,
@@ -247,6 +262,7 @@ class HistoryTools:
             "tests_analyzed": report.tests_analyzed,
             "flaky_count": len(report.flaky),
             "flaky": flaky,
+            "broken": broken,
             "history_legend": "oldest to newest; P passed, F failed, . skipped or unknown",
         }
 
