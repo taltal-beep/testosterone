@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Security
+- With `TESTO_RUNNER=container`, a `per: stage` resource pool with `on_take` / `on_check` / `on_release` is refused: those hooks ran in the API server's own process, outside the stage's container, so a runner could run commands on the server. `per: test` hooks keep working (they run inside the container)
 - The GitHub Action pins `actions/setup-python` to a commit SHA, and the publish and commitlint workflows pin their third-party actions the same way
 - Accounts: removing a user and adding the same name again no longer revives the old person's session cookies (cookies now carry the account's creation time). Existing account sessions sign in again once after the upgrade
 - Failure evidence redaction (before storage and before an AI provider sees it) now also catches GitHub, GitLab, npm, Slack, AWS and Google tokens, JWTs, `Basic` credentials, passwords in URLs (`scheme://user:***@host`), `password=` values, quoted JSON keys and private key blocks, and masks `password`, `DATABASE_URL`, `privateKey` and `cookie` fields

@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-22
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Team Server
@@ -110,7 +110,7 @@ docker compose -f docker-compose.yml -f docker-compose.runner.yml up -d    # add
 | `TESTO_RUNNER_USER` | `10001:10001` | User stages run as (the images' `testo`, so files stay readable by the server) |
 | `TESTO_RUNNER_MAX_RUNS` | `4` | Stages at once; more wait for a slot |
 
-A timeout stops the container the same way it stops a local process (the stage gets `124`), and if the server goes away mid-run the runner stops the container. Unset `TESTO_RUNNER` (or drop the second compose file) to go back. The runner service has no published port, but the Docker socket is root on the host, so keep it on the compose network; rootless Docker or Podman via `DOCKER_HOST` narrows that further. Why it is built this way: [Throwaway Stage Containers - 2026-10-24](../Specs%20&%20ADRs/Throwaway%20Stage%20Containers%20-%202026-10-24.md).
+A `per: stage` resource pool with `on_take` / `on_check` / `on_release` hooks is refused in this mode, because those hooks would run in the server's process; use `per: test` ([Shared Resource Pools](Shared%20Resource%20Pools.md)). A timeout stops the container the same way it stops a local process (the stage gets `124`), and if the server goes away mid-run the runner stops the container. Unset `TESTO_RUNNER` (or drop the second compose file) to go back. The runner service has no published port, but the Docker socket is root on the host, so keep it on the compose network; rootless Docker or Podman via `DOCKER_HOST` narrows that further. Why it is built this way: [Throwaway Stage Containers - 2026-10-24](../Specs%20&%20ADRs/Throwaway%20Stage%20Containers%20-%202026-10-24.md).
 
 ## Shared resource pools
 

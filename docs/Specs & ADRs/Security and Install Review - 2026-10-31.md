@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Security and Install Review - 2026-10-31
@@ -22,7 +22,7 @@ Ranked by severity. "Fixed" means fixed in the pull request that added this note
 | ID | Severity | Area | Finding | Status |
 |----|----------|------|---------|--------|
 | R1 | High | Container runner | With `TESTO_RUNNER=container`, `${env:...}` in a stage's `args` or `env:` was filled from the **server's** environment and sent to the throwaway container, so a runner could copy `TESTO_API_TOKEN` (the admin credential that also signs every session cookie), `TESTO_RUNNER_TOKEN`, `DATABASE_URL` and AI keys into a stage: runner to admin | Fixed: in container mode `${env:...}` can't read `TESTO_*`, `DATABASE_URL`, `POSTGRES_*` or `*_API_KEY` / `*_TOKEN` / `*_SECRET` / `*_PASSWORD` / `*_DB_URL` |
-| R2 | High | Container runner, pools | A `per: stage` resource pool's `on_take` / `on_check` / `on_release` hooks run with `shell=True` in the API server's process, even with `TESTO_RUNNER=container`. A runner (or a repo's `testosterone.yaml`) gets a shell on the server with its environment | Proposal P1 |
+| R2 | High | Container runner, pools | A `per: stage` resource pool's `on_take` / `on_check` / `on_release` hooks run with `shell=True` in the API server's process, even with `TESTO_RUNNER=container`. A runner (or a repo's `testosterone.yaml`) gets a shell on the server with its environment | Fixed (P1, approved 2026-11-01): with `TESTO_RUNNER=container`, a `per: stage` pool with hooks is refused before anything is leased; `per: test` hooks run inside the container |
 | R3 | High | Reports | An `allure-results` upload (`testo ingest`, `POST /api/v1/ingest`) kept each attachment's own file name, so an attachment named `page.html` was served from `/history` as a normal page on the API's origin: stored script that acts with the viewer's session. In accounts mode a runner could use it against an admin | Fixed: copies are stored as `<uuid>-attachment<ext>`, and every file under a raw `allure-results/` folder is served in a CSP sandbox |
 | R4 | Medium | Local API | DNS rebinding: a web page that re-points its own hostname at `127.0.0.1` could read every GET route of a token-less API (the local default and `testo ui`): runs, logs, reports. Writes were already refused by the Origin check | Fixed: without a token the API answers only loopback `Host` names, plus `TESTO_ALLOWED_HOSTS` |
 | R5 | Medium | Local API | `TESTO_CORS_ORIGINS=*` skipped the Origin check for writes even without a token, so any web page could start runs (run commands) | Fixed: `*` waives the check only when a token is required anyway |
@@ -62,7 +62,7 @@ A plain install also leaves `artifacts/` and `testo_history.db` in the working d
 
 Bigger items, not started; each needs a yes first.
 
-- **P1, R2:** with `TESTO_RUNNER=container`, refuse a `per: stage` pool that has hooks (clear error at run start), or run those hooks through the runner service in their own container.
+- **P1, R2:** done: refused in container mode (see R2). Running those hooks through the runner service instead stays possible later if someone needs `per: stage` hooks there.
 - **P2, R7:** container stages lease through the API (`TESTO_SERVER_URL`) with a lease-only credential scoped to the run, never the database URL or the admin token.
 - **P3, R8:** pin a pool's spec on the server (first registration, or admin-defined) and ignore limits a client sends; small first step: cap `lease_ttl` server-side.
 - **P4, R9:** keep `ai_settings.json` out of the volume stages mount, then give each run its own artifacts subpath.
