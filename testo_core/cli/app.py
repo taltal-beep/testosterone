@@ -94,11 +94,13 @@ def _register_commands() -> None:
         help="Open the web UI on this machine's run history (http://127.0.0.1:8000).",
         rich_help_panel="Run and report",
     )(ui_cmd.ui)
-    app.command(
+    app.add_typer(
+        mcp_mod.app,
         name="mcp",
-        help="Serve the run history to coding agents over MCP (stdio); --allow-writes for triage.",
+        help="Serve the run history to coding agents over MCP (stdio); `testo mcp install` sets "
+        "up Claude Code, Cursor, VS Code or Claude Desktop.",
         rich_help_panel="Run and report",
-    )(mcp_mod.mcp)
+    )
     app.command(
         name="demo",
         help="Record eight sample runs (a flaky test, a new failure, a slower test) and open the UI.",

@@ -137,3 +137,23 @@ def test_flaky_marks_stored_entries_and_suggests_the_command(
     assert 'testo quarantine add --cycle web "test_stored"' not in text
     # Config users still get the yaml snippet.
     assert "testosterone.yaml" in text and '- test: "test_open"' in text
+
+
+def test_add_on_a_local_history_says_how_to_quarantine_in_ci_too() -> None:
+    import yaml
+
+    result = _testo("quarantine", "add", "--cycle", "api", "test_race", "--reason", "races")
+
+    assert result.exit_code == 0, result.output
+    assert "CI doesn't see" in result.output
+    snippet = result.output.split("testosterone.yaml:\n", 1)[1].split("\nor use", 1)[0]
+    assert yaml.safe_load(snippet) == {
+        "cycles": {"api": {"quarantine": [{"test": "test_race", "reason": "races"}]}}
+    }
+
+
+def test_no_ci_hint_for_a_shared_database(monkeypatch: pytest.MonkeyPatch) -> None:
+    from testo_core.cli.commands.quarantine import ci_hint
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://u:p@db/testo")
+    assert ci_hint(cycle="api", test="t", reason=None) is None

@@ -327,6 +327,8 @@ Add it to the agent's MCP config. Claude Code: `claude mcp add testosterone -- t
 }
 ```
 
+Or let `testo mcp install` write it: in the project folder, `testo mcp install` adds the block to `.mcp.json` (Claude Code), `--client cursor` to `.cursor/mcp.json`, `--client vscode` to `.vscode/mcp.json` (under `servers`, `"type": "stdio"`) and `--client claude-desktop` to Claude Desktop's own `claude_desktop_config.json`. Project files name `testo` and the config relative to the project, so they can be committed; Claude Desktop's gets absolute paths. Other servers in the file are kept, an older `testosterone` entry is replaced, `--allow-writes` passes through, and a file that isn't a JSON object is left alone (exit `2`).
+
 Use the full path to `testo` (e.g. `.venv/bin/testo`) when it isn't on the agent's `PATH`, and set `DATABASE_URL` under `"env"` for a Postgres history.
 
 | Tool | Returns |
@@ -465,7 +467,11 @@ testo quarantine add --cycle web-unit "test_x" --server https://testo.example.co
 
 Where the list is applied: `testo run`, `testo ingest` and the server's runs and ingest, all through `CycleRunService` (an ingest cycle also gets the `quarantine:` rules of a `testosterone.yaml` cycle with the same name). `testo ingest --server` exits with the server's verdict, so the server's list decides. `pytest --testo` checks the session itself (below). The GitHub Action runs `testo run` on the job's own cached history, so it uses that history's list and the config, not a team server's. A run with `--no-persist` reads only `testosterone.yaml`. Matching and the "exit `1` only" rule are the same as for config rules; reading the list is best-effort (a database error is one log line, and the run keeps its config rules).
 
-An entry whose test is an exact name is released on its own once the test passed, on the first try, in each of its last `TESTO_QUARANTINE_RELEASE_AFTER` runs of the cycle (default `10`; `0` turns it off). Skipped runs don't count; globs are never released on their own. With `TESTO_AUTH=accounts` the audit log records CLI changes and releases (user `testo`, method `RELEASE`) next to the API's. Design: [Quarantine From the UI - 2026-11-01](../Specs%20&%20ADRs/Quarantine%20From%20the%20UI%20-%202026-11-01.md).
+An entry whose test is an exact name is released on its own once the test passed, on the first try, in each of its last `TESTO_QUARANTINE_RELEASE_AFTER` runs of the cycle (default `10`; `0` turns it off). Skipped runs don't count; globs are never released on their own. Names with `*`, `?` or `[` (pytest's `test_x[1]`) can be stored escaped (`test_x[[]1]`), which matches only that test and is released the same way. With `TESTO_AUTH=accounts` the audit log records CLI changes and releases (user `testo`, method `RELEASE`) next to the API's. Design: [Quarantine From the UI - 2026-11-01](../Specs%20&%20ADRs/Quarantine%20From%20the%20UI%20-%202026-11-01.md).
+
+**Automatic quarantine (`TESTO_QUARANTINE_AUTO`).** Off by default. Set it to a flip rate (`0.3`, or `30`) and, after each recorded run, every test that is [flaky](#testo-flaky) at that rate or more *and failed in that run* is added to the list (user `testo`, the reason says the rate and why it's flaky), so the next run doesn't fail on it. A test that fails every time is broken, not flaky, and is never added; one a rule already covers is skipped. With auto-release it comes back only if it fails again after its clean runs. The run's pull request comment and job summary list the tests it added ("Quarantined automatically"); in the GitHub Action, set the variable on the step's `env`.
+
+**On a laptop.** `add` on a local SQLite history (no `--server`, no shared `DATABASE_URL`) also prints the `quarantine:` lines for `testosterone.yaml`, because CI (a fresh runner or the Action's cached history) never sees this machine's list.
 
 ---
 

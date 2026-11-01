@@ -168,3 +168,7 @@ Taltal asked for every proposal on 2026-11-01. Built so far:
 
 - #275: D1, D2, I1, S2, T3, P2 (the README already had it; Getting Started now does too), U3.
 - #276: V1, V2, F1. Flaky history and test pages still key on the stored key, so one recording method per cycle is still the advice.
+- #277: S1 (`testo init --pr`; the first pull request still has no baseline until it merges, since the workflow isn't on the default branch before that), S3 (`--dependabot`, GitHub Actions updates), C1 (`server-url` / `server-token` inputs), C2 (`testo init --server` and the secret), R2 (empty-history note in the job summary), G2 (`testo ai`), P1 (AI summary in the comment), C3 (fork-safe comments, `testo init --forks`).
+- #278: Q2 (`TESTO_QUARANTINE_AUTO`), Q3 (CI hint on `quarantine add`), G1 (`testo mcp install`), T2 (backup service). Q1 was #249.
+
+Design: [New User Journey Automation - 2026-11-01](../Specs%20&%20ADRs/New%20User%20Journey%20Automation%20-%202026-11-01.md).

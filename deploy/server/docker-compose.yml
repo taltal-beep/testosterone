@@ -38,6 +38,44 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # A copy of the whole history (`testo backup`) once a day, the newest 7 kept, in the
+  # testo_data volume under backups/. Copy them off the machine:
+  #   docker compose cp backup:/data/backups ./testo-backups
+  # Restore: docs/Processes & Guides/Team Server.md#backups
+  backup:
+    image: ghcr.io/taltal-beep/testo-server:${TESTO_SERVER_TAG:-1}
+    build:
+      context: ../..
+      dockerfile: Dockerfile.testo-server
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        mkdir -p /data/backups
+        while true; do
+          testo backup --out "/data/backups/testo-$$(date -u +%Y%m%d-%H%M%S).tar.gz" &&
+            ls -1t /data/backups/testo-*.tar.gz | tail -n +$$((TESTO_BACKUP_KEEP + 1)) | xargs -r rm -f --
+          sleep "$$TESTO_BACKUP_EVERY_S"
+        done
+    environment:
+      DATABASE_URL: postgresql+psycopg://testo:${POSTGRES_PASSWORD:-testo}@postgres:5432/testo
+      TESTO_BACKUP_KEEP: ${TESTO_BACKUP_KEEP:-7}
+      TESTO_BACKUP_EVERY_S: ${TESTO_BACKUP_EVERY_S:-86400}
+    volumes:
+      - testo_data:/data
+    # Healthy while the newest backup is younger than two intervals.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - find /data/backups -name 'testo-*.tar.gz' -mmin -$$((TESTO_BACKUP_EVERY_S / 30 + 1)) | grep -q .
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   postgres:
     image: postgres:16-alpine
     environment:

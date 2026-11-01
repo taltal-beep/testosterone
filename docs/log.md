@@ -204,3 +204,7 @@ Added [Free Copies of Paid Features - 2026-11-01](Specs%20&%20ADRs/Free%20Copies
 ## 2026-11-01: new user journey audit
 
 Added [New User Journey Audit - 2026-11-01](Roadmap%20&%20Strategy/New%20User%20Journey%20Audit%20-%202026-11-01.md) to Roadmap & Strategy (manual steps, automation and ranked proposals for each step of a new user's path), linked from the Index, the Product Roadmap and the docs site menu.
+
+## 2026-11-01: new user journey automation
+
+New ADR [New User Journey Automation - 2026-11-01](Specs%20&%20ADRs/New%20User%20Journey%20Automation%20-%202026-11-01.md), linked from the Specs README, the audit's Status section and the docs site menu (#278).
