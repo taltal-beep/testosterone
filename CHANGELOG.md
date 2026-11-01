@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+- The run history database schema is now owned by Alembic migrations (`testo_core/repository/migrations/`), run automatically when the CLI, the API or a store first opens the database. A database from 1.5.0 or earlier is adopted in place: missing tables and columns are added, nothing is dropped, no command to run. `alembic` becomes a core dependency. Contributors: a model change ships with a revision (`python scripts/db_revision.py "what changed"`); a test fails when models and migrations differ
+
 ### Security
 - GitHub Action: inputs reach its shell steps as environment variables instead of being pasted into the script, so a `"` or `$(...)` in an input (`cycle: ${{ github.head_ref }}`) can no longer run commands
 - PR comment and job summary: a backtick in a test name (which in a fork's pull request its author controls) ended the code span, so `@user` mentions and HTML after it rendered live. Names are now fenced so nothing inside can close them, and stage, runner and branch cells are plain text. A cycle name with `-->` can no longer end the comment marker
