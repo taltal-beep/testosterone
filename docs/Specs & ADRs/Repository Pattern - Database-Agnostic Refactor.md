@@ -41,7 +41,17 @@ Until 1.5.0 the schema came from `SQLModel.metadata.create_all()` at startup, an
 
 - Real columns, filled on every write from the JSON by `models.promoted_columns()` with the same precedence the views use: `cycle` (from `plan`), `health_pct`, `exit_code`, `branch` (`ci_ref_name`, else `git_branch`), `commit_sha` (`ci_commit_sha`, else `git_commit`), `source`, `snapshot_dir`. Indexes on `start_time`, `cycle` and `(cycle, start_time)`. The migration backfills existing rows; the JSON stays the full record and the views fall back to it.
 - Repository queries that use them: `list_runs(cycle=, before=, limit=)` and `latest_run_per_cycle()` (one `GROUP BY`, every cycle). The read side exposes them as `history.read_model.list_cycle_runs(cycle, limit=, before_run_id=)` and `latest_run_per_cycle()`; flaky detection, per-test history, failures, project health, the PR comment, attention and OTel export all read through them. `CYCLE_HISTORY_LIMIT` (500) bounds one cycle's history, not the whole table, so a busy cycle no longer hides a quiet one.
-- Per-test data (`flaky`, per-test page, "got slower") still comes from each run's artifact snapshot on disk; a `test_result` table is recommendation 3.
+- Per-test data (`flaky`, per-test page, "got slower") was still read from each run's artifact snapshot on disk; the `test_result` table below replaced that.
+
+## Per-test table (2026-11-01)
+
+Every analytic that looked at single tests (`flaky`, per-test history and the "got slower" list, run failures, the PR comment, run alerts) opened each run's Allure snapshot under `static/history/<run_id>/artifacts/` and parsed the `*-result.json` files again, with its own copy of the parser. Recommendation 3 of the [Architecture Review](Architecture%20Review%20-%202026-10-31.md), revision `0003`:
+
+- `TestResult` (`test_result`): one row per test per run, keyed by `(run_id, key)` where `key` is the Allure `historyId` (else the full name). Columns: `name`, `full_name`, `group`, `stage`, `framework`, `status`, `duration_ms`, `message` (first 300 characters). Indexed on `run_id`. The row is the case map every service already used, so the services did not change shape.
+- One parser: `testo_core/reporting/allure_cases.py` (`load_cases(plan_root)`), used by the writer, the lazy adoption and the snapshot diff.
+- Writer: `persistence/db_backend.py` stores the rows right after the run row and its snapshot (`TestResultStore.replace`); a failure there is logged and the run keeps its snapshot.
+- Reader: `history/cases.py::cases_for_run(run)` returns the rows, and for a run recorded before `0003` parses its snapshot once and stores the rows, so older history migrates itself on first use and never needs its files again for analytics. `TestResultStore` (`repository/test_results.py`) is the only module that touches the table; `TestResultStore.delete_runs()` is for retention.
+- Snapshots stay for the things rows cannot hold: attachments, traces and the report copies served at `/history`.
 
 ## Release verification
 

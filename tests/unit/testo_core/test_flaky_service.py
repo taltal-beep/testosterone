@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from testo_core import paths
 from testo_core.history.views import CompletedRunView
 from testo_core.repository.models import RunStatus
 from testo_core.services import flaky_service
@@ -96,7 +97,7 @@ def test_find_flaky_tests_reads_each_runs_snapshot(monkeypatch, tmp_path: Path) 
     )
     _write_results(tmp_path, runs[1], {"test_flaky": "failed"})
 
-    monkeypatch.setattr(flaky_service.paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
     monkeypatch.setattr(flaky_service, "list_cycle_runs", cycle_runs_from(runs))
 
     report = flaky_service.find_flaky_tests(cycle="unit")
@@ -110,7 +111,7 @@ def test_find_flaky_tests_limits_to_the_window(monkeypatch, tmp_path: Path) -> N
     runs = [_run(f"r{i}", created_at=i) for i in range(5, 0, -1)]  # newest first
     for run, status in zip(runs, ["passed", "passed", "failed", "passed", "failed"], strict=True):
         _write_results(tmp_path, run, {"test_x": status})
-    monkeypatch.setattr(flaky_service.paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
     monkeypatch.setattr(flaky_service, "list_cycle_runs", cycle_runs_from(runs))
 
     # Last 2 runs: passed, passed. Not flaky. All 5: failed, passed, failed, passed, passed.
@@ -134,7 +135,7 @@ def test_newly_flaky_tests_are_the_ones_this_run_made_flaky(monkeypatch, tmp_pat
     }
     for i, run in enumerate(reversed(runs)):
         _write_results(tmp_path, run, {name: statuses[i] for name, statuses in history.items()})
-    monkeypatch.setattr(flaky_service.paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
     monkeypatch.setattr(flaky_service, "list_cycle_runs", cycle_runs_from(runs))
 
     assert [t.name for t in flaky_service.newly_flaky_tests(cycle="unit")] == ["test_now"]

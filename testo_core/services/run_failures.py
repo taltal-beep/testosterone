@@ -23,11 +23,10 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from testo_core import paths
+from testo_core.history.cases import cases_for_run
 from testo_core.history.read_model import get_run, list_cycle_runs
 from testo_core.history.views import CompletedRunView
 from testo_core.services import flaky_service
-from testo_core.services.report_archive_diff import _load_cases
 from testo_core.services.rerun_commands import FailingCase, rerun_commands
 
 if TYPE_CHECKING:
@@ -93,9 +92,7 @@ def message_signature(message: str) -> str:
 
 
 def _cases(run: CompletedRunView) -> dict[str, dict[str, Any]]:
-    if not run.snapshot_dir:
-        return {}
-    return _load_cases(paths.ORCHESTRATOR_ROOT / run.snapshot_dir)
+    return cases_for_run(run)
 
 
 def _earlier_runs(run: CompletedRunView) -> list[CompletedRunView]:

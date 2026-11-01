@@ -105,6 +105,33 @@ def sync_promoted_columns(record: RunRecord) -> None:
         setattr(record, name, value)
 
 
+class TestResult(SQLModel, table=True):
+    """One test's outcome in one run: the row behind flaky detection, per-test history and failures.
+
+    Written when a run is recorded (``DbBackend``) from the run's Allure results,
+    and once, on first read, for runs recorded before this table existed. The
+    columns are bounded copies of what :func:`testo_core.reporting.allure_cases.load_cases`
+    returns; attachments and traces stay in the run's snapshot files.
+    """
+
+    __tablename__ = "test_result"
+    __table_args__ = (
+        Index("ix_test_result_run_id", "run_id"),
+        {"extend_existing": True},
+    )
+
+    run_id: str = Field(primary_key=True, max_length=64)
+    key: str = Field(primary_key=True, max_length=200)
+    name: str = Field(default="", max_length=120)
+    full_name: str = Field(default="", max_length=1024)
+    group: str = Field(default="", max_length=100)
+    stage: str = Field(default="", max_length=128)
+    framework: str = Field(default="", max_length=32)
+    status: str = Field(default="unknown", max_length=16)
+    duration_ms: int | None = Field(default=None)
+    message: str = Field(default="", max_length=300)
+
+
 class ReportArchive(SQLModel, table=True):
     """Stored Allure/JSON artifacts for a completed CLI cycle (zip payload).
 

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from testo_core import paths
 from testo_core.history.views import CompletedRunView
 from testo_core.repository.models import RunStatus
 from testo_core.services import flaky_service, test_history
@@ -62,7 +63,7 @@ def six_runs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> list[CompletedR
     runs = [_run(f"r{i}", created_at=float(i)) for i in range(6, 0, -1)]
     runs[0] = replace(runs[0], branch="main")
     runs.insert(1, _run("other", created_at=5.5, cycle="nightly"))
-    monkeypatch.setattr(flaky_service.paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
     monkeypatch.setattr(flaky_service, "list_cycle_runs", cycle_runs_from(runs))
     unit_runs = [r for r in runs if r.cycle == "unit"]
     for index, run in enumerate(reversed(unit_runs)):  # oldest first

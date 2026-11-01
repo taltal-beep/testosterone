@@ -14,10 +14,10 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from testo_core import paths
+from testo_core.history.cases import cases_for_run
 from testo_core.history.read_model import get_run, list_cycle_runs, list_recent_runs
 from testo_core.history.views import CompletedRunView
-from testo_core.services.report_archive_diff import CaseChange, _load_cases, diff_case_maps
+from testo_core.services.report_archive_diff import CaseChange, diff_case_maps
 
 MAX_ROWS = 20
 _FAILED = frozenset({"failed", "broken"})
@@ -65,9 +65,7 @@ class RunSummary:
 
 
 def _cases(run: CompletedRunView | None) -> dict[str, dict[str, Any]]:
-    if run is None or not run.snapshot_dir:
-        return {}
-    return _load_cases(paths.ORCHESTRATOR_ROOT / run.snapshot_dir)
+    return cases_for_run(run) if run is not None else {}
 
 
 def _cycle_runs(cycle: str, *, before_run_id: str | None = None) -> list[CompletedRunView]:

@@ -57,6 +57,19 @@ class DbBackend:
             logger.debug("could not snapshot artifacts for run %s", run_id, exc_info=True)
             return None
 
+    def _record_test_results(self, run_id: str, plan_name: str) -> None:
+        """Store one row per test (``test_result``) from the run's Allure results."""
+        from testo_core.reporting.allure_cases import load_cases
+        from testo_core.repository.db import get_test_result_store
+
+        try:
+            cases = load_cases(plan_artifacts_dir(self._artifacts_root, plan_name))
+            if cases:
+                get_test_result_store().replace(run_id, cases)
+        except Exception:
+            # Broad on purpose: the run row exists; the analytics fall back to the snapshot.
+            logger.warning("could not store test rows for run %s", run_id, exc_info=True)
+
     def _record_run_snapshot(self, repo: Any, run_id: str, plan_name: str) -> None:
         """Point the run record at its own copy; it keeps the shared path otherwise."""
         snapshot_dir = self._snapshot_run_artifacts(run_id, plan_name)
@@ -143,6 +156,7 @@ class DbBackend:
             )
             run_id = str(record.id)
             self._record_run_snapshot(repo, run_id, result.plan_name)
+            self._record_test_results(run_id, result.plan_name)
             return run_id
         except Exception:
             # Broad on purpose: DB history is best-effort; the JSON backend still has the run.

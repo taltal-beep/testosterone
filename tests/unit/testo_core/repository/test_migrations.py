@@ -25,6 +25,7 @@ EXPECTED_TABLES = {
     "resource_lease",
     "resource_action",
     "resource_waiter",
+    "test_result",
 }
 
 
