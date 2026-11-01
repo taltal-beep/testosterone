@@ -548,7 +548,7 @@ def config_yaml(facts: ProjectFacts, *, cycle: str) -> str:
         f"# yaml-language-server: $schema={SCHEMA_ID}",
         f"# Written by `testo init` for: {names}.",
         "# Run it with `testo run`; every key is in the Command Reference:",
-        "# https://taltal-beep.github.io/testosterone/docs/CLI%20Commands/Command%20Reference/",
+        "# https://taltal-beep.github.io/testosterone/docs/cli-commands/command-reference/",
         "version: 1",
         "cycles:",
         f"  {json.dumps(cycle)}:",

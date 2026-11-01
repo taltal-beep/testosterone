@@ -152,7 +152,7 @@ The image sets `TESTO_UI_DIR=/app/ui`, which makes the API serve the built React
 
 ## Limits today
 
-- Cycles that exist only as uploads are not in `testosterone.yaml`, so the Cycles page doesn't list them; their runs show on the Dashboard, Runs and Compare, and `testo flaky --cycle` / `GET /api/v1/analytics/flaky` work.
+- Cycles that exist only as uploads aren't in the server's `testosterone.yaml`, so they can't be started from the UI. They still get a cycle page, and show on the Cycles page, Dashboard, Runs and Compare.
 - No projects: everyone who can read sees every cycle. [Accounts](#accounts) give per-person roles, not per-project ones.
 - Starting runs from the server's UI only makes sense for cycles defined in the server's config. Without [throwaway containers](#runs-in-throwaway-containers) they run inside the server container. The team server is mainly meant for uploads.
 

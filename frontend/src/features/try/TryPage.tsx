@@ -106,13 +106,19 @@ function Results({ report, names }: { report: JunitReport; names: string[] }) {
         </Card>
       ) : null}
 
-      <Card title="Keep the history">
+      <Card title="Get this on every pull request">
         <p className="text-sm text-ink-300">
-          One file shows one run. Record every run to see what is new, what is flaky and what got slower:
+          One file shows one run. In your repository, <code className="font-mono text-xs">testo init</code> finds
+          your test runners, writes the config and a GitHub Actions workflow that comments on each pull request,
+          and records a first run:
         </p>
-        <pre className="mt-2 overflow-x-auto rounded-xl bg-ink-950/80 p-3 font-mono text-xs text-ink-100">
-          {"pip install 'testo-core[api]'\ntesto ingest 'reports/**/*.xml' --cycle my-tests\ntesto ui"}
+        <pre className="mt-2 overflow-x-auto rounded-xl bg-ink-950/80 p-3 font-mono text-xs text-ink-100" data-testid="try-setup">
+          {"pip install 'testo-core[api]'\ntesto init --dry-run   # see the files first\ntesto init\ntesto ui"}
         </pre>
+        <p className="mt-2 text-xs text-ink-400">
+          No Python? <code className="font-mono">uvx --from testo-core testo init</code>. Only want to record results
+          you already have? <code className="font-mono">testo ingest</code> finds them.
+        </p>
       </Card>
     </>
   );

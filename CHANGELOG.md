@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Changed
+- `testo init` is now the first thing the README, Getting Started, the Setup Prompts (new prompt 0), the dashboard's first-run guide and the `/try` page suggest; they also show how to run it without a virtualenv (`uvx --from testo-core testo init`). Getting Started has an Upgrading section
 - Docs: [New User Journey Audit](docs/Roadmap%20&%20Strategy/New%20User%20Journey%20Audit%20-%202026-11-01.md) lists what a new user still does by hand at each step, from finding Testosterone to a team server, with ranked proposals to automate it
 - Contributors: the nightly external suite (`nightly-external.yml`) no longer runs on a schedule; start it by hand from the Actions tab, or uncomment its `schedule:` lines to bring the nightly run back
 - README: the no-install `/try` page is the first link, the release-by-release "What's new" list is one short paragraph (the rest is in this file), and a "Who it's for" section says when another tool fits better. The package is classified `Development Status :: 5 - Production/Stable`
@@ -50,6 +51,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Python 3.14 is tested in CI and listed in the package classifiers
 
 ### Fixed
+- The docs link `testo init` writes at the top of `testosterone.yaml` pointed at a page that doesn't exist (`docs/CLI%20Commands/...`); it now goes to the Command Reference, and a test checks every docs link that generated files carry
 - Contributors: `import testo_core` no longer loads the config and engine modules (they resolve on first use, like the database names), so pytest-cov, which starts after the `pytest11` plugin, now measures `config/schema.py`, `engine/events.py` and `engine/result.py` instead of reporting them at 0%
 - A first `testo run` of a pytest stage no longer warns `workers=4 ignored, pytest-xdist is not installed` when nobody set `workers`: on the built-in default it runs serially without a word. Setting `workers` on the stage, in `defaults:` or with `--workers` still warns
 - The run page said "Couldn't load this run" for any run older than the newest 200: `GET /api/v1/runs/{id}/reports` looked the run up in the recent list. It also no longer reads every artifact file into memory just to list their names

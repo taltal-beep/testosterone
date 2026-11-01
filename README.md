@@ -31,13 +31,15 @@ read-only static site.
 
 </details>
 
-**Try it in a minute** on a project you already have:
+**Set it up in a minute** on a project you already have:
 
 ```bash
 pip install 'testo-core[api]'
-pytest --testo                                # or: testo ingest 'reports/**/*.xml' --cycle web
-testo ui                                      # what broke, what's flaky, what got slower
+testo init        # finds your test runners, writes testosterone.yaml and a GitHub Actions workflow, records a first run
+testo ui          # what broke, what's flaky, what got slower
 ```
+
+`testo init --dry-run` shows the files first. Only want to record? `pytest --testo`, or `testo ingest` after any runner.
 
 No tests at hand? `testo demo` records eight sample runs (a flaky test, a new failure, a slower
 test) and opens the UI on them. More ways in, from Jest to `go test`, are in the [Quickstart](#quickstart).
@@ -90,6 +92,17 @@ backend (`testo_api`, `/api/v1`, live runs over server-sent events), a React fro
 [ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit.
 
 ## Quickstart
+
+The shortest path, for pytest, Jest, Vitest, Playwright, Go, .NET, Maven, Gradle, RSpec and PHPUnit:
+
+```bash
+pip install testo-core
+testo init --dry-run   # what it would write: testosterone.yaml, .github/workflows/testosterone.yml, .gitignore lines
+testo init             # writes them and records a first run; then commit and push
+```
+
+No Python project? `uvx --from testo-core testo init` or `pipx run --spec testo-core testo init` runs it without
+a virtualenv. Other CI systems: `testo init --ci gitlab|jenkins|circleci`.
 
 Already have tests that write JUnit XML, or a runner's own report? Record them, no config needed:
 

@@ -44,7 +44,7 @@ Two small bugs found on the way, worth fixing whatever is picked: the header tha
 - **Already automated:** the Action installs `testo-core` itself; the runner image has it; `testo ui` says which extra is missing and exits `2`; the wheel carries the built UI.
 - **Friction:** JavaScript, Go and .NET teams may not have a Python they want to touch. `testo ui` without `[api]` stops instead of offering to install. A stale environment (an editable install from before `alembic` became a dependency) fails with a raw `ModuleNotFoundError` traceback on the first recorded run.
 - **Proposals:**
-  - **I1 (Med, S).** Document a no-venv path: `uvx --from 'testo-core[api]' testo ui` / `pipx run`, and use it in the non-Python Setup Snippets (the GitLab, Jenkins and CircleCI templates already install with uv).
+  - **I1 (Med, S).** Document a no-venv path: `uvx --from 'testo-core[api]' testo ui` / `pipx run --spec testo-core testo`, and use it in the non-Python Setup Snippets (the GitLab, Jenkins and CircleCI templates already install with uv).
   - **I2 (Low, S).** A top-level handler for `ModuleNotFoundError` of a declared dependency or extra: one line saying which `pip install` fixes it, no traceback.
   - **I3 (Low, S).** `testo ui` offers to `pip install 'testo-core[api]'` into the current environment when run in a terminal.
 
