@@ -42,6 +42,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Python 3.14 is tested in CI and listed in the package classifiers
 
 ### Fixed
+- A first `testo run` of a pytest stage no longer warns `workers=4 ignored, pytest-xdist is not installed` when nobody set `workers`: on the built-in default it runs serially without a word. Setting `workers` on the stage, in `defaults:` or with `--workers` still warns
 - The run page said "Couldn't load this run" for any run older than the newest 200: `GET /api/v1/runs/{id}/reports` looked the run up in the recent list. It also no longer reads every artifact file into memory just to list their names
 - A stage that crashed before its tests (say a `conftest.py` import error) left no way to see why in the UI. Each stage on the run page now links its log, the Artifacts list links every file (`artifacts_url` on the reports response), and `.log` files open in the browser instead of downloading
 - Web UI: a missing run or test (any 4xx) shows its message at once instead of after about 7 seconds of retries; the dashboard says a red cycle with no failing test "failed outside its tests" instead of "0 tests failing"; a run with no test results says so instead of "Pass rate 0%"
