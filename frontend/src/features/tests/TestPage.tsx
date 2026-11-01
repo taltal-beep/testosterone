@@ -8,9 +8,16 @@ import { Attachments } from "./Attachments";
 
 const FAILED = new Set(["failed", "broken"]);
 
-/** "Oct 31" for the x axis; the full time is in each bar's tooltip. */
-function shortDay(createdAtSeconds: number): string {
-  return new Date(createdAtSeconds * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+/** "Oct 31" for the x axis, or "10:33" when every run is from the same day; the full time is in each tooltip. */
+function axisLabels(points: TestPointItem[]): string[] {
+  const days = points.map((p) => new Date(p.created_at * 1000).toDateString());
+  const sameDay = new Set(days).size === 1;
+  return points.map((p) => {
+    const date = new Date(p.created_at * 1000);
+    return sameDay
+      ? date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+      : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  });
 }
 
 /** Label every bar when there is room, else every nth, always the first and last. */
@@ -23,6 +30,7 @@ function DurationBars({ points }: { points: TestPointItem[] }) {
   const oldestFirst = [...points].reverse();
   const longest = Math.max(1, ...oldestFirst.map((p) => p.duration_ms ?? 0));
   const every = labelEvery(oldestFirst.length);
+  const labels = axisLabels(oldestFirst);
   return (
     <div className="flex gap-2">
       {/* The scale, so equal durations don't read as a busy chart. */}
@@ -53,7 +61,7 @@ function DurationBars({ points }: { points: TestPointItem[] }) {
         <ol className="mt-1 flex gap-1 sm:gap-2" aria-hidden>
           {oldestFirst.map((p, i) => (
             <li key={p.run_id} className="min-w-0 flex-1 truncate text-center font-mono text-[10px] text-ink-500">
-              {i % every === 0 || i === oldestFirst.length - 1 ? shortDay(p.created_at) : ""}
+              {i % every === 0 || i === oldestFirst.length - 1 ? labels[i] : ""}
             </li>
           ))}
         </ol>
@@ -68,9 +76,6 @@ const FLIP_WINDOW = 5;
 function pct(rate: number): string {
   return `${Math.round(rate * 100)}%`;
 }
-
-const CHART_W = 100;
-const CHART_H = 40;
 
 /**
  * How flaky the test has been over time: a line of flip rate per run (0 to
@@ -93,13 +98,15 @@ function FlipRate({ points }: { points: TestPointItem[] }) {
           ? `, down from ${pct(before)} five runs before`
           : ", the same as five runs before";
 
-  // x by run (oldest left), y by rate; runs without a rate yet leave a gap at the start.
-  const step = oldestFirst.length > 1 ? CHART_W / (oldestFirst.length - 1) : 0;
+  // x by run (oldest left) as a percentage of the width, y by rate; runs without a rate yet leave a gap at the start.
+  const step = oldestFirst.length > 1 ? 100 / (oldestFirst.length - 1) : 0;
   const coords = oldestFirst
-    .map((p, i) => (p.flip_rate == null ? null : { x: i * step, y: CHART_H - p.flip_rate * CHART_H, p }))
+    .map((p, i) => (p.flip_rate == null ? null : { x: i * step, y: 100 - p.flip_rate * 100, p }))
     .filter((c): c is { x: number; y: number; p: TestPointItem } => c != null);
   const line = coords.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ");
   const every = labelEvery(oldestFirst.length);
+  const labels = axisLabels(oldestFirst);
+  const textAlternative = `Flip rate per run, oldest first: ${oldestFirst.map((p) => (p.flip_rate == null ? "n/a" : pct(p.flip_rate))).join(", ")}`;
 
   return (
     <Card title="Flakiness over time">
@@ -110,27 +117,27 @@ function FlipRate({ points }: { points: TestPointItem[] }) {
           <span>0</span>
         </div>
         <div className="min-w-0 flex-1">
-          <svg
-            viewBox={`0 0 ${CHART_W} ${CHART_H}`}
-            preserveAspectRatio="none"
-            className="h-24 w-full overflow-visible border-b border-l border-white/10"
-            role="img"
-            aria-label={`Flip rate per run, oldest first: ${oldestFirst.map((p) => (p.flip_rate == null ? "n/a" : pct(p.flip_rate))).join(", ")}`}
-          >
-            <line x1="0" y1={CHART_H / 2} x2={CHART_W} y2={CHART_H / 2} className="stroke-white/10" strokeWidth="0.3" vectorEffect="non-scaling-stroke" />
-            {coords.length > 1 ? (
-              <polyline points={line} fill="none" className="stroke-brand-400" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-            ) : null}
+          <div className="relative h-24 border-b border-l border-white/10" role="img" aria-label={textAlternative}>
+            {/* The line stretches to the box; the dots are HTML so they stay round. */}
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden>
+              <line x1="0" y1="50" x2="100" y2="50" className="stroke-white/10" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+              {coords.length > 1 ? (
+                <polyline points={line} fill="none" className="stroke-brand-400" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+              ) : null}
+            </svg>
             {coords.map((c) => (
-              <circle key={c.p.run_id} cx={c.x} cy={c.y} r="3" className="fill-brand-300" vectorEffect="non-scaling-stroke">
-                <title>{`${formatRunTime(c.p.created_at)} · flip rate ${pct(c.p.flip_rate ?? 0)}`}</title>
-              </circle>
+              <span
+                key={c.p.run_id}
+                title={`${formatRunTime(c.p.created_at)} · flip rate ${pct(c.p.flip_rate ?? 0)}`}
+                className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-ink-950 bg-brand-300"
+                style={{ left: `${c.x}%`, top: `${c.y}%` }}
+              />
             ))}
-          </svg>
-          <ol className="mt-1 flex justify-between" aria-hidden>
+          </div>
+          <ol className="mt-1 flex" aria-hidden>
             {oldestFirst.map((p, i) => (
               <li key={p.run_id} className="min-w-0 flex-1 truncate text-center font-mono text-[10px] text-ink-500">
-                {i % every === 0 || i === oldestFirst.length - 1 ? shortDay(p.created_at) : ""}
+                {i % every === 0 || i === oldestFirst.length - 1 ? labels[i] : ""}
               </li>
             ))}
           </ol>

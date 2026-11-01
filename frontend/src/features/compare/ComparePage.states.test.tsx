@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -166,9 +166,13 @@ describe("ComparePage states", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Removed/ }));
     expect(screen.getByText("No matching test changes.")).toBeInTheDocument();
 
-    // The summary's "N improvements" count opens the fixes.
-    fireEvent.click(screen.getByRole("button", { name: /improvement/ }));
-    expect(screen.getByRole("button", { name: /^Fix/ })).toHaveAttribute("aria-pressed", "true");
+    // The summary counts tests, not metrics, and each count opens its list.
+    const counts = screen.getByTestId("test-change-counts");
+    expect(counts).toHaveTextContent("1 regression");
+    expect(counts).toHaveTextContent("1 added test");
+    fireEvent.click(within(counts).getByRole("button", { name: "1 added test" }));
+    expect(screen.getByRole("button", { name: /^Added/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("test_new")).toBeInTheDocument();
 
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "false");

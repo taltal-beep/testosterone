@@ -4,6 +4,8 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import {
   CaseChangeKind,
+  DeltaCaseChange,
+  DeltaCaseChangesResponse,
   DeltaClassification,
   DeltaComparisonResponse,
   DeltaMetricNode,
@@ -29,6 +31,23 @@ const CASE_KIND_TEXT: Record<CaseChangeKind, string> = {
   added: "Added",
   removed: "Removed",
   status_change: "Status change"
+};
+
+const CASE_KIND_COUNT_TONE: Record<CaseChangeKind, "danger" | "success" | "neutral"> = {
+  regression: "danger",
+  fix: "success",
+  added: "neutral",
+  removed: "neutral",
+  status_change: "neutral"
+};
+
+/** Singular noun for "N regressions", "N fixes", "N added"; countLabel adds the s. */
+const CASE_KIND_COUNT_WORD: Record<CaseChangeKind, string> = {
+  regression: "regression",
+  fix: "fix",
+  added: "added test",
+  removed: "removed test",
+  status_change: "status change"
 };
 
 const CLASSIFICATION_TONE: Record<DeltaClassification, string> = {
@@ -104,6 +123,19 @@ export function ComparePage() {
     queryFn: () => apiClient.getDeltaComparison(currentRunId, baselineRunId),
     enabled: Boolean(currentRunId && baselineRunId && currentRunId !== baselineRunId)
   });
+
+  // The per-test diff, fetched with the comparison: the summary counts it and the list under the summary shows it.
+  const casesQuery = useQuery({
+    queryKey: ["delta-case-changes", currentRunId, baselineRunId],
+    queryFn: () => apiClient.getDeltaCaseChanges(currentRunId, baselineRunId),
+    enabled: Boolean(compareQuery.data)
+  });
+  const changes = useMemo(() => casesQuery.data?.changes ?? [], [casesQuery.data?.changes]);
+  const changeCounts = useMemo(() => {
+    const byKind = new Map<CaseChangeKind, number>();
+    for (const change of changes) byKind.set(change.kind, (byKind.get(change.kind) ?? 0) + 1);
+    return byKind;
+  }, [changes]);
 
   const runsById = useMemo(() => new Map(options.map((run) => [run.run_id, run])), [options]);
   const cycles = useMemo(() => [...new Set(options.map(runCycle))], [options]);
@@ -204,25 +236,39 @@ export function ComparePage() {
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-1.5" data-testid="status-summary">
-              <CountButton
-                tone={payload.status_summary.regressions.length > 0 ? "danger" : "neutral"}
-                label={countLabel(payload.status_summary.regressions.length, "regression")}
-                onClick={() => showChanges("regression")}
-              />
-              <CountButton
-                tone={payload.status_summary.improvements.length > 0 ? "success" : "neutral"}
-                label={countLabel(payload.status_summary.improvements.length, "improvement")}
-                onClick={() => showChanges("fix")}
-              />
+              <span className="mr-1 text-xs text-ink-400">Metrics</span>
+              <Badge tone={payload.status_summary.regressions.length > 0 ? "danger" : "neutral"}>
+                {countLabel(payload.status_summary.regressions.length, "regression")}
+              </Badge>
+              <Badge tone={payload.status_summary.improvements.length > 0 ? "success" : "neutral"}>
+                {countLabel(payload.status_summary.improvements.length, "improvement")}
+              </Badge>
               <Badge>{payload.status_summary.unchanged.length} unchanged</Badge>
               <Badge>{payload.status_summary.unknown.length} unknown</Badge>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5" data-testid="test-change-counts">
+              <span className="mr-1 text-xs text-ink-400">Tests</span>
+              {casesQuery.isLoading ? <span className="text-xs text-ink-400">counting…</span> : null}
+              {casesQuery.isError ? <span className="text-xs text-ink-400">per-test changes unavailable</span> : null}
+              {casesQuery.data && changes.length === 0 ? (
+                <span className="text-xs text-ink-300">same outcome for every test</span>
+              ) : null}
+              {CASE_KIND_LABELS.filter((kind) => (changeCounts.get(kind) ?? 0) > 0).map((kind) => (
+                <CountButton
+                  key={kind}
+                  tone={CASE_KIND_COUNT_TONE[kind]}
+                  label={countLabel(changeCounts.get(kind) ?? 0, CASE_KIND_COUNT_WORD[kind])}
+                  onClick={() => showChanges(kind)}
+                />
+              ))}
             </div>
           </Card>
 
           <TestLevelChanges
             ref={changesRef}
-            currentRunId={payload.comparison.current_run_id}
-            baselineRunId={payload.comparison.baseline_run_id}
+            query={casesQuery}
+            changes={changes}
+            counts={changeCounts}
             cycle={currentRun ? runCycle(currentRun) : null}
             kindFilter={kindFilter}
             onKindFilter={setKindFilter}
@@ -506,8 +552,9 @@ function outcomeSegments(reliability: ReliabilityMetrics, field: "current_value"
 }
 
 interface TestLevelChangesProps {
-  currentRunId: string;
-  baselineRunId: string;
+  query: { isLoading: boolean; isError: boolean; data: DeltaCaseChangesResponse | undefined };
+  changes: DeltaCaseChange[];
+  counts: Map<CaseChangeKind, number>;
   /** The current run's cycle, so each test can link to its history page. */
   cycle: string | null;
   kindFilter: CaseChangeKind | "all";
@@ -516,25 +563,13 @@ interface TestLevelChangesProps {
 }
 
 /** Which tests changed between the two runs: open by default, right under the summary that counts them. */
-function TestLevelChanges({ currentRunId, baselineRunId, cycle, kindFilter, onKindFilter, ref }: TestLevelChangesProps) {
+function TestLevelChanges({ query: casesQuery, changes, counts, cycle, kindFilter, onKindFilter, ref }: TestLevelChangesProps) {
   const [expanded, setExpanded] = useState(true);
 
-  const casesQuery = useQuery({
-    queryKey: ["delta-case-changes", currentRunId, baselineRunId],
-    queryFn: () => apiClient.getDeltaCaseChanges(currentRunId, baselineRunId),
-    enabled: expanded
-  });
-
-  const changes = useMemo(() => casesQuery.data?.changes ?? [], [casesQuery.data?.changes]);
   const filtered = useMemo(
     () => (kindFilter === "all" ? changes : changes.filter((c) => c.kind === kindFilter)),
     [changes, kindFilter]
   );
-  const counts = useMemo(() => {
-    const byKind = new Map<CaseChangeKind, number>();
-    for (const change of changes) byKind.set(change.kind, (byKind.get(change.kind) ?? 0) + 1);
-    return byKind;
-  }, [changes]);
   const grouped = useMemo(() => {
     const byGroup = new Map<string, typeof filtered>();
     for (const change of filtered) {
