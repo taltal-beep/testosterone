@@ -60,6 +60,8 @@ class RunSummary:
     compared: bool = True
     # Failing test name -> "stack_overflow" | "crash" (engine/crash_signatures.py).
     crashes: Mapping[str, str] = field(default_factory=dict)
+    # Tests TESTO_QUARANTINE_AUTO quarantined after this run.
+    auto_quarantined: tuple[str, ...] = ()
 
     @property
     def baseline_label(self) -> str:
@@ -142,6 +144,11 @@ def load_run_summary(
                     key=lambda c: (_CHANGE_ORDER.get(c.kind, 9), c.name),
                 )
             )
+    auto_quarantined: tuple[str, ...] = ()
+    from testo_core.services.quarantine_store import auto_quarantined_since, auto_threshold
+
+    if run.cycle and auto_threshold() > 0:
+        auto_quarantined = tuple(auto_quarantined_since(run.cycle, run.started_at))
     return RunSummary(
         run=run,
         previous=previous,
@@ -150,6 +157,7 @@ def load_run_summary(
         baseline_branch=from_branch,
         compared=compared,
         crashes=crashes,
+        auto_quarantined=auto_quarantined,
     )
 
 
@@ -313,6 +321,13 @@ def render_markdown(summary: RunSummary, *, run_url: str | None = None) -> str:
             )
         if len(summary.changes) > MAX_ROWS:
             lines.append(f"| | … and {len(summary.changes) - MAX_ROWS} more | | |")
+    if summary.auto_quarantined:
+        names = ", ".join(_code(n) for n in summary.auto_quarantined[:MAX_ROWS])
+        lines += [
+            "",
+            f"🔇 **Quarantined automatically** (flaky, failed here): {names}. From the next run "
+            "on their failures don't fail the build; they're released after enough clean runs.",
+        ]
     note = stage_change_note(run, summary.previous)
     if note:
         lines += ["", f"_{note}_"]

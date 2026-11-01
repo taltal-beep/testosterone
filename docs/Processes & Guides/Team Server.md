@@ -159,6 +159,17 @@ With a `history:` section in the server's `testosterone.yaml` (`retention: {days
 
 The image sets `TESTO_UI_DIR=/app/ui`, which makes the API serve the built React UI at `/` (unknown paths fall back to `index.html`, so `/runs/<id>` loads directly). With a token set, the UI may write to its own origin; without one, only the `TESTO_CORS_ORIGINS` allow-list may, and `*` in that list counts only when a token is set.
 
+## Backups
+
+The compose file's `backup` service runs [`testo backup`](../CLI%20Commands/Command%20Reference.md#testo-backup--testo-restore) when it starts and then every `TESTO_BACKUP_EVERY_S` seconds (default a day), keeping the newest `TESTO_BACKUP_KEEP` files (default `7`) in the `testo_data` volume under `/data/backups`. Each is the whole history: every table and each run's stored results. Copy them off the machine, since a backup on the same disk doesn't survive losing it:
+
+```bash
+docker compose cp backup:/data/backups ./testo-backups
+docker compose run --rm --entrypoint testo backup restore /data/backups/testo-<time>.tar.gz --replace --yes
+```
+
+They hold password hashes when [accounts](#accounts) are on; keep them as private as the database. Don't want it: `docker compose up -d --scale backup=0`.
+
 ## Limits today
 
 - Cycles that exist only as uploads aren't in the server's `testosterone.yaml`, so they can't be started from the UI. They still get a cycle page, and show on the Cycles page, Dashboard, Runs and Compare.

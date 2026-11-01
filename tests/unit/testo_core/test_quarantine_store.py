@@ -254,3 +254,87 @@ def test_the_release_hook_never_raises(
     with caplog.at_level("WARNING"):
         qs.release_after_run(cycle="api", run_id="r1")
     assert "auto-release after run r1 of api failed: no database" in caplog.text
+
+
+# --- auto-quarantine (TESTO_QUARANTINE_AUTO) -------------------------------------
+
+
+def _flaky(name: str, *, rate: float, last: str = "failed") -> flaky_service.FlakyTest:
+    return flaky_service.FlakyTest(
+        key=name,
+        name=name,
+        group="g",
+        runs=10,
+        passed=6,
+        failed=4,
+        flips=5,
+        flip_rate=rate,
+        last_status=last,
+        history=(),
+        full_name=f"tests.api#{name}",
+        reasons=("flipped 5 times across runs",),
+    )
+
+
+def _report(monkeypatch: pytest.MonkeyPatch, *tests: flaky_service.FlakyTest) -> None:
+    report = flaky_service.FlakyReport(
+        cycle="api", window=20, runs_analyzed=10, tests_analyzed=10, flaky=tests
+    )
+    monkeypatch.setattr(flaky_service, "find_flaky_tests", lambda **_: report)
+
+
+def test_auto_threshold_reads_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(qs.AUTO_ENV, raising=False)
+    assert qs.auto_threshold() == 0.0
+    for raw, want in (("0.3", 0.3), ("30", 0.3), ("30%", 0.3), ("-1", 0.0), ("lots", 0.0)):
+        monkeypatch.setenv(qs.AUTO_ENV, raw)
+        assert qs.auto_threshold() == pytest.approx(want)
+
+
+def test_failing_flaky_tests_over_the_rate_are_quarantined(
+    store: QuarantineStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store.add(cycle="api", test="test_known*")
+    _report(
+        monkeypatch,
+        _flaky("test_race", rate=0.5),
+        _flaky("test_param[1-a]", rate=0.4),
+        _flaky("test_rare", rate=0.1),
+        _flaky("test_passed_now", rate=0.6, last="passed"),
+        _flaky("test_known_one", rate=0.9),
+    )
+
+    added = qs.auto_quarantine("api", store=store, threshold=0.3)
+
+    assert [e.test for e in added] == ["test_race", "test_param[[]1-a]"]
+    assert added[0].added_by == "testo" and "flip rate 50%" in added[0].reason
+    # The escaped name matches only that test, and can be released like any exact name.
+    assert qs.literal_name("test_param[[]1-a]") == "test_param[1-a]"
+    assert qs.literal_name("test_*") is None
+    assert qs.auto_quarantine("api", store=store, threshold=0.3) == []
+    assert qs.auto_quarantined_since("api", 0, store=store) == ["test_param[1-a]", "test_race"]
+    assert qs.auto_quarantine("api", store=store, threshold=0) == []
+
+
+def test_an_escaped_entry_is_released_after_clean_runs(
+    store: QuarantineStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store.add(cycle="api", test=qs.escape_name("test_p[x]"))
+    _fake_history(monkeypatch, [_case("test_p[x]")] * 2)
+
+    assert [e.test for e in qs.auto_release("api", store=store, after=2)] == ["test_p[[]x]"]
+
+
+def test_the_quarantine_hook_never_raises(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setenv(qs.RELEASE_AFTER_ENV, "0")
+    monkeypatch.setenv(qs.AUTO_ENV, "0.3")
+
+    def boom(cycle: str, **_: Any) -> list[Any]:
+        raise RuntimeError("no database")
+
+    monkeypatch.setattr(qs, "auto_quarantine", boom)
+    with caplog.at_level("WARNING"):
+        qs.quarantine_after_run(cycle="api", run_id="r1")
+    assert "auto-quarantine after run r1 of api failed: no database" in caplog.text

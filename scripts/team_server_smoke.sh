@@ -63,4 +63,10 @@ jar="$work/cookies.txt"
 curl -fsS -o /dev/null -c "$jar" --data-urlencode "token=$TESTO_API_TOKEN" -d next=/ "$base/api/v1/auth/login"
 curl -fsS -b "$jar" "$base/" | grep -q '<div id="root">'
 curl -fsS -b "$jar" "$base/runs/anything" | grep -q '<div id="root">'
+# The backup service writes a copy of the history when it starts (then once a day).
+for _ in $(seq 1 30); do
+  "${compose[@]}" exec -T backup sh -c 'ls /data/backups/testo-*.tar.gz' >/dev/null 2>&1 && break
+  sleep 2
+done
+"${compose[@]}" exec -T backup sh -c 'ls -l /data/backups/testo-*.tar.gz'
 echo "team server smoke: ok"

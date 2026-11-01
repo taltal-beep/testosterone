@@ -153,6 +153,40 @@ def add_cmd(
     after = release_after()
     if not is_glob(test) and after and not url:
         typer.echo(f"It is released after {after} clean runs in a row.")
+    if not url:
+        hint = ci_hint(cycle=cycle.strip(), test=test.strip(), reason=reason)
+        if hint:
+            typer.echo(hint)
+
+
+def ci_hint(*, cycle: str, test: str, reason: str | None) -> str | None:
+    """When the list went to a local SQLite file, how to quarantine in CI too.
+
+    CI (the GitHub Action's cached history, a fresh runner) never sees this
+    machine's database, so a team that only ran ``testo quarantine add`` would
+    still see the test fail there. ``None`` for a shared database.
+    """
+    from testo_core.repository.db_config import resolve_database_url
+
+    try:
+        db_url = resolve_database_url()
+    except Exception:  # noqa: BLE001 - a hint is never worth an error
+        return None
+    if not db_url.startswith("sqlite"):
+        return None
+    lines = [
+        "",
+        "This list is in this machine's run history, which CI doesn't see. To quarantine it "
+        "in CI too, add to the cycle in testosterone.yaml:",
+        "cycles:",
+        f"  {json.dumps(cycle)}:",
+        "    quarantine:",
+        f"      - test: {json.dumps(test)}",
+    ]
+    if reason and reason.strip():
+        lines.append(f"        reason: {json.dumps(reason.strip())}")
+    lines.append("or use a team server (testo quarantine add --server URL).")
+    return "\n".join(lines)
 
 
 @app.command("remove")
