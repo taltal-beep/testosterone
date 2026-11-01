@@ -160,3 +160,7 @@ Added [Paid Features to Offer Free - 2026-10-31](Roadmap%20&%20Strategy/Paid%20F
 ## 2026-11-01: UI review fixes
 
 Added [UI Review Fixes - 2026-11-01](Specs%20&%20ADRs/UI%20Review%20Fixes%20-%202026-11-01.md) to Specs & ADRs (the five proposals built from the UI design review), linked from its README, the Index and the docs site menu.
+
+## 2026-11-01: engine fixes
+
+Added [Engine Fixes - 2026-11-01](Specs%20&%20ADRs/Engine%20Fixes%20-%202026-11-01.md) to Specs & ADRs (what each approved bug-hunt proposal changed), linked from its README and the docs site menu.
