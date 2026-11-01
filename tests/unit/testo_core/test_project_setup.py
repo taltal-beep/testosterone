@@ -238,3 +238,25 @@ def test_ingest_without_arguments_or_results_says_so(tmp_path: Path) -> None:
     result = CliRunner().invoke(app, ["ingest", "--repo", str(tmp_path), "--ci"])
     assert result.exit_code == 2
     assert "no result files found" in result.output
+
+
+def test_init_ci_gitlab_writes_gitlab_ci_or_a_file_next_to_yours(project: Path) -> None:
+    first = CliRunner().invoke(app, ["init", "--dir", str(project), "--ci", "gitlab", "--no-run"])
+    assert first.exit_code == 0, first.output
+    assert "pytest" in yaml.safe_load((project / ".gitlab-ci.yml").read_text())
+
+    (project / "Jenkinsfile").write_text("pipeline {}\n")
+    second = CliRunner().invoke(app, ["init", "--dir", str(project), "--ci", "jenkins", "--no-run"])
+    assert second.exit_code == 0, second.output
+    assert (project / "Jenkinsfile").read_text() == "pipeline {}\n"
+    assert "post {" in (project / "Jenkinsfile.testosterone").read_text()
+    assert "left alone" in second.output
+
+
+def test_init_ci_auto_follows_the_ci_already_in_use(project: Path) -> None:
+    (project / ".circleci").mkdir()
+    (project / ".circleci/config.yml").write_text("version: 2.1\n")
+    result = CliRunner().invoke(app, ["init", "--dir", str(project), "--no-run"])
+    assert result.exit_code == 0, result.output
+    assert (project / ".circleci/testosterone.yml").is_file()
+    assert not (project / ".github").exists()

@@ -82,7 +82,7 @@ cycles:
     raise typer.Exit(code=0)
 
 
-CI_CHOICES = ("auto", "github", "none")
+CI_CHOICES = ("auto", "github", "gitlab", "jenkins", "circleci", "none")
 
 
 @contextlib.contextmanager
@@ -96,23 +96,21 @@ def _cwd(path: Path) -> Iterator[None]:
 
 
 def _resolve_ci(choice: str, repo: Path) -> str:
+    from testo_core.services.ci_templates import detect_ci
+
     choice = choice.strip().lower()
     if choice not in CI_CHOICES:
         raise typer.BadParameter(f"pick one of {', '.join(CI_CHOICES)}", param_hint="--ci")
     if choice != "auto":
         return choice
-    other = [
-        name
-        for name, marker in (
-            ("GitLab CI", ".gitlab-ci.yml"),
-            ("Jenkins", "Jenkinsfile"),
-            ("CircleCI", ".circleci"),
-        )
-        if (repo / marker).exists()
-    ]
-    if other and not (repo / ".github").is_dir():
-        return "none:" + ", ".join(other)
-    return "github"
+    return detect_ci(repo) or "github"
+
+
+_INCLUDE_HINTS = {
+    "gitlab": "add to .gitlab-ci.yml:  include: [{local: .gitlab/testosterone.gitlab-ci.yml}]",
+    "jenkins": "copy its stages and post block into your Jenkinsfile",
+    "circleci": "copy its job into .circleci/config.yml and add it to a workflow",
+}
 
 
 def _existing_cycle(config: Path, wanted: str) -> str:
@@ -144,8 +142,8 @@ def init(
     ci: str = typer.Option(
         "auto",
         "--ci",
-        help="CI file to write: github, or none (auto = github unless the project uses "
-        "another CI and has no .github folder).",
+        help="CI file to write: github, gitlab, jenkins, circleci or none "
+        "(auto = the CI the project already uses, else github).",
     ),
     run_first: bool = typer.Option(
         True,
@@ -205,15 +203,16 @@ def init(
     files: list[tuple[Path, str, bool]] = [
         (config_path, project_setup.config_yaml(facts, cycle=cycle_name), keep_config)
     ]
-    if ci_kind == "github":
-        workflow = repo / ci_templates.GITHUB_WORKFLOW_PATH
-        files.append(
-            (
-                workflow,
-                ci_templates.github_workflow(facts, cycle=cycle_name, branch=branch),
-                workflow.exists() and not force,
-            )
-        )
+    ci_hint = ""
+    if ci_kind != "none":
+        main_file, side_file = ci_templates.CI_FILES[ci_kind]
+        target = repo / main_file
+        if target.exists() and not force and side_file != main_file:
+            # Never edit someone's pipeline: write ours next to it and say how to wire it in.
+            target = repo / side_file
+            ci_hint = _INCLUDE_HINTS[ci_kind]
+        text = ci_templates.ci_file_text(ci_kind, facts, cycle=cycle_name, branch=branch)
+        files.append((target, text, target.exists() and not force))
 
     if dry_run:
         for target, text, keep in files:
@@ -232,11 +231,8 @@ def init(
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text, encoding="utf-8")
         console.print(f"[ok]Wrote {rel}[/]")
-    if ci_kind.startswith("none:"):
-        console.print(
-            f"No CI file written: this project uses {ci_kind[5:]}. "
-            "Copy-paste setup for it: https://taltal-beep.github.io/testosterone/docs/"
-        )
+    if ci_hint:
+        console.print(f"Your CI file exists, so it was left alone; to use the new one, {ci_hint}")
 
     missing = project_setup.missing_gitignore_lines(repo)
     if missing:
