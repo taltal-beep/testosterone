@@ -26,6 +26,11 @@ One pull request per few proposals, each on the existing paths: setup stays in `
 - **Automatic quarantine** (`TESTO_QUARANTINE_AUTO`): after each recorded run, a test flaky at the rate *and failing in that run* is added; auto-release (from #249) takes it out after clean runs, and it only comes back if it fails again. Escaped names let parametrized tests take part.
 - **`testo mcp install`**: project files get relative paths so they can be committed; Claude Desktop's per-machine file gets absolute ones.
 - **Backups**: a compose service, not a server thread, so the API process stays the same and the service can be scaled to zero.
+- **CI history on a laptop** (`testo ui --from-github`): the Action uploads only the SQLite file as an artifact (kept 7 days, `history-artifact: false` turns it off); the CLI finds it with `gh api` and downloads it with `gh run download`, into a folder of its own with its own `TESTO_HOME`, so it never mixes with local runs. Reports and attachments stay in CI.
+- **Update notice**: one PyPI JSON request a day at most, the result (failures too) cached in `~/.cache/testosterone/`, off in CI and with `TESTO_NO_UPDATE_CHECK=1`. The UI reads it from `GET /api/v1/version`, which sits behind read protection (not under `/health/`) so the version isn't public.
+- **Missing extras**: the hint comes from the installed package's own metadata, so it can't drift from `pyproject.toml`; a module testo-core doesn't need keeps its traceback.
+- **`testo server init`**: the packaged compose file is the repository's (a test keeps them equal); secrets go only to a `.env` created with mode 600. The first admin is created at start only while no account exists, so `.env` can never reset a password.
+- **`testo plugins new`**: templates ship in the package as `.tmpl` files; the output is `examples/plugin` under the new name, and a test runs the written runner.
 
 ## Consequences
 

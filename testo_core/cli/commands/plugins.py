@@ -9,16 +9,24 @@ plugin author wants after ``pip install -e .``.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import typer
 
+app = typer.Typer(invoke_without_command=True)
 
+
+@app.callback()
 def plugins_cmd(
+    ctx: typer.Context,
     check: bool = typer.Option(
         False, "--check", help="Import every plugin and verify its interface; exit 1 on failure."
     ),
     as_json: bool = typer.Option(False, "--json", help="Print JSON instead of a table."),
 ) -> None:
+    """List the built-in and installed frameworks and reporters (`testo plugins new` starts one)."""
+    if ctx.invoked_subcommand is not None:
+        return
     from rich.console import Console
     from rich.table import Table
 
@@ -77,3 +85,28 @@ def plugins_cmd(
             )
     if failed:
         raise typer.Exit(code=1)
+
+
+@app.command("new")
+def new_cmd(
+    name: str = typer.Argument(..., help="The plugin's name, used as `equipment: NAME`."),
+    directory: Path = typer.Option(Path("."), "--dir", help="Folder to create the package in."),
+) -> None:
+    """Write a working plugin package (a framework adapter, a reporter, a test) to start from."""
+    from testo_core.engine.exit_codes import EngineExitCode
+    from testo_core.services.plugin_scaffold import ScaffoldError, write_plugin
+
+    try:
+        root, names = write_plugin(name, directory.expanduser().resolve())
+    except ScaffoldError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(int(EngineExitCode.INVALID_INPUT)) from None
+    typer.echo(f"Wrote {root}")
+    typer.echo(
+        f"  equipment: {names.name}  ({names.module}.{names.cls}Adapter)\n"
+        f"  reporter:  {names.name}-summary  ({names.module}.{names.cls}SummaryReporter)"
+    )
+    typer.echo("Next:")
+    typer.echo(
+        f"  cd {root} && pip install -e . && testo plugins --check && testo run --cycle unit"
+    )

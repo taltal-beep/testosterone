@@ -164,6 +164,6 @@ The run history upgrades itself the first time a newer `testo` opens it, and kee
 
 ## Next
 
-- **Web UI**: Dashboard, Runs, Compare and AI failure summaries on the same history. `pip install 'testo-core[api]'`, then `testo ui` opens it on <http://127.0.0.1:8000>. Or look at the [live demo](https://taltal-beep.github.io/testosterone/).
+- **Web UI**: Dashboard, Runs, Compare and AI failure summaries on the same history. `pip install 'testo-core[api]'`, then `testo ui` opens it on <http://127.0.0.1:8000>, and `testo ui --from-github` opens the history your GitHub Actions runs kept (needs the GitHub CLI). Or look at the [live demo](https://taltal-beep.github.io/testosterone/).
 - **Using an AI coding assistant?** [Setup Prompts](Prompts%20&%20Snippets/Setup%20Prompts.md) are copy-paste prompts that do the steps above for you.
 - **How it works**: [System Diagram](Architecture/System%20Diagram.md).

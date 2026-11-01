@@ -40,6 +40,7 @@ def test_action_contract_has_required_inputs_outputs() -> None:
         "ai-summary",
         "comment-artifact",
         "post-comments-from",
+        "history-artifact",
         "server-url",
         "server-token",
     }
