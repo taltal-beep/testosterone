@@ -15,12 +15,6 @@ Status mapping (JUnit has no "broken" of its own):
     <skipped>            -> skipped
     none of the above    -> passed
 
-Retries in one file count once. Maven Surefire's ``<flakyFailure>`` /
-``<flakyError>`` on a passing case mark it flaky ("passed on retry"); a case
-written more than once under the same name in one file (the Gradle test-retry
-plugin's shape) keeps its last outcome, and is flaky when an earlier attempt
-failed and the last one passed.
-
 Other result files among the matches are recognised by their content, not
 their name, and read by their own importer, which keeps what JUnit loses:
 
@@ -73,7 +67,7 @@ class JunitImportResult:
     failed: int = 0
     # Sum of the per-case ``time`` attributes, in seconds.
     duration_s: float = 0.0
-    # Tests that passed on a retry (Playwright, Jest, Xcode, JUnit retries), and attachments copied.
+    # Playwright JSON only: tests that passed on a retry, and attachments copied.
     flaky: int = 0
     attachments: int = 0
     # Files that matched but could not be read as any known format (truncated,
@@ -289,32 +283,7 @@ def _results_for_root(
             results.append(
                 _suite_error_result(suite, suite_name=suite_name, tool=tool, start_ms=suite_start)
             )
-    return _collapse_retries(results)
-
-
-def _collapse_retries(results: list[dict]) -> list[dict]:
-    """One result per test: a test written twice in one file is a retry, not two tests.
-
-    The last attempt's outcome wins. When an earlier attempt failed or broke and
-    the last one passed, the test passed on retry and is flagged flaky.
-    """
-    by_key: dict[str, list[dict]] = {}
-    for result in results:
-        by_key.setdefault(result["historyId"], []).append(result)
-    if all(len(attempts) == 1 for attempts in by_key.values()):
-        return results
-    collapsed: list[dict] = []
-    for attempts in by_key.values():
-        last = attempts[-1]
-        failed_before = [a for a in attempts[:-1] if a["status"] in ("failed", "broken")]
-        if last["status"] == "passed" and failed_before:
-            earlier = (failed_before[-1].get("statusDetails") or {}).get("message")
-            details = last.setdefault("statusDetails", {})
-            details["message"] = "Passed on retry." + (f" {earlier}" if earlier else "")
-            details["flaky"] = True
-        last["start"] = attempts[0]["start"]
-        collapsed.append(last)
-    return collapsed
+    return results
 
 
 @dataclass(frozen=True)
