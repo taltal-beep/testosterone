@@ -31,7 +31,7 @@ def dispatch_report(
     if not results.stages:
         console.print(
             f"[fail]no results found under {artifacts_root}[/] "
-            f"— run ``testo run --cycle …`` (or ``testo run`` with a single cycle) first."
+            "— run `testo run --cycle <name>` (or `testo run` with a single cycle) first."
         )
         return int(EngineExitCode.INVALID_INPUT)
 

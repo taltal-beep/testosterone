@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-10-22
+updated: 2026-10-31
 ---
 
 # Troubleshooting and Error Codes
@@ -21,7 +21,7 @@ Defined in `testo_core/engine/exit_codes.py` as `EngineExitCode`. The process ex
 |------|------|---------|----------------|
 | `0` | `SUCCESS` | Run completed; all stage return codes zero | Pass; or cycle **skipped by trigger** (resting) |
 | `1` | `DOMAIN_FAILURE` | Tests or framework reported failure | Non-zero pytest/behave/behavex exit |
-| `2` | `INVALID_INPUT` | Config or CLI validation failed | Missing YAML, bad schema, unknown cycle, tag mismatch |
+| `2` | `INVALID_INPUT` | Config or CLI validation failed | Missing YAML, bad schema, unknown cycle, tag mismatch; a mistyped command or option, or bare `testo` (prints the error or the help, no traceback) |
 | `3` | `INFRA_FAILURE` | Infrastructure / runtime dependency failure | Return code `127` (missing binary); `124` (stage timeout); report DB archive failure; Docker/Allure CLI failures |
 | `4` | `INTERNAL_ERROR` | Unexpected engine error | Orchestrator `internal_failure` on uncaught engine exception; empty return-code list in classifier |
 
@@ -219,6 +219,8 @@ testo config validate --config path/to/testosterone.yaml
 **Symptoms**
 
 - `cycle 'x' not found. Available: ...`
+- `the config defines several cycles; pick one with --cycle. Available: ...` (`testo run` with no `--cycle`)
+- `Error: No such command 'x'.` or `Error: No such option: --x` after a `Usage:` line (a mistyped command or flag; also exit 2)
 - `plan 'x' has no stages enabled in this environment`
 
 **Debug**

@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 
 # Architecture Overview
@@ -189,7 +189,7 @@ Details and examples: [Command Reference § Exit codes](../CLI%20Commands/Comman
 
 ## Configuration as the single source of truth
 
-`testosterone.yaml` drives cycles, defaults (`artifacts_root`, `timeout_s`, `workers`), optional `database.url`, `reporters:`, and per-cycle `tags`, `trigger`, and `stages`. The interactive wizard is `testo init`; non-interactive scaffold is `testo config init`.
+`testosterone.yaml` drives cycles, defaults (`artifacts_root`, `timeout_s` above 0 or `null` for no limit, `workers` 1 or more; anything else is a config error, as in the JSON Schema), optional `database.url`, `reporters:`, and per-cycle `tags`, `trigger`, and `stages`. The interactive wizard is `testo init`; non-interactive scaffold is `testo config init`.
 
 ### Persistence
 

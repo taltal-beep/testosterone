@@ -29,7 +29,11 @@ def clean(
     ),
 ) -> None:
     """Delete local artifacts and temp output; optional Docker prune."""
-    from testo_core.cli.cleanup import docker_prune_stopped_with_label, remove_tree_if_exists
+    from testo_core.cli.cleanup import (
+        docker_prune_stopped_with_label,
+        remove_tree_if_exists,
+        unsafe_to_remove,
+    )
     from testo_core.cli.ui.console import default_console
     from testo_core.config.errors import ConfigError
     from testo_core.config.loader import discover_and_load
@@ -39,17 +43,30 @@ def clean(
         console.print("[fail]Refusing to delete without --yes (or -y).[/]")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
-    artifacts_root = Path("artifacts")
+    artifacts_root = Path("artifacts").resolve()
+    protected: tuple[Path, ...] = ()
     try:
         cfg = discover_and_load(config_path=config)
         artifacts_root = cfg.defaults.artifacts_root.expanduser().resolve()
+        if cfg.source_path is not None:
+            protected = (cfg.source_path.parent,)
     except ConfigError as exc:
         console.print(f"[warn]Could not load config ({exc}); using ./artifacts for cleanup.[/]")
+
+    td = temp_dir.expanduser().resolve()
+    # Check both before deleting either, so a refusal leaves everything in place.
+    for target in (artifacts_root, td):
+        reason = unsafe_to_remove(target, protected=protected) if target.is_dir() else None
+        if reason:
+            console.print(
+                f"[fail]Refusing to delete {target}: {reason}. Point defaults.artifacts_root "
+                "(or --temp-dir) at a folder used only for test output.[/]"
+            )
+            raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
     removed: list[str] = []
     if remove_tree_if_exists(artifacts_root):
         removed.append(str(artifacts_root))
-    td = temp_dir.expanduser().resolve()
     if remove_tree_if_exists(td):
         removed.append(str(td))
 

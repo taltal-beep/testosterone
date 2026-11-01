@@ -23,6 +23,14 @@ const CASE_KIND_TONE: Record<CaseChangeKind, string> = {
 
 const CASE_KIND_LABELS: CaseChangeKind[] = ["regression", "fix", "added", "removed", "status_change"];
 
+const CASE_KIND_TEXT: Record<CaseChangeKind, string> = {
+  regression: "Regression",
+  fix: "Fix",
+  added: "Added",
+  removed: "Removed",
+  status_change: "Status change"
+};
+
 const CLASSIFICATION_TONE: Record<DeltaClassification, string> = {
   regression: "text-danger-300",
   improvement: "text-success-300",
@@ -479,7 +487,7 @@ function TestLevelChanges({ currentRunId, baselineRunId }: { currentRunId: strin
         aria-expanded={expanded}
       >
         <span className={`transition-transform ${expanded ? "rotate-90" : ""}`}>&#9656;</span>
-        Test-Level Changes
+        Test-level changes
       </button>
       <p className="mt-1 text-xs text-ink-400">
         Computed on demand from each run&apos;s artifact snapshot (per-test added/removed/regression/fix), same as{" "}
@@ -491,7 +499,7 @@ function TestLevelChanges({ currentRunId, baselineRunId }: { currentRunId: strin
           <div className="flex flex-wrap gap-2">
             <FilterButton label="All" active={kindFilter === "all"} onClick={() => setKindFilter("all")} />
             {CASE_KIND_LABELS.map((kind) => (
-              <FilterButton key={kind} label={kind} active={kindFilter === kind} onClick={() => setKindFilter(kind)} />
+              <FilterButton key={kind} label={CASE_KIND_TEXT[kind]} active={kindFilter === kind} onClick={() => setKindFilter(kind)} />
             ))}
           </div>
 
@@ -528,7 +536,7 @@ function FilterButton({ label, active, onClick }: { label: string; active: boole
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${
+      className={`rounded-full border px-3 py-1 text-xs font-medium ${
         active ? "border-brand-400 bg-brand-500/20 text-brand-200" : "border-ink-700 text-ink-300 hover:border-ink-600"
       }`}
     >

@@ -137,22 +137,19 @@ def doctor(
 
     if db_url:
         try:
-            from urllib.parse import urlparse
-
             from sqlalchemy import create_engine, text
         except ImportError:
             table.add_row("Database", "[dim]SKIP[/]", "install testo-core[db] for SQLAlchemy probe")
         else:
             try:
-                dialect = urlparse(db_url).scheme.lower().split("+", 1)[0]
-                eng_kwargs: dict[str, object] = {}
-                if dialect == "sqlite":
-                    eng_kwargs["connect_args"] = {"check_same_thread": False}
-                else:
-                    eng_kwargs["pool_pre_ping"] = True
-                eng = create_engine(db_url, **eng_kwargs)
-                with eng.connect() as conn:
-                    conn.execute(text("SELECT 1"))
+                from testo_core.repository.db_config import engine_kwargs
+
+                eng = create_engine(db_url, **engine_kwargs(db_url))
+                try:
+                    with eng.connect() as conn:
+                        conn.execute(text("SELECT 1"))
+                finally:
+                    eng.dispose()
                 table.add_row("Database", "[ok]PASS[/]", "connection probe succeeded")
             except Exception as exc:
                 # Broad on purpose: any driver/URL/connection error is reported as a FAIL row.

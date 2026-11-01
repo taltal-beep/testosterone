@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 
 # CI Integrations
@@ -34,7 +34,7 @@ Run records written in CI include (when the provider exposes them):
 
 Runs also record `repository` (`owner/name`, from `GITHUB_REPOSITORY`, `CI_PROJECT_PATH`, `BUILDKITE_REPO` or `CIRCLE_PROJECT_REPONAME`). Runs outside CI record `git_branch` and `git_commit` from the target repository's checkout instead, and `repository` when its `origin` remote is on github.com. `testo ingest` sends the same fields with the upload.
 
-The PR comment and `testo report markdown` compare a pull request's run with the latest run of the same cycle on its `ci_base_ref` branch, so a parallel PR's run is never the baseline. With no run on that branch yet they fall back to the previous run, and say which one they used ("Since the last run on `main`" or "Since the previous run"). This needs history shared between jobs (a `database.url` or a team server); on a fresh runner there is nothing to compare with.
+The PR comment and `testo report markdown` compare a pull request's run with the latest run of the same cycle on its `ci_base_ref` branch, so a parallel PR's run is never the baseline. With no run on that branch yet they fall back to the previous run on the run's own branch (never another pull request's), a push to the default branch is compared with the previous run on that branch, and they say which one they used ("Since the last run on `main`" or "Since the previous run"). Test names are shown as code spans that nothing in a name can close, so a name can't @mention anyone or render HTML in the comment. When `testo run` stops before recording a run (bad config), the action publishes no summary, comment, annotations or alert rather than an earlier job's run. This needs history shared between jobs (a `database.url` or a team server); on a fresh runner there is nothing to compare with.
 
 ## GitHub Action
 
@@ -87,7 +87,7 @@ Tier selection is marker-driven and shared between local runs and GitHub Actions
 
 Reference CI definitions:
 
-- GitHub: `.github/workflows/ci.yml` (unified format → test → deploy pipeline; the fast-required gate lives in its `test` job on Python 3.11, and `test_python_versions` runs the same suite on 3.12 and 3.13 without the coverage gate), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`. Code review runs via a local pre-push hook (`.claude/settings.json`), not in CI.
+- GitHub: `.github/workflows/ci.yml` (unified pipeline: format and test run in parallel, then deploy on a release; the fast-required gate lives in its `test` job on Python 3.11, followed by the heavy tier, and `test_python_versions` runs the same suite on 3.12, 3.13 and 3.14 without the coverage gate), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`. Code review runs via a local pre-push hook (`.claude/settings.json`), not in CI.
 
 All tier jobs upload diagnostics artifacts (`logs`, summary JSON, API responses, screenshots when present) on failure, and external suites run with `external-e2e` concurrency isolation.
 

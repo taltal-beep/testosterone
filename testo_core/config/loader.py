@@ -34,6 +34,7 @@ from testo_core.config.sections import (
     parse_quarantine,
     parse_reporters,
     parse_stage,
+    parse_version,
     validate_artifact_name,
 )
 from testo_core.resources.pools import parse_resources
@@ -142,7 +143,7 @@ def _build_config(raw: dict[str, Any], *, source: Path) -> TestosteroneConfig:
     if "resources" in raw or "affected" in raw:
         # Only pools (for `testo lease`) or test selection (`testo affected`), no cycles yet.
         return TestosteroneConfig(
-            version=int(raw.get("version", 1)),
+            version=parse_version(raw.get("version", 1)),
             defaults=parse_defaults(raw.get("defaults", {}), config_dir=config_dir),
             source_path=source,
             resources=parse_resources(raw.get("resources")),
@@ -160,7 +161,7 @@ def _build_config(raw: dict[str, Any], *, source: Path) -> TestosteroneConfig:
 def _build_cycle_config(
     raw: dict[str, Any], *, config_dir: Path, source: Path
 ) -> TestosteroneConfig:
-    version = int(raw.get("version", 1))
+    version = parse_version(raw.get("version", 1))
     defaults = parse_defaults(raw.get("defaults", {}), config_dir=config_dir)
     # Canonical: cycles. Legacy: plans.
     cycles_raw = raw.get("cycles")
@@ -245,7 +246,7 @@ def _build_legacy_runs_config(
     )
     reporters = parse_reporters(raw.get("reporters"), config_dir=config_dir)
     return TestosteroneConfig(
-        version=int(raw.get("version", 1)),
+        version=parse_version(raw.get("version", 1)),
         defaults=defaults,
         cycles={plan.name: plan},
         reporters=reporters,

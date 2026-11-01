@@ -83,3 +83,25 @@ def test_bad_input_exits_2(db: None, args: list[str]) -> None:
 def test_unknown_role_exits_2(db: None) -> None:
     _users("add", "erin", "--password-stdin", password=_PASSWORD)
     assert _users("set-role", "erin", "root").exit_code == 2
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["add", "bad name"],
+        ["add", "frank", "--role", "root"],
+        ["reset-password", "nobody"],
+    ],
+)
+def test_bad_name_or_role_is_refused_before_the_password_prompt(db: None, args: list[str]) -> None:
+    result = _users(*args, password="")  # no password typed at all
+    assert result.exit_code == 2, result.output
+    assert "Password" not in result.output
+
+
+def test_existing_user_is_refused_before_the_password_prompt(db: None) -> None:
+    _users("add", "gina", "--password-stdin", password=_PASSWORD)
+    result = _users("add", "gina", password="")
+    assert result.exit_code == 2
+    assert "already exists" in result.output
+    assert "Password" not in result.output

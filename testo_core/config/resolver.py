@@ -14,7 +14,7 @@ import os
 import re
 from collections.abc import Mapping
 
-from testo_core.config.errors import PlanNotFoundError
+from testo_core.config.errors import UNSPECIFIED_PLAN, PlanNotFoundError
 from testo_core.config.schema import Plan, Stage, TestosteroneConfig
 
 # With TESTO_RUNNER=container a stage runs in a throwaway container that must never
@@ -47,7 +47,7 @@ def resolve_plan(config: TestosteroneConfig, *, plan_name: str | None) -> Plan:
     if plan_name is None:
         if len(config.cycles) == 1:
             return next(iter(config.cycles.values()))
-        raise PlanNotFoundError("<unspecified>", tuple(config.cycles.keys()))
+        raise PlanNotFoundError(UNSPECIFIED_PLAN, tuple(config.cycles.keys()))
     try:
         return config.cycles[plan_name]
     except KeyError as exc:

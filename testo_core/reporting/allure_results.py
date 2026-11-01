@@ -32,6 +32,9 @@ class StageSummary:
 
 @dataclass(frozen=True)
 class TestCaseRecord:
+    # Not a pytest test class, although its name starts with "Test".
+    __test__ = False
+
     id: str
     name: str
     full_name: str
