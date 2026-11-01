@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-22
-updated: 2026-10-26
+updated: 2026-11-01
 ---
 
 # Team Server
@@ -127,11 +127,11 @@ testo ingest 'reports/**/*.xml' --cycle web-unit --server "$TESTO_SERVER_URL" --
 GitHub Actions:
 
 ```yaml
-      - run: npx jest --ci --reporters=default --reporters=jest-junit   # your tests, unchanged
+      - run: npx jest --ci --json --outputFile=jest.json   # your tests, plus Jest's own report
       - if: always()            # record failing runs too
         run: |
           pip install testo-core
-          testo ingest 'junit*.xml' --cycle web-unit
+          testo ingest jest.json --cycle web-unit
         env:
           TESTO_SERVER_URL: https://testo.example.com
           TESTO_API_TOKEN: ${{ secrets.TESTO_API_TOKEN }}

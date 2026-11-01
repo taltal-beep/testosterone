@@ -324,3 +324,70 @@ def test_a_run_that_did_not_finish_publishes_nothing(tmp_path: Path, monkeypatch
     assert module.main(["--cycle", "smoke"]) == 2
     # Only `testo run`: no `testo report markdown` / annotations / notify of an older run.
     assert calls == [["testo", "run", "--cycle", "smoke", "--ci"]]
+
+
+def test_cycle_all_publishes_every_finished_cycle(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    module = _load_wrapper_module()
+    calls: list[list[str]] = []
+    run_out = "\n".join(
+        [
+            '{"event":"plan_finished","plan":"api","exit_code":0}',
+            '{"event":"plan_finished","plan":"unit","exit_code":1}',
+        ]
+    )
+
+    def fake_run(cmd, **_kwargs):  # noqa: ANN001
+        calls.append(list(cmd))
+        out = run_out if cmd[:2] == ["testo", "run"] else "<!-- m -->\nhi\n"
+        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=out, stderr="")
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "out.txt"))
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(tmp_path / "summary.md"))
+    monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
+    monkeypatch.setenv("TESTO_SLACK_WEBHOOK_URL", "https://hooks.example/x")
+    module.main(["--cycle", "all", "--annotations", "true"])
+    markdown = [c for c in calls if c[1:3] == ["report", "markdown"]]
+    assert [c[c.index("--cycle") + 1] for c in markdown] == ["api", "unit"]
+    alerts = [c for c in calls if c[1] == "notify"]
+    assert [c[c.index("--cycle") + 1] for c in alerts] == ["api", "unit"]
+    annotations = [c for c in calls if c[1:3] == ["report", "annotations"]]
+    assert len(annotations) == 2
+    assert (tmp_path / "summary.md").read_text(encoding="utf-8").count("hi") == 2
+
+
+def test_finished_cycles_ignores_other_lines() -> None:
+    module = _load_wrapper_module()
+    stdout = 'noise\n{"event":"stage_finished","plan":"x"}\n{"event":"plan_finished","plan":"a"}\n'
+    assert module.finished_cycles(stdout) == ["a"]
+
+
+def test_action_inputs_reach_bash_as_variables_not_script_text() -> None:
+    """A `"` or `$(...)` in an input must be data: no `${{ inputs.* }}` inside a `run:` script."""
+    import yaml
+
+    for path in (Path("action.yml"), Path("integrations/github-action/action.yml")):
+        action = yaml.safe_load(path.read_text(encoding="utf-8"))
+        for step in action["runs"]["steps"]:
+            assert "inputs." not in step.get("run", ""), (path, step.get("name"))
+
+
+def test_package_input_installs_several_requirements(tmp_path: Path) -> None:
+    import yaml
+
+    action = yaml.safe_load(Path("action.yml").read_text(encoding="utf-8"))
+    step = next(s for s in action["runs"]["steps"] if s.get("name") == "Install testo")
+    pip = tmp_path / "python"
+    pip.write_text('#!/bin/sh\necho "$@" >> "$LOG"\n', encoding="utf-8")
+    pip.chmod(0o755)
+    log = tmp_path / "log"
+    env = {
+        "PATH": f"{tmp_path}:/usr/bin:/bin",
+        "LOG": str(log),
+        "TESTO_INPUT_PACKAGE": 'testo-core pytest-xdist "$(touch pwned)"',
+    }
+    subprocess.run(["bash", "-c", step["run"]], check=True, env=env, cwd=tmp_path)
+    lines = log.read_text(encoding="utf-8").splitlines()
+    assert lines[-1].split()[:4] == ["-m", "pip", "install", "testo-core"]
+    assert "pytest-xdist" in lines[-1]
+    assert not (tmp_path / "pwned").exists()
