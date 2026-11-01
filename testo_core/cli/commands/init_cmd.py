@@ -14,22 +14,32 @@ and records a first run: the result files a test run already left in the
 project when there are any, otherwise one ``testo run`` of the new cycle.
 Files that exist are kept unless ``--force``; ``--dry-run`` prints instead.
 
+``testo init --scan`` looks in every folder (:mod:`testo_core.services.repo_scan`),
+for monorepos, shows the stages it found and asks before writing. ``--check``
+asks each runner to list its tests (:mod:`testo_core.services.stage_check`) and
+leaves out stages that have none.
+
 ``testo init --interactive`` is the older question-by-question wizard.
 """
 
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import json
 import os
 from collections.abc import Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 from rich.console import Console
 
 from testo_core.config.json_schema import SCHEMA_ID
 from testo_core.engine.exit_codes import EngineExitCode
+
+if TYPE_CHECKING:
+    from testo_core.services.project_setup import ProjectFacts, Stack
 
 
 def wizard(path: Path | None) -> None:
@@ -150,6 +160,20 @@ def init(
         "--run/--no-run",
         help="Record a first run: existing result files if any, else run the new cycle once.",
     ),
+    scan: bool = typer.Option(
+        False,
+        "--scan",
+        help="Look in every folder, not just the top (monorepos): a stage per runner per "
+        "project folder. Shows the stages and asks before writing.",
+    ),
+    check: bool = typer.Option(
+        False,
+        "--check",
+        help="Ask each runner which tests it would run (pytest --collect-only, jest "
+        "--listTests, go test -list...) and leave out stages with none. Loads your test "
+        "code; never runs a test.",
+    ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="With --scan: write without asking."),
     force: bool = typer.Option(False, "--force", help="Overwrite files that already exist."),
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Print what would be written; write and run nothing."
@@ -169,7 +193,7 @@ def init(
         return
 
     from testo_core.cli.ui.console import default_console
-    from testo_core.services import ci_templates, project_setup
+    from testo_core.services import ci_templates, project_setup, repo_scan
 
     console = default_console()
     repo = directory.expanduser().resolve()
@@ -179,18 +203,29 @@ def init(
             f"unknown stack {unknown[0]!r}; pick from {', '.join(project_setup.STACK_KEYS)}",
             param_hint="--stack",
         )
-    facts = project_setup.detect_project(repo, only=stack)
+    if scan:
+        scanned = repo_scan.scan_repo(repo, only=stack)
+        facts = dataclasses.replace(scanned.facts, skipped=scanned.notes)
+    else:
+        facts = project_setup.detect_project(repo, only=stack)
     if not facts.stacks:
+        where = "any folder of " if scan else ""
         console.print(
-            f"[fail]No test runner found in {repo}.[/] Looked for pytest, Jest, Vitest, "
+            f"[fail]No test runner found in {where}{repo}.[/] Looked for pytest, Jest, Vitest, "
             "Playwright, go test, dotnet test, Maven, Gradle, RSpec and PHPUnit.\n"
-            "Name one with --stack, or record results you already have:\n"
+            + ("" if scan else "Look in subfolders too with --scan. ")
+            + "Name one with --stack, or record results you already have:\n"
             "  testo ingest 'reports/**/*.xml' --cycle tests"
         )
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
     cycle_name = (cycle or "").strip() or project_setup.cycle_name_for(repo)
-    console.print("Found: " + ", ".join(s.label for s in facts.stacks))
+    if scan:
+        _print_stages(console, facts)
+    else:
+        console.print("Found: " + ", ".join(s.label for s in facts.stacks))
+    if check:
+        facts = _check_stages(console, facts, repo)
     for note in facts.skipped:
         console.print(f"  [muted]Not added: {note}[/]")
 
@@ -222,6 +257,9 @@ def init(
             if not keep:
                 console.print(text, markup=False, highlight=False, end="")
         return
+
+    if scan and not yes:
+        _confirm(console, [t.relative_to(repo) for t, _, keep in files if not keep], run_first)
 
     for target, text, keep in files:
         rel = target.relative_to(repo)
@@ -256,6 +294,61 @@ def init(
     )
     console.print(f"  testo run --cycle {cycle_name}")
     raise typer.Exit(code=code)
+
+
+def _print_stages(console: Console, facts: ProjectFacts) -> None:
+    """The stages ``--scan`` proposes: folder, runner, and the command each one runs."""
+    from testo_core.services.ci_templates import ci_test_command
+
+    console.print(f"Found {len(facts.stacks)} test suite(s):")
+    for stack in facts.stacks:
+        folder = str(stack.stage.get("target_repo") or ".")
+        bare = dataclasses.replace(
+            stack, stage={k: v for k, v in stack.stage.items() if k != "target_repo"}
+        )
+        console.print(
+            f"  [bold]{stack.stage['name']}[/]  {stack.label} in {folder}/\n"
+            f"      [muted]{ci_test_command(bare)}[/]",
+            highlight=False,
+        )
+
+
+def _check_stages(console: Console, facts: ProjectFacts, repo: Path) -> ProjectFacts:
+    """List each stage's tests with its runner; stages that list none are left out."""
+    from testo_core.services.stage_check import check_stage
+
+    console.print("\nChecking with each runner (lists tests, runs none):")
+    kept: list[Stack] = []
+    notes = list(facts.skipped)
+    for stack in facts.stacks:
+        result = check_stage(stack, root=repo)
+        style = {"ok": "ok", "empty": "fail", "error": "warn"}.get(result.status, "muted")
+        console.print(f"  {stack.stage['name']}: [{style}]{result.summary}[/]", highlight=False)
+        if result.status == "empty":
+            notes.append(f"{stack.stage['name']}: {stack.label} found no tests there")
+        else:
+            kept.append(stack)
+    if not kept:
+        console.print("[fail]No proposed stage has tests, so nothing was written.[/]")
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+    return dataclasses.replace(facts, stacks=tuple(kept), skipped=tuple(notes))
+
+
+def _confirm(console: Console, files: list[Path], run_first: bool) -> None:
+    """Ask before ``--scan`` writes anything; no answer (no terminal) means no."""
+    if files:
+        console.print("\nWill write: " + ", ".join(str(f) for f in files))
+    if run_first:
+        console.print("Then records a first run (--no-run skips it).")
+    try:
+        ok = typer.confirm("Go ahead?", default=True)
+    except typer.Abort:
+        ok = False
+    if not ok:
+        console.print(
+            "Nothing written. See the files in full with --dry-run; skip this with --yes."
+        )
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
 
 def _first_run(*, console: Console, repo: Path, cycle: str, config: Path) -> int:
