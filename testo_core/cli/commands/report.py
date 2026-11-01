@@ -323,6 +323,12 @@ def report_markdown(
         help="Compare with this branch's latest run (default: a pull request's target "
         "branch, else the previous run).",
     ),
+    ai: bool = typer.Option(
+        False,
+        "--ai",
+        help="Add the AI summary of the failures to a failed run (testo ai setup, or "
+        "TESTO_AI_PROVIDER in CI). Skipped with a note if the provider can't answer.",
+    ),
 ) -> None:
     from testo_core.services.run_summary_markdown import load_run_summary, render_markdown
 
@@ -335,6 +341,12 @@ def report_markdown(
         typer.echo("no recorded run found", err=True)
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
     text = render_markdown(summary, run_url=run_url)
+    if ai and summary.run.returncode != 0:
+        from testo_core.services.ai_run_summary import summarize
+        from testo_core.services.run_summary_markdown import ai_section
+
+        found = summarize(run_id=summary.run.run_id)
+        text = ai_section(text, found.text, found.reason)
     if out is None:
         typer.echo(text, nl=False)
     else:

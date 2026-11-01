@@ -163,3 +163,22 @@ def test_server_must_be_a_url(repo: Path) -> None:
     result = CliRunner().invoke(app, ["init", "--dir", str(repo), "--server", "testo.example"])
 
     assert result.exit_code == 2
+
+
+def test_forks_leaves_the_comment_as_an_artifact_and_adds_the_posting_workflow(
+    repo: Path,
+) -> None:
+    result = CliRunner().invoke(app, ["init", "--dir", str(repo), "--no-run", "--forks"])
+
+    assert result.exit_code == 0, result.output
+    tests = yaml.safe_load((repo / ".github/workflows/testosterone.yml").read_text())
+    assert tests["permissions"] == {"contents": "read"}
+    assert tests["jobs"]["tests"]["steps"][-1]["with"]["comment-artifact"] == "true"
+    poster = yaml.safe_load((repo / ".github/workflows/testosterone-comment.yml").read_text())
+    # PyYAML reads the bare `on:` key as True.
+    trigger = poster[True]["workflow_run"]
+    assert trigger["workflows"] == [tests["name"]]
+    assert poster["permissions"] == {"actions": "read", "pull-requests": "write"}
+    steps = poster["jobs"]["comment"]["steps"]
+    assert not any("checkout" in str(s.get("uses")) for s in steps)
+    assert steps[-1]["with"] == {"post-comments-from": "testo-comment"}

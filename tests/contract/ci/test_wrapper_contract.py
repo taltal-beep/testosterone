@@ -37,6 +37,9 @@ def test_action_contract_has_required_inputs_outputs() -> None:
         "flaky-issues",
         "coverage",
         "github-token",
+        "ai-summary",
+        "comment-artifact",
+        "post-comments-from",
         "server-url",
         "server-token",
     }

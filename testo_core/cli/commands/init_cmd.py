@@ -21,7 +21,8 @@ leaves out stages that have none.
 
 ``testo init --pr`` then commits what it wrote on a new branch, pushes it and
 opens a pull request (:mod:`testo_core.services.setup_pr`); ``--dependabot``
-also writes ``.github/dependabot.yml``.
+also writes ``.github/dependabot.yml``; ``--forks`` adds the workflow that
+posts the comment on pull requests from forks.
 
 ``testo init --interactive`` is the older question-by-question wizard.
 """
@@ -203,6 +204,12 @@ def init(
         "the token from the TESTO_API_TOKEN secret; with gh and $TESTO_API_TOKEN set, "
         "init stores the secret too.",
     ),
+    forks: bool = typer.Option(
+        False,
+        "--forks",
+        help="GitHub: also comment on pull requests from forks (their token is read-only): "
+        "the test workflow uploads the comment and a second workflow posts it.",
+    ),
     dependabot: bool = typer.Option(
         False,
         "--dependabot",
@@ -275,9 +282,14 @@ def init(
             target = repo / side_file
             ci_hint = _INCLUDE_HINTS[ci_kind]
         text = ci_templates.ci_file_text(
-            ci_kind, facts, cycle=cycle_name, branch=branch, server=server_url
+            ci_kind, facts, cycle=cycle_name, branch=branch, server=server_url, forks=forks
         )
         files.append((target, text, target.exists() and not force))
+    if forks and ci_kind == "github":
+        poster = repo / ci_templates.COMMENT_WORKFLOW_PATH
+        files.append((poster, ci_templates.comment_workflow(), poster.exists() and not force))
+    elif forks:
+        console.print("[muted]--forks only changes GitHub Actions workflows; ignored.[/]")
     if dependabot:
         from testo_core.services.setup_pr import DEPENDABOT_PATH, dependabot_yaml
 

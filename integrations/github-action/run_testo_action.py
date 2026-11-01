@@ -235,6 +235,8 @@ def render_markdown(*, cycle: str, env: dict[str, str]) -> str | None:
     )
     if server and repo and run_id:
         cmd += ["--run-url", f"{server}/{repo}/actions/runs/{run_id}"]
+    if _parse_bool(env.get("TESTO_INPUT_AI_SUMMARY", ""), default=False):
+        cmd.append("--ai")
     proc = subprocess.run(cmd, check=False, capture_output=True, text=True, env=env)  # noqa: S603
     if proc.returncode != 0 or not proc.stdout.strip():
         _warn(f"could not render the run summary: {proc.stderr.strip() or proc.returncode}")
@@ -298,6 +300,11 @@ def publish_summary(*, cycle: str, job_summary: bool, comment: bool, env: dict[s
     if not comment:
         return
     number = pull_request_number(env)
+    if number is not None and _parse_bool(
+        env.get("TESTO_INPUT_COMMENT_ARTIFACT", ""), default=False
+    ):
+        write_comment_artifact(markdown=markdown, cycle=cycle, env=env)
+        return
     token = env.get("TESTO_GITHUB_TOKEN", "")
     if number is None or not token:
         return
@@ -306,6 +313,104 @@ def publish_summary(*, cycle: str, job_summary: bool, comment: bool, env: dict[s
     except (urllib.error.URLError, OSError, ValueError, KeyError) as exc:
         # A fork's pull request gets a read-only token: say so, keep the job's result.
         _warn(f"could not comment on pull request #{number} ({exc}); it needs pull-requests: write")
+
+
+COMMENT_MARKER = "<!-- testo-summary:"
+# What a comment artifact may hold: a fork's workflow wrote it, so it is untrusted.
+MAX_COMMENT_FILES = 20
+MAX_COMMENT_BYTES = 60_000
+
+
+def comment_dir(env: dict[str, str]) -> Path:
+    return Path(env.get("RUNNER_TEMP") or ".") / "testo-comment"
+
+
+def write_comment_artifact(*, markdown: str, cycle: str, env: dict[str, str]) -> Path:
+    """Leave the comment for a trusted ``workflow_run`` job instead of posting it.
+
+    A fork's pull request runs with a read-only token, so the comment goes into
+    ``$RUNNER_TEMP/testo-comment/<cycle>.md``; the action uploads that folder as the
+    ``testo-comment`` artifact (``comment_dir`` output) and ``post-comments`` posts it.
+    """
+    folder = comment_dir(env)
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"{_slug(cycle) or 'run'}.md"
+    path.write_text(markdown, encoding="utf-8")
+    github_output = env.get("GITHUB_OUTPUT")
+    if github_output:
+        _write_github_outputs(Path(github_output), values={"comment_dir": str(folder)})
+    return path
+
+
+def safe_comment(text: str) -> str | None:
+    """*text* if it is a Testosterone comment of a sane size, with mentions defused."""
+    if not text.startswith(COMMENT_MARKER) or len(text.encode("utf-8")) > MAX_COMMENT_BYTES:
+        return None
+    first, _, rest = text.partition("\n")
+    # The first line is the marker that later runs find the comment by; keep it as is.
+    return first + "\n" + rest.replace("@", "&#64;")
+
+
+def triggering_pull_request(*, token: str, env: dict[str, str]) -> int | None:
+    """The open pull request whose head is the commit the ``workflow_run`` ran on.
+
+    Found from the trusted event payload and the API, never from the artifact, so
+    a fork can't point its comment at another pull request.
+    """
+    try:
+        event = json.loads(Path(env["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
+        run = event["workflow_run"]
+        head_sha = str(run["head_sha"])
+    except (KeyError, OSError, TypeError, ValueError):
+        return None
+    for pr in run.get("pull_requests") or []:
+        # Filled in for branches of this repository; empty for forks.
+        if str((pr.get("head") or {}).get("sha")) == head_sha:
+            return int(pr["number"])
+    api = env.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
+    repo = env["GITHUB_REPOSITORY"]
+    for page in range(1, 6):
+        pulls = _github(
+            "GET", f"{api}/repos/{repo}/pulls?state=open&per_page=100&page={page}", token
+        )
+        for pr in pulls:
+            if str((pr.get("head") or {}).get("sha")) == head_sha:
+                return int(pr["number"])
+        if len(pulls) < 100:
+            break
+    return None
+
+
+def post_comments(*, folder: Path, env: dict[str, str]) -> int:
+    """Post the comments a ``comment-artifact`` run left in *folder*. Returns how many."""
+    token = env.get("TESTO_GITHUB_TOKEN", "")
+    if not token:
+        _warn("post-comments-from needs github-token with pull-requests: write")
+        return 0
+    files = sorted(p for p in folder.glob("*.md") if p.is_file())[:MAX_COMMENT_FILES]
+    if not files:
+        print(f"No comments in {folder}: the run had nothing to post.")
+        return 0
+    try:
+        number = triggering_pull_request(token=token, env=env)
+    except (urllib.error.URLError, OSError, ValueError, KeyError) as exc:
+        _warn(f"could not find the pull request to comment on ({exc})")
+        return 0
+    if number is None:
+        _warn("found no open pull request whose head is the commit that run tested")
+        return 0
+    posted = 0
+    for path in files:
+        body = safe_comment(path.read_text(encoding="utf-8", errors="replace"))
+        if body is None:
+            _warn(f"skipped {path.name}: not a Testosterone comment, or too large")
+            continue
+        try:
+            upsert_pr_comment(markdown=body, number=number, token=token, env=env)
+            posted += 1
+        except (urllib.error.URLError, OSError, ValueError, KeyError) as exc:
+            _warn(f"could not comment on pull request #{number} ({exc})")
+    return posted
 
 
 def _testo(cmd: list[str], env: dict[str, str]) -> subprocess.CompletedProcess[str]:
@@ -469,6 +574,12 @@ def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv[:1] == ["prepare-history"]:
         return _prepare_history_main(argv[1:])
+    if argv[:1] == ["post-comments"]:
+        posting = argparse.ArgumentParser(description="Post a fork run's comments.")
+        posting.add_argument("--dir", required=True)
+        folder = Path(posting.parse_args(argv[1:]).dir)
+        print(f"Posted {post_comments(folder=folder, env=dict(os.environ))} comment(s).")
+        return 0
     parser = argparse.ArgumentParser(description="Run a Testosterone cycle in GitHub Actions.")
     parser.add_argument("--config-path", default="")
     parser.add_argument("--cycle", default="")
