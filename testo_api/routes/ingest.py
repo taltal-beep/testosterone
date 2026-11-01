@@ -31,6 +31,8 @@ def ingest_reports(
     ci_ref_name: str | None = Form(None),
     ci_base_ref: str | None = Form(None),
     repository: str | None = Form(None),
+    coverage_covered: str | None = Form(None),
+    coverage_total: str | None = Form(None),
 ) -> IngestResponse:
     """Record JUnit XML files as one run of *cycle*. Nothing in the upload is executed.
 
@@ -58,6 +60,8 @@ def ingest_reports(
             "ci_ref_name": ci_ref_name,
             "ci_base_ref": ci_base_ref,
             "repository": repository,
+            "coverage_covered": coverage_covered,
+            "coverage_total": coverage_total,
         }
     )
     try:

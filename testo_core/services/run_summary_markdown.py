@@ -182,6 +182,20 @@ def _code(text: str, *, in_table: bool = False) -> str:
     return f"{fence}{pad}{text}{pad}{fence}"
 
 
+def coverage_text(run: CompletedRunView, previous: CompletedRunView | None) -> str:
+    """``coverage 81.2% (▼ 0.4 vs baseline)``, or ``""`` when the run stored no coverage."""
+    if run.coverage_pct is None:
+        return ""
+    text = f"coverage {run.coverage_pct:.1f}%"
+    if previous is None or previous.coverage_pct is None:
+        return text
+    delta = round(run.coverage_pct - previous.coverage_pct, 1)
+    if delta == 0:
+        return f"{text} (unchanged)"
+    arrow = "▲" if delta > 0 else "▼"
+    return f"{text} ({arrow} {abs(delta):.1f})"
+
+
 def render_markdown(summary: RunSummary, *, run_url: str | None = None) -> str:
     """Markdown for one run: headline, per-stage table, failing tests, changes since last run."""
     run = summary.run
@@ -202,6 +216,9 @@ def render_markdown(summary: RunSummary, *, run_url: str | None = None) -> str:
         )
     if run.health_pct is not None:
         headline += f" · health {run.health_pct:.1f}%"
+    coverage = coverage_text(run, summary.previous)
+    if coverage:
+        headline += f" · {coverage}"
     lines += [headline, ""]
 
     if run.stage_health:

@@ -38,6 +38,10 @@ RUN_METADATA_KEYS: tuple[str, ...] = (
     "ci_ref_name",
     "ci_base_ref",
     "repository",
+    # Line coverage the client read from its coverage report (``--coverage``).
+    "coverage_pct",
+    "coverage_covered",
+    "coverage_total",
 )
 _MAX_METADATA_CHARS = 256
 _UNSAFE_FILENAME = re.compile(r"[^A-Za-z0-9._-]+")
@@ -61,11 +65,15 @@ class IngestOutcome:
 
 def clean_run_metadata(raw: Mapping[str, str | None]) -> dict[str, str]:
     """Keep the allowed, non-empty provenance keys, trimmed to a sane length."""
+    from testo_core.reporting.coverage_import import METADATA_KEYS, clean_coverage_metadata
+
     out: dict[str, str] = {}
     for key in RUN_METADATA_KEYS:
         value = (raw.get(key) or "").strip()
-        if value:
+        if value and key not in METADATA_KEYS:
             out[key] = value[:_MAX_METADATA_CHARS]
+    # Numbers, not free text: kept only when covered <= total.
+    out.update(clean_coverage_metadata(raw))
     return out
 
 

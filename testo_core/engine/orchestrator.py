@@ -15,7 +15,7 @@ import logging
 import os
 import time
 from collections import deque
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import Protocol
@@ -53,6 +53,7 @@ def run_plan(
     persist: bool = True,
     fail_fast: bool = False,
     run_metadata: Mapping[str, str | None] | None = None,
+    coverage_reports: Sequence[Path] = (),
 ) -> PlanResult:
     """Execute every stage in ``plan``: in order, or up to ``plan.max_parallel_stages`` at once.
 
@@ -66,7 +67,9 @@ def run_plan(
     terminal ``plan_finished`` event.
 
     *run_metadata* is carried on ``PlanResult.extra["run_metadata"]`` and merged
-    into the run record by the DB backend.
+    into the run record by the DB backend. *coverage_reports* (Cobertura, JaCoCo,
+    LCOV or Go cover profiles the stages wrote) are read once every stage has
+    finished and their line coverage is stored the same way.
     """
     artifacts_root = (artifacts_root or Path("artifacts")).expanduser().resolve()
     plan_artifacts = plan_artifacts_dir(artifacts_root, plan.name)
@@ -182,6 +185,9 @@ def run_plan(
 
     redact_run_artifacts(plan_artifacts)
 
+    if coverage_reports:
+        plan_result = _with_coverage(plan_result, coverage_reports)
+
     if persist:
         from testo_core.persistence import composite_backend
 
@@ -193,6 +199,23 @@ def run_plan(
             )
 
     return plan_result
+
+
+def _with_coverage(plan_result: PlanResult, reports: Sequence[Path]) -> PlanResult:
+    from testo_core.reporting.coverage_import import CoverageFormatError, parse_coverage
+
+    present = [p for p in reports if p.is_file()]
+    if not present:
+        logger.warning("coverage: no report at %s", ", ".join(str(p) for p in reports))
+        return plan_result
+    try:
+        summary = parse_coverage(present)
+    except CoverageFormatError as exc:
+        logger.warning("coverage: %s", exc)
+        return plan_result
+    before = plan_result.extra.get("run_metadata")
+    metadata = {**(before if isinstance(before, dict) else {}), **summary.as_metadata()}
+    return dataclasses.replace(plan_result, extra={**plan_result.extra, "run_metadata": metadata})
 
 
 def _run_sequential(

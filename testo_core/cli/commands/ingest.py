@@ -73,6 +73,14 @@ def ingest(
         envvar="TESTO_API_TOKEN",
         help="The server's API token (default: $TESTO_API_TOKEN).",
     ),
+    coverage: list[str] = typer.Option(
+        None,
+        "--coverage",
+        help=(
+            "Code coverage report to store with the run (repeatable, relative to --repo): "
+            "Cobertura or JaCoCo XML, LCOV, or a Go cover profile."
+        ),
+    ),
 ) -> None:
     """Record test results from any runner (JUnit XML or a runner's own format) as a run of a cycle."""
     from testo_core.cli.runner import execute_ingest_command
@@ -91,5 +99,6 @@ def ingest(
         persist=not no_persist,
         server=server,
         token=token,
+        coverage=coverage or [],
     )
     raise typer.Exit(code=int(exit_code))

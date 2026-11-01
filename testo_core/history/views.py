@@ -45,6 +45,10 @@ class CompletedRunView:
     base_branch: str | None = None
     # ``owner/name`` on the code host (CI variables, an upload, or a github.com ``origin``).
     repository: str | None = None
+    # Line coverage from ``--coverage`` (covered lines out of all lines), when given.
+    coverage_pct: float | None = None
+    coverage_covered: int | None = None
+    coverage_total: int | None = None
 
 
 @dataclass(frozen=True)
@@ -99,6 +103,14 @@ def _optional_str(md: dict[str, Any], key: str) -> str | None:
     return str(md[key]) if md.get(key) else None
 
 
+def _number(md: dict[str, Any], key: str) -> float | None:
+    """A numeric value that may be stored as a string (uploaded metadata); ``None`` if not."""
+    try:
+        return float(md[key]) if md.get(key) not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
 def view_from_record(record: RunRecord) -> CompletedRunView | None:
     """Build a :class:`CompletedRunView`; ``None`` for records without a ``run_id``."""
     md = record.metadata_ or {}
@@ -131,4 +143,7 @@ def view_from_record(record: RunRecord) -> CompletedRunView | None:
         commit=_optional_str(md, "ci_commit_sha") or _optional_str(md, "git_commit"),
         base_branch=_optional_str(md, "ci_base_ref"),
         repository=_optional_str(md, "repository"),
+        coverage_pct=_number(md, "coverage_pct"),
+        coverage_covered=int(n) if (n := _number(md, "coverage_covered")) is not None else None,
+        coverage_total=int(n) if (n := _number(md, "coverage_total")) is not None else None,
     )

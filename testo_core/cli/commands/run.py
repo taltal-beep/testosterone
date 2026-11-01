@@ -79,6 +79,14 @@ def run(
         "-f",
         help="Run the cycle even when a trigger would skip it (ignore selective paths).",
     ),
+    coverage: list[Path] = typer.Option(
+        None,
+        "--coverage",
+        help=(
+            "Code coverage report the tests write (repeatable): read when the run ends and "
+            "stored with it. Cobertura or JaCoCo XML, LCOV, or a Go cover profile."
+        ),
+    ),
 ) -> None:
     """Run a plan end-to-end."""
     # Deferred imports so `testo --help` and `testo plans list` stay light.
@@ -97,5 +105,6 @@ def run(
         force=force,
         report_db=not no_report_db,
         async_report_db=async_report_db,
+        coverage=coverage or [],
     )
     raise typer.Exit(code=int(exit_code))

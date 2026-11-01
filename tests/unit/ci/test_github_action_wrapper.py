@@ -324,3 +324,14 @@ def test_a_run_that_did_not_finish_publishes_nothing(tmp_path: Path, monkeypatch
     assert module.main(["--cycle", "smoke"]) == 2
     # Only `testo run`: no `testo report markdown` / annotations / notify of an older run.
     assert calls == [["testo", "run", "--cycle", "smoke", "--ci"]]
+
+
+def test_coverage_input_becomes_one_flag_per_report() -> None:
+    cmd = _load_wrapper_module().build_command(
+        config_path="",
+        cycle="unit",
+        ci_mode=True,
+        persist=True,
+        coverage=" coverage.xml  lcov.info ",
+    )
+    assert cmd[-4:] == ["--coverage", "coverage.xml", "--coverage", "lcov.info"]

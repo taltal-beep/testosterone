@@ -39,6 +39,7 @@ def execute_plan_command(
     force: bool = False,
     report_db: bool = True,
     async_report_db: bool = False,
+    coverage: list[Path] | None = None,
 ) -> int:
     """Load + resolve + execute one plan (or every cycle when ``plan_name == 'all'``)."""
     try:
@@ -46,8 +47,16 @@ def execute_plan_command(
     except (ConfigError, ConfigDiscoveryError) as exc:
         _emit_config_error(console=console, exc=exc, ci=ci)
         return int(EngineExitCode.INVALID_INPUT)
+    coverage_reports = tuple(p.expanduser().resolve() for p in coverage or ())
 
     if plan_name == "all":
+        if coverage_reports:
+            _emit_config_error(
+                console=console,
+                exc=ConfigError("--coverage needs one cycle, not --cycle all."),
+                ci=ci,
+            )
+            return int(EngineExitCode.INVALID_INPUT)
         if not cfg.cycles:
             _emit_config_error(
                 console=console,
@@ -89,6 +98,7 @@ def execute_plan_command(
         force=force,
         report_db=report_db,
         async_report_db=async_report_db,
+        coverage_reports=coverage_reports,
     )
 
 
@@ -105,6 +115,7 @@ def execute_ingest_command(
     persist: bool,
     server: str | None = None,
     token: str | None = None,
+    coverage: list[str] | None = None,
 ) -> int:
     """Record existing test result files (JUnit XML and the other known formats) as a run of *cycle*, through the same service as ``testo run``.
 
@@ -127,13 +138,23 @@ def execute_ingest_command(
         files = matching_reports(patterns, repo=repo_dir)
         if not files:
             raise ConfigError(f"no report file matches {list(patterns)} in {repo_dir}.")
+        coverage_files = _coverage_files(coverage or [], repo=repo_dir)
     except ConfigError as exc:
         _emit_config_error(console=console, exc=exc, ci=ci)
         return int(EngineExitCode.INVALID_INPUT)
 
     if server:
+        from testo_core.reporting.coverage_import import parse_coverage
+
+        extra = parse_coverage(coverage_files).as_metadata() if coverage_files else {}
         return _upload_to_server(
-            console=console, server=server, token=token, plan=plan, files=files, ci=ci
+            console=console,
+            server=server,
+            token=token,
+            plan=plan,
+            files=files,
+            ci=ci,
+            extra_metadata=extra,
         )
 
     return _execute_one_cycle(
@@ -146,11 +167,33 @@ def execute_ingest_command(
         workers_override=None,
         force=True,
         report_db=persist,
+        coverage_reports=tuple(coverage_files),
     )
 
 
+def _coverage_files(raw: list[str], *, repo: Path) -> list[Path]:
+    """``--coverage`` files (relative to *repo*), checked now so a typo fails before recording."""
+    from testo_core.reporting.coverage_import import CoverageFormatError, parse_coverage
+
+    found = matching_reports(report_patterns(raw, repo=repo), repo=repo) if raw else []
+    if raw and not found:
+        raise ConfigError(f"no coverage report matches {raw} in {repo}.")
+    try:
+        parse_coverage(found)
+    except CoverageFormatError as exc:
+        raise ConfigError(f"--coverage: {exc}") from exc
+    return found
+
+
 def _upload_to_server(
-    *, console: Console, server: str, token: str | None, plan: Plan, files: list[Path], ci: bool
+    *,
+    console: Console,
+    server: str,
+    token: str | None,
+    plan: Plan,
+    files: list[Path],
+    ci: bool,
+    extra_metadata: dict[str, str] | None = None,
 ) -> int:
     from testo_core.services.ingest_client import (
         IngestUploadError,
@@ -167,7 +210,7 @@ def _upload_to_server(
             files=files,
             stage=stage.name,
             tier=stage.tier,
-            metadata=client_run_metadata(),
+            metadata={**client_run_metadata(), **(extra_metadata or {})},
         )
     except IngestUploadError as exc:
         if ci:
@@ -246,6 +289,7 @@ def _execute_one_cycle(
     force: bool,
     report_db: bool = True,
     async_report_db: bool = False,
+    coverage_reports: tuple[Path, ...] = (),
 ) -> int:
     from testo_core.services.cycle_run import CycleRunOptions, CycleRunService, NoStagesEnabledError
 
@@ -264,6 +308,7 @@ def _execute_one_cycle(
                 report_db=report_db,
                 async_report_db=async_report_db,
                 ci=ci,
+                coverage_reports=coverage_reports,
             ),
         )
     except NoStagesEnabledError as exc:

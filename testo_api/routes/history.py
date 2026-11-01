@@ -83,6 +83,9 @@ def get_run_detail(run_id: str) -> RunDetailResponse:
             commit=record.commit,
             base_branch=record.base_branch,
             repository=record.repository,
+            coverage_pct=record.coverage_pct,
+            coverage_covered=record.coverage_covered,
+            coverage_total=record.coverage_total,
             stage_health=[
                 StageHealth(
                     name=str(s.get("name")),

@@ -59,6 +59,10 @@ inputs:
     description: "Open one issue per test that this run made flaky (skipped if an open issue has the same title). Needs `permissions: issues: write`."
     required: false
     default: "false"
+  coverage:
+    description: "Code coverage report(s) the tests write (Cobertura or JaCoCo XML, LCOV, Go cover profile), space-separated. Stored with the run; the summary and PR comment show line coverage and its change."
+    required: false
+    default: ""
   github-token:
     description: Token used for the pull request comment and flaky test issues.
     required: false
@@ -105,4 +109,5 @@ runs:
           --comment-on-pr "${{ inputs.comment-on-pr }}" \
           --annotations "${{ inputs.annotations }}" \
           --notify-when "${{ inputs.notify-when }}" \
-          --flaky-issues "${{ inputs.flaky-issues }}"
+          --flaky-issues "${{ inputs.flaky-issues }}" \
+          --coverage "${{ inputs.coverage }}"

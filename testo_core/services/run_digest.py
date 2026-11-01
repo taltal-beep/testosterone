@@ -51,6 +51,9 @@ class CycleDigest:
     fixed: tuple[str, ...] = ()
     still_failing: tuple[str, ...] = ()
     slower: tuple[Slower, ...] = ()
+    # Line coverage of the newest run that stored it, this period and the one before.
+    coverage_pct: float | None = None
+    prev_coverage_pct: float | None = None
 
 
 @dataclass(frozen=True)
@@ -65,6 +68,10 @@ def _pass_rate(runs: list[CompletedRunView]) -> float | None:
     passed = sum(r.passed or 0 for r in runs)
     total = passed + sum((r.failed or 0) + (r.broken or 0) for r in runs)
     return round(100.0 * passed / total, 1) if total else None
+
+
+def _coverage(runs: list[CompletedRunView]) -> float | None:
+    return next((r.coverage_pct for r in runs if r.coverage_pct is not None), None)
 
 
 def _cases(runs: list[CompletedRunView]) -> list[dict[str, dict[str, Any]]]:
@@ -145,6 +152,8 @@ def _cycle_digest(
         fixed=tuple(fixed),
         still_failing=tuple(sorted(failing_now.values())),
         slower=_slower(now_cases, prev_cases),
+        coverage_pct=_coverage(now_runs),
+        prev_coverage_pct=_coverage(prev_runs),
     )
 
 
@@ -211,7 +220,9 @@ def headline(d: CycleDigest, period: str) -> str:
         before = f", last {period} {d.prev_runs} runs, {prev_pct}% green"
     rate = _change(d.pass_rate, d.prev_pass_rate)
     tests = f"; tests {rate} passed" if rate else ""
-    return f"{d.runs} runs, {d.green} green ({green_pct}%{before}){tests}"
+    cov = _change(d.coverage_pct, d.prev_coverage_pct)
+    coverage = f"; line coverage {cov}" if cov else ""
+    return f"{d.runs} runs, {d.green} green ({green_pct}%{before}){tests}{coverage}"
 
 
 def _seconds(ms: int) -> str:

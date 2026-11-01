@@ -289,6 +289,16 @@ export function RunDetailPage() {
             { label: "Run ID", value: <span className="font-mono text-xs">{run.run_id}</span> },
             { label: "Exit code", value: describeExitCode(run.returncode) },
             { label: "Pass rate", value: formatPercent(run.health_pct) },
+            ...(run.coverage_pct != null
+              ? [
+                  {
+                    label: "Line coverage",
+                    value: `${formatPercent(run.coverage_pct)}${
+                      run.coverage_total != null ? ` (${run.coverage_covered ?? 0} of ${run.coverage_total} lines)` : ""
+                    }`
+                  }
+                ]
+              : []),
             { label: "Duration", value: formatDuration(run.wall_duration_ms) }
           ]}
         />
