@@ -304,6 +304,19 @@ jobs:
           comment-on-pr: "true"
       - name: Check the action's outputs
         run: test "${{ steps.testo.outputs.status }}" = success
+      # Recording results instead of running a cycle (what a repo with no
+      # testosterone.yaml gets): the tests write JUnit XML, the action ingests it.
+      - run: python -m pytest -q --junitxml=test-results/example.xml
+        working-directory: examples/getting-started
+      - id: ingest
+        uses: ./integrations/github-action
+        with:
+          package: .
+          results: examples/getting-started/test-results/example.xml
+          cycle: example-ingest
+          comment-on-pr: "false"
+      - name: Check the ingest run's outputs
+        run: test "${{ steps.ingest.outputs.status }}" = success
 
   team_server:
     name: team server (image + compose + testo ingest --server)

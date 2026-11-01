@@ -80,6 +80,8 @@ def test_main_writes_outputs_and_summary_file(tmp_path: Path, monkeypatch) -> No
     monkeypatch.setattr(module.subprocess, "run", fake_run)
     monkeypatch.setenv("GITHUB_OUTPUT", str(output_file))
     monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
+    (tmp_path / "testosterone.yaml").write_text("version: 1\n", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_WORKSPACE", str(tmp_path))
 
     code = module.main(
         [
@@ -391,3 +393,122 @@ def test_package_input_installs_several_requirements(tmp_path: Path) -> None:
     assert lines[-1].split()[:4] == ["-m", "pip", "install", "testo-core"]
     assert "pytest-xdist" in lines[-1]
     assert not (tmp_path / "pwned").exists()
+
+
+def _fake_run(calls: list[list[str]], *, plan: str = "my-repo"):  # noqa: ANN202
+    finished = {"event": "plan_finished", "plan": plan, "exit_code": 0, "aggregate_returncode": 0}
+
+    def fake_run(cmd, **_kwargs):  # noqa: ANN001
+        calls.append(list(cmd))
+        out = json.dumps(finished) + "\n" if cmd[1] in ("run", "ingest") else "<!-- testo -->\nok\n"
+        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=out, stderr="")
+
+    return fake_run
+
+
+def test_without_a_config_it_records_results_and_comments(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    module = _load_wrapper_module()
+    calls: list[list[str]] = []
+    posted: list[str] = []
+    monkeypatch.setattr(module.subprocess, "run", _fake_run(calls))
+    monkeypatch.setattr(
+        module, "upsert_pr_comment", lambda **kw: posted.append(kw["markdown"]) or "created"
+    )
+    for key, value in _github_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("GITHUB_WORKSPACE", str(tmp_path))
+    monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+
+    code = module.main(["--annotations", "false"])
+
+    assert code == 0
+    assert calls[0] == ["testo", "ingest", "--ci"]  # results found by testo ingest itself
+    assert posted, "comment-on-pr defaults to on without a config"
+    assert any(c[:3] == ["testo", "report", "markdown"] and "my-repo" in c for c in calls)
+
+
+def test_results_input_records_those_files_even_with_a_config(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    module = _load_wrapper_module()
+    calls: list[list[str]] = []
+    monkeypatch.setattr(module.subprocess, "run", _fake_run(calls))
+    (tmp_path / "testosterone.yaml").write_text("version: 1\n", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_WORKSPACE", str(tmp_path))
+    monkeypatch.setenv("RUNNER_TEMP", str(tmp_path))
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+
+    module.main(
+        ["--results", "reports/*.xml\nweb/jest.json", "--cycle", "web", "--annotations", "false"]
+    )
+
+    assert calls[0] == [
+        "testo",
+        "ingest",
+        "reports/*.xml",
+        "web/jest.json",
+        "--cycle",
+        "web",
+        "--ci",
+    ]
+
+
+def test_with_a_config_comment_stays_off_by_default(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    module = _load_wrapper_module()
+    calls: list[list[str]] = []
+    posted: list[str] = []
+    monkeypatch.setattr(module.subprocess, "run", _fake_run(calls, plan="smoke"))
+    monkeypatch.setattr(module, "upsert_pr_comment", lambda **kw: posted.append("x") or "created")
+    for key, value in _github_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    (tmp_path / "testosterone.yaml").write_text("version: 1\n", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_WORKSPACE", str(tmp_path))
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+
+    module.main(["--annotations", "false"])
+
+    assert calls[0][:2] == ["testo", "run"]
+    assert posted == []
+
+
+def test_prepare_history_caches_sqlite_unless_a_database_is_configured(
+    tmp_path: Path,
+    monkeypatch,  # noqa: ANN001
+) -> None:
+    module = _load_wrapper_module()
+    monkeypatch.setattr(module, "HISTORY_DIR", tmp_path / "cache")
+    env = {
+        "GITHUB_WORKSPACE": str(tmp_path),
+        "GITHUB_WORKFLOW": "CI tests",
+        "GITHUB_JOB": "unit",
+        "GITHUB_RUN_ID": "5",
+        "GITHUB_RUN_ATTEMPT": "2",
+        "GITHUB_ACTION": "testo",
+    }
+
+    out = module.prepare_history(history="auto", config_path="", env=env)
+    assert out["cache"] == "true"
+    assert out["key"] == "testo-history-CI-tests-unit-5-2-testo"
+    assert out["restore_prefix"] == "testo-history-CI-tests-unit-"
+    assert (
+        out["database_url"] == f"sqlite:///{(tmp_path / 'cache' / 'testo_history.db').as_posix()}"
+    )
+
+    mine = module.prepare_history(
+        history="auto", config_path="", env={**env, "DATABASE_URL": "postgresql://x"}
+    )
+    assert mine["cache"] == "false" and mine["database_url"] == "postgresql://x"
+
+    (tmp_path / "testosterone.yaml").write_text(
+        "version: 1\ndatabase:\n  url: sqlite:///team.db\n", encoding="utf-8"
+    )
+    assert module.prepare_history(history="auto", config_path="", env=env)["cache"] == "false"
+    assert module.prepare_history(history="off", config_path="", env=env)["database_url"] == ""
+
+
+def test_has_config_sees_pyproject_tables(tmp_path: Path) -> None:
+    module = _load_wrapper_module()
+    assert not module.has_config(tmp_path, "")
+    (tmp_path / "pyproject.toml").write_text("[tool.testosterone]\nversion = 1\n")
+    assert module.has_config(tmp_path, "")
+    assert module.has_config(tmp_path / "nope", "ci/testo.yaml")
