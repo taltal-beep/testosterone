@@ -153,6 +153,30 @@ def load_run_summary(
     )
 
 
+def _stage_names(run: CompletedRunView) -> list[str]:
+    return [str(s.get("name")) for s in run.stage_health if s.get("name")]
+
+
+def stage_change_note(run: CompletedRunView, previous: CompletedRunView | None) -> str | None:
+    """A sentence when *previous* recorded the cycle with other stages than *run*.
+
+    That usually means the suite was recorded a different way (``testo run`` one
+    time, ``pytest --testo`` or ``testo ingest`` the next). Tests are still
+    matched by name (:func:`~testo_core.services.report_archive_diff.align_case_keys`),
+    but durations, flaky history and stage results are per stage.
+    """
+    if previous is None:
+        return None
+    now, before = _stage_names(run), _stage_names(previous)
+    if not now or not before or set(now) == set(before):
+        return None
+    return (
+        f"The stages changed since the run it is compared with ({', '.join(before)} → "
+        f"{', '.join(now)}). If the same tests were recorded another way (testo run, "
+        "pytest --testo, testo ingest), keep one way per cycle so their history stays together."
+    )
+
+
 def _seconds(ms: float | None) -> str:
     if ms is None:
         return "—"
@@ -289,6 +313,9 @@ def render_markdown(summary: RunSummary, *, run_url: str | None = None) -> str:
             )
         if len(summary.changes) > MAX_ROWS:
             lines.append(f"| | … and {len(summary.changes) - MAX_ROWS} more | | |")
+    note = stage_change_note(run, summary.previous)
+    if note:
+        lines += ["", f"_{note}_"]
     lines.append("")
 
     footer = f"<sub>Run `{run.run_id}`"

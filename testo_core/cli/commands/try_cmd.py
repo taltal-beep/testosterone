@@ -97,6 +97,35 @@ def _download_github_results(repo: Path, run_id: str | None, dest: Path) -> str:
     return run_id
 
 
+def _run_project_tests(project: Path) -> None:
+    """Run each detected stack's tests the way the generated CI file does, so they leave results."""
+    from testo_core.services.ci_templates import ci_test_command
+    from testo_core.services.project_setup import detect_project
+
+    facts = detect_project(project)
+    if not facts.stacks:
+        raise typer.BadParameter(
+            "no test runner found to run (pytest, Jest, Vitest, Playwright, Go, .NET, Maven, "
+            "Gradle, RSpec, PHPUnit); run your tests yourself, then `testo try`",
+            param_hint="--run",
+        )
+    for stack in facts.stacks:
+        command = ci_test_command(stack)
+        typer.echo(f"Running {stack.label}: {command}", err=True)
+        # Failing tests are what a preview is for; the exit code is not. Their output
+        # goes to stderr so stdout stays the comment.
+        proc = subprocess.run(  # noqa: S602 — the project's own test command
+            command,
+            shell=True,
+            cwd=project,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        typer.echo(proc.stdout.rstrip(), err=True)
+
+
 def try_comment(
     reports: list[str] = typer.Argument(
         None,
@@ -127,6 +156,12 @@ def try_comment(
     out: Path = typer.Option(
         None, "--out", "-o", help="Write the comment to this file instead of printing it."
     ),
+    run_tests: bool = typer.Option(
+        False,
+        "--run",
+        help="Run the project's tests first (the command `testo init` would put in CI, with "
+        "its result-file flag), then preview their results.",
+    ),
 ) -> None:
     """Show the pull request comment your latest results would get. Your history is not changed."""
     from testo_core.repository.db_config import resolve_database_url
@@ -139,6 +174,12 @@ def try_comment(
 
     project = repo.expanduser().resolve()
     cycle_name = (cycle or "").strip() or cycle_name_for(project)
+    if run_tests:
+        if from_github or reports:
+            raise typer.BadParameter(
+                "can't be combined with --from-github or result files", param_hint="--run"
+            )
+        _run_project_tests(project)
     root = Path(tempfile.mkdtemp(prefix="testo-try-"))
     try:
         results_root = project

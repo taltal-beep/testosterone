@@ -282,3 +282,17 @@ def test_previous_run_without_stored_results_is_not_called_unchanged(
     text = md.render_markdown(summary)
     assert "No test changed outcome" not in text
     assert "No test results are stored for the previous run" in text
+
+
+def test_stage_change_note_when_the_suite_was_recorded_another_way() -> None:
+    before = _run("r1", created_at=1.0)
+    now = replace(
+        _run("r2", created_at=2.0),
+        stage_health=[{**before.stage_health[0], "name": "junit", "framework": "junit"}],
+    )
+
+    note = md.stage_change_note(now, before)
+
+    assert note is not None and "unit → junit" in note
+    assert md.stage_change_note(before, replace(before, run_id="r0")) is None
+    assert md.stage_change_note(now, None) is None

@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Changed
+- Compare, `testo diff`, `testo try` and the pull request comment match a test recorded two different ways (`testo run`, then `pytest --testo` or `testo ingest` of the same suite) by its name, instead of listing it as removed and added. The comment also says when the cycle's stages changed since the run it is compared with
 - `testo init` is now the first thing the README, Getting Started, the Setup Prompts (new prompt 0), the dashboard's first-run guide and the `/try` page suggest; they also show how to run it without a virtualenv (`uvx --from testo-core testo init`). Getting Started has an Upgrading section
 - Docs: [New User Journey Audit](docs/Roadmap%20&%20Strategy/New%20User%20Journey%20Audit%20-%202026-11-01.md) lists what a new user still does by hand at each step, from finding Testosterone to a team server, with ranked proposals to automate it
 - Contributors: the nightly external suite (`nightly-external.yml`) no longer runs on a schedule; start it by hand from the Actions tab, or uncomment its `schedule:` lines to bring the nightly run back
@@ -37,6 +38,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - PR comment and job summary: a backtick in a test name (which in a fork's pull request its author controls) ended the code span, so `@user` mentions and HTML after it rendered live. Names are now fenced so nothing inside can close them, and stage, runner and branch cells are plain text. A cycle name with `-->` can no longer end the comment marker
 
 ### Added
+- `testo try --run` runs the project's tests first, the way the CI file `testo init` writes does, then previews the comment
 - `testo init --scan` sets up a monorepo: it looks in every project folder and writes a stage per runner per folder (with `target_repo`), skipping folders an outer stage already covers, then shows the stages and asks before writing (`--yes` skips the question). `--check` asks each runner to list its tests without running them (`pytest --collect-only`, `jest --listTests`, `go test -list`, ...) and leaves out stages with none
 - Ask about your tests: an Ask page where you type a question ("what broke, and is it new?", "which tests got slower?") and your AI provider answers from the recorded runs (results, failure messages, flaky and slow tests, test names, never source code), with follow-up questions in the same conversation. New endpoint `POST /api/v1/ask`; nothing is stored on the server
 - AI failure summaries and the project health AI review can use the Claude Code CLI already installed and signed in on your machine: pick "Claude Code on this machine" (`provider: claude_code`) on the AI settings page and no API key is needed. It runs `claude -p` with no tools, the prompt on stdin and a 120-second timeout; `TESTO_CLAUDE_CLI` points at the binary when it is not on `PATH`. Opt-in; the default provider is unchanged. A summary that fails because the provider is misconfigured now says why in its limitations

@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-05-02
-updated: 2026-10-25
+updated: 2026-11-01
 ---
 
 # Delta Comparison Policy
@@ -64,6 +64,8 @@ Two identical runs never take exactly the same time, so a duration metric (`unit
 - `fix`: `failed`/`broken` in baseline → `passed` in current.
 - `status_change`: any other status transition.
 - (`unchanged` cases are computed but dropped from the response — only actual changes are returned.)
+
+**Same suite, recorded two ways (added 2026-11-01).** The key comes from the source: Allure's `historyId` for `testo run`, a hash of tool and name for `testo ingest` and `pytest --testo`. So one suite recorded by `testo run` and then by `testo ingest` would read as every test removed and added again. Before classifying, a key found on only one side is paired with a key on the other side whose name matches once `#`, `::`, `/` and ` > ` are folded to `.` (`align_case_keys()` in `testo_core/services/report_archive_diff.py`), when exactly one test on each side has that name; ambiguous names (parametrized cases without their ids) stay unpaired. The pull request comment and `testo try` also say when the stages changed since the compared run, since durations and flaky history stay per stage.
 
 Unlike the run/stage-level deltas, this is **computed on demand from each run's live artifact snapshot every request, with no caching** — see [CLI-UI Parity - Pyramid, Graphs, Deep Diff - 2026-07-23](../Archive/CLI-UI%20Parity%20-%20Pyramid,%20Graphs,%20Deep%20Diff%20-%202026-07-23.md) for why (archives aren't large enough yet to justify the cache-invalidation work) and for why this reads from each run's snapshot directory rather than the separate `ReportArchive` table (`testo report list`/`diff`'s id space, which has no link to run-history run ids).
 
