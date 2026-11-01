@@ -61,6 +61,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `testo clean --yes` refuses to delete a folder that is the project (`artifacts_root: .`), the current, home or root folder, the config's folder or a parent of any of them, or a folder holding `.git`, `testosterone.yaml` or `pyproject.toml`. Before, `artifacts_root: .` deleted the whole project
 
 ### Changed
+- Docs: an engineering health review (`docs/Specs & ADRs/Engineering Health Review - 2026-10-31.md`) of the test suite, CI, docs accuracy and dependencies, with what was fixed and ranked proposals; linked from the docs site menu
 - Docs: the README, Getting Started and Team Server examples record Jest through its own `--json` report instead of `jest-junit`, which drops a test file that fails to compile
 - Result importers: a test listed more than once in one JUnit suite (pytest's teardown error before pytest 8) or run more than once in one `go test -json` file (`-count=N`) is now one result. A failure followed by a pass is flaky; otherwise the worst attempt wins. Totals for those reports go down. A suite that claims more tests than it lists now logs a note
 - Docs: an importer and integration bug hunt (`docs/Specs & ADRs/Importer and Integration Bug Hunt - 2026-10-31.md`) ranks what was found and fixed, with proposals for the rest

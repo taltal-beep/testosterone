@@ -51,6 +51,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Project health page: a repeatable test health score and an optional AI review of the tests | [Project Health - 2026-10-26](Project%20Health%20-%202026-10-26.md) |
 | README badge, asking about your tests, Jira issues from failures (and what was not built) | [Qualflare Follow-ups - 2026-10-26](Qualflare%20Follow-ups%20-%202026-10-26.md) |
 | UI design review: ranked design and UX findings with annotated screenshots, 7.5 / 10 | [UI Design Review - 2026-10-31](UI%20Design%20Review%20-%202026-10-31.md) |
+| Engineering health review: tests, CI, docs accuracy and dependencies, fixes in #222 and ranked proposals | [Engineering Health Review - 2026-10-31](Engineering%20Health%20Review%20-%202026-10-31.md) |
 | UI review fixes: cycle results, run labels, Compare test list, test page charts, quieter cards | [UI Review Fixes - 2026-11-01](UI%20Review%20Fixes%20-%202026-11-01.md) |
 
 Older plans and incident write-ups (Allure 3 migration plan, reporters port, report-links fix, CLI–UI parity, the `doctor`/`clean`/`watch`/`init` restore) are in the [Archive](../Archive/README.md).
