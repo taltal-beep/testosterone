@@ -382,6 +382,20 @@ class FlakyTestItem(ApiModel):
     # CODEOWNERS owners of the test's file, and GitHub's new-issue form prefilled for it.
     owners: list[str] = Field(default_factory=list)
     issue_url: str | None = None
+    # Why it counts as flaky ("passed on retry in 2 runs", "flipped 3 times on main").
+    reasons: list[str] = Field(default_factory=list)
+    # Runs in which it failed and then passed on a retry.
+    retried: int = 0
+
+
+class BrokenTestItem(ApiModel):
+    """Failed each of its last runs: a real failure, kept apart from flaky tests."""
+
+    key: str
+    name: str
+    group: str
+    failing_runs: int
+    message: str = ""
 
 
 class FlakyTestsResponse(ApiModel):
@@ -390,6 +404,7 @@ class FlakyTestsResponse(ApiModel):
     runs_analyzed: int
     tests_analyzed: int
     items: list[FlakyTestItem] = Field(default_factory=list)
+    broken: list[BrokenTestItem] = Field(default_factory=list)
 
 
 class TestSummaryItem(ApiModel):

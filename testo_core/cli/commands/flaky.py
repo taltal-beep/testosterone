@@ -37,7 +37,7 @@ def flaky(
         help="testosterone.yaml whose 'quarantine:' rules mark tests (default: auto-discover).",
     ),
 ) -> None:
-    """List tests that both passed and failed, flipping at least twice, in the last runs."""
+    """List flaky tests: passed on retry, mixed results on one commit, or flips on a branch."""
     from rich.markup import escape
     from rich.table import Table
 
@@ -91,6 +91,18 @@ def flaky(
         f"[muted]{report.tests_analyzed} tests across the last {report.runs_analyzed} runs "
         f"of[/] [bold]{report.cycle}[/]"
     )
+    if report.broken and not new:
+        broken = Table(
+            title=f"Broken, not flaky ({len(report.broken)}): failing every recent run",
+            title_justify="left",
+        )
+        broken.add_column("Test")
+        broken.add_column("Group", style="muted")
+        broken.add_column("Failing runs", justify="right")
+        broken.add_column("Last error", style="muted")
+        for b in report.broken:
+            broken.add_row(escape(b.name), escape(b.group), str(b.failing_runs), escape(b.message))
+        console.print(broken)
     if not report.flaky:
         console.print(f"[ok]No {'newly ' if new else ''}flaky tests.[/]")
         raise typer.Exit(code=exit_code)
@@ -100,6 +112,7 @@ def flaky(
     table.add_column("Group", style="muted")
     table.add_column("Pass / fail", justify="right")
     table.add_column("Flips", justify="right")
+    table.add_column("Why")
     table.add_column("History (oldest → newest)")
     table.add_column("Quarantined")
     for t in report.flaky:
@@ -109,6 +122,7 @@ def flaky(
             escape(t.group),
             f"{t.passed} / {t.failed}",
             str(t.flips),
+            escape("; ".join(t.reasons)),
             history,
             "[warn]yes[/]" if t.quarantined else "",
         )

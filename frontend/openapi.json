@@ -671,6 +671,41 @@
         "title": "Body_ingest_reports_api_v1_ingest_post",
         "type": "object"
       },
+      "BrokenTestItem": {
+        "description": "Failed each of its last runs: a real failure, kept apart from flaky tests.",
+        "properties": {
+          "failing_runs": {
+            "title": "Failing Runs",
+            "type": "integer"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "group",
+          "failing_runs",
+          "message"
+        ],
+        "title": "BrokenTestItem",
+        "type": "object"
+      },
       "CycleDetailResponse": {
         "properties": {
           "description": {
@@ -2393,6 +2428,18 @@
             "title": "Passed",
             "type": "integer"
           },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "retried": {
+            "default": 0,
+            "title": "Retried",
+            "type": "integer"
+          },
           "runs": {
             "title": "Runs",
             "type": "integer"
@@ -2410,13 +2457,22 @@
           "last_status",
           "history",
           "owners",
-          "issue_url"
+          "issue_url",
+          "reasons",
+          "retried"
         ],
         "title": "FlakyTestItem",
         "type": "object"
       },
       "FlakyTestsResponse": {
         "properties": {
+          "broken": {
+            "items": {
+              "$ref": "#/components/schemas/BrokenTestItem"
+            },
+            "title": "Broken",
+            "type": "array"
+          },
           "cycle": {
             "title": "Cycle",
             "type": "string"
@@ -2446,7 +2502,8 @@
           "window",
           "runs_analyzed",
           "tests_analyzed",
-          "items"
+          "items",
+          "broken"
         ],
         "title": "FlakyTestsResponse",
         "type": "object"
@@ -4970,7 +5027,7 @@
   },
   "info": {
     "title": "Testosterone API",
-    "version": "1.5.0"
+    "version": "1.4.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5183,7 +5240,7 @@
     },
     "/api/v1/analytics/flaky": {
       "get": {
-        "description": "Tests that both passed and failed, flipping at least twice, in a cycle's last runs.\n\nUI parity with ``testo flaky --cycle``; see ``testo_core/services/flaky_service.py``.",
+        "description": "Flaky tests in a cycle's last runs (retries, same-commit results, flips per branch).\n\nTests that failed every one of their last runs come back as ``broken`` instead.\n\nUI parity with ``testo flaky --cycle``; see ``testo_core/services/flaky_service.py``.",
         "operationId": "get_flaky_tests_api_v1_analytics_flaky_get",
         "parameters": [
           {

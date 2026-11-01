@@ -143,3 +143,81 @@ def test_newly_flaky_tests_are_the_ones_this_run_made_flaky(monkeypatch, tmp_pat
         "test_old",
     ]
     assert flaky_service.newly_flaky_tests(cycle="unit", run_id="missing") == ()
+
+
+def _obs(status: str, *, branch: str | None = None, commit: str | None = None, **extra: object):  # noqa: ANN202
+    return {"status": status, "name": "t", "branch": branch, "commit": commit, **extra}
+
+
+def test_flips_are_counted_per_branch() -> None:
+    # A pull request broke the test and then fixed it, between passing runs on main.
+    observations = [
+        _obs("passed", branch="main"),
+        _obs("failed", branch="feature"),
+        _obs("passed", branch="main"),
+        _obs("passed", branch="feature"),
+    ]
+    assert flaky_service.classify("k", observations) is None
+
+
+def test_flips_on_one_branch_are_flaky_and_name_the_branch() -> None:
+    observations = [_obs(s, branch="main") for s in ["passed", "failed", "passed"]]
+    result = flaky_service.classify("k", observations)
+    assert result is not None
+    assert result.reasons == ("flipped 2 times on main",)
+
+
+def test_pass_and_fail_on_the_same_commit_is_flaky() -> None:
+    observations = [_obs("passed", commit="abc"), _obs("failed", commit="abc")]
+    result = flaky_service.classify("k", observations)
+    assert result is not None
+    assert result.reasons == ("passed and failed on the same commit (1 commit)",)
+
+
+def test_a_pass_on_retry_is_flaky_even_in_one_run() -> None:
+    result = flaky_service.classify("k", [_obs("passed", retried=True)])
+    assert result is not None
+    assert (result.retried, result.reasons) == (1, ("passed on retry in 1 run",))
+
+
+def test_failing_every_recent_run_is_broken_not_flaky() -> None:
+    statuses = ["passed", "failed", "passed", "failed", "failed", "failed"]
+    observations = [_obs(s) for s in statuses]
+    assert flaky_service.classify("k", observations) is None
+    broken = flaky_service.broken("k", observations)
+    assert broken is not None and broken.failing_runs == 3
+
+
+def test_broken_streak_follows_the_latest_branch() -> None:
+    observations = [
+        _obs("failed", branch="main"),
+        _obs("failed", branch="main"),
+        _obs("passed", branch="feature"),
+        _obs("failed", branch="main"),
+    ]
+    assert flaky_service.failing_streak(observations) == 3
+
+
+def test_report_reads_retries_and_lists_broken_tests(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
+    runs = [_run("r3", created_at=3), _run("r2", created_at=2), _run("r1", created_at=1)]
+    for run in runs:
+        _write_results(tmp_path, run, {"test_broke": "failed"})
+    folder = tmp_path / str(runs[0].snapshot_dir) / "unit" / "allure-results" / "pytest"
+    (folder / "test_retry-result.json").write_text(
+        json.dumps(
+            {
+                "historyId": "test_retry",
+                "name": "test_retry",
+                "status": "passed",
+                "statusDetails": {"flaky": True, "message": "Passed on retry."},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(flaky_service.paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(flaky_service, "list_recent_runs", lambda *, limit: runs)
+
+    report = flaky_service.find_flaky_tests(cycle="unit")
+
+    assert [t.name for t in report.flaky] == ["test_retry"]
+    assert [(b.name, b.failing_runs) for b in report.broken] == [("test_broke", 3)]

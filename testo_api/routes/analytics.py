@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from testo_api.models import (
     AttachmentItem,
+    BrokenTestItem,
     CycleTestsResponse,
     DeltaCaseChange,
     DeltaCaseChangesResponse,
@@ -156,7 +157,9 @@ def get_delta_case_changes(current_run_id: str, baseline_run_id: str) -> DeltaCa
 def get_flaky_tests(
     cycle: str, window: int = Query(DEFAULT_WINDOW, ge=2, le=200)
 ) -> FlakyTestsResponse:
-    """Tests that both passed and failed, flipping at least twice, in a cycle's last runs.
+    """Flaky tests in a cycle's last runs (retries, same-commit results, flips per branch).
+
+    Tests that failed every one of their last runs come back as ``broken`` instead.
 
     UI parity with ``testo flaky --cycle``; see ``testo_core/services/flaky_service.py``.
     """
@@ -188,8 +191,20 @@ def get_flaky_tests(
                     full_name=t.full_name,
                     owners=owners[t.key],
                 ),
+                reasons=list(t.reasons),
+                retried=t.retried,
             )
             for t in report.flaky
+        ],
+        broken=[
+            BrokenTestItem(
+                key=b.key,
+                name=b.name,
+                group=b.group,
+                failing_runs=b.failing_runs,
+                message=b.message,
+            )
+            for b in report.broken
         ],
     )
 

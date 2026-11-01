@@ -26,7 +26,7 @@ function History({ item }: { item: FlakyTestItem }) {
   );
 }
 
-/** Tests that keep flipping between pass and fail across this cycle's recent runs. */
+/** Flaky tests in this cycle's recent runs, and the broken ones kept apart from them. */
 export function FlakyTestsCard({ cycle }: { cycle: string }) {
   const query = useQuery({
     queryKey: ["flaky", cycle],
@@ -47,7 +47,8 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
   }
 
   const report = query.data;
-  const summary = `${report.tests_analyzed} tests across the last ${report.runs_analyzed} runs. Flaky means it both passed and failed and flipped at least twice.`;
+  const summary = `${report.tests_analyzed} tests across the last ${report.runs_analyzed} runs. Flaky means it passed on a retry, passed and failed on the same commit, or flipped at least twice on one branch.`;
+  const broken = report.broken ?? [];
 
   return (
     <Card title={`Flaky tests (${report.items.length})`}>
@@ -73,6 +74,9 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
                 {item.group}
                 {item.owners.length > 0 ? ` · owned by ${item.owners.join(", ")}` : ""}
               </div>
+              {(item.reasons ?? []).length > 0 ? (
+                <div className="mt-1 text-xs text-ink-300">Why: {(item.reasons ?? []).join("; ")}</div>
+              ) : null}
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                 <History item={item} />
                 {item.issue_url ? (
@@ -85,6 +89,26 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
           ))}
         </ul>
       )}
+      {broken.length > 0 ? (
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold text-ink-100">Broken, not flaky ({broken.length})</h3>
+          <p className="mb-2 text-xs text-ink-400">
+            These failed every one of their last runs. Fix them rather than quarantine them.
+          </p>
+          <ul className="space-y-1">
+            {broken.map((item) => (
+              <li key={item.key} className="text-sm">
+                <Link to={testPath(cycle, item.key)} className="font-mono text-brand-300 hover:underline">
+                  {item.name}
+                </Link>{" "}
+                <span className="text-xs text-ink-400">
+                  failing {item.failing_runs} runs in a row{item.message ? ` · ${item.message}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </Card>
   );
 }

@@ -1,9 +1,20 @@
 """Flaky test detection over a cycle's run history.
 
-A test is flaky when, across the last ``window`` runs of a cycle, it both
-passed and failed and its outcome flipped at least twice. One flip is a plain
-regression or fix, which Compare already shows; flipping back and forth is the
-signal that the test, not the code, is unreliable.
+A test is flaky, across the last ``window`` runs of a cycle, when any of these hold:
+
+* **Passed on retry.** It failed and then passed inside one run (JUnit reruns,
+  Surefire ``flakyFailure``, pytest-rerunfailures; ``statusDetails.flaky`` in the
+  run's results). The code didn't change between attempts, so the test is unreliable.
+* **Same commit, both outcomes.** It passed in one run and failed in another run
+  of the same commit.
+* **Flips on one branch.** On one branch it both passed and failed and its
+  outcome flipped at least twice. Flips are counted per branch, so a pull request
+  that broke a test and then fixed it, between passing runs on ``main``, is not
+  flaky. One flip is a plain regression or fix, which Compare already shows.
+
+A test that failed in each of its last :data:`BROKEN_STREAK` runs on its latest
+branch is **broken**, not flaky: it is listed in :attr:`FlakyReport.broken`
+instead, because quarantining or retrying it would hide a real failure.
 
 Per-test outcomes come from each run's own artifact snapshot (the Allure
 ``*-result.json`` files :class:`~testo_core.persistence.db_backend.DbBackend`
@@ -24,6 +35,8 @@ from testo_core.services.report_archive_diff import _load_cases
 
 DEFAULT_WINDOW = 20
 MIN_FLIPS = 2
+# Failing this many runs in a row (on the test's latest branch) means broken, not flaky.
+BROKEN_STREAK = 3
 # How many recent runs (any cycle) to scan when looking for one cycle's window.
 _SCAN_LIMIT = 500
 
@@ -48,6 +61,23 @@ class FlakyTest:
     full_name: str = ""
     # Matches a ``quarantine:`` rule of the cycle (set by callers that load the config).
     quarantined: bool = False
+    # Why it counts as flaky, in plain words (see the module docstring).
+    reasons: tuple[str, ...] = ()
+    # Runs in which it failed and then passed on a retry.
+    retried: int = 0
+
+
+@dataclass(frozen=True)
+class BrokenTest:
+    """Fails every time lately: a real failure to fix, not noise to quarantine."""
+
+    key: str
+    name: str
+    group: str
+    # Runs in a row it has failed, ending at the latest run.
+    failing_runs: int
+    message: str = ""
+    full_name: str = ""
 
 
 @dataclass(frozen=True)
@@ -57,6 +87,7 @@ class FlakyReport:
     runs_analyzed: int
     tests_analyzed: int
     flaky: tuple[FlakyTest, ...]
+    broken: tuple[BrokenTest, ...] = ()
 
 
 def _outcomes(statuses: list[str]) -> list[str]:
@@ -64,16 +95,86 @@ def _outcomes(statuses: list[str]) -> list[str]:
     return ["fail" if s in _FAIL else "pass" for s in statuses if s == _PASS or s in _FAIL]
 
 
+def observation(run: CompletedRunView, case: dict[str, Any]) -> dict[str, Any]:
+    """``case`` plus the run's branch and commit, which :func:`classify` groups by."""
+    return {**case, "branch": run.branch, "commit": run.commit}
+
+
+def _lanes(observations: list[dict[str, Any]]) -> dict[str, list[str]]:
+    """Pass/fail outcomes per branch, oldest first. Runs without a branch share one lane."""
+    lanes: dict[str, list[str]] = {}
+    for o in observations:
+        outcome = _outcomes([str(o["status"])])
+        if outcome:
+            lanes.setdefault(str(o.get("branch") or ""), []).append(outcome[0])
+    return lanes
+
+
+def _flips(outcomes: list[str]) -> int:
+    return sum(1 for a, b in zip(outcomes, outcomes[1:], strict=False) if a != b)
+
+
+def failing_streak(observations: list[dict[str, Any]]) -> int:
+    """Runs in a row the test failed, ending at its latest run, on the latest run's branch."""
+    if not observations:
+        return 0
+    branch = observations[-1].get("branch") or ""
+    streak = 0
+    for o in reversed(observations):
+        if (o.get("branch") or "") != branch:
+            continue
+        status = str(o["status"])
+        if status in _FAIL:
+            streak += 1
+        elif status == _PASS:
+            break
+    return streak
+
+
+def _same_commit_conflicts(observations: list[dict[str, Any]]) -> int:
+    """Commits on which the test both passed and failed (in different runs)."""
+    seen: dict[str, set[str]] = {}
+    for o in observations:
+        commit = str(o.get("commit") or "")
+        outcome = _outcomes([str(o["status"])])
+        if commit and outcome:
+            seen.setdefault(commit, set()).add(outcome[0])
+    return sum(1 for outcomes in seen.values() if len(outcomes) == 2)
+
+
 def classify(key: str, observations: list[dict[str, Any]]) -> FlakyTest | None:
-    """Score one test from its per-run observations (oldest first); ``None`` if not flaky."""
+    """Score one test from its per-run observations (oldest first); ``None`` if not flaky.
+
+    Observations carry ``branch`` / ``commit`` when built with :func:`observation`;
+    without them every run counts as one branch and no commit is shared.
+    """
+    if not observations or failing_streak(observations) >= BROKEN_STREAK:
+        return None
     statuses = [str(o["status"]) for o in observations]
     outcomes = _outcomes(statuses)
     passed = outcomes.count("pass")
     failed = outcomes.count("fail")
-    flips = sum(1 for a, b in zip(outcomes, outcomes[1:], strict=False) if a != b)
-    if passed == 0 or failed == 0 or flips < MIN_FLIPS:
+    lanes = _lanes(observations)
+    flips = sum(_flips(lane) for lane in lanes.values())
+    retried = sum(1 for o in observations if o.get("retried") and str(o["status"]) == _PASS)
+    conflicts = _same_commit_conflicts(observations)
+
+    reasons: list[str] = []
+    if retried:
+        reasons.append(f"passed on retry in {retried} run{'s' if retried != 1 else ''}")
+    if conflicts:
+        reasons.append(
+            f"passed and failed on the same commit ({conflicts} commit"
+            f"{'s' if conflicts != 1 else ''})"
+        )
+    flipping = [b for b, lane in lanes.items() if _flips(lane) >= MIN_FLIPS]
+    if passed and failed and flipping:
+        where = ", ".join(f"on {b}" for b in flipping if b) or "across runs"
+        reasons.append(f"flipped {flips} times {where}")
+    if not reasons:
         return None
     latest = observations[-1]
+    steps = max(1, len(outcomes) - len(lanes))
     return FlakyTest(
         key=key[:80],
         name=str(latest.get("name") or key)[:120],
@@ -82,9 +183,27 @@ def classify(key: str, observations: list[dict[str, Any]]) -> FlakyTest | None:
         passed=passed,
         failed=failed,
         flips=flips,
-        flip_rate=round(flips / (len(outcomes) - 1), 3),
+        flip_rate=round(min(1.0, flips / steps), 3),
         last_status=statuses[-1],
         history=tuple(statuses),
+        full_name=str(latest.get("full_name") or ""),
+        reasons=tuple(reasons),
+        retried=retried,
+    )
+
+
+def broken(key: str, observations: list[dict[str, Any]]) -> BrokenTest | None:
+    """The test as broken when it failed its last :data:`BROKEN_STREAK` runs, else ``None``."""
+    streak = failing_streak(observations)
+    if streak < BROKEN_STREAK:
+        return None
+    latest = observations[-1]
+    return BrokenTest(
+        key=key[:80],
+        name=str(latest.get("name") or key)[:120],
+        group=str(latest.get("group") or "(ungrouped)")[:100],
+        failing_runs=streak,
+        message=str(latest.get("message") or ""),
         full_name=str(latest.get("full_name") or ""),
     )
 
@@ -110,16 +229,19 @@ def _report(cycle: str, runs: list[CompletedRunView], window: int) -> FlakyRepor
             continue
         analyzed += 1
         for key, case in cases.items():
-            per_test.setdefault(key, []).append(case)
+            per_test.setdefault(key, []).append(observation(run, case))
 
     flaky = [t for key, obs in per_test.items() if (t := classify(key, obs)) is not None]
-    flaky.sort(key=lambda t: (-t.flip_rate, -t.flips, t.name))
+    flaky.sort(key=lambda t: (-t.retried, -t.flip_rate, -t.flips, t.name))
+    broken_tests = [b for key, obs in per_test.items() if (b := broken(key, obs)) is not None]
+    broken_tests.sort(key=lambda b: (-b.failing_runs, b.name))
     return FlakyReport(
         cycle=cycle,
         window=window,
         runs_analyzed=analyzed,
         tests_analyzed=len(per_test),
         flaky=tuple(flaky),
+        broken=tuple(broken_tests),
     )
 
 

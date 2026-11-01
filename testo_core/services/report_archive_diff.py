@@ -89,6 +89,7 @@ def _load_cases(plan_root: Path) -> dict[str, dict[str, Any]]:
         except (OSError, json.JSONDecodeError, TypeError):
             continue
         key = _case_key(data)
+        details = data.get("statusDetails")
         st = str(data.get("status") or "unknown").lower()
         out[key] = {
             "name": str(data.get("name") or data.get("fullName") or key)[:120],
@@ -99,6 +100,8 @@ def _load_cases(plan_root: Path) -> dict[str, dict[str, Any]]:
             "message": _case_message(data),
             "stage": _case_stage(path, plan_root),
             "framework": _label_value(data.get("labels"), "framework"),
+            # Failed, then passed on a retry inside this run (JUnit reruns, Surefire).
+            "retried": isinstance(details, dict) and bool(details.get("flaky")),
         }
     return out
 

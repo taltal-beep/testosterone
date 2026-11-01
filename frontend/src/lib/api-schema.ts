@@ -111,7 +111,9 @@ export interface paths {
         };
         /**
          * Get Flaky Tests
-         * @description Tests that both passed and failed, flipping at least twice, in a cycle's last runs.
+         * @description Flaky tests in a cycle's last runs (retries, same-commit results, flips per branch).
+         *
+         *     Tests that failed every one of their last runs come back as ``broken`` instead.
          *
          *     UI parity with ``testo flaky --cycle``; see ``testo_core/services/flaky_service.py``.
          */
@@ -1100,6 +1102,25 @@ export interface components {
              */
             tier?: string;
         };
+        /**
+         * BrokenTestItem
+         * @description Failed each of its last runs: a real failure, kept apart from flaky tests.
+         */
+        BrokenTestItem: {
+            /** Failing Runs */
+            failing_runs: number;
+            /** Group */
+            group: string;
+            /** Key */
+            key: string;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /** Name */
+            name: string;
+        };
         /** CycleDetailResponse */
         CycleDetailResponse: {
             /** Description */
@@ -1615,11 +1636,20 @@ export interface components {
             owners: string[];
             /** Passed */
             passed: number;
+            /** Reasons */
+            reasons: string[];
+            /**
+             * Retried
+             * @default 0
+             */
+            retried: number;
             /** Runs */
             runs: number;
         };
         /** FlakyTestsResponse */
         FlakyTestsResponse: {
+            /** Broken */
+            broken: components["schemas"]["BrokenTestItem"][];
             /** Cycle */
             cycle: string;
             /** Items */

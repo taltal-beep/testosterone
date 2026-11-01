@@ -133,7 +133,7 @@ def _slowdown(durations: list[int]) -> tuple[int | None, float | None]:
 
 
 def _summarise(key: str, observed: list[tuple[CompletedRunView, dict[str, Any]]]) -> TestSummary:
-    cases = [case for _, case in observed]
+    cases = [flaky_service.observation(run, case) for run, case in observed]
     latest = cases[-1]
     statuses = [str(c["status"]) for c in cases]
     durations = [int(c["duration_ms"]) for c in cases if isinstance(c.get("duration_ms"), int)]
