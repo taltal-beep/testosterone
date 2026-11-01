@@ -35,6 +35,7 @@ def test_action_contract_has_required_inputs_outputs() -> None:
         "teams-webhook",
         "notify-when",
         "flaky-issues",
+        "coverage",
         "github-token",
     }
     assert set(payload["outputs"].keys()) == {"exit_code", "summary_json", "summary_path", "status"}

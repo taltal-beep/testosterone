@@ -39,6 +39,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | One-command setup for existing projects: `testo init`, the zero-config Action, per-CI snippets, a PR comment preview | [Easy Setup - 2026-11-01](Easy%20Setup%20-%202026-11-01.md) |
 | Reading Jest/Vitest, .NET, Go, Robot, RSpec, k6, XCTest, Android and Allure results in their own formats | [Runner Coverage - 2026-10-26](Runner%20Coverage%20-%202026-10-26.md) |
 | Runs, stages and tests as OpenTelemetry traces (OTLP), off by default | [OpenTelemetry Export - 2026-10-30](OpenTelemetry%20Export%20-%202026-10-30.md) |
+| Coverage on the PR comment, weekly digest, secrets hidden in stored results, backup and restore, failed-first ordering | [Free Copies of Paid Features - 2026-11-01](Free%20Copies%20of%20Paid%20Features%20-%202026-11-01.md) |
 | Security and fresh-install review: findings R1 to R18, fixes and proposals | [Security and Install Review - 2026-10-31](Security%20and%20Install%20Review%20-%202026-10-31.md) |
 | Slack and Teams alerts, failure annotations on the diff, flaky test issues | [Alerts Where Developers Look - 2026-10-22](Alerts%20Where%20Developers%20Look%20-%202026-10-22.md) |
 | BehaveX HTML report plus Allure results | [BehaveX Reports - 2026-10-21](BehaveX%20Reports%20-%202026-10-21.md) |

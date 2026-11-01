@@ -121,7 +121,7 @@ function ByCycle({ rows }: { rows: ProjectHealthResponse["by_cycle"] }) {
   );
 }
 
-function CyclePicker({ cycle, onChange }: { cycle: string; onChange: (cycle: string) => void }) {
+export function CyclePicker({ cycle, onChange }: { cycle: string; onChange: (cycle: string) => void }) {
   const cycles = useQuery({ queryKey: ["cycles"], queryFn: () => apiClient.listCycles() });
   return (
     <label className="flex items-center gap-2 text-sm text-ink-300">

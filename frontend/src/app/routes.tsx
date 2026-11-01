@@ -1,7 +1,9 @@
 import { createBrowserRouter } from "react-router-dom";
 
 import { AppShell } from "./AppShell";
+
 import { NotFoundPage } from "./NotFoundPage";
+import { AskPage } from "../features/ask/AskPage";
 import { ComparePage } from "../features/compare/ComparePage";
 import { CycleDetailPage } from "../features/cycles/CycleDetailPage";
 import { CyclesPage } from "../features/cycles/CyclesPage";
@@ -51,6 +53,10 @@ export const routes = [
       {
         path: "health",
         element: <ProjectHealthPage />
+      },
+      {
+        path: "ask",
+        element: <AskPage />
       },
       {
         path: "resources",
