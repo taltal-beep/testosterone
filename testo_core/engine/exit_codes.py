@@ -17,6 +17,9 @@ class EngineExitCode(IntEnum):
     INVALID_INPUT = 2
     INFRA_FAILURE = 3
     INTERNAL_ERROR = 4
+    # Stopped by a signal: the stages were stopped and the run recorded (as failed).
+    INTERRUPTED = 130  # SIGINT (Ctrl-C)
+    TERMINATED = 143  # SIGTERM (a CI job's cancel button, `kill`)
 
 
 def classify_exit_code(

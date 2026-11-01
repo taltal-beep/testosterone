@@ -70,6 +70,8 @@ def execute_plan_command(
                 async_report_db=async_report_db,
             )
             worst = max(worst, ec)
+            if ec in (EngineExitCode.INTERRUPTED, EngineExitCode.TERMINATED):
+                return ec  # Ctrl-C / SIGTERM stops the remaining cycles too
         return worst
 
     try:
