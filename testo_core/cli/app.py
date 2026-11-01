@@ -213,9 +213,9 @@ def _register_commands() -> None:
     )(watch_mod.watch)
     app.command(
         name="init",
-        help="Interactive wizard for testosterone.yaml (non-interactive: testo config init).",
-        rich_help_panel="Maintenance",
-    )(init_cmd_mod.wizard)
+        help="Set up a project: detect its test runners, write testosterone.yaml and the CI workflow, record a first run.",
+        rich_help_panel="Config",
+    )(init_cmd_mod.init)
 
 
 _register_commands()

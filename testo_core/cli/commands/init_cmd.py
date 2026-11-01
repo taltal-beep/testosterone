@@ -1,24 +1,39 @@
-"""``testo init`` — interactive wizard for a starter testosterone.yaml."""
+"""``testo init`` — add Testosterone to a project in one command.
+
+Plain ``testo init`` looks at the project (:mod:`testo_core.services.project_setup`):
+which test runners it uses, from ``pyproject.toml``, ``package.json``,
+``go.mod``, ``*.csproj``, ``pom.xml`` and friends. Then it writes
+
+* ``testosterone.yaml`` with one cycle that runs each of them, set up so their
+  results are read (Jest's JSON report, ``go test -json``, TRX, Surefire XML...),
+* the CI workflow (``.github/workflows/testosterone.yml``) that runs the cycle
+  with the GitHub Action and comments on pull requests,
+* the ``.gitignore`` lines for Testosterone's local files,
+
+and records a first run: the result files a test run already left in the
+project when there are any, otherwise one ``testo run`` of the new cycle.
+Files that exist are kept unless ``--force``; ``--dry-run`` prints instead.
+
+``testo init --interactive`` is the older question-by-question wizard.
+"""
 
 from __future__ import annotations
 
+import contextlib
 import json
+import os
+from collections.abc import Iterator
 from pathlib import Path
 
 import typer
+from rich.console import Console
 
 from testo_core.config.json_schema import SCHEMA_ID
 from testo_core.engine.exit_codes import EngineExitCode
 
 
-def wizard(
-    path: Path | None = typer.Option(
-        None,
-        "--path",
-        help="Output path (prompted when omitted).",
-    ),
-) -> None:
-    """Interactive scaffolding for a default testosterone.yaml (non-interactive: use ``testo config init``)."""
+def wizard(path: Path | None) -> None:
+    """Interactive scaffolding for a default testosterone.yaml (``testo init --interactive``)."""
     from testo_core.cli.ui.console import default_console
 
     console = default_console()
@@ -65,3 +80,223 @@ cycles:
     out.write_text(yaml_text, encoding="utf-8")
     console.print(f"[ok]Wrote {out}[/]")
     raise typer.Exit(code=0)
+
+
+CI_CHOICES = ("auto", "github", "none")
+
+
+@contextlib.contextmanager
+def _cwd(path: Path) -> Iterator[None]:
+    before = Path.cwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(before)
+
+
+def _resolve_ci(choice: str, repo: Path) -> str:
+    choice = choice.strip().lower()
+    if choice not in CI_CHOICES:
+        raise typer.BadParameter(f"pick one of {', '.join(CI_CHOICES)}", param_hint="--ci")
+    if choice != "auto":
+        return choice
+    other = [
+        name
+        for name, marker in (
+            ("GitLab CI", ".gitlab-ci.yml"),
+            ("Jenkins", "Jenkinsfile"),
+            ("CircleCI", ".circleci"),
+        )
+        if (repo / marker).exists()
+    ]
+    if other and not (repo / ".github").is_dir():
+        return "none:" + ", ".join(other)
+    return "github"
+
+
+def _existing_cycle(config: Path, wanted: str) -> str:
+    """The cycle to use from a config that was kept: *wanted* if it's there, else its only one."""
+    from testo_core.config.loader import discover_and_load
+
+    try:
+        cycles = list(discover_and_load(config_path=config).cycles)
+    except Exception:  # noqa: BLE001 — a broken config is reported by the run itself
+        return wanted
+    if wanted in cycles or len(cycles) != 1:
+        return wanted
+    return cycles[0]
+
+
+def init(
+    directory: Path = typer.Option(
+        Path("."), "--dir", file_okay=False, help="The project to set up (default: here)."
+    ),
+    stack: list[str] = typer.Option(
+        [],
+        "--stack",
+        help="Use this runner instead of detecting (repeatable): pytest, jest, vitest, "
+        "playwright, go, dotnet, maven, gradle, rspec, phpunit.",
+    ),
+    cycle: str = typer.Option(
+        None, "--cycle", help="Name of the cycle to write (default: the project folder's name)."
+    ),
+    ci: str = typer.Option(
+        "auto",
+        "--ci",
+        help="CI file to write: github, or none (auto = github unless the project uses "
+        "another CI and has no .github folder).",
+    ),
+    run_first: bool = typer.Option(
+        True,
+        "--run/--no-run",
+        help="Record a first run: existing result files if any, else run the new cycle once.",
+    ),
+    force: bool = typer.Option(False, "--force", help="Overwrite files that already exist."),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Print what would be written; write and run nothing."
+    ),
+    interactive: bool = typer.Option(
+        False,
+        "--interactive",
+        help="The older wizard: asks for each value, writes only the config.",
+    ),
+    path: Path | None = typer.Option(
+        None, "--path", help="With --interactive: output path (prompted when omitted)."
+    ),
+) -> None:
+    """Detect the project's test runners, write testosterone.yaml and the CI workflow, record a first run."""
+    if interactive:
+        wizard(path)
+        return
+
+    from testo_core.cli.ui.console import default_console
+    from testo_core.services import ci_templates, project_setup
+
+    console = default_console()
+    repo = directory.expanduser().resolve()
+    unknown = [s for s in stack if s.strip().lower() not in project_setup.STACK_KEYS]
+    if unknown:
+        raise typer.BadParameter(
+            f"unknown stack {unknown[0]!r}; pick from {', '.join(project_setup.STACK_KEYS)}",
+            param_hint="--stack",
+        )
+    facts = project_setup.detect_project(repo, only=stack)
+    if not facts.stacks:
+        console.print(
+            f"[fail]No test runner found in {repo}.[/] Looked for pytest, Jest, Vitest, "
+            "Playwright, go test, dotnet test, Maven, Gradle, RSpec and PHPUnit.\n"
+            "Name one with --stack, or record results you already have:\n"
+            "  testo ingest 'reports/**/*.xml' --cycle tests"
+        )
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+
+    cycle_name = (cycle or "").strip() or project_setup.cycle_name_for(repo)
+    console.print("Found: " + ", ".join(s.label for s in facts.stacks))
+    for note in facts.skipped:
+        console.print(f"  [muted]Not added: {note}[/]")
+
+    config_path = repo / "testosterone.yaml"
+    keep_config = config_path.exists() and not force
+    if keep_config:
+        cycle_name = _existing_cycle(config_path, cycle_name)
+    ci_kind = _resolve_ci(ci, repo)
+    branch = ci_templates.default_branch(repo)
+    files: list[tuple[Path, str, bool]] = [
+        (config_path, project_setup.config_yaml(facts, cycle=cycle_name), keep_config)
+    ]
+    if ci_kind == "github":
+        workflow = repo / ci_templates.GITHUB_WORKFLOW_PATH
+        files.append(
+            (
+                workflow,
+                ci_templates.github_workflow(facts, cycle=cycle_name, branch=branch),
+                workflow.exists() and not force,
+            )
+        )
+
+    if dry_run:
+        for target, text, keep in files:
+            rel = target.relative_to(repo)
+            state = " (exists, would be kept; --force overwrites)" if keep else ""
+            console.print(f"\n[bold]--- {rel}{state}[/]")
+            if not keep:
+                console.print(text, markup=False, highlight=False, end="")
+        return
+
+    for target, text, keep in files:
+        rel = target.relative_to(repo)
+        if keep:
+            console.print(f"Kept {rel} (exists; --force overwrites)")
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+        console.print(f"[ok]Wrote {rel}[/]")
+    if ci_kind.startswith("none:"):
+        console.print(
+            f"No CI file written: this project uses {ci_kind[5:]}. "
+            "Copy-paste setup for it: https://taltal-beep.github.io/testosterone/docs/"
+        )
+
+    missing = project_setup.missing_gitignore_lines(repo)
+    if missing:
+        gitignore = repo / ".gitignore"
+        before = gitignore.read_text(encoding="utf-8") if gitignore.exists() else ""
+        sep = "" if not before or before.endswith("\n") else "\n"
+        block = "# Testosterone's local history and run files\n" + "\n".join(missing) + "\n"
+        gitignore.write_text(before + sep + block, encoding="utf-8")
+        console.print(f"[ok]Added {', '.join(missing)} to .gitignore[/]")
+
+    code = 0
+    if run_first:
+        code = _first_run(console=console, repo=repo, cycle=cycle_name, config=config_path)
+
+    added = " ".join(str(t.relative_to(repo)) for t, _, keep in files if not keep)
+    console.print("\nNext:")
+    if added:
+        console.print(f"  git add {added} .gitignore && git commit -m 'ci: add Testosterone'")
+    console.print(
+        "  testo ui          # the run history in your browser (pip install 'testo-core\\[api]')"
+    )
+    console.print(f"  testo run --cycle {cycle_name}")
+    raise typer.Exit(code=code)
+
+
+def _first_run(*, console: Console, repo: Path, cycle: str, config: Path) -> int:
+    """Record the results already on disk, else run *cycle* once. Failing tests still count as recorded."""
+    from testo_core.cli.runner import execute_ingest_command, execute_plan_command
+    from testo_core.services.project_setup import find_result_files, result_patterns
+
+    found = find_result_files(repo)
+    with _cwd(repo):
+        if found:
+            reports = result_patterns(found, repo=repo)
+            console.print(
+                f"\nRecording the results already here as a first run: {', '.join(reports)}"
+            )
+            code = execute_ingest_command(
+                console=console,
+                reports=reports,
+                cycle=cycle,
+                stage="imported",
+                tier="unit",
+                repo=repo,
+                config_path=config,
+                ci=False,
+                persist=True,
+            )
+        else:
+            console.print(
+                f"\nNo result files yet, so running the {cycle!r} cycle once (skip with --no-run)"
+            )
+            code = execute_plan_command(
+                console=console,
+                plan_name=cycle,
+                config_path=config,
+                stream=False,
+                ci=False,
+                persist=True,
+                workers_override=None,
+            )
+    # 1 means a test failed: the run was still recorded, which is what init is for.
+    return 0 if code == int(EngineExitCode.DOMAIN_FAILURE) else code
