@@ -12,6 +12,10 @@ inputs:
     description: "`auto` keeps the run history (SQLite) in the Actions cache between runs unless DATABASE_URL or database.url is set; `off` doesn't."
     required: false
     default: auto
+  history-artifact:
+    description: "With the cached history: also upload it (the SQLite file) as a `testo-history-...` artifact kept 7 days, so `testo ui --from-github` can open the CI history on your machine. `false` skips the upload."
+    required: false
+    default: "true"
   config-path:
     description: Path to testosterone.yaml (empty = discovery from the workspace root).
     required: false
@@ -188,6 +192,16 @@ runs:
       with:
         path: ${{ steps.history.outputs.dir }}
         key: ${{ steps.history.outputs.key }}
+    - name: Upload the run history
+      # For `testo ui --from-github`. A name taken twice (a matrix job) must not fail the job.
+      if: always() && steps.history.outputs.cache == 'true' && inputs.history-artifact == 'true'
+      continue-on-error: true
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.history.outputs.key }}
+        path: ${{ steps.history.outputs.dir }}/testo_history.db
+        retention-days: 7
+        if-no-files-found: ignore
     - name: Upload the pull request comment
       if: always() && steps.run_testo.outputs.comment_dir != ''
       uses: actions/upload-artifact@v4

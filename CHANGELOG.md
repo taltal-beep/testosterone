@@ -38,6 +38,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - PR comment and job summary: a backtick in a test name (which in a fork's pull request its author controls) ended the code span, so `@user` mentions and HTML after it rendered live. Names are now fenced so nothing inside can close them, and stage, runner and branch cells are plain text. A cycle name with `-->` can no longer end the comment marker
 
 ### Added
+- `testo ui --from-github [--repo owner/name] [--run-id ID]` opens the UI on the history the GitHub Action keeps in CI, so nobody needs a server to browse it. The Action now also uploads its cached history as a `testo-history-*` artifact (kept 7 days, `history-artifact: false` turns it off), which this downloads with the GitHub CLI
 - `TESTO_QUARANTINE_AUTO=0.3` quarantines, after each recorded run, the tests that are flaky at that flip rate or more and failed in that run (never ones that always fail), and the pull request comment lists them. Off by default. Escaped names (`test_x[[]1]`) let parametrized tests be quarantined and released like any exact name
 - `testo quarantine add` on a local SQLite history also prints the `quarantine:` lines for `testosterone.yaml`, since CI never sees this machine's list
 - `testo mcp install [--client claude-code|cursor|vscode|claude-desktop]` adds `testo mcp` to the agent's MCP config file, keeping the other servers in it

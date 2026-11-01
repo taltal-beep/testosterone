@@ -289,12 +289,16 @@ Open the web UI (Dashboard, Cycles, Runs, Compare, AI settings) on this machine'
 pip install 'testo-core[api]'
 testo ui                     # http://127.0.0.1:8000, opens the browser
 testo ui --port 9000 --no-open
+testo ui --from-github       # the history the GitHub Action keeps, via the gh CLI
 ```
 
 | Flag | Default | Meaning |
 |------|---------|---------|
 | `--port`, `-p` | `8000` | Port on 127.0.0.1 |
 | `--open` / `--no-open` | `--open` | Open the default browser once the server is up |
+| `--from-github` | off | Open CI's history instead of this machine's: the newest unexpired `testo-history-*` artifact the [GitHub Action](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md) uploads with its cached history (`history-artifact`, on by default, kept 7 days), downloaded with the [GitHub CLI](https://cli.github.com) into `~/.cache/testosterone/from-github/<repo>/`. Runs, tests, flaky detection and Compare work; HTML reports and attachments stay in CI. Exit `2` when `gh` is missing or no artifact is found |
+| `--repo OWNER/NAME` | this checkout's | With `--from-github`: another repository |
+| `--run-id ID` | newest | With `--from-github`: the history saved by that workflow run |
 
 It starts `testo-api` bound to `127.0.0.1` only (for a shared server use the [Team Server](../Processes%20&%20Guides/Team%20Server.md)) and serves the UI that ships inside the wheel, or the build `TESTO_UI_DIR` points at. The UI's own origin (`http://127.0.0.1:<port>`, `http://localhost:<port>`) is added to `TESTO_CORS_ORIGINS` for this process so it can start runs; every other origin is still refused. Exit `2` when the `[api]` extra is missing or no built UI is found (a source checkout builds one with `scripts/build_ui_bundle.sh`, which needs Node 22).
 
