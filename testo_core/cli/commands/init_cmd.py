@@ -19,6 +19,10 @@ for monorepos, shows the stages it found and asks before writing. ``--check``
 asks each runner to list its tests (:mod:`testo_core.services.stage_check`) and
 leaves out stages that have none.
 
+``testo init --pr`` then commits what it wrote on a new branch, pushes it and
+opens a pull request (:mod:`testo_core.services.setup_pr`); ``--dependabot``
+also writes ``.github/dependabot.yml``.
+
 ``testo init --interactive`` is the older question-by-question wizard.
 """
 
@@ -186,6 +190,17 @@ def init(
     path: Path | None = typer.Option(
         None, "--path", help="With --interactive: output path (prompted when omitted)."
     ),
+    open_pr: bool = typer.Option(
+        False,
+        "--pr",
+        help="Then commit the written files on a new branch, push it and open a pull request "
+        "(needs git and the GitHub CLI; without gh, prints the commands left).",
+    ),
+    dependabot: bool = typer.Option(
+        False,
+        "--dependabot",
+        help="Also write .github/dependabot.yml (weekly GitHub Actions updates) when there is none.",
+    ),
 ) -> None:
     """Detect the project's test runners, write testosterone.yaml and the CI workflow, record a first run."""
     if interactive:
@@ -248,6 +263,11 @@ def init(
             ci_hint = _INCLUDE_HINTS[ci_kind]
         text = ci_templates.ci_file_text(ci_kind, facts, cycle=cycle_name, branch=branch)
         files.append((target, text, target.exists() and not force))
+    if dependabot:
+        from testo_core.services.setup_pr import DEPENDABOT_PATH, dependabot_yaml
+
+        bot = repo / DEPENDABOT_PATH
+        files.append((bot, dependabot_yaml(), bot.exists()))
 
     if dry_run:
         for target, text, keep in files:
@@ -285,15 +305,47 @@ def init(
     if run_first:
         code = _first_run(console=console, repo=repo, cycle=cycle_name, config=config_path)
 
-    added = " ".join(str(t.relative_to(repo)) for t, _, keep in files if not keep)
+    written = [t.relative_to(repo).as_posix() for t, _, keep in files if not keep]
+    if missing:
+        written.append(".gitignore")
+    if open_pr:
+        if _publish(console, repo=repo, files=written, base=branch, cycle=cycle_name):
+            raise typer.Exit(code=code)
+        written = []  # _publish already said what is left to do
     console.print("\nNext:")
-    if added:
-        console.print(f"  git add {added} .gitignore && git commit -m 'ci: add Testosterone'")
+    if written:
+        added = " ".join(written)
+        console.print(f"  git add {added} && git commit -m 'ci: add Testosterone'")
+        console.print("  (or next time: testo init --pr)")
     console.print(
         "  testo ui          # the run history in your browser (pip install 'testo-core\\[api]')"
     )
     console.print(f"  testo run --cycle {cycle_name}")
     raise typer.Exit(code=code)
+
+
+def _publish(console: Console, *, repo: Path, files: list[str], base: str, cycle: str) -> bool:
+    """``--pr``: branch, commit, push, pull request. True when the pull request is open."""
+    from testo_core.services.setup_pr import open_setup_pr
+
+    if not files:
+        console.print("\nNothing new was written, so there is no pull request to open.")
+        return False
+    console.print(f"\nOpening a pull request into {base} with: {', '.join(files)}")
+    result = open_setup_pr(repo, files=files, base=base, cycle=cycle)
+    if result.url:
+        console.print(f"[ok]Opened {result.url}[/] (branch {result.branch})")
+        console.print(
+            "Its comment has no baseline yet: merge it, and pull requests after the first "
+            f"run on {base} are compared with it."
+        )
+        return True
+    console.print(f"[warn]Couldn't finish the pull request: {result.error}[/]")
+    if result.todo:
+        console.print("Left to do:")
+        for line in result.todo:
+            console.print(f"  {line}", markup=False, highlight=False)
+    return False
 
 
 def _print_stages(console: Console, facts: ProjectFacts) -> None:

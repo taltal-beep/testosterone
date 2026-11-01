@@ -509,6 +509,7 @@ testo init --stack jest --stack go --cycle web --no-run
 testo init --interactive        # the older wizard: asks for each value, writes only the config
 testo init --scan               # monorepo: a stage per runner in every project folder; asks first
 testo init --scan --check       # also ask each runner which tests it would run (runs none)
+testo init --pr                 # then commit the files on a new branch, push it and open a pull request
 ```
 
 | Detected from | Stack (`--stack`) | Stage it writes |
@@ -542,6 +543,10 @@ A file that exists is kept unless `--force`; a kept `testosterone.yaml` with one
 
 The first run (`--no-run` skips it): result files a test run already left in the project (JUnit XML, Jest/Vitest/Playwright/RSpec JSON, `.trx`, `go test -json`, Robot `output.xml`, `allure-results`; recognised by content, files git tracks are skipped as fixtures) are recorded like `testo ingest` would. When there are none, the new cycle runs once. Exit code `0` once a run is recorded, even if some of its tests failed; `2` when no runner was found, `--check` found no tests in any stage, `--scan` wasn't confirmed, or an option is wrong.
 
+
+**Straight to a pull request (`--pr`).** After writing (and the first run), switches to a new branch `testosterone-setup` (`-2`, `-3`... if taken), commits only the files it wrote (`git commit -- <paths>`, so anything else you had staged stays staged), pushes it to `origin` and opens a pull request into the default branch with the [GitHub CLI](https://cli.github.com) (`gh pr create`). Without `gh`, or when a step fails (no `origin`, push refused), it prints the commands left to run; the exit code stays the first run's. The pull request's own comment has no baseline yet: once it is merged and the workflow has run on the default branch, later pull requests are compared with that run.
+
+**Dependabot (`--dependabot`).** Also writes `.github/dependabot.yml` with weekly `github-actions` updates, when the project has none. `taltal-beep/testosterone@v1` moves to each 1.x release by itself; this keeps `actions/checkout` and the setup actions current.
 ---
 
 ## `testo users`
