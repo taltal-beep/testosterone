@@ -1,8 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
-import { apiClient } from "../../lib/api-client";
-import { Badge, Button, Card, EmptyState, PageHeader, Spinner } from "../../components/ui";
+import { apiClient, type CycleSummary } from "../../lib/api-client";
+import { Badge, Button, Card, EmptyState, HealthBar, PageHeader, Spinner, StatusPill } from "../../components/ui";
+import { formatPercent, formatProvenance, formatRelativeTime } from "../../lib/format";
 import { MuscleShrug } from "../../components/mascot";
 import { IS_STATIC_BUILD } from "../../lib/static-backend";
 
@@ -87,6 +88,7 @@ export function CyclesPage() {
                     </p>
                   ) : null}
                 </div>
+                <LatestRun cycle={cycle.name} run={cycle.latest_run} />
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Badge>
@@ -103,13 +105,14 @@ export function CyclesPage() {
                   ) : IS_STATIC_BUILD ? (
                     // A disabled button gets no hover events, so the wrapper carries the tooltip.
                     <span title={`Read-only demo. Run locally with: testo run --cycle ${cycle.name}`}>
-                      <Button size="sm" disabled>
+                      <Button size="sm" variant="secondary" disabled>
                         Run
                       </Button>
                     </span>
                   ) : (
                     <Button
                       size="sm"
+                      variant="secondary"
                       onClick={() => navigate(`/cycles/${encodeURIComponent(cycle.name)}?run=1`)}
                     >
                       Run
@@ -122,5 +125,28 @@ export function CyclesPage() {
         </div>
       )}
     </section>
+  );
+}
+
+/** The cycle's latest result: status, pass rate, when, and where it came from; or that it has never run. */
+function LatestRun({ cycle, run }: { cycle: string; run: CycleSummary["latest_run"] }) {
+  if (!run) {
+    return <p className="text-xs text-ink-400">No runs recorded yet.</p>;
+  }
+  const provenance = formatProvenance(run);
+  const failing = run.failed != null && run.failed > 0 ? `${run.failed} failing` : null;
+  return (
+    <div className="space-y-1.5" data-testid={`latest-run-${cycle}`}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-400">
+        <StatusPill status={run.status ?? "unknown"} returncode={run.returncode} />
+        <Link to={`/runs/${run.run_id}`} className="text-brand-300 hover:underline" title={new Date(run.created_at * 1000).toLocaleString()}>
+          {formatRelativeTime(run.created_at)}
+        </Link>
+        {run.health_pct != null ? <span>{formatPercent(run.health_pct)} passed</span> : null}
+        {failing ? <span className="text-danger-300">{failing}</span> : null}
+        {provenance ? <span className="font-mono text-ink-300">{provenance}</span> : null}
+      </div>
+      <HealthBar healthPct={run.health_pct ?? null} />
+    </div>
   );
 }

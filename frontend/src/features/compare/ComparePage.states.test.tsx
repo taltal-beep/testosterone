@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -140,7 +140,7 @@ describe("ComparePage states", () => {
     expect(screen.getByLabelText("Baseline run")).toHaveValue("run-1");
   });
 
-  it("loads test-level changes on demand and filters them by kind", async () => {
+  it("lists test-level changes under the summary and filters them by kind", async () => {
     stubApi([
       ["/api/v1/analytics/delta/cases", CASES],
       ["/api/v1/analytics/delta", DELTA],
@@ -148,19 +148,34 @@ describe("ComparePage states", () => {
     ]);
     renderAt(PAIR);
 
+    // Open by default: the list is the answer to the counts above it.
     const toggle = await screen.findByRole("button", { name: /Test-level changes/ });
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(toggle);
-
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(await screen.findByText("test_broken")).toBeInTheDocument();
     expect(screen.getByText("test_new")).toBeInTheDocument();
     expect(screen.getByText(/passed → failed \(\+12ms\)/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "test_broken" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/cycles\/.+\/test\?key=/)
+    );
 
-    fireEvent.click(screen.getByRole("button", { name: "Regression" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Regression/ }));
     expect(screen.getByText("test_broken")).toBeInTheDocument();
     expect(screen.queryByText("test_new")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Removed" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Removed/ }));
     expect(screen.getByText("No matching test changes.")).toBeInTheDocument();
+
+    // The summary counts tests, not metrics, and each count opens its list.
+    const counts = screen.getByTestId("test-change-counts");
+    expect(counts).toHaveTextContent("1 regression");
+    expect(counts).toHaveTextContent("1 added test");
+    fireEvent.click(within(counts).getByRole("button", { name: "1 added test" }));
+    expect(screen.getByRole("button", { name: /^Added/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("test_new")).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("test_broken")).not.toBeInTheDocument();
   });
 });

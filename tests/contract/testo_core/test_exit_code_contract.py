@@ -24,6 +24,10 @@ def test_exit_code_values_are_frozen() -> None:
         "INVALID_INPUT": 2,
         "INFRA_FAILURE": 3,
         "INTERNAL_ERROR": 4,
+        # Stopped by a signal (shell convention 128 + signal number); never returned by
+        # classify_exit_code, only by run_plan when SIGINT / SIGTERM stopped the run.
+        "INTERRUPTED": 130,
+        "TERMINATED": 143,
     }
 
 

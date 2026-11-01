@@ -76,10 +76,15 @@ def flaky(
 
     console = default_console()
     if report.runs_analyzed < 2:
+        from testo_core.cli.cycle_hint import unknown_cycle_hint
+
         console.print(
             f"[warn]Need at least two recorded runs of cycle {report.cycle!r} with per-test "
             f"results; found {report.runs_analyzed}.[/]"
         )
+        hint = unknown_cycle_hint(report.cycle) if report.runs_analyzed == 0 else None
+        if hint:
+            console.print(f"[warn]{escape(hint)}[/]")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
 
     console.print(

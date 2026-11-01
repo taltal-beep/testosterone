@@ -52,7 +52,7 @@ export function HealthBar({ healthPct, className }: { healthPct: number | null; 
     <div
       className={`h-1.5 w-full overflow-hidden rounded-full bg-ink-800 ${className ?? ""}`}
       role="img"
-      aria-label={pct == null ? "health unknown" : `health ${pct.toFixed(1)}%`}
+      aria-label={pct == null ? "pass rate unknown" : `${pct.toFixed(1)}% passed`}
     >
       {pct != null ? (
         <span

@@ -113,6 +113,8 @@ nav:
   - Decisions:
       - Specs & ADRs: Specs & ADRs/README.md
       - Architecture Review: Specs & ADRs/Architecture Review - 2026-10-31.md
+      - Importer and Integration Bug Hunt: Specs & ADRs/Importer and Integration Bug Hunt - 2026-10-31.md
+      - Engine Fixes: Specs & ADRs/Engine Fixes - 2026-11-01.md
       - Affected Test Selection: Specs & ADRs/Affected Test Selection - 2026-10-30.md
       - Resource Pools and Leases: Specs & ADRs/Resource Pools and Leases - 2026-10-26.md
       - Resource Lifecycle Hooks: Specs & ADRs/Resource Lifecycle Hooks - 2026-10-26.md
@@ -122,6 +124,7 @@ nav:
       - UI Restyle: Specs & ADRs/UI Restyle - 2026-10-19.md
       - UI Design Review: Specs & ADRs/UI Design Review - 2026-10-31.md
       - Engineering Health Review: Specs & ADRs/Engineering Health Review - 2026-10-31.md
+      - UI Review Fixes: Specs & ADRs/UI Review Fixes - 2026-11-01.md
       - Open Source Features: Specs & ADRs/Open Source Features - 2026-10-19.md
       - GitHub Action PR Comment: Specs & ADRs/GitHub Action PR Comment - 2026-10-19.md
       - Docs Site: Specs & ADRs/Docs Site - 2026-10-19.md
@@ -149,9 +152,11 @@ nav:
       - Product Roadmap Work: Specs & ADRs/Product Roadmap Work - 2026-10-25.md
       - Product Roadmap: Roadmap & Strategy/Product Roadmap.md
       - Feature Gaps and Quick Wins: Roadmap & Strategy/Feature Gaps and Quick Wins - 2026-10-31.md
+      - Paid Features to Offer Free: Roadmap & Strategy/Paid Features to Offer Free - 2026-10-31.md
       - Technical Debt Tracker: Testing Workflows/Technical Debt Tracker.md
       - Project Review: project-review.md
       - Product Review: product-review.md
+      - Engine and CLI Bug Hunt: engine-cli-review.md
   - Contributing:
       - Agent Context Guide: Prompts & Snippets/Agent Context Guide.md
       - Vault Schema: CLAUDE.md

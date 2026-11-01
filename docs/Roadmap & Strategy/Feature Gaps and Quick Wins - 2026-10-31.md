@@ -2,7 +2,7 @@
 type: roadmap
 status: current
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Feature gaps and quick wins (2026-10-31)
@@ -60,7 +60,7 @@ Small, mostly found in the first ten minutes. Ordered by how many new users hit 
 | Q3 | Maven Surefire's `<flakyFailure>` and `<rerunFailure>` are ignored: the test passes and the retry is lost | S | Count them as flaky like Playwright's retries |
 | Q4 | **Run pages say "health 100%"** for a run's pass rate (Runs list, the stage bar's screen-reader label, Compare's "Per-stage health", the pull request comment), while the dashboard's "Project health" is a different 0–100 score | S | "100% passed" / "pass rate" everywhere a run is meant |
 | Q5 | Compare shows "0 regressions · 0 improvements · **9 unchanged**" for a 4-test run: the 9 are metrics, not tests | S | Count tests, or label it "9 metrics unchanged" |
-| Q6 | The stage name and its equipment run together: "pytestjunit" on the run page and in Compare | S | A separator or a second line |
+| Q6 | ~~The stage name and its equipment run together: "pytestjunit"~~ Not a bug: they are separate on screen, only copied text runs them together | – | None |
 | Q7 | **"Not a clean pyramid: each tier should be smaller than the one below it"** for a project with 4 unit tests and no others | S | Ignore empty tiers; say nothing when there's only one |
 | Q8 | `testo flaky` on a `pytest --testo` or `testo ingest` cycle says to paste a `quarantine:` snippet into `testosterone.yaml`, which those users don't have | S | Say where the file goes (`testo config init`) or point at G2 |
 | Q9 | `testo report` without the Allure CLI: "Post-Workout Review … see your gains", and an error with reStructuredText backticks (` ``allure generate`` `) | S | Plain words, single backticks |
@@ -71,6 +71,8 @@ Small, mostly found in the first ten minutes. Ordered by how many new users hit 
 | Q14 | The README's Quickstart starts at line 96, after a long "What's new". A visitor scrolls past three releases of changes before seeing `pip install` | S | Three commands right under the screenshots; "What's new" lower or in the changelog |
 | Q15 | Flaky detection scans the newest 500 runs of **all** cycles and then filters to one, so on a busy server a nightly cycle can show fewer runs than its window | S | Ask the history for that cycle's runs |
 | Q16 | `testo run` prints two summary tables that say nearly the same thing (stage status and duration, then stage counts) | S | One table with both |
+
+**Status:** Q1 is fixed in #213, Q3 in #232 and Q2 in #239. Q4, Q5, Q7, Q9 (the backticks and the error; the gym jokes stay), Q10, Q11, Q13 and Q14 are fixed in #234. Still open: Q8 (belongs with G2), Q12, Q15 and Q16.
 
 ## Feature gaps, ranked
 

@@ -9,7 +9,7 @@ inputs:
     required: false
     default: ""
   cycle:
-    description: Cycle to run (empty = the only cycle in the config; `all` = every cycle).
+    description: Cycle to run (empty = the only cycle in the config; `all` = every cycle, each with its own summary, comment and alert).
     required: false
     default: ""
   ci-mode:
@@ -25,7 +25,7 @@ inputs:
     required: false
     default: "3.11"
   package:
-    description: What to pip install for testo, e.g. `testo-core==1.2.0`, or `.` for a checkout of this repository.
+    description: What to pip install for testo, e.g. `testo-core==1.2.0`, `.` for a checkout of this repository, or several requirements separated by spaces (`testo-core pytest-xdist`).
     required: false
     default: testo-core
   job-summary:
@@ -82,9 +82,15 @@ runs:
         python-version: ${{ inputs.python-version }}
     - name: Install testo
       shell: bash
+      env:
+        # Inputs reach the shell as variables, never pasted into the script,
+        # so a quote or $(...) in an input is data, not a command.
+        TESTO_INPUT_PACKAGE: ${{ inputs.package }}
       run: |
         python -m pip install --upgrade pip
-        python -m pip install "${{ inputs.package }}"
+        # One or more requirements, space separated: "testo-core pytest-xdist".
+        read -r -a packages <<< "$TESTO_INPUT_PACKAGE"
+        python -m pip install "${packages[@]}"
     - name: Run testo
       id: run_testo
       shell: bash
@@ -92,14 +98,23 @@ runs:
         TESTO_GITHUB_TOKEN: ${{ inputs.github-token }}
         TESTO_SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook }}
         TESTO_TEAMS_WEBHOOK_URL: ${{ inputs.teams-webhook }}
+        TESTO_INPUT_CONFIG_PATH: ${{ inputs.config-path }}
+        TESTO_INPUT_CYCLE: ${{ inputs.cycle }}
+        TESTO_INPUT_CI_MODE: ${{ inputs.ci-mode }}
+        TESTO_INPUT_PERSIST: ${{ inputs.persist }}
+        TESTO_INPUT_JOB_SUMMARY: ${{ inputs.job-summary }}
+        TESTO_INPUT_COMMENT_ON_PR: ${{ inputs.comment-on-pr }}
+        TESTO_INPUT_ANNOTATIONS: ${{ inputs.annotations }}
+        TESTO_INPUT_NOTIFY_WHEN: ${{ inputs.notify-when }}
+        TESTO_INPUT_FLAKY_ISSUES: ${{ inputs.flaky-issues }}
       run: |
         python "${{ github.action_path }}/run_testo_action.py" \
-          --config-path "${{ inputs.config-path }}" \
-          --cycle "${{ inputs.cycle }}" \
-          --ci-mode "${{ inputs.ci-mode }}" \
-          --persist "${{ inputs.persist }}" \
-          --job-summary "${{ inputs.job-summary }}" \
-          --comment-on-pr "${{ inputs.comment-on-pr }}" \
-          --annotations "${{ inputs.annotations }}" \
-          --notify-when "${{ inputs.notify-when }}" \
-          --flaky-issues "${{ inputs.flaky-issues }}"
+          --config-path "$TESTO_INPUT_CONFIG_PATH" \
+          --cycle "$TESTO_INPUT_CYCLE" \
+          --ci-mode "$TESTO_INPUT_CI_MODE" \
+          --persist "$TESTO_INPUT_PERSIST" \
+          --job-summary "$TESTO_INPUT_JOB_SUMMARY" \
+          --comment-on-pr "$TESTO_INPUT_COMMENT_ON_PR" \
+          --annotations "$TESTO_INPUT_ANNOTATIONS" \
+          --notify-when "$TESTO_INPUT_NOTIFY_WHEN" \
+          --flaky-issues "$TESTO_INPUT_FLAKY_ISSUES"

@@ -9,10 +9,12 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from testo_core import paths
 from testo_core.cli.app import app
 from testo_core.history.views import CompletedRunView
 from testo_core.repository.models import RunStatus
 from testo_core.services import run_summary_markdown as md
+from tests._history_fakes import cycle_runs_from
 
 
 def _run(run_id: str, *, created_at: float, returncode: int = 0) -> CompletedRunView:
@@ -67,8 +69,9 @@ def two_runs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> list[CompletedR
     runs = [_run("new", created_at=2, returncode=1), _run("old", created_at=1)]  # newest first
     _write(tmp_path, runs[1], {"test_a": "passed", "test_b": "passed"})
     _write(tmp_path, runs[0], {"test_a": "failed", "test_b": "passed", "test_c": "passed"})
-    monkeypatch.setattr(md.paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
     monkeypatch.setattr(md, "list_recent_runs", lambda *, limit: runs)
+    monkeypatch.setattr(md, "list_cycle_runs", cycle_runs_from(runs))
     monkeypatch.setattr(
         md, "get_run", lambda *, run_id: next(r for r in runs if r.run_id == run_id)
     )
@@ -98,7 +101,7 @@ def test_markdown_starts_with_the_comment_marker(two_runs: list[CompletedRunView
 
     assert text.splitlines()[0] == md.comment_marker("unit") == "<!-- testo-summary:unit -->"
     assert "### ❌ Testosterone: `unit` failed" in text
-    assert "**2 passed · 1 failed · 0 skipped** in 12.3s · health 66.7%" in text
+    assert "**2 passed · 1 failed · 0 skipped** in 12.3s · pass rate 66.7%" in text
     assert "| unit | pytest | ❌ fail | 3 | 2 | 1 | 0 | 1.5s |" in text
     assert "- `test_a`" in text
     assert "**Since the previous run:** 1 regression, 1 new test" in text
@@ -133,6 +136,7 @@ def test_cli_prints_and_writes(two_runs: list[CompletedRunView], tmp_path: Path)
 
 def test_cli_without_runs_is_invalid_input(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(md, "list_recent_runs", lambda *, limit: [])
+    monkeypatch.setattr(md, "list_cycle_runs", cycle_runs_from([]))
     assert CliRunner().invoke(app, ["report", "markdown", "--cycle", "nope"]).exit_code == 2
 
 
@@ -157,8 +161,9 @@ def test_a_pull_request_is_compared_with_its_target_branch(
     _write(tmp_path, main, {"test_a": "passed"})
     _write(tmp_path, other_pr, {"test_a": "failed"})
     _write(tmp_path, pr, {"test_a": "failed"})
-    monkeypatch.setattr(md.paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
     monkeypatch.setattr(md, "list_recent_runs", lambda *, limit: runs)
+    monkeypatch.setattr(md, "list_cycle_runs", cycle_runs_from(runs))
 
     summary = md.load_run_summary(cycle="unit")
 

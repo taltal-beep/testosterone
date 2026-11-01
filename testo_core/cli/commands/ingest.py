@@ -18,6 +18,8 @@ from pathlib import Path
 
 import typer
 
+from testo_core.engine.exit_codes import EngineExitCode
+
 
 def ingest(
     reports: list[str] = typer.Argument(
@@ -79,6 +81,12 @@ def ingest(
     from testo_core.cli.ui.console import default_console, make_console
 
     console = make_console(plain=True) if ci else default_console()
+    from testo_core.cli.server_url import server_url_problem
+
+    problem = server_url_problem(server)
+    if problem:
+        console.print(f"error: {problem}" if ci else f"[fail]{problem}[/]")
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
     exit_code = execute_ingest_command(
         console=console,
         reports=reports,

@@ -30,6 +30,14 @@ def badge(
         typer.echo("--format takes svg or json", err=True)
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
     made = badge_for_cycle(cycle.strip() if cycle else None, label=label)
+    if made.message == "no runs":
+        from testo_core.cli.cycle_hint import unknown_cycle_hint
+
+        hint = unknown_cycle_hint(cycle.strip() if cycle else None)
+        if hint:
+            # stderr, so the badge on stdout stays valid; still exit 0, since a badge
+            # job that runs before a cycle's first run shouldn't fail.
+            typer.echo(f"warning: {hint}", err=True)
     text = render_svg(made) if fmt == "svg" else json.dumps(shields_endpoint(made))
     if out is None:
         typer.echo(text)

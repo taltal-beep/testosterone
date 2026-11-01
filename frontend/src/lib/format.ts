@@ -3,6 +3,8 @@ export interface RunLike {
   run_id: string;
   created_at: number;
   cycle?: string | null;
+  branch?: string | null;
+  commit?: string | null;
 }
 
 /** The cycle a run belongs to; "run" for records that predate cycle names. */
@@ -17,6 +19,37 @@ export function formatRunTime(createdAtSeconds: number): string {
   const day = date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: sameYear ? undefined : "numeric" });
   const time = date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   return `${day} ${time}`;
+}
+
+/**
+ * How long ago, the way people say it: "just now", "4 min ago", "3 h ago",
+ * "2 days ago"; older than a month reads as the date so it stays exact.
+ */
+export function formatRelativeTime(createdAtSeconds: number, nowMs: number = Date.now()): string {
+  const seconds = Math.max(0, Math.round(nowMs / 1000 - createdAtSeconds));
+  if (seconds < 45) return "just now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 31) return `${days} day${days === 1 ? "" : "s"} ago`;
+  return formatRunTime(createdAtSeconds);
+}
+
+/** First 7 characters of a commit sha, as git itself abbreviates it. */
+export function shortCommit(sha: string): string {
+  return sha.slice(0, 7);
+}
+
+/** "main @ 9c23517", "main" or "9c23517": where a run came from, when it is known. */
+export function formatProvenance(run: Pick<RunLike, "branch" | "commit">): string | null {
+  const branch = run.branch?.trim();
+  const commit = run.commit?.trim();
+  if (branch && commit) return `${branch} @ ${shortCommit(commit)}`;
+  if (branch) return branch;
+  if (commit) return shortCommit(commit);
+  return null;
 }
 
 /** First 8 characters of a run id: enough to tell runs apart, short enough to scan. */

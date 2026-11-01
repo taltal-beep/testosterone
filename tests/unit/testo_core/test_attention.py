@@ -12,6 +12,7 @@ from testo_core.services import attention
 from testo_core.services.flaky_service import FlakyTest
 from testo_core.services.run_failures import RunFailures
 from testo_core.services.test_history import CycleTests, TestSummary
+from tests._history_fakes import cycle_runs_from
 
 
 def _run(run_id: str, cycle: str, created_at: float, *, failed: bool) -> CompletedRunView:
@@ -71,7 +72,7 @@ def history(monkeypatch):  # noqa: ANN001, ANN201
         _run("api-1", "api", 0.5, failed=True),
     ]
     runs[0] = replace(runs[0], branch="main")
-    monkeypatch.setattr(attention, "list_recent_runs", lambda *, limit: runs)
+    monkeypatch.setattr(attention, "list_cycle_runs", cycle_runs_from(runs))
     monkeypatch.setattr(attention, "latest_run_per_cycle", lambda: {"web": runs[0], "api": runs[1]})
     monkeypatch.setattr(
         attention,

@@ -12,6 +12,7 @@ from testo_core.services.ai import AiGenerationResult
 from testo_core.services.ai.integration_settings import InMemoryAiSettingsStore
 from testo_core.services.ai.provider_base import AiGenerationRequest, ProviderRateLimitError
 from testo_core.services.project_health import ProjectHealth
+from tests._history_fakes import cycle_runs_from
 
 
 class _Run:
@@ -57,9 +58,9 @@ def _reply(**scores: int | None) -> str:
 @pytest.fixture
 def world(monkeypatch):  # noqa: ANN001, ANN201
     metadata: dict[str, dict[str, Any]] = {"run-2": {}, "run-1": {}}
-    monkeypatch.setattr(
-        project_review, "list_recent_runs", lambda *, limit: [_Run("run-2"), _Run("run-1")]
-    )
+    runs = [_Run("run-2"), _Run("run-1")]
+    monkeypatch.setattr(project_review, "list_cycle_runs", cycle_runs_from(runs))
+    monkeypatch.setattr(project_review, "list_recent_runs", lambda *, limit: runs)
     monkeypatch.setattr(project_review, "get_run_metadata", lambda *, run_id: metadata[run_id])
     monkeypatch.setattr(
         project_review,

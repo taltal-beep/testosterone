@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from testo_core.history.read_model import latest_run_per_cycle, list_recent_runs
+from testo_core.history.read_model import latest_run_per_cycle, list_cycle_runs
 from testo_core.history.views import CompletedRunView
 from testo_core.services import flaky_service, test_history
 from testo_core.services.run_failures import load_run_failures
@@ -73,7 +73,6 @@ def _failing_streak(run: CompletedRunView, history: list[CompletedRunView]) -> i
 def needs_attention(*, max_cycles: int = MAX_CYCLES) -> Attention:
     """Red cycles first (most new failures first), then newly flaky and slower tests."""
     latest = list(latest_run_per_cycle().values())[: max(1, max_cycles)]
-    recent = list_recent_runs(limit=500)
     failing: list[FailingCycle] = []
     flaky: list[AttentionTest] = []
     slower: list[AttentionTest] = []
@@ -81,7 +80,7 @@ def needs_attention(*, max_cycles: int = MAX_CYCLES) -> Attention:
         cycle = run.cycle or ""
         if _failed(run):
             failures = load_run_failures(run.run_id)
-            history = [r for r in recent if r.cycle == cycle and r.created_at <= run.created_at]
+            history = [run, *list_cycle_runs(cycle, before_run_id=run.run_id)]
             failing.append(
                 FailingCycle(
                     cycle=cycle,
