@@ -161,3 +161,10 @@ Ordered by impact, then by effort.
 | 17 | P1 | AI summary in the pull request comment | Med | M |
 | 18 | I2, I3, S3, V2, F1, Q3, P2, T3, U3, G2, G3 | Small polish items from the steps above | Low | S each |
 | 19 | C3, R3 | Fork-safe comment template; static report on Pages | Low | M |
+
+## Status
+
+Taltal asked for every proposal on 2026-11-01. Built so far:
+
+- #275: D1, D2, I1, S2, T3, P2 (the README already had it; Getting Started now does too), U3.
+- #276: V1, V2, F1. Flaky history and test pages still key on the stored key, so one recording method per cycle is still the advice.
