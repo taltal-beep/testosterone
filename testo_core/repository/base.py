@@ -83,3 +83,12 @@ class BaseRunRepository(Protocol):
 
     def bulk_update(self, records: list[RunRecord]) -> int:
         """Persist updates to the given rows in one transaction; return the number of rows written."""
+
+    def list_run_keys(self) -> list[tuple[str, str | None, datetime | None, RunStatus]]:
+        """``(run_id, cycle, start_time, status)`` of every run, newest first.
+
+        The promoted columns only, no JSON: what retention needs to decide which runs go.
+        """
+
+    def delete_runs(self, run_ids: list[str]) -> int:
+        """Delete the given runs' rows; return how many were deleted. Missing ids are skipped."""

@@ -364,6 +364,34 @@ def build_json_schema() -> dict[str, Any]:
                 "propertyNames": {"pattern": _KEY_PATTERN},
                 "additionalProperties": {"$ref": "#/definitions/resource_pool"},
             },
+            "history": {
+                "type": "object",
+                "description": "How long run history is kept. Without it nothing is deleted. "
+                "Applied by `testo clean --history` and by the API server on a timer.",
+                "properties": {
+                    "retention": {
+                        "type": "object",
+                        "description": "A run is deleted (its row, its per-test rows and its "
+                        "report copy under static/history/) when it breaks any limit here.",
+                        "properties": {
+                            "days": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "description": "Delete runs that started more than this many "
+                                "days ago.",
+                            },
+                            "runs_per_cycle": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "description": "Keep at most this many of each cycle's newest "
+                                "runs.",
+                            },
+                        },
+                        "additionalProperties": False,
+                    }
+                },
+                "additionalProperties": False,
+            },
             "affected": {
                 "type": "object",
                 "description": "How changed files map to tests, for `testo affected` and "

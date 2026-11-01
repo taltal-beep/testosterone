@@ -145,6 +145,8 @@ The upload carries the job's CI provenance (provider, pipeline, job, commit, bra
 
 The database schema is upgraded in place when the server starts: the API runs the Alembic revisions in `testo_core/repository/migrations/` against its Postgres (or SQLite), adopting a database from 1.5.0 or earlier without dropping anything. Upgrade the image, restart, done; see [Repository Pattern § Schema migrations](../Specs%20&%20ADRs/Repository%20Pattern%20-%20Database-Agnostic%20Refactor.md#schema-migrations-2026-11-01).
 
+With a `history:` section in the server's `testosterone.yaml` (`retention: {days: 90, runs_per_cycle: 200}`, either limit alone is fine) the server deletes expired runs, their per-test rows and their report copies at startup and every 6 hours; without it history is kept forever. The same pruning runs by hand as [`testo clean --history`](../CLI%20Commands/Command%20Reference.md#testo-clean---history).
+
 The image sets `TESTO_UI_DIR=/app/ui`, which makes the API serve the built React UI at `/` (unknown paths fall back to `index.html`, so `/runs/<id>` loads directly). With a token set, the UI may write to its own origin; without one, only the `TESTO_CORS_ORIGINS` allow-list may.
 
 ## Limits today

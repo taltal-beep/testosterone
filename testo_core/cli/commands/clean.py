@@ -1,4 +1,9 @@
-"""``testo clean`` — remove local artifacts/temp and optionally prune Docker."""
+"""``testo clean`` — remove local artifacts/temp and optionally prune Docker.
+
+``testo clean --history`` instead deletes expired run history (``history.retention``
+in ``testosterone.yaml``, or ``--keep-days`` / ``--keep-runs``): run rows, per-test
+rows and ``static/history/<run_id>/`` together. Artifacts are left alone then.
+"""
 
 from __future__ import annotations
 
@@ -27,8 +32,32 @@ def clean(
         "--docker",
         help="Prune stopped Docker containers labeled com.testosterone.project=testo.",
     ),
+    history: bool = typer.Option(
+        False,
+        "--history",
+        help="Delete expired run history instead of artifacts: runs older than "
+        "history.retention.days or beyond history.retention.runs_per_cycle (testosterone.yaml), "
+        "with their per-test rows and static/history/<run_id>/ copies.",
+    ),
+    keep_days: int | None = typer.Option(
+        None, "--keep-days", min=1, help="With --history: override history.retention.days."
+    ),
+    keep_runs: int | None = typer.Option(
+        None,
+        "--keep-runs",
+        min=1,
+        help="With --history: override history.retention.runs_per_cycle.",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="With --history: list the runs that would go, delete nothing."
+    ),
 ) -> None:
-    """Delete local artifacts and temp output; optional Docker prune."""
+    """Delete local artifacts and temp output (or, with --history, expired run history)."""
+    if history:
+        _clean_history(
+            yes=yes, config=config, keep_days=keep_days, keep_runs=keep_runs, dry_run=dry_run
+        )
+        return
     from testo_core.cli.cleanup import (
         docker_prune_stopped_with_label,
         remove_tree_if_exists,
@@ -88,5 +117,70 @@ def clean(
             console.print(f"[fail]docker prune exited {code}: {out.strip()}[/]")
             raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE))
 
+    console.print("[ok]Clean finished.[/]")
+    raise typer.Exit(code=0)
+
+
+def _clean_history(
+    *, yes: bool, config: Path | None, keep_days: int | None, keep_runs: int | None, dry_run: bool
+) -> None:
+    from testo_core.cli.ui.console import default_console
+    from testo_core.config.errors import ConfigError
+    from testo_core.config.history_section import HistoryRetention
+    from testo_core.config.loader import discover_and_load
+    from testo_core.history.retention import prune_history
+
+    console = default_console()
+    retention = HistoryRetention()
+    try:
+        retention = discover_and_load(config_path=config).history.retention
+    except ConfigError as exc:
+        if keep_days is None and keep_runs is None:
+            console.print(f"[fail]Could not load config: {exc}[/]")
+            raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT)) from None
+    if keep_days is not None or keep_runs is not None:
+        retention = HistoryRetention(
+            days=keep_days if keep_days is not None else retention.days,
+            runs_per_cycle=keep_runs if keep_runs is not None else retention.runs_per_cycle,
+        )
+    if not retention.enabled:
+        console.print(
+            "[fail]Nothing to prune by: set history.retention.days or runs_per_cycle in "
+            "testosterone.yaml, or pass --keep-days / --keep-runs.[/]"
+        )
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+    if not yes and not dry_run:
+        console.print(
+            "[fail]Refusing to delete without --yes (or -y); --dry-run shows what would go.[/]"
+        )
+        raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+
+    limits = []
+    if retention.days is not None:
+        limits.append(f"older than {retention.days} day(s)")
+    if retention.runs_per_cycle is not None:
+        limits.append(f"beyond the newest {retention.runs_per_cycle} per cycle")
+    console.print(f"[muted]Retention: runs {' or '.join(limits)}.[/]")
+
+    report = prune_history(retention, dry_run=dry_run)
+    if dry_run:
+        if report.run_ids:
+            console.print(f"[warn]{report.runs_selected} run(s) would be deleted:[/]")
+            for run_id in report.run_ids:
+                console.print(f"  {run_id}")
+        else:
+            console.print("[ok]No run has expired.[/]")
+        raise typer.Exit(code=0)
+    if not report.run_ids:
+        console.print("[ok]No run has expired.[/]")
+    else:
+        console.print(
+            f"[ok]Deleted {report.runs_deleted} run(s), {report.test_rows_deleted} test row(s) "
+            f"and {report.snapshots_deleted} report cop{'y' if report.snapshots_deleted == 1 else 'ies'}.[/]"
+        )
+    for error in report.errors:
+        console.print(f"[warn]Could not remove {error}[/]")
+    if report.errors:
+        raise typer.Exit(code=int(EngineExitCode.INFRA_FAILURE))
     console.print("[ok]Clean finished.[/]")
     raise typer.Exit(code=0)
