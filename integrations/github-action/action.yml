@@ -111,7 +111,7 @@ runs:
           --config-path "$TESTO_INPUT_CONFIG_PATH"
     - name: Restore run history
       if: steps.history.outputs.cache == 'true'
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         path: ${{ steps.history.outputs.dir }}
         key: ${{ steps.history.outputs.key }}
@@ -148,7 +148,7 @@ runs:
           --results "$TESTO_INPUT_RESULTS"
     - name: Save run history
       if: always() && steps.history.outputs.cache == 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       with:
         path: ${{ steps.history.outputs.dir }}
         key: ${{ steps.history.outputs.key }}
