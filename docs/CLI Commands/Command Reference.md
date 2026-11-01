@@ -501,6 +501,8 @@ testo init                      # detect, write, record a first run
 testo init --dry-run            # print the files it would write; write and run nothing
 testo init --stack jest --stack go --cycle web --no-run
 testo init --interactive        # the older wizard: asks for each value, writes only the config
+testo init --scan               # monorepo: a stage per runner in every project folder; asks first
+testo init --scan --check       # also ask each runner which tests it would run (runs none)
 ```
 
 | Detected from | Stack (`--stack`) | Stage it writes |
@@ -518,6 +520,10 @@ testo init --interactive        # the older wizard: asks for each value, writes 
 
 Cypress is found but left out (it needs the app running first); the command says so.
 
+**Every folder (`--scan`).** Plain `testo init` reads the files at the top of the project. With `--scan` it looks in every folder that has a project file (up to 6 levels, skipping `node_modules`, virtualenvs, build output and hidden folders) and writes a stage per runner per folder, named after the folder (`api-pytest`, `libs-core-pytest`, `web-jest`) with `target_repo` set so it runs there. A folder an outer stage already covers is left out and listed: Maven modules under a parent `pom.xml`, Gradle subprojects, packages under a root Jest or Vitest, and Python folders a bare `pytest` (or `pytest tests`) above them collects. `dotnet test` starts at a `.sln`, else in each test project's folder. The CI file installs and runs each stage in its folder. `--scan` prints the stages and the command each runs, then asks before writing: `--yes` (`-y`) skips the question, `--dry-run` prints the files, and with no terminal to answer nothing is written (exit `2`).
+
+**Checked by the runners (`--check`).** Asks each runner to list the tests it would run, without running them: `pytest --collect-only`, `jest --listTests` (test files), `vitest list`, `playwright test --list`, `go test -list`, `dotnet test --list-tests`, `rspec --dry-run`, `phpunit --list-tests`. A stage that lists no tests is left out; one whose runner isn't installed yet or fails to list is kept and flagged, so install the project's dependencies first for a full check. Listing loads test code (pytest imports `conftest.py`, Go and .NET compile), which is why it is opt-in. pytest uses the folder's (or the project's) `.venv`, Node runners the project's own `node_modules/.bin`; nothing is downloaded. Maven and Gradle are not checked (they can't list without running). Works without `--scan` too, and with `--dry-run` (it still lists, but writes nothing).
+
 What it writes, in the project folder (`--dir`, default here):
 
 - **`testosterone.yaml`**: one cycle, named after the folder unless `--cycle` (the same default as `pytest --testo`), with a stage per runner.
@@ -528,7 +534,7 @@ What it writes, in the project folder (`--dir`, default here):
 
 A file that exists is kept unless `--force`; a kept `testosterone.yaml` with one cycle gives the workflow its cycle name.
 
-The first run (`--no-run` skips it): result files a test run already left in the project (JUnit XML, Jest/Vitest/Playwright/RSpec JSON, `.trx`, `go test -json`, Robot `output.xml`, `allure-results`; recognised by content, files git tracks are skipped as fixtures) are recorded like `testo ingest` would. When there are none, the new cycle runs once. Exit code `0` once a run is recorded, even if some of its tests failed; `2` when no runner was found or an option is wrong.
+The first run (`--no-run` skips it): result files a test run already left in the project (JUnit XML, Jest/Vitest/Playwright/RSpec JSON, `.trx`, `go test -json`, Robot `output.xml`, `allure-results`; recognised by content, files git tracks are skipped as fixtures) are recorded like `testo ingest` would. When there are none, the new cycle runs once. Exit code `0` once a run is recorded, even if some of its tests failed; `2` when no runner was found, `--check` found no tests in any stage, `--scan` wasn't confirmed, or an option is wrong.
 
 ---
 
