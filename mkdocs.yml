@@ -116,6 +116,7 @@ nav:
       - Architecture Review: Specs & ADRs/Architecture Review - 2026-10-31.md
       - Importer and Integration Bug Hunt: Specs & ADRs/Importer and Integration Bug Hunt - 2026-10-31.md
       - Engine Fixes: Specs & ADRs/Engine Fixes - 2026-11-01.md
+      - MCP Server: Specs & ADRs/MCP Server - 2026-11-01.md
       - Affected Test Selection: Specs & ADRs/Affected Test Selection - 2026-10-30.md
       - Resource Pools and Leases: Specs & ADRs/Resource Pools and Leases - 2026-10-26.md
       - Resource Lifecycle Hooks: Specs & ADRs/Resource Lifecycle Hooks - 2026-10-26.md
@@ -138,8 +139,10 @@ nav:
       - BehaveX Reports: Specs & ADRs/BehaveX Reports - 2026-10-21.md
       - Config JSON Schema: Specs & ADRs/Config JSON Schema - 2026-10-22.md
       - Flaky Test Quarantine: Specs & ADRs/Flaky Test Quarantine - 2026-10-22.md
+      - Quarantine From the UI: Specs & ADRs/Quarantine From the UI - 2026-11-01.md
       - Alerts Where Developers Look: Specs & ADRs/Alerts Where Developers Look - 2026-10-22.md
       - OpenTelemetry Export: Specs & ADRs/OpenTelemetry Export - 2026-10-30.md
+      - Flaky Test Issues: Specs & ADRs/Flaky Test Issues - 2026-11-01.md
       - Free Copies of Paid Features: Specs & ADRs/Free Copies of Paid Features - 2026-11-01.md
       - Security and Install Review: Specs & ADRs/Security and Install Review - 2026-10-31.md
       - Crash Detection: Specs & ADRs/Crash Detection - 2026-10-31.md
@@ -155,6 +158,7 @@ nav:
       - Phase 4 BYOK and Failure Analysis: Specs & ADRs/Phase 4 BYOK and Failure Analysis.md
       - Phase 5 UI Redesign: Specs & ADRs/Phase 5 UI Redesign - Cycles-First Navigation.md
       - Product Roadmap Work: Specs & ADRs/Product Roadmap Work - 2026-10-25.md
+      - Better Flaky Signal: Specs & ADRs/Better Flaky Signal - 2026-11-01.md
       - Product Roadmap: Roadmap & Strategy/Product Roadmap.md
       - Feature Gaps and Quick Wins: Roadmap & Strategy/Feature Gaps and Quick Wins - 2026-10-31.md
       - New User Journey Audit: Roadmap & Strategy/New User Journey Audit - 2026-11-01.md

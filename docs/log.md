@@ -174,6 +174,21 @@ Added [UI Review Fixes - 2026-11-01](Specs%20&%20ADRs/UI%20Review%20Fixes%20-%20
 
 Added [Engine Fixes - 2026-11-01](Specs%20&%20ADRs/Engine%20Fixes%20-%202026-11-01.md) to Specs & ADRs (what each approved bug-hunt proposal changed), linked from its README and the docs site menu.
 
+## 2026-11-01: better flaky signal
+
+Added [Better Flaky Signal - 2026-11-01](Specs%20&%20ADRs/Better%20Flaky%20Signal%20-%202026-11-01.md) to Specs & ADRs (gap G1), linked from its README, the Index and the docs site menu.
+
+## 2026-11-01: flaky test issues
+
+Added [Flaky Test Issues - 2026-11-01](Specs%20&%20ADRs/Flaky%20Test%20Issues%20-%202026-11-01.md) to Specs & ADRs (`TESTO_ISSUES=github`, `testo issues sync`), linked from its README and the docs site menu.
+
+## 2026-11-01: MCP server
+
+Added [MCP Server - 2026-11-01](Specs%20&%20ADRs/MCP%20Server%20-%202026-11-01.md) to Specs & ADRs (`testo mcp`), linked from its README and the docs site menu.
+
+## 2026-11-01: quarantine from the UI
+
+Added [Quarantine From the UI - 2026-11-01](Specs%20&%20ADRs/Quarantine%20From%20the%20UI%20-%202026-11-01.md) to Specs & ADRs (gap G2, quick win Q8), linked from its README, the Index and the docs site menu; [Flaky Test Quarantine - 2026-10-22](Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md) now points to it.
 ## 2026-11-01: easy setup
 
 Added [Easy Setup - 2026-11-01](Specs%20&%20ADRs/Easy%20Setup%20-%202026-11-01.md) to Specs & ADRs (`testo init` that detects the stack, and the follow-ups for the Action, CI snippets and a PR comment preview), linked from its README and the docs site menu.

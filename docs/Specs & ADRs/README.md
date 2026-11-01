@@ -21,6 +21,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Navy glass look and sidebar | [UI Restyle - 2026-10-19](UI%20Restyle%20-%202026-10-19.md) |
 | One engine, generated API types, blocking type checks | [Architecture Consolidation - 2026-10-06](Architecture%20Consolidation%20-%202026-10-06.md) |
 | Architecture review: read-side scaling, migrations, layering enforcement (proposals only) | [Architecture Review - 2026-10-31](Architecture%20Review%20-%202026-10-31.md) |
+| Better flaky signal: retries, same-commit results, flips per branch, broken kept apart | [Better Flaky Signal - 2026-11-01](Better%20Flaky%20Signal%20-%202026-11-01.md) |
 | Importer and integration bug hunt: ranked findings, fixes and proposals | [Importer and Integration Bug Hunt - 2026-10-31](Importer%20and%20Integration%20Bug%20Hunt%20-%202026-10-31.md) |
 | Engine fixes from the bug hunt: one run of a cycle at a time, and the other proposals | [Engine Fixes - 2026-11-01](Engine%20Fixes%20-%202026-11-01.md) |
 | Interview-readiness batch (pull requests 67 to 91, v1.1.0) | [Interview Readiness Fixes - 2026-10-07](Interview%20Readiness%20Fixes%20-%202026-10-07.md) |
@@ -31,6 +32,7 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Third-party frameworks and reporters through entry points | [Plugin API - 2026-10-19](Plugin%20API%20-%202026-10-19.md) |
 | Playwright as its own equipment | [Playwright Adapter - 2026-10-19](Playwright%20Adapter%20-%202026-10-19.md) |
 | Quarantining flaky tests so they don't fail the run | [Flaky Test Quarantine - 2026-10-22](Flaky%20Test%20Quarantine%20-%202026-10-22.md) |
+| Quarantine from the UI, API or `testo quarantine`, kept on the server and applied to ingest and `pytest --testo` too | [Quarantine From the UI - 2026-11-01](Quarantine%20From%20the%20UI%20-%202026-11-01.md) |
 | Running only the tests a change can affect (`testo affected`, `pytest --testo-affected`) | [Affected Test Selection - 2026-10-30](Affected%20Test%20Selection%20-%202026-10-30.md) |
 | Pools of keys (VMs, devices, accounts) leased to parallel workers | [Resource Pools and Leases - 2026-10-26](Resource%20Pools%20and%20Leases%20-%202026-10-26.md) |
 | Checking keys, clean releases and a delay before reusing an expired key | [Resource Lifecycle Hooks - 2026-10-26](Resource%20Lifecycle%20Hooks%20-%202026-10-26.md) |
@@ -39,9 +41,11 @@ Design decisions that still describe the code. The code is the source of truth; 
 | One-command setup for existing projects: `testo init`, the zero-config Action, per-CI snippets, a PR comment preview | [Easy Setup - 2026-11-01](Easy%20Setup%20-%202026-11-01.md) |
 | Reading Jest/Vitest, .NET, Go, Robot, RSpec, k6, XCTest, Android and Allure results in their own formats | [Runner Coverage - 2026-10-26](Runner%20Coverage%20-%202026-10-26.md) |
 | Runs, stages and tests as OpenTelemetry traces (OTLP), off by default | [OpenTelemetry Export - 2026-10-30](OpenTelemetry%20Export%20-%202026-10-30.md) |
+| The run history as an MCP server for coding agents (`testo mcp`), read-only by default | [MCP Server - 2026-11-01](MCP%20Server%20-%202026-11-01.md) |
 | Coverage on the PR comment, weekly digest, secrets hidden in stored results, backup and restore, failed-first ordering | [Free Copies of Paid Features - 2026-11-01](Free%20Copies%20of%20Paid%20Features%20-%202026-11-01.md) |
 | Security and fresh-install review: findings R1 to R18, fixes and proposals | [Security and Install Review - 2026-10-31](Security%20and%20Install%20Review%20-%202026-10-31.md) |
 | Slack and Teams alerts, failure annotations on the diff, flaky test issues | [Alerts Where Developers Look - 2026-10-22](Alerts%20Where%20Developers%20Look%20-%202026-10-22.md) |
+| A GitHub issue per test that turns flaky, assigned from CODEOWNERS and closed once it is stable | [Flaky Test Issues - 2026-11-01](Flaky%20Test%20Issues%20-%202026-11-01.md) |
 | BehaveX HTML report plus Allure results | [BehaveX Reports - 2026-10-21](BehaveX%20Reports%20-%202026-10-21.md) |
 | JSON Schema for `testosterone.yaml` (editor autocomplete) | [Config JSON Schema - 2026-10-22](Config%20JSON%20Schema%20-%202026-10-22.md) |
 | Record results from any CI (`testo ingest`) and a shared team server | [Ingest and Team Server - 2026-10-22](Ingest%20and%20Team%20Server%20-%202026-10-22.md) |

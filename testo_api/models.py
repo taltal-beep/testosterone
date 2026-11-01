@@ -257,6 +257,33 @@ class TriageListResponse(ApiModel):
     causes: list[TriageItem]
 
 
+class QuarantineItem(ApiModel):
+    """A test (or glob) whose failures don't fail its cycle's runs, kept on the server."""
+
+    cycle: str
+    test: str
+    # An fnmatch glob: matches several tests and is never released on its own.
+    is_glob: bool
+    reason: str = ""
+    owner: str = ""
+    added_by: str | None = None
+    added_at: float
+
+
+class QuarantineRequest(ApiModel):
+    cycle: str = Field(min_length=1, max_length=512)
+    # The test's name or full name as runs record it, or an fnmatch glob.
+    test: str = Field(min_length=1, max_length=1024)
+    reason: str | None = Field(default=None, max_length=500)
+    owner: str | None = Field(default=None, max_length=200)
+
+
+class QuarantineListResponse(ApiModel):
+    items: list[QuarantineItem]
+    # Clean runs in a row that release an exact-name entry (TESTO_QUARANTINE_RELEASE_AFTER); 0 is off.
+    release_after: int
+
+
 class FailingTestItem(ApiModel):
     key: str
     name: str
@@ -394,6 +421,24 @@ class FlakyTestItem(ApiModel):
     # CODEOWNERS owners of the test's file, and GitHub's new-issue form prefilled for it.
     owners: list[str] = Field(default_factory=list)
     issue_url: str | None = None
+    # Why it counts as flaky ("passed on retry in 2 runs", "flipped 3 times on main").
+    reasons: list[str] = Field(default_factory=list)
+    # Runs in which it failed and then passed on a retry.
+    retried: int = 0
+    # Matches the cycle's quarantine: the list kept on the server, or testosterone.yaml when it is readable.
+    quarantined: bool = False
+    # The stored entry it matches exactly, which the UI can release (null for config rules and globs).
+    quarantine_entry: str | None = None
+
+
+class BrokenTestItem(ApiModel):
+    """Failed each of its last runs: a real failure, kept apart from flaky tests."""
+
+    key: str
+    name: str
+    group: str
+    failing_runs: int
+    message: str = ""
 
 
 class FlakyTestsResponse(ApiModel):
@@ -402,6 +447,7 @@ class FlakyTestsResponse(ApiModel):
     runs_analyzed: int
     tests_analyzed: int
     items: list[FlakyTestItem] = Field(default_factory=list)
+    broken: list[BrokenTestItem] = Field(default_factory=list)
 
 
 class TestSummaryItem(ApiModel):

@@ -91,6 +91,61 @@ def test_a_recording_problem_never_changes_the_outcome(project: Path, tmp_path: 
     assert "testo: could not record this session" in result.stdout
 
 
+# -- quarantine -------------------------------------------------------------------
+
+
+def _quarantine(db: Path, cycle: str, test: str) -> None:
+    from sqlmodel import create_engine
+
+    from testo_core.services.quarantine_store import QuarantineStore
+
+    engine = create_engine(f"sqlite:///{db}")
+    try:
+        QuarantineStore(engine).add(cycle=cycle, test=test)
+    finally:
+        engine.dispose()
+
+
+def test_a_session_whose_failures_are_all_quarantined_exits_0(
+    project: Path, tmp_path: Path
+) -> None:
+    db = tmp_path / "history.db"
+    _quarantine(db, "shop-unit", "test_bad")
+    result = _pytest(project, db, "--testo-cycle", "shop-unit")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (
+        "testo: exit 0 because every failed test is quarantined in cycle 'shop-unit': test_bad"
+        in result.stdout
+    )
+    # Mute, not skip: the failure is still recorded, and the run passed the gate too.
+    assert _runs(db) == [("shop-unit", 0, 1)]
+
+
+def test_config_rules_count_and_another_failure_still_fails(project: Path, tmp_path: Path) -> None:
+    (project / "testosterone.yaml").write_text(
+        "version: 1\ncycles:\n  shop-unit:\n    quarantine: [test_bad]\n"
+        "    stages:\n      - {name: unit, framework: pytest}\n",
+        encoding="utf-8",
+    )
+    db = tmp_path / "history.db"
+    result = _pytest(project, db, "--testo-cycle", "shop-unit")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "quarantined in cycle 'shop-unit': test_bad" in result.stdout
+
+    (project / "tests" / "test_more.py").write_text(
+        "def test_other():\n    assert False\n", encoding="utf-8"
+    )
+    result = _pytest(project, db, "--testo-cycle", "shop-unit")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "quarantined in cycle" not in result.stdout
+
+
+def test_quarantine_is_not_applied_without_the_flag(project: Path, tmp_path: Path) -> None:
+    db = tmp_path / "history.db"
+    _quarantine(db, "shop", "test_bad")
+    assert _pytest(project, db).returncode == 1
+
+
 def _verbose_lines(stdout: str) -> list[str]:
     """``tests/x.py::test_y PASSED`` lines, in the order the tests ran."""
     return [line for line in stdout.splitlines() if re.search(r"::test_\w+ (PASSED|FAILED)", line)]

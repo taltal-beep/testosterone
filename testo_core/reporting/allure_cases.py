@@ -118,6 +118,7 @@ def load_cases(plan_root: Path) -> dict[str, dict[str, Any]]:
         if not isinstance(data, dict):
             continue
         key = case_key(data)
+        details = data.get("statusDetails")
         st = str(data.get("status") or "unknown").lower()
         stage = stages.get(path.parent)
         if stage is None:
@@ -132,5 +133,7 @@ def load_cases(plan_root: Path) -> dict[str, dict[str, Any]]:
             "stage": stage,
             "framework": label_value(data.get("labels"), "framework"),
             "crash": case_crash(data, st),
+            # Failed, then passed on a retry inside this run (JUnit reruns, Surefire).
+            "retried": isinstance(details, dict) and bool(details.get("flaky")),
         }
     return out

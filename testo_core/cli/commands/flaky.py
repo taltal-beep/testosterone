@@ -34,10 +34,11 @@ def flaky(
     config: Path | None = typer.Option(
         None,
         "--config",
-        help="testosterone.yaml whose 'quarantine:' rules mark tests (default: auto-discover).",
+        help="testosterone.yaml whose 'quarantine:' rules mark tests (default: auto-discover). "
+        "Tests in the stored list (testo quarantine) are marked too.",
     ),
 ) -> None:
-    """List tests that both passed and failed, flipping at least twice, in the last runs."""
+    """List flaky tests: passed on retry, mixed results on one commit, or flips on a branch."""
     from rich.markup import escape
     from rich.table import Table
 
@@ -91,6 +92,18 @@ def flaky(
         f"[muted]{report.tests_analyzed} tests across the last {report.runs_analyzed} runs "
         f"of[/] [bold]{report.cycle}[/]"
     )
+    if report.broken and not new:
+        broken = Table(
+            title=f"Broken, not flaky ({len(report.broken)}): failing every recent run",
+            title_justify="left",
+        )
+        broken.add_column("Test")
+        broken.add_column("Group", style="muted")
+        broken.add_column("Failing runs", justify="right")
+        broken.add_column("Last error", style="muted")
+        for b in report.broken:
+            broken.add_row(escape(b.name), escape(b.group), str(b.failing_runs), escape(b.message))
+        console.print(broken)
     if not report.flaky:
         console.print(f"[ok]No {'newly ' if new else ''}flaky tests.[/]")
         raise typer.Exit(code=exit_code)
@@ -100,6 +113,7 @@ def flaky(
     table.add_column("Group", style="muted")
     table.add_column("Pass / fail", justify="right")
     table.add_column("Flips", justify="right")
+    table.add_column("Why")
     table.add_column("History (oldest → newest)")
     table.add_column("Quarantined")
     for t in report.flaky:
@@ -109,14 +123,23 @@ def flaky(
             escape(t.group),
             f"{t.passed} / {t.failed}",
             str(t.flips),
+            escape("; ".join(t.reasons)),
             history,
             "[warn]yes[/]" if t.quarantined else "",
         )
     console.print(table)
     if open_flaky:
         console.print(
-            "[muted]To stop these failing the build while they're fixed, add them to "
-            f"cycle {report.cycle!r} in testosterone.yaml:[/]"
+            "[muted]To stop these failing the build while they're fixed, quarantine them "
+            "(no config change; the UI's Quarantine button does the same):[/]"
+        )
+        for t in open_flaky:
+            console.print(
+                escape(f"  testo quarantine add --cycle {report.cycle} {json.dumps(t.name)}"),
+                highlight=False,
+            )
+        console.print(
+            f"[muted]Or, with a testosterone.yaml, add them to cycle {report.cycle!r} there:[/]"
         )
         snippet = "\n".join(
             ["quarantine:"] + [f"  - test: {json.dumps(t.name)}" for t in open_flaky]
@@ -126,15 +149,17 @@ def flaky(
 
 
 def _quarantine_rules(cycle: str, config: Path | None) -> tuple[QuarantineRule, ...]:
-    """The cycle's quarantine rules; none when no config is found and none was given."""
+    """The cycle's config rules (none when no config is found and none was given), then the stored list."""
     from testo_core.config.errors import ConfigDiscoveryError
     from testo_core.config.loader import discover_and_load
+    from testo_core.services.quarantine_store import merge_rules, stored_rules
 
+    configured: tuple[QuarantineRule, ...] = ()
     try:
         cfg = discover_and_load(config_path=config)
+        plan = cfg.cycles.get(cycle)
+        configured = plan.quarantine if plan is not None else ()
     except ConfigDiscoveryError:
         if config is not None:
             raise
-        return ()
-    plan = cfg.cycles.get(cycle)
-    return plan.quarantine if plan is not None else ()
+    return merge_rules(configured, stored_rules(cycle))

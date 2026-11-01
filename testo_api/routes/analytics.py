@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, HTTPException, Query
 
 from testo_api.models import (
     AttachmentItem,
+    BrokenTestItem,
     CycleTestsResponse,
     DeltaCaseChange,
     DeltaCaseChangesResponse,
@@ -21,6 +24,7 @@ from testo_api.models import (
     TestPointItem,
     TestSummaryItem,
 )
+from testo_core.config.schema import QuarantineRule
 from testo_core.history.read_model import get_run
 from testo_core.services.delta_models import MetricDelta
 from testo_core.services.delta_service import (
@@ -29,12 +33,13 @@ from testo_core.services.delta_service import (
     InvalidRunIdError,
     RunNotFoundComparisonError,
 )
-from testo_core.services.flaky_service import DEFAULT_WINDOW, find_flaky_tests
+from testo_core.services.flaky_service import DEFAULT_WINDOW, FlakyTest, find_flaky_tests
 from testo_core.services.run_snapshot_diff import diff_run_snapshots
 from testo_core.services.test_attachments import attachments_for
 from testo_core.services.test_history import cycle_source, list_cycle_tests, load_test_history
 from testo_core.services.test_ownership import issue_url, owners_for
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["analytics"])
 
 
@@ -152,16 +157,54 @@ def get_delta_case_changes(current_run_id: str, baseline_run_id: str) -> DeltaCa
     )
 
 
+def flaky_quarantine(cycle: str, flaky: tuple[FlakyTest, ...]) -> dict[str, str | None]:
+    """``key -> stored entry`` of each flaky test the cycle's quarantine matches.
+
+    The entry is the stored test name the UI can release, or None when only a
+    glob or a ``testosterone.yaml`` rule matches. Config is read when this
+    process can find it (a team server often can't); the stored list is enough there.
+    """
+    from testo_core.config.errors import ConfigError
+    from testo_core.config.loader import discover_and_load
+    from testo_core.engine.quarantine import matching_rule
+    from testo_core.services.quarantine_store import QuarantineStore, merge_rules
+
+    exact: dict[str, str] = {}
+    stored: tuple[QuarantineRule, ...] = ()
+    try:
+        for entry in QuarantineStore().list(cycle):
+            stored += (entry.rule(),)
+            if not entry.is_glob:
+                exact[entry.test] = entry.test
+    except Exception:  # noqa: BLE001 - the flaky list still shows without it
+        logger.warning("could not read the quarantine list of %s", cycle, exc_info=True)
+    configured: tuple[QuarantineRule, ...] = ()
+    try:
+        plan = discover_and_load().cycles.get(cycle)
+        configured = plan.quarantine if plan is not None else ()
+    except ConfigError:
+        pass
+    rules = merge_rules(stored, configured)
+    out: dict[str, str | None] = {}
+    for t in flaky:
+        if matching_rule(rules, name=t.name, full_name=t.full_name) is not None:
+            out[t.key] = exact.get(t.name) or exact.get(t.full_name)
+    return out
+
+
 @router.get("/analytics/flaky", response_model=FlakyTestsResponse)
 def get_flaky_tests(
     cycle: str, window: int = Query(DEFAULT_WINDOW, ge=2, le=200)
 ) -> FlakyTestsResponse:
-    """Tests that both passed and failed, flipping at least twice, in a cycle's last runs.
+    """Flaky tests in a cycle's last runs (retries, same-commit results, flips per branch).
+
+    Tests that failed every one of their last runs come back as ``broken`` instead.
 
     UI parity with ``testo flaky --cycle``; see ``testo_core/services/flaky_service.py``.
     """
     report = find_flaky_tests(cycle=cycle, window=window)
     checkout, repository = cycle_source(cycle)
+    quarantine = flaky_quarantine(cycle, report.flaky)
     owners = {t.key: owners_for(checkout, t.full_name, t.group) for t in report.flaky}
     return FlakyTestsResponse(
         cycle=report.cycle,
@@ -188,8 +231,22 @@ def get_flaky_tests(
                     full_name=t.full_name,
                     owners=owners[t.key],
                 ),
+                reasons=list(t.reasons),
+                retried=t.retried,
+                quarantined=t.key in quarantine,
+                quarantine_entry=quarantine.get(t.key),
             )
             for t in report.flaky
+        ],
+        broken=[
+            BrokenTestItem(
+                key=b.key,
+                name=b.name,
+                group=b.group,
+                failing_runs=b.failing_runs,
+                message=b.message,
+            )
+            for b in report.broken
         ],
     )
 

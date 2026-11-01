@@ -33,6 +33,7 @@ def _row(run_id: str, key: str, case: Mapping[str, Any]) -> TestResult:
         duration_ms=int(duration) if isinstance(duration, int) else None,
         message=str(case.get("message") or "")[:300],
         crash=str(case.get("crash") or "")[:16],
+        retried=bool(case.get("retried")),
     )
 
 
@@ -47,6 +48,7 @@ def _case(row: TestResult) -> dict[str, Any]:
         "stage": row.stage,
         "framework": row.framework,
         "crash": row.crash,
+        "retried": bool(row.retried),
     }
 
 
