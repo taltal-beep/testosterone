@@ -61,12 +61,12 @@ Status: **fixed** means merged or in an open fix PR (number given). **proposal**
 | L4 | JUnit | The `message` attribute wasn't capped (2 MB stored whole). | fixed #232 |
 | L5 | Summary | "No test changed outcome" was shown when the previous run had no stored results. | fixed #226 |
 | L6 | Summary | The runner column wasn't escaped, a cycle name with `-->` ended the comment marker, and list items showed `\|`. | fixed #226 |
-| L7 | pytest JUnit | A test that passes and then errors in teardown is written as **two** `<testcase>` entries with the same name, so it counts as 2 tests (1 passed, 1 broken). | proposal P3 |
-| L8 | Go | With `-count=2`, or reruns in one file, attempts of the same test overwrite each other, so a fail-then-pass test isn't flagged flaky. | proposal P3 |
+| L7 | pytest JUnit | A test that passes and then errors in teardown is written as **two** `<testcase>` entries with the same name, so it counts as 2 tests (1 passed, 1 broken). | fixed (P3) |
+| L8 | Go | With `-count=2`, or reruns in one file, attempts of the same test overwrite each other, so a fail-then-pass test isn't flagged flaky. | fixed (P3) |
 | L9 | Action | `cycle: all` publishes the summary, annotations and alert of the last cycle only. | proposal P4 |
 | L10 | Action | `${{ inputs.* }}` are pasted into the composite step's bash, so a `"` or `$(…)` in an input (`cycle: ${{ github.head_ref }}`) runs as shell. | proposal P5 |
 | L11 | OTel | `test.case.name` is the same for every parametrized case, and an endpoint with no scheme exits 3 instead of 2. | fixed (P6) |
-| L12 | JUnit | A suite's `tests="5"` with only 1 `<testcase>` gives no warning, and a naive `timestamp` is read as local time. | proposal P2 |
+| L12 | JUnit | A suite's `tests="5"` with only 1 `<testcase>` gives no warning, and a naive `timestamp` is read as local time. | count warning added (P2); naive timestamps stay local time, which is what pytest and Surefire write |
 
 **Suspected, not verified:**
 - Teams card text isn't markdown-escaped (`_x_` turns italic).
@@ -91,10 +91,23 @@ Belongs to the engine/CLI hunt instead: Playwright JSON with a BOM, report paths
 
 - **P1. Prefer runners' own formats over jest-junit.** In real output, jest-junit (default config) **dropped a test file that failed to compile** and named every suite `undefined`. The [Getting Started](../Getting%20Started.md) and setup prompts could say "use `jest --json`" first. Docs only. **Done 2026-11-01:** README, Getting Started, Team Server and Command Reference now show `jest --json`.
 - **P2. Cross-check suite counts.** When a `<testsuite tests="N">` claims more cases than it holds, log a warning like the Playwright report notes. This is cheap, but some tools write wrong counts, so warn rather than fail.
-- **P3. Merge duplicate attempts.** Fold same-name `<testcase>` entries in one suite (the pytest teardown error) and repeated Go runs into one result: worst status wins, and a fail followed by a pass is flaky. This changes counts users already have, so it needs a decision.
+- **P3. Merge duplicate attempts.** Fold same-name `<testcase>` entries in one suite (the pytest teardown error) and repeated Go runs into one result: worst status wins, and a fail followed by a pass is flaky. This changes counts users already have, so it needed a decision. **Decided 2026-11-01 (Taltal: go with the recommendation), built:** see [Decision on duplicate attempts](#decision-on-duplicate-attempts-2026-11-01).
 - **P4. `cycle: all` in the Action.** Publish one summary and alert per `plan_finished` event.
 - **P5. Action inputs through `env:`.** Read inputs as environment variables in the composite steps instead of `${{ }}` in bash. Also split `package` on spaces so `testo-core pytest-xdist` works.
 - **P6. OTel naming.** Use the test's parametrized `name` in `test.case.name`, and treat an endpoint with no scheme as bad input (exit 2).
+
+## Decision on duplicate attempts (2026-11-01)
+
+Taltal approved P3 as recommended. A test listed more than once **in one JUnit `<testsuite>`**, or run more than once in **one `go test -json` file** (`-count=N`), is now one result:
+
+- a failure followed by a final pass is `passed` and flaky, with the first failure's message ("Passed on rerun. …");
+- otherwise the worst attempt wins: failed, then broken, then passed, then skipped (a pass followed by a teardown error is `broken`).
+
+The merge is by the test's history id (tool plus full name), only inside one suite or one Go file. The same name in two suites, two files or two Playwright projects stays separate. The other importers already report one result per test (Playwright and Jest keep retries inside the test).
+
+What changes for users: totals for affected reports go down (pytest before 8 with teardown errors, `go test -count`), and a few tests that were counted as failed are now flaky passes. Old runs keep their stored counts. The shared helper is `fold_attempts` in `testo_core/reporting/imported_results.py`.
+
+P2 shipped with it: a leaf `<testsuite tests="N">` listing fewer than N cases adds a note to the import log ("the runner may have stopped while writing it"). It never fails the stage, because some tools write wrong counts.
 
 ## Consequences
 
