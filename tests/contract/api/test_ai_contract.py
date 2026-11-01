@@ -140,3 +140,27 @@ def test_openai_compatible_config_needs_a_base_url_but_no_key() -> None:
     assert payload["base_url"] == "http://localhost:11434/v1"
     assert payload["configured"] is True
     assert payload["key_present"] is False
+
+
+def test_claude_code_config_needs_no_key_and_is_configured_when_the_cli_is_found(
+    monkeypatch,  # noqa: ANN001
+) -> None:
+    from testo_api.dependencies import get_ai_settings_store
+    from testo_core.services.ai.integration_settings import InMemoryAiSettingsStore
+
+    app = create_app()
+    store = InMemoryAiSettingsStore()
+    app.dependency_overrides[get_ai_settings_store] = lambda: store
+    client = TestClient(app)
+    body = {"enabled": True, "provider": "claude_code", "model": "sonnet", "timeout_s": 120}
+
+    monkeypatch.setattr("testo_api.routes.ai.resolve_claude_cli", lambda: None)
+    resp = client.put("/api/v1/ai/config", json=body)
+    assert resp.status_code == 200
+    assert resp.json()["configured"] is False
+    assert resp.json()["key_present"] is None
+
+    monkeypatch.setattr("testo_api.routes.ai.resolve_claude_cli", lambda: "/usr/bin/claude")
+    payload = client.get("/api/v1/ai/config/status").json()
+    assert payload["provider"] == "claude_code"
+    assert payload["configured"] is True

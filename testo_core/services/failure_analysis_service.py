@@ -129,9 +129,12 @@ class FailureAnalysisService:
                 context_stats=context.context_stats,
                 error_code=None,
             )
-        except ProviderMisconfiguredError:
+        except ProviderMisconfiguredError as exc:
+            # Say what is wrong (missing key variable, CLI not installed or not logged in).
             summary = self._fallback(
-                run_id=run_id, error_code="provider_misconfigured", limitations=context.limitations
+                run_id=run_id,
+                error_code="provider_misconfigured",
+                limitations=(*context.limitations, redact_error_message(exc)),
             )
         except ProviderTimeoutError:
             summary = self._fallback(

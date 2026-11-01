@@ -21,7 +21,7 @@ def urlopen(req: urllib.request.Request, timeout: float) -> IO[bytes]:
     return _OPENER.open(req, timeout=timeout)  # type: ignore[no-any-return]  # nosec: B310
 
 
-AiProviderName = Literal["openai", "anthropic", "openai_compatible"]
+AiProviderName = Literal["openai", "anthropic", "openai_compatible", "claude_code"]
 
 
 @dataclass(frozen=True)

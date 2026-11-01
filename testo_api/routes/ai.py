@@ -13,6 +13,7 @@ from testo_api.models import (
 )
 from testo_core.services.ai import AiProviderConfig, ProviderMisconfiguredError
 from testo_core.services.ai.integration_settings import InMemoryAiSettingsStore
+from testo_core.services.ai.providers.claude_code_provider import resolve_claude_cli
 from testo_core.services.failure_analysis_service import FailureAnalysisService
 
 router = APIRouter(prefix="/api/v1", tags=["ai"])
@@ -32,6 +33,11 @@ def _config_status_payload(store: InMemoryAiSettingsStore) -> dict[str, object]:
     # An OpenAI-compatible server may need no key (a local Ollama); it needs a base URL.
     if status.get("provider") == "openai_compatible":
         status["configured"] = bool(status.get("base_url"))
+    elif status.get("provider") == "claude_code":
+        # No key: it uses the local CLI's own login. Configured once the CLI is found;
+        # whether it is logged in shows on the first summary.
+        status["key_present"] = None
+        status["configured"] = resolve_claude_cli() is not None
     else:
         status["configured"] = status["key_present"]
     return status
