@@ -96,7 +96,7 @@ export function DashboardPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-3">
                     <StatusPill status={run.status ?? "unknown"} returncode={run.returncode} />
-                    <RunLabel run={run} linked href={run.run_detail_url} />
+                    <RunLabel run={run} linked relative href={run.run_detail_url} />
                   </div>
                   <div className="flex items-center gap-3 text-xs text-ink-400">
                     <span>{formatPercent(run.health_pct)} passed</span>

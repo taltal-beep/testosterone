@@ -63,6 +63,8 @@ class DashboardRecentRun:
     duration_ms: float | None
     run_detail_url: str
     compare_url: str | None
+    branch: str | None = None
+    commit: str | None = None
 
 
 @dataclass(frozen=True)
@@ -350,4 +352,6 @@ class DashboardService:
             duration_ms=None,
             run_detail_url=f"/runs/{session.run_id}",
             compare_url=compare_url,
+            branch=session.branch,
+            commit=session.commit,
         )

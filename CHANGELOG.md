@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - PR comment and job summary: a backtick in a test name (which in a fork's pull request its author controls) ended the code span, so `@user` mentions and HTML after it rendered live. Names are now fenced so nothing inside can close them, and stage, runner and branch cells are plain text. A cycle name with `-->` can no longer end the comment marker
 
 ### Added
+- Web UI: each card on the Cycles page shows the cycle's latest result (status, pass rate, failing count, branch and commit, and a link to the run), and run labels on the Dashboard and Runs pages say when the run happened ("3 h ago") and which branch and commit it ran from; `GET /api/v1/cycles` items carry `latest_run`, and run items carry `commit`
 - Python 3.14 is tested in CI and listed in the package classifiers
 
 ### Fixed
