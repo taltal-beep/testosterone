@@ -83,14 +83,15 @@ testo ingest 'reports/**/*.xml' --cycle web-unit          # record locally
 testo ingest junit.xml --cycle api --tier integration --ci
 testo ingest test-results/results.json --cycle web-e2e --stage e2e --tier e2e   # Playwright JSON
 testo ingest allure-results --cycle api                    # a folder: the files in it
+testo ingest                                               # find the result files, cycle = folder name
 testo ingest 'reports/*.xml' --cycle web-unit \
   --server https://testo.example.com --token "$TESTO_API_TOKEN"   # team server
 ```
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `REPORTS...` | required | Files, folders (their files) or quoted globs, relative to `--repo` (absolute paths must be inside it). Each file is recognised by its content; see the table below |
-| `--cycle` | required | Cycle name the run is recorded under: letters, digits, `.`, `_`, `-`. Reuse it so runs build a history |
+| `REPORTS...` | found | Files, folders (their files) or quoted globs, relative to `--repo` (absolute paths must be inside it). Each file is recognised by its content; see the table below. None given: every result file under `--repo` that git doesn't track (fixtures are tracked) and isn't in a dependency folder (`node_modules`, `.venv`, ...); exit `2` when there is none |
+| `--cycle` | folder name | Cycle name the run is recorded under: letters, digits, `.`, `_`, `-`. Reuse it so runs build a history. Default: the `--repo` folder's name, as `testo init` and `pytest --testo` use |
 | `--stage` | `junit` | Stage name the tests are grouped under |
 | `--tier` | `unit` | Test-pyramid tier: `unit`, `integration`, `e2e` |
 | `--repo` | `.` | Directory the report paths are relative to |

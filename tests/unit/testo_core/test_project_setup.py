@@ -223,3 +223,18 @@ def test_init_without_a_runner_says_what_it_looked_for(tmp_path: Path) -> None:
     result = CliRunner().invoke(app, ["init", "--dir", str(tmp_path), "--no-run"])
     assert result.exit_code == 2
     assert "No test runner found" in result.output
+
+
+def test_ingest_without_arguments_finds_results_and_names_the_cycle(project: Path) -> None:
+    result = CliRunner().invoke(app, ["ingest", "--repo", str(project)])
+
+    assert result.exit_code == 1, result.output  # one test failed in the report
+    assert "Found 1 result file(s): reports/junit.xml" in result.output
+    with sqlite3.connect(project / "testo_history.db") as db:
+        assert db.execute("select cycle from runrecord").fetchall() == [("my-shop",)]
+
+
+def test_ingest_without_arguments_or_results_says_so(tmp_path: Path) -> None:
+    result = CliRunner().invoke(app, ["ingest", "--repo", str(tmp_path), "--ci"])
+    assert result.exit_code == 2
+    assert "no result files found" in result.output

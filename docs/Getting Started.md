@@ -134,6 +134,8 @@ pip install testo-core
 testo ingest 'reports/**/*.xml' --cycle web-unit
 ```
 
+With no arguments, `testo ingest` finds the result files itself and names the cycle after the folder. In GitHub Actions, the action does the same when the repository has no `testosterone.yaml`: put `- uses: taltal-beep/testosterone@v1` with `if: ${{ !cancelled() }}` after your test step and it records the results, keeps the history in the Actions cache and comments on the pull request ([details](Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md#github-action)).
+
 The run gets the same history, `testo summary`, `testo flaky` and Compare as a `testo run`. For one history across every CI job and teammate, run the [Team Server](Processes%20&%20Guides/Team%20Server.md) and add `--server https://your-server --token "$TESTO_API_TOKEN"`. Which file each runner writes: [Command Reference § testo ingest](CLI%20Commands/Command%20Reference.md#testo-ingest).
 
 ## Using pytest? One flag

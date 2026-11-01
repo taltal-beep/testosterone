@@ -8,6 +8,10 @@ recognised by content (see :mod:`testo_core.reporting.junit_import`):
 Playwright and Jest/Vitest JSON, .NET ``.trx``, ``go test -json``, Robot
 Framework ``output.xml`` and Allure results folders.
 
+With no file arguments it finds them itself
+(:func:`testo_core.services.project_setup.find_result_files`), and the cycle
+defaults to the folder's name, so plain ``testo ingest`` after the tests works.
+
 With ``--server`` the files go to a shared Testosterone server instead, so
 every CI job of a team records into one history.
 """
@@ -23,18 +27,20 @@ from testo_core.engine.exit_codes import EngineExitCode
 
 def ingest(
     reports: list[str] = typer.Argument(
-        ...,
+        None,
         help=(
             "Result files, folders or glob patterns (quote globs: 'reports/**/*.xml'), "
             "relative to --repo or inside it: JUnit XML, Playwright or Jest/Vitest JSON, "
             ".NET .trx, go test -json output, Robot Framework output.xml, "
-            "or an allure-results folder."
+            "or an allure-results folder. None given: every result file under --repo "
+            "that git doesn't track, found by content."
         ),
     ),
     cycle: str = typer.Option(
-        ...,
+        None,
         "--cycle",
-        help="Cycle to record the run under. Use the same name every time to build its history.",
+        help="Cycle to record the run under (default: the --repo folder's name). "
+        "Use the same name every time to build its history.",
     ),
     stage: str = typer.Option("junit", "--stage", help="Stage name the tests are grouped under."),
     tier: str = typer.Option(
@@ -87,10 +93,30 @@ def ingest(
     if problem:
         console.print(f"error: {problem}" if ci else f"[fail]{problem}[/]")
         raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+    from testo_core.services.project_setup import (
+        cycle_name_for,
+        find_result_files,
+        result_patterns,
+    )
+
+    repo_dir = repo.expanduser().resolve()
+    if not reports:
+        found = find_result_files(repo_dir)
+        if not found:
+            message = (
+                f"no result files found under {repo_dir} (JUnit XML, Jest/Vitest/Playwright/"
+                "RSpec JSON, .trx, go test -json, Robot output.xml, allure-results; files git "
+                "tracks are skipped). Pass the files, or make the test step write one."
+            )
+            console.print(f"error: {message}" if ci else f"[fail]{message}[/]")
+            raise typer.Exit(code=int(EngineExitCode.INVALID_INPUT))
+        reports = result_patterns(found, repo=repo_dir)
+        if not ci:
+            console.print(f"Found {len(reports)} result file(s): {', '.join(reports)}")
     exit_code = execute_ingest_command(
         console=console,
         reports=reports,
-        cycle=cycle,
+        cycle=(cycle or "").strip() or cycle_name_for(repo_dir),
         stage=stage,
         tier=tier,
         repo=repo,
