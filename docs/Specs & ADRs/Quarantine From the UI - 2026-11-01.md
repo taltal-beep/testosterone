@@ -33,7 +33,7 @@ Gap G2 (and quick win Q8) of [Feature Gaps and Quick Wins](../Roadmap%20&%20Stra
 
 ## Consequences
 
-- One more table, created on first use like `failure_triage`; no migration.
+- One more table, `quarantined_test`, added by Alembic revision `0005` (which also gives `test_result` a `retried` column for the "passed on retry" signal); nothing to run, the database upgrades itself on first open.
 - Every persisted run reads the list once (one indexed query); a database error leaves the run its config rules and one warning line. A `--no-persist` run uses only the config.
 - The two lists don't merge in either direction: `testo quarantine list` and the API show only stored entries, and a test quarantined by `testosterone.yaml` or a glob shows "Quarantined" without "Release" in the UI.
 - `pytest --testo` against a server makes one extra request per failing session; if it fails the session keeps exit `1` and says why.

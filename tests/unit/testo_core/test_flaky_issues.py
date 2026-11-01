@@ -68,7 +68,11 @@ def history(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):  # noqa: ANN201
             for r, s in zip(runs, statuses, strict=True)
         }
         newest_first = list(reversed(runs))
-        monkeypatch.setattr(flaky_service, "_cycle_runs", lambda cycle: list(newest_first))
+        monkeypatch.setattr(
+            flaky_service,
+            "_cycle_runs",
+            lambda cycle, limit=None: list(newest_first)[:limit],
+        )
         monkeypatch.setattr(flaky_service, "_cases_for_run", lambda run: cases[run.run_id])
 
     return _set

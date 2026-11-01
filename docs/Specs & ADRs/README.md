@@ -38,9 +38,11 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Checking keys, clean releases and a delay before reusing an expired key | [Resource Lifecycle Hooks - 2026-10-26](Resource%20Lifecycle%20Hooks%20-%202026-10-26.md) |
 | A provider of your own commands that never creates or deletes VMs on its own | [Human-Run Resource Provider - 2026-10-30](Human-Run%20Resource%20Provider%20-%202026-10-30.md) |
 | Playwright JSON reports: retries, flaky tests, traces | [Playwright JSON Import - 2026-10-22](Playwright%20JSON%20Import%20-%202026-10-22.md) |
+| One-command setup for existing projects: `testo init`, the zero-config Action, per-CI snippets, a PR comment preview | [Easy Setup - 2026-11-01](Easy%20Setup%20-%202026-11-01.md) |
 | Reading Jest/Vitest, .NET, Go, Robot, RSpec, k6, XCTest, Android and Allure results in their own formats | [Runner Coverage - 2026-10-26](Runner%20Coverage%20-%202026-10-26.md) |
 | Runs, stages and tests as OpenTelemetry traces (OTLP), off by default | [OpenTelemetry Export - 2026-10-30](OpenTelemetry%20Export%20-%202026-10-30.md) |
 | The run history as an MCP server for coding agents (`testo mcp`), read-only by default | [MCP Server - 2026-11-01](MCP%20Server%20-%202026-11-01.md) |
+| Security and fresh-install review: findings R1 to R18, fixes and proposals | [Security and Install Review - 2026-10-31](Security%20and%20Install%20Review%20-%202026-10-31.md) |
 | Slack and Teams alerts, failure annotations on the diff, flaky test issues | [Alerts Where Developers Look - 2026-10-22](Alerts%20Where%20Developers%20Look%20-%202026-10-22.md) |
 | A GitHub issue per test that turns flaky, assigned from CODEOWNERS and closed once it is stable | [Flaky Test Issues - 2026-11-01](Flaky%20Test%20Issues%20-%202026-11-01.md) |
 | BehaveX HTML report plus Allure results | [BehaveX Reports - 2026-10-21](BehaveX%20Reports%20-%202026-10-21.md) |
@@ -54,7 +56,9 @@ Design decisions that still describe the code. The code is the source of truth; 
 | Product review second pass: every area except trust toward 10 | [Product to Ten - 2026-10-25](Product%20to%20Ten%20-%202026-10-25.md) |
 | Project health page: a repeatable test health score and an optional AI review of the tests | [Project Health - 2026-10-26](Project%20Health%20-%202026-10-26.md) |
 | README badge, asking about your tests, Jira issues from failures (and what was not built) | [Qualflare Follow-ups - 2026-10-26](Qualflare%20Follow-ups%20-%202026-10-26.md) |
+| Naming stack overflows and crashes on failing stages and tests | [Crash Detection - 2026-10-31](Crash%20Detection%20-%202026-10-31.md) |
 | UI design review: ranked design and UX findings with annotated screenshots, 7.5 / 10 | [UI Design Review - 2026-10-31](UI%20Design%20Review%20-%202026-10-31.md) |
+| Engineering health review: tests, CI, docs accuracy and dependencies, fixes in #222 and ranked proposals | [Engineering Health Review - 2026-10-31](Engineering%20Health%20Review%20-%202026-10-31.md) |
 | UI review fixes: cycle results, run labels, Compare test list, test page charts, quieter cards | [UI Review Fixes - 2026-11-01](UI%20Review%20Fixes%20-%202026-11-01.md) |
 
 Older plans and incident write-ups (Allure 3 migration plan, reporters port, report-links fix, CLI–UI parity, the `doctor`/`clean`/`watch`/`init` restore) are in the [Archive](../Archive/README.md).

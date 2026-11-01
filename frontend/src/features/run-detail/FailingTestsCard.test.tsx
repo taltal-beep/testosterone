@@ -8,7 +8,12 @@ import { FailingTestsCard } from "./FailingTestsCard";
 
 const DB_MESSAGE = "ConnectionRefusedError: port 5433";
 
-function failing(key: string, message: string, triage: TriageItem | null = null): FailingTestItem {
+function failing(
+  key: string,
+  message: string,
+  triage: TriageItem | null = null,
+  crash_kind: string | null = null
+): FailingTestItem {
   return {
     key,
     name: key,
@@ -22,7 +27,8 @@ function failing(key: string, message: string, triage: TriageItem | null = null)
     failing_since_run_id: "run-2",
     flaky: false,
     new: true,
-    triage
+    triage,
+    crash_kind
   };
 }
 
@@ -106,5 +112,29 @@ describe("FailingTestsCard triage", () => {
     });
     expect(screen.getByText("Cause: Bug in the test")).toBeInTheDocument();
     expect(screen.getByText(/all with a known cause/)).toBeInTheDocument();
+  });
+});
+
+describe("FailingTestsCard crash detection", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("badges a stack overflow and a crash, and nothing on a plain failure", async () => {
+    const data = failures([
+      failing("test_parse", "RecursionError: maximum recursion depth exceeded", null, "stack_overflow"),
+      failing("test_native", "Fatal Python error: Segmentation fault", null, "crash"),
+      failing("test_math", "AssertionError")
+    ]);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve({ ok: true, status: 200, json: async () => data }))
+    );
+
+    renderCard();
+
+    expect(await screen.findByText("Stack overflow")).toBeInTheDocument();
+    expect(screen.getByText("Crashed")).toBeInTheDocument();
+    const rows = screen.getAllByRole("listitem");
+    const plain = rows.find((row) => within(row).queryByText("test_math"));
+    expect(plain && within(plain).queryByText(/Stack overflow|Crashed/)).toBeNull();
   });
 });

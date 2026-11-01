@@ -7,6 +7,8 @@ updated: 2026-11-01
 
 # CI Integrations
 
+Just want a snippet to paste? [Setup Snippets](Setup%20Snippets.md) has one per runner for GitHub Actions, GitLab CI, Jenkins and CircleCI, and `testo init --ci <system>` writes it for you.
+
 Pre-packaged CI wrappers keep orchestration in `testo_core`: they install `testo-core`, run `testo run --ci`, and keep its machine output.
 
 ## Architecture boundary
@@ -34,11 +36,11 @@ Run records written in CI include (when the provider exposes them):
 
 Runs also record `repository` (`owner/name`, from `GITHUB_REPOSITORY`, `CI_PROJECT_PATH`, `BUILDKITE_REPO` or `CIRCLE_PROJECT_REPONAME`). Runs outside CI record `git_branch` and `git_commit` from the target repository's checkout instead, and `repository` when its `origin` remote is on github.com. `testo ingest` sends the same fields with the upload.
 
-The PR comment and `testo report markdown` compare a pull request's run with the latest run of the same cycle on its `ci_base_ref` branch, so a parallel PR's run is never the baseline. With no run on that branch yet they fall back to the previous run on the run's own branch (never another pull request's), a push to the default branch is compared with the previous run on that branch, and they say which one they used ("Since the last run on `main`" or "Since the previous run"). Test names are shown as code spans that nothing in a name can close, so a name can't @mention anyone or render HTML in the comment. When `testo run` stops before recording a run (bad config), the action publishes no summary, comment, annotations or alert rather than an earlier job's run. This needs history shared between jobs (a `database.url` or a team server); on a fresh runner there is nothing to compare with.
+The PR comment and `testo report markdown` compare a pull request's run with the latest run of the same cycle on its `ci_base_ref` branch, so a parallel PR's run is never the baseline. With no run on that branch yet they fall back to the previous run on the run's own branch (never another pull request's), a push to the default branch is compared with the previous run on that branch, and they say which one they used ("Since the last run on `main`" or "Since the previous run"). Test names are shown as code spans that nothing in a name can close, so a name can't @mention anyone or render HTML in the comment. When `testo run` stops before recording a run (bad config), the action publishes no summary, comment, annotations or alert rather than an earlier job's run. This needs history shared between jobs: the GitHub Action keeps it in the Actions cache by default (below), or use a `database.url` or a team server.
 
 ## GitHub Action
 
-The action is `action.yml` at the repository root, the copy the GitHub Marketplace lists (`uses: taltal-beep/testosterone@v1`, from 1.4.0); `integrations/github-action/action.yml` is the same action at its older path and keeps working, and `tests/contract/ci/test_action_copies.py` fails if the two differ. Source lives under `integrations/github-action/` (inputs: `config-path`, `cycle`, `ci-mode`, `persist`, `python-version`, `package`, `job-summary`, `comment-on-pr`, `annotations`, `slack-webhook`, `teams-webhook`, `notify-when`, `flaky-issues`, `github-token`; outputs: `exit_code`, `status`, `summary_json`, `summary_path`).
+The action is `action.yml` at the repository root, the copy the GitHub Marketplace lists (`uses: taltal-beep/testosterone@v1`, from 1.4.0); `integrations/github-action/action.yml` is the same action at its older path and keeps working, and `tests/contract/ci/test_action_copies.py` fails if the two differ. Source lives under `integrations/github-action/` (inputs: `results`, `history`, `config-path`, `cycle`, `ci-mode`, `persist`, `python-version`, `package`, `job-summary`, `comment-on-pr`, `annotations`, `slack-webhook`, `teams-webhook`, `notify-when`, `flaky-issues`, `github-token`; outputs: `exit_code`, `status`, `summary_json`, `summary_path`).
 
 ```yaml
 permissions:
@@ -50,6 +52,18 @@ steps:
       cycle: smoke
       comment-on-pr: "true"
 ```
+
+**No config file.** With no `testosterone.yaml` (or `[tool.testosterone]`) in the workspace, or when `results` names files, the action runs `testo ingest --ci` instead of `testo run`: it records the result files an earlier step wrote (with no `results`, every result file in the workspace that git doesn't track, found by content), under `cycle` or a cycle named after the repository folder, and `comment-on-pr` (default `auto`) is on. A configured `testo run` keeps the comment off unless asked for, as before. Add `if: ${{ !cancelled() }}` so a red test step is still recorded.
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - run: go test -json ./... > test-results/go.json
+  - uses: taltal-beep/testosterone@v1
+    if: ${{ !cancelled() }}
+```
+
+**History between runs.** `history: auto` (default) points `DATABASE_URL` at `~/.cache/testosterone/testo_history.db` and restores that folder from the Actions cache before the run and saves it after (`actions/cache/restore` / `save`, a new key per run restored by prefix `testo-history-<workflow>-<job>-`), so the summary and comment compare with earlier runs and a pull request with its target branch (a pull request can read its base branch's caches). Only the database is cached, not per-run report copies. It is skipped when `DATABASE_URL` or the config's `database.url` is set; `history: off` turns it off.
 
 After a persisted run the action renders it with `testo report markdown` and writes it to the job summary (`job-summary`, default on). With `comment-on-pr: "true"` on `pull_request` events it keeps one comment per cycle on the pull request, found by its hidden marker and edited on later pushes. Both are best-effort: an error, such as a fork's read-only token, is a workflow warning and never changes the exit code. `package` is what gets pip-installed (`testo-core` by default; `testo-core[bdd]` for cycles with `behave` or `behavex` stages; this repository's own CI passes `.`; several requirements are separated by spaces, `testo-core pytest-xdist`). With `cycle: all` every cycle gets its own job summary section, PR comment, annotations and alert. Inputs reach the action's shell steps as environment variables, never as script text, so a branch name in an input can't run commands. The GitLab template's `TESTO_PACKAGE` variable does the same. Design: [GitHub Action PR Comment - 2026-10-19](../Specs%20&%20ADRs/GitHub%20Action%20PR%20Comment%20-%202026-10-19.md).
 
@@ -94,7 +108,7 @@ Variables: `TESTO_CONFIG_PATH` (empty = discovery), `TESTO_CYCLE` (empty = the o
 Tier selection is marker-driven and shared between local runs and GitHub Actions:
 
 - Fast required gate:
-  - `python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1 --no-cov`
+  - `python -m pytest -q -n auto -m "tier_fast and not quarantined" --maxfail=1 --no-cov` (CI runs it on every core with `pytest-xdist`, which the `dev` extra installs)
 - Heavy optional gate:
   - `python -m pytest -q -m "tier_heavy and not tier_external" --maxfail=1 --durations=25`
 - External nightly/release gate:
@@ -102,7 +116,7 @@ Tier selection is marker-driven and shared between local runs and GitHub Actions
 
 Reference CI definitions:
 
-- GitHub: `.github/workflows/ci.yml` (unified pipeline: format and test run in parallel, then deploy on a release; the fast-required gate lives in its `test` job on Python 3.11, followed by the heavy tier, and `test_python_versions` runs the same suite on 3.12, 3.13 and 3.14 without the coverage gate), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`. Code review runs via a local pre-push hook (`.claude/settings.json`), not in CI.
+- GitHub: `.github/workflows/ci.yml` (unified pipeline: format (ruff lint + format check, mypy, and `lint-imports`, the import-linter layer contracts from `pyproject.toml` `[tool.importlinter]`, all blocking) and test run in parallel, then deploy on a release; the fast-required gate lives in its `test` job on Python 3.11, followed by the heavy tier, and `test_python_versions` runs the same suite on 3.12, 3.13 and 3.14 without the coverage gate), `.github/workflows/pr-heavy.yml`, `.github/workflows/nightly-external.yml`, `.github/workflows/release-gate.yml`. Code review runs via a local pre-push hook (`.claude/settings.json`), not in CI.
 
 All tier jobs upload diagnostics artifacts (`logs`, summary JSON, API responses, screenshots when present) on failure, and external suites run with `external-e2e` concurrency isolation.
 
@@ -119,7 +133,7 @@ What runs on Testosterone itself, as opposed to the wrappers above that run it i
 | `wiki-sync.yml` | push to `main` touching `docs/` | Regenerates the GitHub wiki from `docs/` ([Docs Vault and Wiki Sync](../Specs%20&%20ADRs/Docs%20Vault%20and%20Wiki%20Sync%20-%202026-10-07.md)) |
 | `mirror-to-gitlab.yml` | push to `main` | Mirrors the repo to GitLab when `GITLAB_MIRROR_URL` / `GITLAB_MIRROR_TOKEN` are set |
 | `pr-heavy.yml` | labeled pull request, manual | Heavy test tier |
-| `nightly-external.yml` | nightly, manual | External test tier |
+| `nightly-external.yml` | manual (nightly schedule paused; uncomment its `schedule:` lines to re-enable) | External test tier |
 | `release-gate.yml` | manual | Release checks before publishing |
 | `dependabot.yml` (config, not a workflow) | weekly | Grouped dependency update PRs for pip, npm (`/` and `frontend/`) and GitHub Actions, committed as `chore(deps)` with the `no-changelog` label so commitlint and `changelog_required` pass |
 | `publish.yml`, `docker-publish.yml`, `artifactory-publish.yml` | GitHub Release published (`publish.yml` and `docker-publish.yml` can also be run by hand for an existing tag) | PyPI, GHCR runner image, JFrog Artifactory ([Publishing to PyPI](Publishing%20to%20PyPI.md), [Publishing Docker Images](Publishing%20Docker%20Images.md)) |

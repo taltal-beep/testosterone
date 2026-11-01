@@ -8,6 +8,7 @@ from testo_core.repository.base import BaseRunRepository
 from testo_core.repository.db_config import create_db_and_tables, get_engine, resolve_database_url
 from testo_core.repository.factory import create_repository_for_url
 from testo_core.repository.report_archive_repository import SQLReportArchiveRepository
+from testo_core.repository.test_results import TestResultStore
 
 
 @lru_cache(maxsize=1)
@@ -25,7 +26,15 @@ def get_report_archive_repository() -> SQLReportArchiveRepository:
     return SQLReportArchiveRepository(get_engine())
 
 
+@lru_cache(maxsize=1)
+def get_test_result_store() -> TestResultStore:
+    """Return the cached :class:`TestResultStore` for the active database URL."""
+    create_db_and_tables()
+    return TestResultStore(get_engine())
+
+
 def reset_repository_cache() -> None:
     """Clear the cached repository. Use in tests after changing database configuration."""
     get_repository.cache_clear()
     get_report_archive_repository.cache_clear()
+    get_test_result_store.cache_clear()

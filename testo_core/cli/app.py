@@ -54,6 +54,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import clean as clean_mod
     from testo_core.cli.commands import config as config_cmd
     from testo_core.cli.commands import config_db as config_db_cmd
+    from testo_core.cli.commands import demo as demo_mod
     from testo_core.cli.commands import diff_cli as diff_cli_mod
     from testo_core.cli.commands import doctor as doctor_mod
     from testo_core.cli.commands import flaky as flaky_mod
@@ -71,7 +72,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import report as report_cmd
     from testo_core.cli.commands import run as run_cmd
     from testo_core.cli.commands import split as split_mod
-    from testo_core.cli.commands import ui_cmd
+    from testo_core.cli.commands import try_cmd, ui_cmd
     from testo_core.cli.commands import users as users_cmd
     from testo_core.cli.commands import version as version_cmd
     from testo_core.cli.commands import watch as watch_mod
@@ -96,6 +97,16 @@ def _register_commands() -> None:
         help="Serve the run history to coding agents over MCP (stdio); --allow-writes for triage.",
         rich_help_panel="Run and report",
     )(mcp_mod.mcp)
+    app.command(
+        name="demo",
+        help="Record eight sample runs (a flaky test, a new failure, a slower test) and open the UI.",
+        rich_help_panel="Run and report",
+    )(demo_mod.demo)
+    app.command(
+        name="try",
+        help="Preview the pull request comment your latest results would get; records nothing.",
+        rich_help_panel="Run and report",
+    )(try_cmd.try_comment)
     app.command(
         name="split",
         help="Split a cycle's tests into shards of about equal time (CI matrix, pool keys).",
@@ -217,7 +228,7 @@ def _register_commands() -> None:
     )(doctor_mod.doctor)
     app.command(
         name="clean",
-        help="Remove artifacts/temp; optional Docker prune (--yes, --docker).",
+        help="Remove artifacts/temp (--yes, --docker) or expired run history (--history).",
         rich_help_panel="Maintenance",
     )(clean_mod.clean)
     app.command(
@@ -227,9 +238,9 @@ def _register_commands() -> None:
     )(watch_mod.watch)
     app.command(
         name="init",
-        help="Interactive wizard for testosterone.yaml (non-interactive: testo config init).",
-        rich_help_panel="Maintenance",
-    )(init_cmd_mod.wizard)
+        help="Set up a project: detect its test runners, write testosterone.yaml and the CI workflow, record a first run.",
+        rich_help_panel="Config",
+    )(init_cmd_mod.init)
 
 
 _register_commands()

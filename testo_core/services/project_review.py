@@ -26,7 +26,7 @@ from dataclasses import asdict, dataclass, field, replace
 from typing import Any, Literal
 
 from testo_core.history.maintenance import upsert_run_metadata
-from testo_core.history.read_model import get_run_metadata, list_recent_runs
+from testo_core.history.read_model import get_run_metadata, list_cycle_runs, list_recent_runs
 from testo_core.security.redaction import redact_error_message, redact_text
 from testo_core.services.ai import (
     AiGenerationRequest,
@@ -298,8 +298,7 @@ Skills:
 
 
 def _scope_runs(cycle: str | None) -> list[Any]:
-    runs = list_recent_runs(limit=500)
-    return [r for r in runs if cycle is None or r.cycle == cycle]
+    return list_cycle_runs(cycle) if cycle is not None else list_recent_runs(limit=500)
 
 
 def _context(health: ProjectHealth, *, max_chars: int) -> tuple[str, dict[str, int]]:

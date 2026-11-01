@@ -29,6 +29,7 @@ The notes are plain markdown. They open as an Obsidian vault, and are published 
 ## Testing and CI
 
 - [QA Strategies](Testing%20Workflows/QA%20Strategies.md): how runs are defined, triggered, logged, and how the orchestrator tests itself
+- [Setup Snippets](Processes%20&%20Guides/Setup%20Snippets.md): copy-paste CI setup for each runner (pytest, Jest, Vitest, Playwright, Go, .NET, Maven, Gradle, RSpec, PHPUnit) on GitHub Actions, GitLab CI, Jenkins and CircleCI, no config file needed
 - [CI-CD Pipeline Setup](Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md): GitHub Action, GitLab template, runner image, test tiers
 - [Team Server](Processes%20&%20Guides/Team%20Server.md): one shared history for every CI job, with `testo ingest --server`, the UI and Postgres in Docker
 - [Shared Resource Pools](Processes%20&%20Guides/Shared%20Resource%20Pools.md): give each parallel worker its own VM, device or test account with `testo lease`, safely across laptops
@@ -54,6 +55,7 @@ The notes are plain markdown. They open as an Obsidian vault, and are published 
 - [Feature Gaps and Quick Wins](Roadmap%20&%20Strategy/Feature%20Gaps%20and%20Quick%20Wins%20-%202026-10-31.md): what paid flaky-test and test-analytics tools do that Testosterone doesn't yet, ranked with effort, and the bugs a new user hits in the first ten minutes, 2026-10-31
 - [Paid Features to Offer Free](Roadmap%20&%20Strategy/Paid%20Features%20to%20Offer%20Free%20-%202026-10-31.md): which features competitors keep behind paid plans, the ones Testosterone could give away self-hosted, ranked, and the licence and trademark rules for copying ideas, 2026-10-31
 - [UI Design Review](Specs%20&%20ADRs/UI%20Design%20Review%20-%202026-10-31.md): the web UI as a piece of design (hierarchy, consistency, copy, charts, states, accessibility), ranked findings with annotated screenshots, 2026-10-31
+- [Engineering Health Review](Specs%20&%20ADRs/Engineering%20Health%20Review%20-%202026-10-31.md): test suite, CI, docs accuracy and dependencies (flaky tests, Dependabot, TypeScript 7), what was fixed and ranked proposals, 2026-10-31
 - [UI Review Fixes](Specs%20&%20ADRs/UI%20Review%20Fixes%20-%202026-11-01.md): what was built from the review's proposals (cycle results on the Cycles grid, run labels with time and branch, the Compare test list under the summary, test page charts, quieter cards), 2026-11-01
 - [Engine and CLI Bug Hunt](engine-cli-review.md): reproduced bugs in `testo`, config parsing, the engine, storage and the importers, what was fixed, and ranked proposals for the rest, 2026-10-31
 - [Agent Context Guide](Prompts%20&%20Snippets/Agent%20Context%20Guide.md): which note to read before changing what (for AI coding agents)

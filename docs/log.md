@@ -137,6 +137,9 @@ Added [OpenTelemetry Export - 2026-10-30](Specs%20&%20ADRs/OpenTelemetry%20Expor
 
 Added [Architecture Review - 2026-10-31](Specs%20&%20ADRs/Architecture%20Review%20-%202026-10-31.md) to Specs & ADRs (ranked findings on the read side, migrations and layering, with proposals), linked from its README, the Index and the docs site menu.
 
+## 2026-10-31: crash detection
+
+Added [Crash Detection - 2026-10-31](Specs%20&%20ADRs/Crash%20Detection%20-%202026-10-31.md) to Specs & ADRs (naming stack overflows and crashes on failing stages and tests), linked from its README and the docs site menu.
 ## 2026-10-31: feature gaps and quick wins
 
 Added [Feature Gaps and Quick Wins - 2026-10-31](Roadmap%20&%20Strategy/Feature%20Gaps%20and%20Quick%20Wins%20-%202026-10-31.md) to Roadmap & Strategy (competitor research and a new-user pass, ranked with effort), linked from the Index, the Product Roadmap and the docs site menu.
@@ -145,6 +148,9 @@ Added [Feature Gaps and Quick Wins - 2026-10-31](Roadmap%20&%20Strategy/Feature%
 
 Added [UI Design Review - 2026-10-31](Specs%20&%20ADRs/UI%20Design%20Review%20-%202026-10-31.md) to Specs & ADRs with annotated screenshots under `assets/ui-review-2026-10-31/`, linked from its README, the Index and the docs site menu.
 
+## 2026-10-31: engineering health review
+
+Added [Engineering Health Review - 2026-10-31](Specs%20&%20ADRs/Engineering%20Health%20Review%20-%202026-10-31.md) to Specs & ADRs (tests, CI, docs accuracy, dependencies), linked from its README, the Index and the docs site menu.
 ## 2026-10-31: engine and CLI bug hunt
 
 Added [Engine and CLI Bug Hunt](engine-cli-review.md) (reproduced bugs, fixes, ranked proposals), linked from the [Index](Index.md) and the docs site menu.
@@ -157,6 +163,9 @@ Added [Importer and Integration Bug Hunt - 2026-10-31](Specs%20&%20ADRs/Importer
 
 Added [Paid Features to Offer Free - 2026-10-31](Roadmap%20&%20Strategy/Paid%20Features%20to%20Offer%20Free%20-%202026-10-31.md) to Roadmap & Strategy (competitor paywalls, twelve ranked ideas, licence and trademark rules), linked from the Index, the Product Roadmap and the docs site menu.
 
+## 2026-10-31: security and install review
+
+Added [Security and Install Review - 2026-10-31](Specs%20&%20ADRs/Security%20and%20Install%20Review%20-%202026-10-31.md) to Specs & ADRs (findings R1 to R18, what was fixed, proposals P1 to P4), linked from its README and the docs site menu.
 ## 2026-11-01: UI review fixes
 
 Added [UI Review Fixes - 2026-11-01](Specs%20&%20ADRs/UI%20Review%20Fixes%20-%202026-11-01.md) to Specs & ADRs (the five proposals built from the UI design review), linked from its README, the Index and the docs site menu.
@@ -180,3 +189,10 @@ Added [MCP Server - 2026-11-01](Specs%20&%20ADRs/MCP%20Server%20-%202026-11-01.m
 ## 2026-11-01: quarantine from the UI
 
 Added [Quarantine From the UI - 2026-11-01](Specs%20&%20ADRs/Quarantine%20From%20the%20UI%20-%202026-11-01.md) to Specs & ADRs (gap G2, quick win Q8), linked from its README, the Index and the docs site menu; [Flaky Test Quarantine - 2026-10-22](Specs%20&%20ADRs/Flaky%20Test%20Quarantine%20-%202026-10-22.md) now points to it.
+## 2026-11-01: easy setup
+
+Added [Easy Setup - 2026-11-01](Specs%20&%20ADRs/Easy%20Setup%20-%202026-11-01.md) to Specs & ADRs (`testo init` that detects the stack, and the follow-ups for the Action, CI snippets and a PR comment preview), linked from its README and the docs site menu.
+
+## 2026-11-01: setup snippets
+
+Added [Setup Snippets](Processes%20&%20Guides/Setup%20Snippets.md) to Processes & Guides (generated copy-paste CI setup per runner and CI system), linked from the Index, Getting Started, CI-CD Pipeline Setup and the docs site menu.

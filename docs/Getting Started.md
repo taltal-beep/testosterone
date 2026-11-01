@@ -11,6 +11,8 @@ Add Testosterone to a project you already have, in about five minutes: install i
 
 You need Python 3.11 or newer and a project with tests. The examples use pytest; other runners are at [step 6](#6-add-other-test-runners).
 
+**In a hurry?** `pip install testo-core && testo init` does steps 2, 3 and 5 for you: it detects your test runners (pytest, Jest, Vitest, Playwright, Go, .NET, Maven, Gradle, RSpec, PHPUnit), writes `testosterone.yaml` and `.github/workflows/testosterone.yml`, and records a first run. `testo init --dry-run` shows the files first. Details: [Command Reference § testo init](CLI%20Commands/Command%20Reference.md#testo-init).
+
 ## 1. Install
 
 ```bash
@@ -131,6 +133,12 @@ If your tests already run somewhere, skip the YAML and add one step after them. 
 pip install testo-core
 testo ingest 'reports/**/*.xml' --cycle web-unit
 ```
+
+Before touching CI, `testo try` shows the pull request comment your latest results would get, without recording anything (`--from-github` uses your last GitHub Actions run's artifacts).
+
+Copy-paste versions for each runner and each CI system (GitHub Actions, GitLab CI, Jenkins, CircleCI) are in [Setup Snippets](Processes%20&%20Guides/Setup%20Snippets.md).
+
+With no arguments, `testo ingest` finds the result files itself and names the cycle after the folder. In GitHub Actions, the action does the same when the repository has no `testosterone.yaml`: put `- uses: taltal-beep/testosterone@v1` with `if: ${{ !cancelled() }}` after your test step and it records the results, keeps the history in the Actions cache and comments on the pull request ([details](Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md#github-action)).
 
 The run gets the same history, `testo summary`, `testo flaky` and Compare as a `testo run`. For one history across every CI job and teammate, run the [Team Server](Processes%20&%20Guides/Team%20Server.md) and add `--server https://your-server --token "$TESTO_API_TOKEN"`. Which file each runner writes: [Command Reference § testo ingest](CLI%20Commands/Command%20Reference.md#testo-ingest).
 

@@ -128,4 +128,27 @@ describe("FlakyTestsCard", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Quarantine test_open" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Missing or invalid API token.");
   });
+
+  it("shows the first 10 of a long list until asked for all", async () => {
+    const items = Array.from({ length: 25 }, (_, n) => ({
+      key: `k${n}`,
+      name: `test_${n}`,
+      group: "g",
+      runs: 4,
+      passed: 2,
+      failed: 2,
+      flips: 3,
+      flip_rate: 1,
+      last_status: "failed",
+      history: ["passed", "failed", "passed", "failed"],
+      owners: [],
+      issue_url: null
+    }));
+    renderCard({ ...base, items });
+
+    await waitFor(() => expect(screen.getByText("test_9")).toBeInTheDocument());
+    expect(screen.queryByText("test_10")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show all 25" }));
+    expect(screen.getByText("test_24")).toBeInTheDocument();
+  });
 });

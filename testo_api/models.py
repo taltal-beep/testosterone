@@ -169,6 +169,9 @@ class StageHealth(ApiModel):
     broken: int | None = None
     skipped: int | None = None
     health_pct: float | None = None
+    # A failed stage's stack overflow or crash: "stack_overflow" | "crash", and the line that showed it.
+    crash_kind: str | None = None
+    crash_detail: str | None = None
 
 
 class RunDetail(ApiModel):
@@ -210,6 +213,9 @@ class RunReportsResponse(ApiModel):
     allure_server_url: str | None = None
     static_links: dict[str, str] = Field(default_factory=dict)
     artifact_links: list[str] = Field(default_factory=list)
+    # URL prefix (relative to the API root) the artifact_links are served under, or
+    # None when the run's files aren't served (snapshot outside static/history/).
+    artifacts_url: str | None = None
 
 
 class RunPyramidResponse(ApiModel):
@@ -290,6 +296,8 @@ class FailingTestItem(ApiModel):
     new: bool
     # The cause marked for this message in this cycle, on this failure or an earlier one like it.
     triage: TriageItem | None = None
+    # "stack_overflow" | "crash" when the failure's message or trace shows one.
+    crash_kind: str | None = None
 
 
 class FailureGroupItem(ApiModel):

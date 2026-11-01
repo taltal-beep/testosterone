@@ -35,6 +35,7 @@ from testo_api.security import (
     current_principal,
     reads_protected,
     safe_next,
+    session_tag,
 )
 
 REPORTS_ORIGIN_ENV = "TESTO_REPORTS_ORIGIN"
@@ -84,7 +85,7 @@ def _session_version(username: str) -> str:
     if username == "token" or not accounts_enabled():
         return "0"
     account = account_store().get(username)
-    return "" if account is None else str(account.session_version)
+    return "" if account is None else session_tag(account)
 
 
 def _still_valid(username: str, version: str) -> bool:

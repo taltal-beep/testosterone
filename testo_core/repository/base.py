@@ -62,8 +62,33 @@ class BaseRunRepository(Protocol):
     def list_recent_runs(self, *, limit: int = 30) -> list[RunRecord]:
         """Return up to ``limit`` runs ordered by ``start_time`` descending (newest first)."""
 
+    def list_runs(
+        self,
+        *,
+        cycle: str | None = None,
+        before: datetime | None = None,
+        limit: int = 30,
+    ) -> list[RunRecord]:
+        """Up to ``limit`` runs, newest first, filtered in SQL on the promoted columns.
+
+        ``cycle`` keeps one cycle's runs; ``before`` keeps runs that started strictly
+        earlier (for "the runs before this one"). Both use the ``(cycle, start_time)`` index.
+        """
+
+    def latest_run_per_cycle(self) -> list[RunRecord]:
+        """The newest run of every cycle that has one, newest first. One query, no scan limit."""
+
     def list_runs_by_status(self, status: RunStatus) -> list[RunRecord]:
         """Return all runs currently in the given ``status`` (e.g. for orphan cleanup)."""
 
     def bulk_update(self, records: list[RunRecord]) -> int:
         """Persist updates to the given rows in one transaction; return the number of rows written."""
+
+    def list_run_keys(self) -> list[tuple[str, str | None, datetime | None, RunStatus]]:
+        """``(run_id, cycle, start_time, status)`` of every run, newest first.
+
+        The promoted columns only, no JSON: what retention needs to decide which runs go.
+        """
+
+    def delete_runs(self, run_ids: list[str]) -> int:
+        """Delete the given runs' rows; return how many were deleted. Missing ids are skipped."""

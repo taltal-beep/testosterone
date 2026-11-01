@@ -23,10 +23,11 @@ The [Engine and CLI Bug Hunt](../engine-cli-review.md) (2026-10-31) fixed the sm
 | P9, P10, P16 | **Clear CLI outcomes.** `testo split --index` exits `1` for an empty shard (`--allow-empty` exits `0`), since an empty `pytest $(testo split ...)` runs every test; `testo badge` and `testo flaky` name the closest recorded cycle; a `--server` that isn't an `http(s)://` URL exits `2` in `split`, `ingest` and `lease`. | `testo_core/cli/commands/split.py`, `testo_core/cli/cycle_hint.py`, `testo_core/cli/server_url.py` |
 | P11 to P14 | **Real run times, no escaping attachments, Windows Jest paths, XML whitespace.** Engine runs store their real `start_time`/`end_time`; an Allure attachment symlinked outside its folder is skipped; Windows paths in Jest reports are made relative like POSIX ones; whitespace before `<?xml` is stripped. | `testo_core/persistence/db_backend.py`, `testo_core/reporting/allure_passthrough.py`, `testo_core/reporting/jest_import.py`, `testo_core/reporting/junit_import.py` |
 
-Each row is one pull request (P9, P10, P16 and P11 to P14 were open when this was written).
+Each row is one pull request.
 
 ## Consequences
 
 - P1: two CI jobs of one cycle on one runner now run one after the other instead of overwriting each other's results. The API already refused a second run of a busy cycle in its own process; the lock also covers the CLI next to the API. With `--async-report-db` the background archive reads the folder after the lock is released, so a run that starts right then can still race it; per-run folders (`artifacts/<cycle>/<run-id>/`) would remove that and are left for later.
 - P3/P4: `130` and `143` are new exit codes (an additive change to the frozen exit-code contract); scripts that treat any non-zero as failure are unaffected.
 - P5 and P8: a config that used to load silently may now warn (P5) or fail to load (P8, a bad `if:`), which is the point: both hid mistakes.
+- P2: a folder under `artifacts/<cycle>/` that holds `run.log` or `allure-results/` and isn't a stage of the current run is deleted when the run ends. Earlier runs keep their copy in `static/history/<run_id>/`; only the shared working folder is cleaned.

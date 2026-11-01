@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from testo_core import paths
-from testo_core.history.read_model import get_run, list_recent_runs
+from testo_core.history.read_model import get_run, list_cycle_runs, list_recent_runs
 from testo_core.history.views import CompletedRunView
 from testo_core.services.report_archive_diff import _case_stage, _label_value
 
@@ -43,7 +43,6 @@ DEFAULT_SERVICE_NAME = "testosterone"
 _FAILED = frozenset({"failed", "broken"})
 _MESSAGE_LIMIT = 500
 _BATCH = 512
-_SCAN_LIMIT = 500
 
 
 class OtelExportError(RuntimeError):
@@ -286,8 +285,8 @@ def load_trace(*, cycle: str | None = None, run_id: str | None = None) -> RunTra
     if run_id:
         run = get_run(run_id=run_id)
     else:
-        recent = list_recent_runs(limit=_SCAN_LIMIT if cycle else 1)
-        run = next((r for r in recent if cycle is None or r.cycle == cycle), None)
+        recent = list_cycle_runs(cycle, limit=1) if cycle else list_recent_runs(limit=1)
+        run = recent[0] if recent else None
     return build_trace(run) if run is not None else None
 
 

@@ -83,14 +83,15 @@ testo ingest 'reports/**/*.xml' --cycle web-unit          # record locally
 testo ingest junit.xml --cycle api --tier integration --ci
 testo ingest test-results/results.json --cycle web-e2e --stage e2e --tier e2e   # Playwright JSON
 testo ingest allure-results --cycle api                    # a folder: the files in it
+testo ingest                                               # find the result files, cycle = folder name
 testo ingest 'reports/*.xml' --cycle web-unit \
   --server https://testo.example.com --token "$TESTO_API_TOKEN"   # team server
 ```
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `REPORTS...` | required | Files, folders (their files) or quoted globs, relative to `--repo` (absolute paths must be inside it). Each file is recognised by its content; see the table below |
-| `--cycle` | required | Cycle name the run is recorded under: letters, digits, `.`, `_`, `-`. Reuse it so runs build a history |
+| `REPORTS...` | found | Files, folders (their files) or quoted globs, relative to `--repo` (absolute paths must be inside it). Each file is recognised by its content; see the table below. None given: every result file under `--repo` that git doesn't track (fixtures are tracked) and isn't in a dependency folder (`node_modules`, `.venv`, ...); exit `2` when there is none |
+| `--cycle` | folder name | Cycle name the run is recorded under: letters, digits, `.`, `_`, `-`. Reuse it so runs build a history. Default: the `--repo` folder's name, as `testo init` and `pytest --testo` use |
 | `--stage` | `junit` | Stage name the tests are grouped under |
 | `--tier` | `unit` | Test-pyramid tier: `unit`, `integration`, `e2e` |
 | `--repo` | `.` | Directory the report paths are relative to |
@@ -341,6 +342,52 @@ Answers are compact: messages are cut to their first line (300 characters), list
 
 ---
 
+## `testo demo`
+
+See the UI with something in it before you have results of your own. Writes eight JUnit XML files for a small made-up shop app into a new folder, records them with `testo ingest` as eight runs of the `demo-shop` cycle, then starts [`testo ui`](#testo-ui) on that history.
+
+```bash
+pip install 'testo-core[api]'
+testo demo                          # temporary folder, opens http://127.0.0.1:8000
+testo demo --dir ./testo-demo --no-ui
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--dir` | a new temporary folder | Where the demo history goes; must be new or empty |
+| `--ui` / `--no-ui` | `--ui` | Start the UI once the runs are recorded |
+| `--port`, `-p` | `8000` | Port for the UI |
+| `--open` / `--no-open` | `--open` | Open the default browser |
+
+The runs show a flaky test (`test_apply_coupon`), a new failure in the latest run (`test_redirect_after_login`), a test that got slower (`test_results_are_ranked`) and one that was fixed (`test_badge_count`). The demo has its own SQLite file and `.testo/` folder inside `--dir` (it sets `DATABASE_URL` and `TESTO_HOME` for the commands it starts), so your real history is never touched. Exit `2` when `--dir` is not empty; otherwise the exit code of the failing `testo ingest` or `testo ui`.
+
+---
+
+## `testo try`
+
+See the pull request comment your latest results would get, before you add anything to CI. It records the result files as a run in a throwaway copy of your history and prints what [`testo report markdown`](#subcommands) (the job summary and the GitHub Action's comment) says about them. The command-line partner of the `/try` page.
+
+```bash
+pytest --junitxml=test-results/junit.xml; testo try    # the files your last run left here
+testo try reports/junit.xml --cycle api                # these files, compared with cycle `api`
+testo try --from-github                                # the latest GitHub Actions run's artifacts
+testo try --from-github --run-id 123456 --out comment.md
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `REPORTS...` | found | Result files, folders or globs; none = every result file in `--repo` that git doesn't track, as [`testo ingest`](#testo-ingest) finds them |
+| `--repo` | `.` | The project |
+| `--cycle` | folder name | The cycle to compare with |
+| `--from-github` | off | Download the artifacts of the latest finished workflow run with the [GitHub CLI](https://cli.github.com) (`gh run download`) and preview the result files in them. The workflow must upload them (`actions/upload-artifact`) |
+| `--run-id` | latest | With `--from-github`: this run |
+| `--baseline-branch` | default branch | Compare with this branch's latest run, as a pull request into it would |
+| `--out`, `-o` | stdout | Write the comment to a file |
+
+Nothing is recorded: the run goes into a new temporary folder with its own SQLite file and `.testo/` (deleted afterwards). When your history is a local SQLite file (`DATABASE_URL` or `database.url`, else `./testo_history.db`), it is copied in first, so the preview shows what changed since your earlier runs; otherwise it is a first run's comment. No config is read, so reporters and alerts don't fire. Exit `0` with a preview, even when tests failed; `2` when there are no result files or `--from-github` can't download them.
+
+---
+
 ## `testo notify`
 
 Send a recorded run to Slack and/or Microsoft Teams: pass/fail counts, then new regressions, newly flaky tests, failing tests and fixed tests (10 names per list).
@@ -503,6 +550,28 @@ testo clean -y --docker
 
 Without `--yes` / `-y`: refuses with exit **2**. It also refuses (exit **2**, nothing deleted) when the artifacts root or `--temp-dir` is the filesystem root, your home folder, the current folder, the config's folder, a parent of any of them, or a folder holding `.git`, `testosterone.yaml` or `pyproject.toml`, so `artifacts_root: .` can't delete the project.
 
+### `testo clean --history`
+
+Deletes expired run history instead of artifacts: each expired run's row, its `test_result` rows and its report copy under `static/history/<run_id>/`, oldest first. Runs still `RUNNING` are never touched; report archives (`testo report list`) are separate and stay.
+
+```bash
+testo clean --history --dry-run          # list what would go, delete nothing
+testo clean --history --yes              # apply history.retention from testosterone.yaml
+testo clean --history -y --keep-days 30  # override (or set) the limits for this call
+testo clean --history -y --keep-runs 200
+```
+
+The limits come from the top-level `history:` section (either or both; a run goes when it breaks any):
+
+```yaml
+history:
+  retention:
+    days: 90            # runs that started more than 90 days ago
+    runs_per_cycle: 200 # beyond each cycle's newest 200 runs
+```
+
+`--keep-days` / `--keep-runs` override the file's values. Without any limit (no `history:` section and no flag) it exits **2** and says so; without `--yes` (and not `--dry-run`) it exits **2**. A report copy that cannot be removed is listed and the command exits **5**; the rows are already gone. The API server applies the same section on its own every 6 hours while it runs ([Team Server § How it works](../Processes%20&%20Guides/Team%20Server.md#how-it-works)). Without a `history:` section nothing is ever deleted.
+
 ---
 
 ## `testo watch`
@@ -520,11 +589,41 @@ Ignores `.git`, `artifacts`, `venv`, `__pycache__`, etc. Each batch invokes `tes
 
 ## `testo init`
 
-Interactive wizard for `testosterone.yaml` (non-interactive alternative: `testo config init`).
+Sets a project up in one command: detects its test runners, writes `testosterone.yaml` and the CI workflow, adds Testosterone's local files to `.gitignore` and records a first run. Nothing has to be edited by hand for the runners it knows.
 
 ```bash
-testo init
+testo init                      # detect, write, record a first run
+testo init --dry-run            # print the files it would write; write and run nothing
+testo init --stack jest --stack go --cycle web --no-run
+testo init --interactive        # the older wizard: asks for each value, writes only the config
 ```
+
+| Detected from | Stack (`--stack`) | Stage it writes |
+|---------------|-------------------|-----------------|
+| `pytest.ini`, `conftest.py`, `[tool.pytest]`, pytest in `requirements*.txt` / `pyproject.toml`, `tests/test_*.py` | `pytest` | `equipment: pytest` |
+| `jest` in `package.json` | `jest` | `equipment: jest` (Jest's JSON report) |
+| `vitest` in `package.json` | `vitest` | `equipment: vitest` |
+| `@playwright/test` in `package.json` | `playwright` | `equipment: playwright`, `tier: e2e` |
+| `go.mod` | `go` | `command`: `go test -json ./...` into `test-results/go-test.json` |
+| a `*.csproj` referencing a test SDK (xUnit, NUnit, MSTest) | `dotnet` | `command`: `dotnet test --logger trx` |
+| `pom.xml` | `maven` | `command`: `mvn -B test` (or `./mvnw`), Surefire XML |
+| `build.gradle(.kts)` | `gradle` | `command`: `gradle test` (or `./gradlew`) |
+| `rspec` in `Gemfile`, or `.rspec` | `rspec` | `command`: `bundle exec rspec` with the JSON formatter |
+| `phpunit/phpunit` in `composer.json` | `phpunit` | `command`: `vendor/bin/phpunit --log-junit` |
+
+Cypress is found but left out (it needs the app running first); the command says so.
+
+What it writes, in the project folder (`--dir`, default here):
+
+- **`testosterone.yaml`**: one cycle, named after the folder unless `--cycle` (the same default as `pytest --testo`), with a stage per runner.
+- **The CI file** (`--ci`; `auto`, the default, picks the CI the project already uses, else GitHub Actions; `none` writes none):
+  - `github`: `.github/workflows/testosterone.yml`: checkout, each language's setup and dependency install (from `requirements*.txt` or the `pyproject.toml` test extra, the Node lockfile's package manager and `.nvmrc`, `go.mod`, ...), then the [GitHub Action](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md) running the cycle with `comment-on-pr: "true"`.
+  - `gitlab`, `jenkins`, `circleci`: `.gitlab-ci.yml`, `Jenkinsfile` or `.circleci/config.yml` that run the tests and record them with `testo ingest`, as on [Setup Snippets](../Processes%20&%20Guides/Setup%20Snippets.md). When that file exists it is left alone: the new one goes next to it (`.gitlab/testosterone.gitlab-ci.yml`, `Jenkinsfile.testosterone`, `.circleci/testosterone.yml`) and the command says how to wire it in. With several runners, GitLab and CircleCI get a job per runner, each recording its own cycle (`<cycle>-<runner>`).
+- **`.gitignore`**: `testo_history.db`, `artifacts/`, `.testo/` and `test-results/`, the ones not ignored yet.
+
+A file that exists is kept unless `--force`; a kept `testosterone.yaml` with one cycle gives the workflow its cycle name.
+
+The first run (`--no-run` skips it): result files a test run already left in the project (JUnit XML, Jest/Vitest/Playwright/RSpec JSON, `.trx`, `go test -json`, Robot `output.xml`, `allure-results`; recognised by content, files git tracks are skipped as fixtures) are recorded like `testo ingest` would. When there are none, the new cycle runs once. Exit code `0` once a run is recorded, even if some of its tests failed; `2` when no runner was found or an option is wrong.
 
 ---
 
@@ -673,7 +772,7 @@ testo -v
 
 ## `pytest --testo`
 
-testo-core installs a pytest plugin (entry point `pytest11`, `testo_core/pytest_plugin.py`). It does nothing unless asked:
+testo-core installs a pytest plugin (entry point `pytest11`, `testo_core/pytest_plugin.py`). The `pytest-testo` package ([`integrations/pytest-testo/`](https://github.com/taltal-beep/testosterone/tree/main/integrations/pytest-testo)) installs the same thing under a `pytest-*` name. It does nothing unless asked:
 
 | Option | Effect |
 |--------|--------|

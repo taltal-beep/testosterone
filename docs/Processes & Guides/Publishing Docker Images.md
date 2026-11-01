@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-07-01
-updated: 2026-10-24
+updated: 2026-11-01
 ---
 
 # Publishing Docker Images
@@ -11,7 +11,7 @@ updated: 2026-10-24
 
 ## Overview
 
-Three images are published to GitHub Container Registry (GHCR) via GitHub Actions, from one matrix job in `docker-publish.yml`: `testo-runner` (`Dockerfile.testo-runner`, the CLI for running cycles in CI, and the default image stages run in with `TESTO_RUNNER=container`), `testo-server` (`Dockerfile.testo-server`, the API with the web UI built in, used by the [Team Server](Team%20Server.md)) and `testo-runner-service` (`Dockerfile.testo-runner-service`, the service that starts each stage in a throwaway container, [Runs in throwaway containers](Team%20Server.md#runs-in-throwaway-containers)). Images are built for `linux/amd64` and `linux/arm64` on the floating `python:3.11-slim-bookworm` base, so each build picks up current Debian security fixes, and are scanned with Trivy before they are pushed.
+Three images are published to GitHub Container Registry (GHCR) via GitHub Actions, from one matrix job in `docker-publish.yml`: `testo-runner` (`Dockerfile.testo-runner`, the CLI for running cycles in CI, and the default image stages run in with `TESTO_RUNNER=container`), `testo-server` (`Dockerfile.testo-server`, the API with the web UI built in, used by the [Team Server](Team%20Server.md)) and `testo-runner-service` (`Dockerfile.testo-runner-service`, the service that starts each stage in a throwaway container, [Runs in throwaway containers](Team%20Server.md#runs-in-throwaway-containers)). Images are built for `linux/amd64` and `linux/arm64` on the floating `python:3.13-slim-trixie` base (Debian 13), so each build picks up current Debian security fixes, and are scanned with Trivy before they are pushed. Dependabot's `docker` ecosystem opens a PR when a newer base tag is out.
 
 ## Registry
 

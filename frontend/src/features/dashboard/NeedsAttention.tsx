@@ -14,8 +14,10 @@ function FailingCycles({ failing }: { failing: DashboardAttentionResponse["faili
             {item.cycle}
           </Link>
           <span className="text-sm text-ink-200">
-            {countLabel(item.failed_tests, "test")} failing
-            {item.new_failures > 0 ? `, ${item.new_failures} new` : ""}
+            {item.failed_tests === 0
+              ? // Red with no failing test: a stage crashed before or outside its tests.
+                "failed outside its tests"
+              : `${countLabel(item.failed_tests, "test")} failing${item.new_failures > 0 ? `, ${item.new_failures} new` : ""}`}
           </span>
           {item.new_failures > 0 ? <Badge tone="danger">New failures</Badge> : null}
           {item.failing_runs > 1 ? <Badge tone="warn">Red for {item.failing_runs} runs</Badge> : null}

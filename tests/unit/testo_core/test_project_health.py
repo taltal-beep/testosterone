@@ -10,6 +10,7 @@ from testo_core.history.views import CompletedRunView
 from testo_core.repository.models import RunStatus
 from testo_core.services import project_health
 from testo_core.services.test_history import CycleTests, TestSummary
+from tests._history_fakes import cycle_runs_from
 
 
 def _run(run_id: str, cycle: str, created_at: float, *, failed: int = 0) -> CompletedRunView:
@@ -68,9 +69,9 @@ def history(monkeypatch):  # noqa: ANN001, ANN201
         ],
     )
     runs = [web, _run("api-2", "api", 3), _run("web-1", "web", 2), _run("api-1", "api", 1)]
-    monkeypatch.setattr(project_health, "list_recent_runs", lambda *, limit: runs)
+    monkeypatch.setattr(project_health, "list_cycle_runs", cycle_runs_from(runs))
     monkeypatch.setattr(
-        project_health, "latest_run_per_cycle", lambda *, limit: {"web": runs[0], "api": runs[1]}
+        project_health, "latest_run_per_cycle", lambda: {"web": runs[0], "api": runs[1]}
     )
     tests = {
         "web": [_test("w-flaky", flaky=True), _test("w-slow", slowdown_ms=40)]
@@ -116,6 +117,13 @@ def test_by_cycle_and_findings(history) -> None:  # noqa: ANN001
     kinds = [f.kind for f in health.findings]
     assert kinds == ["red_cycle", "flaky", "slower", "quarantined"]
     assert health.findings[1].test_key == "w-flaky"
+    assert health.findings[0].detail == "5 tests failing in the latest run."
+    assert health.findings[2].detail.startswith("Got slower by 40 ms")
+
+
+def test_slowdowns_read_like_the_ui() -> None:
+    assert project_health._duration(850) == "850 ms"
+    assert project_health._duration(13929) == "13.9 s"
 
 
 def test_one_cycle_and_no_data(history) -> None:  # noqa: ANN001

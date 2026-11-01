@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-07-01
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Publishing to PyPI
@@ -36,7 +36,13 @@ The `package` job in `ci.yml` runs the UI bundle, the build and the clean-instal
 
 ## Current state
 
-Version 1.1.1 is the first release meant for PyPI; 1.1.0 was never published and its wheel crashed on `testo run` without the `[db]` extra (see `CHANGELOG.md`). It is on PyPI since 2026-10-19 (https://pypi.org/project/testo-core/). 1.2.0 was released on 2026-10-24, 1.3.0 on 2026-10-25, 1.4.0 on 2026-10-30 and 1.5.0 on 2026-10-31. The `v1.1.1` Release's automatic run stopped at the old Test PyPI step, so 1.1.1 was uploaded with a manual run of the workflow. The moving `v1` tag the GitHub Action docs refer to ([CI-CD Pipeline Setup § Versioning policy](CI-CD%20Pipeline%20Setup.md#versioning-policy)) is moved by `move-major-tag.yml` on each stable release.
+Version 1.1.1 is the first release meant for PyPI; 1.1.0 was never published and its wheel crashed on `testo run` without the `[db]` extra (see `CHANGELOG.md`). It is on PyPI since 2026-10-19 (https://pypi.org/project/testo-core/). 1.2.0 was released on 2026-10-24, 1.3.0 on 2026-10-25, and 1.4.0 on 2026-10-31. 1.5.0 is the version on `main` and waits for its Release (checked 2026-11-01: PyPI shows 1.4.0). The `v1.1.1` Release's automatic run stopped at the old Test PyPI step, so 1.1.1 was uploaded with a manual run of the workflow. The moving `v1` tag the GitHub Action docs refer to ([CI-CD Pipeline Setup § Versioning policy](CI-CD%20Pipeline%20Setup.md#versioning-policy)) is moved by `move-major-tag.yml` on each stable release.
+
+## pytest-testo
+
+[`integrations/pytest-testo/`](https://github.com/taltal-beep/testosterone/tree/main/integrations/pytest-testo) is a second, tiny PyPI project, `pytest-testo`. It has no code of its own: it depends on `testo-core` (whose `pytest11` entry point provides `pytest --testo`) and exists because pytest's [plugin list](https://docs.pytest.org/en/stable/reference/plugin_list.html) only picks up PyPI names that start with `pytest-`. It registers no entry point, since a second registration of the same plugin would stop pytest; `tests/contract/ci/test_pytest_testo_package.py` checks that.
+
+It is released by hand, only when its own version changes (`version` in its `pyproject.toml` and `__version__` in `pytest_testo/__init__.py`): run **Publish pytest-testo to PyPI** (`publish-pytest-testo.yml`) from the Actions tab. It builds, runs `twine check`, installs the wheel with `testo-core` from PyPI and records a one-test `pytest --testo` run, then uploads. Before the first run the PyPI account owner adds a pending publisher like the one above, with project `pytest-testo`, workflow `publish-pytest-testo.yml` and environment `pypi`.
 
 ## Version management
 

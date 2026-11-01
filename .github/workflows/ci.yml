@@ -3,7 +3,7 @@ name: ci
 # Unified CI/CD pipeline: format and test in parallel -> deploy
 #
 # Stages:
-#   format               ruff lint + ruff format check + mypy on testo_core and testo_api (all blocking)
+#   format               ruff lint + ruff format check + mypy + import-linter layer contracts (all blocking)
 #   test                 fast required pytest suite with the coverage gate, then the
 #                        heavy (local, mocked) tier; uploads coverage.xml
 #   test_python_versions the same suite on Python 3.12, 3.13 and 3.14, the other versions
@@ -69,6 +69,8 @@ jobs:
         run: ruff format --check --diff .
       - name: mypy
         run: mypy testo_core testo_api
+      - name: Layer check (import-linter)
+        run: lint-imports
 
   # No `needs: format`: lint and tests run side by side, so a red lint no
   # longer hides a red test for another minute.
@@ -90,7 +92,7 @@ jobs:
       # Coverage sources (testo_core + testo_api, line + branch) and the 80%
       # gate come from pytest.ini; measuring costs ~15 s on this suite.
       - name: Run fast required suite (with coverage gate)
-        run: python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1 --cov-report=xml
+        run: python -m pytest -q -n auto -m "tier_fast and not quarantined" --maxfail=1 --cov-report=xml
       # The heavy tier is local and mocked and takes a few seconds; running it
       # here keeps it from rotting between manual pr-heavy runs.
       - name: Run heavy suite
@@ -142,7 +144,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
       - name: Run fast required suite
-        run: python -m pytest -q -m "tier_fast and not quarantined" --maxfail=1 --no-cov
+        run: python -m pytest -q -n auto -m "tier_fast and not quarantined" --maxfail=1 --no-cov
 
   frontend:
     name: frontend (typecheck + vitest + build)
@@ -302,6 +304,19 @@ jobs:
           comment-on-pr: "true"
       - name: Check the action's outputs
         run: test "${{ steps.testo.outputs.status }}" = success
+      # Recording results instead of running a cycle (what a repo with no
+      # testosterone.yaml gets): the tests write JUnit XML, the action ingests it.
+      - run: python -m pytest -q --junitxml=test-results/example.xml
+        working-directory: examples/getting-started
+      - id: ingest
+        uses: ./integrations/github-action
+        with:
+          package: .
+          results: examples/getting-started/test-results/example.xml
+          cycle: example-ingest
+          comment-on-pr: "false"
+      - name: Check the ingest run's outputs
+        run: test "${{ steps.ingest.outputs.status }}" = success
 
   team_server:
     name: team server (image + compose + testo ingest --server)

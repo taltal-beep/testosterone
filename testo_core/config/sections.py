@@ -48,6 +48,7 @@ def parse_defaults(raw: Any, *, config_dir: Path) -> Defaults:
         timeout_s=timeout_s,
         workers=workers,
         extra_env=extra_env,
+        workers_explicit="workers" in raw,
     )
 
 
@@ -370,6 +371,7 @@ def parse_stage(
         junit_xml=junit_xml,
         resources=resources,
         workers_auto=workers_auto,
+        workers_explicit="workers" in stage_raw or defaults.workers_explicit,
     )
 
 
