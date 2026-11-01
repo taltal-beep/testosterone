@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # CI Integrations
@@ -51,7 +51,7 @@ steps:
       comment-on-pr: "true"
 ```
 
-After a persisted run the action renders it with `testo report markdown` and writes it to the job summary (`job-summary`, default on). With `comment-on-pr: "true"` on `pull_request` events it keeps one comment per cycle on the pull request, found by its hidden marker and edited on later pushes. Both are best-effort: an error, such as a fork's read-only token, is a workflow warning and never changes the exit code. `package` is what gets pip-installed (`testo-core` by default; `testo-core[bdd]` for cycles with `behave` or `behavex` stages; this repository's own CI passes `.`). The GitLab template's `TESTO_PACKAGE` variable does the same. Design: [GitHub Action PR Comment - 2026-10-19](../Specs%20&%20ADRs/GitHub%20Action%20PR%20Comment%20-%202026-10-19.md).
+After a persisted run the action renders it with `testo report markdown` and writes it to the job summary (`job-summary`, default on). With `comment-on-pr: "true"` on `pull_request` events it keeps one comment per cycle on the pull request, found by its hidden marker and edited on later pushes. Both are best-effort: an error, such as a fork's read-only token, is a workflow warning and never changes the exit code. `package` is what gets pip-installed (`testo-core` by default; `testo-core[bdd]` for cycles with `behave` or `behavex` stages; this repository's own CI passes `.`; several requirements are separated by spaces, `testo-core pytest-xdist`). With `cycle: all` every cycle gets its own job summary section, PR comment, annotations and alert. Inputs reach the action's shell steps as environment variables, never as script text, so a branch name in an input can't run commands. The GitLab template's `TESTO_PACKAGE` variable does the same. Design: [GitHub Action PR Comment - 2026-10-19](../Specs%20&%20ADRs/GitHub%20Action%20PR%20Comment%20-%202026-10-19.md).
 
 The action also prints failing tests as annotations on the diff (`annotations`, default on, no permission needed; [`testo report annotations`](../CLI%20Commands/Command%20Reference.md#subcommands)). Pass `slack-webhook: ${{ secrets.SLACK_WEBHOOK_URL }}` and/or `teams-webhook` to get a chat alert ([`testo notify`](../CLI%20Commands/Command%20Reference.md#testo-notify), `notify-when` default `failure`). `flaky-issues: "true"` opens one issue (label `flaky-test`) per test the run made flaky and needs `issues: write`. All three are best-effort like the summary. Design: [Alerts Where Developers Look - 2026-10-22](../Specs%20&%20ADRs/Alerts%20Where%20Developers%20Look%20-%202026-10-22.md).
 
