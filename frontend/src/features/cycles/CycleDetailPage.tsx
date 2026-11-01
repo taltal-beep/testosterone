@@ -63,47 +63,50 @@ export function CycleDetailPage() {
 
       <CycleTestsCard cycle={cycle.name} />
 
-      <Card title={`Stages (${cycle.stages.length})`}>
-        <ol className="space-y-3">
-          {cycle.stages.map((stage, idx) => (
-            <li key={stage.name} className="rounded-2xl border border-white/5 bg-ink-950/70 p-3">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-ink-500">#{idx + 1}</span>
-                <span className="font-mono text-sm font-semibold text-ink-100">{stage.name}</span>
-                <Badge tone="brand">{stage.equipment}</Badge>
-              </div>
-              {/* A recorded-only stage has no config: no args, timeout or workers to show. */}
-              {cycle.source === "config" ? (
-                <KeyValue
-                  className="mt-2"
-                  items={[
-                    { label: "Target repo", value: <span className="font-mono text-xs">{stage.target_repo}</span> },
-                    {
-                      label: "Args",
-                      value: (
-                        <span className="font-mono text-xs">
-                          {stage.args.length > 0 ? stage.args.join(" ") : "—"}
-                        </span>
-                      )
-                    },
-                    { label: "Timeout", value: stage.timeout_s !== null ? `${stage.timeout_s}s` : "none" },
-                    // The API leaves workers null for single-process frameworks (behave, command).
-                    ...(stage.workers !== null
-                      ? [
-                          {
-                            label: "Workers",
-                            value:
-                              stage.equipment === "pytest" ? `${stage.workers} (with pytest-xdist)` : stage.workers
-                          }
-                        ]
-                      : [])
-                  ]}
-                />
-              ) : null}
-            </li>
-          ))}
-        </ol>
-      </Card>
+      {/* A recorded-only cycle has one stage with nothing to configure: the header already says it. */}
+      {cycle.source === "config" ? (
+        <Card title={`Stages (${cycle.stages.length})`}>
+          <ol className="space-y-3">
+            {cycle.stages.map((stage, idx) => (
+              <li key={stage.name} className="rounded-2xl border border-white/5 bg-ink-950/70 p-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-ink-500">#{idx + 1}</span>
+                  <span className="font-mono text-sm font-semibold text-ink-100">{stage.name}</span>
+                  <Badge tone="brand">{stage.equipment}</Badge>
+                </div>
+                {/* A recorded-only stage has no config: no args, timeout or workers to show. */}
+                {cycle.source === "config" ? (
+                  <KeyValue
+                    className="mt-2"
+                    items={[
+                      { label: "Target repo", value: <span className="font-mono text-xs">{stage.target_repo}</span> },
+                      {
+                        label: "Args",
+                        value: (
+                          <span className="font-mono text-xs">
+                            {stage.args.length > 0 ? stage.args.join(" ") : "—"}
+                          </span>
+                        )
+                      },
+                      { label: "Timeout", value: stage.timeout_s !== null ? `${stage.timeout_s}s` : "none" },
+                      // The API leaves workers null for single-process frameworks (behave, command).
+                      ...(stage.workers !== null
+                        ? [
+                            {
+                              label: "Workers",
+                              value:
+                                stage.equipment === "pytest" ? `${stage.workers} (with pytest-xdist)` : stage.workers
+                            }
+                          ]
+                        : [])
+                    ]}
+                  />
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        </Card>
+      ) : null}
 
       {cycle.trigger ? (
         <Card title="Trigger (selective execution)">
