@@ -632,6 +632,28 @@
             ],
             "title": "Ci Ref Name"
           },
+          "coverage_covered": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Covered"
+          },
+          "coverage_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Total"
+          },
           "cycle": {
             "title": "Cycle",
             "type": "string"
@@ -3780,6 +3802,39 @@
             ],
             "title": "Commit"
           },
+          "coverage_covered": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Covered"
+          },
+          "coverage_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Pct"
+          },
+          "coverage_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Total"
+          },
           "created_at": {
             "title": "Created At",
             "type": "number"
@@ -3962,7 +4017,10 @@
           "branch",
           "commit",
           "base_branch",
-          "repository"
+          "repository",
+          "coverage_pct",
+          "coverage_covered",
+          "coverage_total"
         ],
         "title": "RunDetail",
         "type": "object"

@@ -1083,6 +1083,10 @@ export interface components {
             ci_provider?: string | null;
             /** Ci Ref Name */
             ci_ref_name?: string | null;
+            /** Coverage Covered */
+            coverage_covered?: string | null;
+            /** Coverage Total */
+            coverage_total?: string | null;
             /** Cycle */
             cycle: string;
             /** Files */
@@ -2167,6 +2171,12 @@ export interface components {
             broken: number | null;
             /** Commit */
             commit: string | null;
+            /** Coverage Covered */
+            coverage_covered: number | null;
+            /** Coverage Pct */
+            coverage_pct: number | null;
+            /** Coverage Total */
+            coverage_total: number | null;
             /** Created At */
             created_at: number;
             /** Cycle */

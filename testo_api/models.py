@@ -201,6 +201,10 @@ class RunDetail(ApiModel):
     commit: str | None = None
     base_branch: str | None = None
     repository: str | None = None
+    # Line coverage stored with ``--coverage``.
+    coverage_pct: float | None = None
+    coverage_covered: int | None = None
+    coverage_total: int | None = None
 
 
 class RunDetailResponse(ApiModel):
