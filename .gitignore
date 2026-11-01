@@ -59,6 +59,7 @@ logs/
 # Frontend workspace artifacts
 frontend/node_modules/
 frontend/dist/
+frontend/*.tsbuildinfo
 
 # Root Node tooling (Allure CLI, commitlint)
 node_modules/

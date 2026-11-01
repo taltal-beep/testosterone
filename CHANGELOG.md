@@ -39,6 +39,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Python 3.14 is tested in CI and listed in the package classifiers
 
 ### Fixed
+- The run page said "Couldn't load this run" for any run older than the newest 200: `GET /api/v1/runs/{id}/reports` looked the run up in the recent list. It also no longer reads every artifact file into memory just to list their names
+- A stage that crashed before its tests (say a `conftest.py` import error) left no way to see why in the UI. Each stage on the run page now links its log, the Artifacts list links every file (`artifacts_url` on the reports response), and `.log` files open in the browser instead of downloading
+- Web UI: a missing run or test (any 4xx) shows its message at once instead of after about 7 seconds of retries; the dashboard says a red cycle with no failing test "failed outside its tests" instead of "0 tests failing"; a run with no test results says so instead of "Pass rate 0%"
+- After a run started from the UI finishes, the cycle's Recent runs, the Runs page and the dashboard show it without a reload
+- The dashboard's Needs attention card loads faster on big suites: reading a run's results no longer works out each result file's stage separately (about 35% less time with 1,500 tests a run)
+- Project health findings write slowdowns like the rest of the UI ("Got slower by 13.9 s (+644%)", not "13929 ms (+644.0%)") and say a red cycle with no failing test failed outside its tests
+- The Runs page showed only the newest 30 runs while saying "Every recorded run": it now has "Show older runs", and Compare offers the last 200 runs to pick from. `GET /api/v1/runs?limit=` is capped at 500. Each run's percentage reads "96% passed" (it said "health 96%", the old name for pass rate)
+- Every page of the web UI had the same browser tab title; each now names its page ("Runs · Testosterone", a run's cycle and time, a test's name), and the 404 page has a top-level heading
+- Keyboard: "Back to runs", "Compare latest two", "Browse cycles" and "Go to dashboard" were a button inside a link, two tab stops for one control; they are plain links styled as buttons now
+- Web UI on phones: a long test name in Flaky tests or a long stage path on the cycle page no longer makes the whole page scroll sideways, and the Flaky tests card shows the worst 10 with "Show all" instead of every flaky test at once
 - Two runs of one cycle at once no longer overwrite each other's results and logs: a second `testo run` of a cycle that is already running (another terminal, another CI job on the runner, the API) waits for the first and says so. The lock is `<artifacts>/<cycle>/.lock`; other cycles never wait
 - OpenTelemetry export: each case of a parametrized test gets its own `test.case.name` (`tests.test_math#test_add[1-2]`; they all had the same one), and an HTTP endpoint without a scheme (`collector:4318`) is reported as bad input (exit `2`) instead of a failed send (exit `3`)
 - GitHub Action: `cycle: all` publishes a job summary, PR comment, annotations and alert for every cycle (it did only the last one), and `package` accepts several requirements separated by spaces (`testo-core pytest-xdist`)

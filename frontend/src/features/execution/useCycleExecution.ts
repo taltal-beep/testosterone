@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { apiClient, type CycleExecutionAccepted } from "../../lib/api-client";
@@ -31,6 +32,18 @@ export function useCycleExecution() {
   const unsubscribeRef = useRef<null | (() => void)>(null);
 
   useEffect(() => () => unsubscribeRef.current?.(), []);
+
+  // A finished run changes every list on screen (the cycle's recent runs, the
+  // runs page, the dashboard). The run is recorded just after the engine's last
+  // event, so refetch now and once more a moment later.
+  const queryClient = useQueryClient();
+  const finished = phase === "passed" || phase === "failed" || phase === "aborted";
+  useEffect(() => {
+    if (!finished) return;
+    void queryClient.invalidateQueries();
+    const later = setTimeout(() => void queryClient.invalidateQueries(), 2000);
+    return () => clearTimeout(later);
+  }, [finished, queryClient]);
 
   function stopStream() {
     unsubscribeRef.current?.();
@@ -131,7 +144,7 @@ export function useCycleExecution() {
     events,
     stageRows,
     busy: phase === "starting" || phase === "running",
-    finished: phase === "passed" || phase === "failed" || phase === "aborted",
+    finished,
     start
   };
 }

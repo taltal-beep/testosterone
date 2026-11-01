@@ -115,7 +115,7 @@ describe("happy path", () => {
             })
           });
         }
-        if (url.endsWith("/api/v1/runs")) {
+        if (url.includes("/api/v1/runs?")) {
           return Promise.resolve({
             ok: true,
             json: async () => ({

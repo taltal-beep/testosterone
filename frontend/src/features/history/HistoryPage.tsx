@@ -1,26 +1,33 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { apiClient } from "../../lib/api-client";
 import { formatPercent, passRateLine } from "../../lib/format";
-import { Button, EmptyState, PageHeader, RunLabel, Spinner, StatusPill } from "../../components/ui";
+import { EmptyState, PageHeader, RunLabel, Spinner, StatusPill, buttonClasses } from "../../components/ui";
 import { MuscleShrug } from "../../components/mascot";
 
 const selectClass =
   "rounded-xl border border-ink-600 bg-ink-950/80 px-3 py-2 text-sm text-ink-100 focus:border-brand-500 focus:outline-none";
 
+const PAGE = 30;
+
 export function HistoryPage() {
   const [params, setParams] = useSearchParams();
   const cycle = params.get("cycle") ?? "";
+  const [limit, setLimit] = useState(PAGE);
   const runsQuery = useQuery({
-    queryKey: ["runs", cycle],
-    queryFn: () => apiClient.listRuns(cycle || undefined)
+    queryKey: ["runs", cycle, limit],
+    queryFn: () => apiClient.listRuns(cycle || undefined, limit),
+    // Keep the list on screen while the next page loads.
+    placeholderData: keepPreviousData
   });
   const cyclesQuery = useQuery({ queryKey: ["cycles"], queryFn: () => apiClient.listCycles() });
   const cycleNames = (cyclesQuery.data?.items ?? []).map((item) => item.name);
 
   function pickCycle(name: string) {
     setParams(name ? { cycle: name } : {}, { replace: true });
+    setLimit(PAGE);
   }
 
   if (runsQuery.isLoading) {
@@ -46,10 +53,11 @@ export function HistoryPage() {
         subtitle={cycle ? `Runs of ${cycle}, newest first.` : "Every recorded run, newest first."}
         actions={
           latest && baseline ? (
-            <Link to={`/compare?current_run_id=${latest.run_id}&baseline_run_id=${baseline.run_id}`}>
-              <Button variant="secondary" size="sm">
-                Compare latest two
-              </Button>
+            <Link
+              to={`/compare?current_run_id=${latest.run_id}&baseline_run_id=${baseline.run_id}`}
+              className={buttonClasses("secondary", "sm")}
+            >
+              Compare latest two
             </Link>
           ) : undefined
         }
@@ -82,8 +90,8 @@ export function HistoryPage() {
           title="No runs yet"
           message="Run a cycle or record a report with testo ingest, and it will show up here."
           action={
-            <Link to="/cycles">
-              <Button size="sm">Browse cycles</Button>
+            <Link to="/cycles" className={buttonClasses("primary", "sm")}>
+              Browse cycles
             </Link>
           }
         />
@@ -96,12 +104,22 @@ export function HistoryPage() {
                 <RunLabel run={run} linked relative />
               </div>
               <span className="text-xs text-ink-400">
-                {run.health_pct != null ? `${formatPercent(run.health_pct)} passed` : ""}
+                {run.health_pct != null && run.total_tests ? `${formatPercent(run.health_pct)} passed` : ""}
               </span>
             </li>
           ))}
         </ul>
       )}
+      {items.length >= limit ? (
+        <button
+          type="button"
+          className={`mt-3 ${buttonClasses("secondary", "sm")}`}
+          disabled={runsQuery.isFetching}
+          onClick={() => setLimit((current) => current + PAGE)}
+        >
+          {runsQuery.isFetching ? "Loading…" : "Show older runs"}
+        </button>
+      ) : null}
     </section>
   );
 }

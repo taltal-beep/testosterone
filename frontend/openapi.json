@@ -4312,6 +4312,17 @@
             "title": "Artifact Links",
             "type": "array"
           },
+          "artifacts_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifacts Url"
+          },
           "static_links": {
             "additionalProperties": {
               "type": "string"
@@ -4323,7 +4334,8 @@
         "required": [
           "allure_server_url",
           "static_links",
-          "artifact_links"
+          "artifact_links",
+          "artifacts_url"
         ],
         "title": "RunReportsResponse",
         "type": "object"
@@ -6630,6 +6642,8 @@
             "required": false,
             "schema": {
               "default": 30,
+              "maximum": 500,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }

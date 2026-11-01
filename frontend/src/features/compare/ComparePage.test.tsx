@@ -11,7 +11,7 @@ describe("ComparePage", () => {
       "fetch",
       vi.fn((input: RequestInfo | URL) => {
         const url = String(input);
-        if (url.endsWith("/api/v1/runs")) {
+        if (url.includes("/api/v1/runs?")) {
           return Promise.resolve({
             ok: true,
             json: async () => ({

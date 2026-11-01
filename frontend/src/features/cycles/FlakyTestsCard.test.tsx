@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
@@ -60,5 +60,28 @@ describe("FlakyTestsCard", () => {
   it("asks for more runs when there is too little history", async () => {
     renderCard({ ...base, runs_analyzed: 1, items: [] });
     await waitFor(() => expect(screen.getByText(/Run this cycle a few more times/)).toBeInTheDocument());
+  });
+
+  it("shows the first 10 of a long list until asked for all", async () => {
+    const items = Array.from({ length: 25 }, (_, n) => ({
+      key: `k${n}`,
+      name: `test_${n}`,
+      group: "g",
+      runs: 4,
+      passed: 2,
+      failed: 2,
+      flips: 3,
+      flip_rate: 1,
+      last_status: "failed",
+      history: ["passed", "failed", "passed", "failed"],
+      owners: [],
+      issue_url: null
+    }));
+    renderCard({ ...base, items });
+
+    await waitFor(() => expect(screen.getByText("test_9")).toBeInTheDocument());
+    expect(screen.queryByText("test_10")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show all 25" }));
+    expect(screen.getByText("test_24")).toBeInTheDocument();
   });
 });

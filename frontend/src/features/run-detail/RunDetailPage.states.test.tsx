@@ -151,6 +151,33 @@ describe("RunDetailPage states", () => {
     expect(screen.getByText("artifacts/smoke/run.log")).toBeInTheDocument();
   });
 
+  it("links each stage's log and the artifacts when the API serves them", async () => {
+    stubApi(
+      defaultRoutes({
+        "/api/v1/runs/run-1": { run: { ...RUN, total_tests: 0, failed: 0, stage_health: [{ name: "unit", framework: "pytest", total_tests: 0, passed: 0, health_pct: null }] } },
+        "/api/v1/runs/run-1/reports": {
+          static_links: {},
+          artifact_links: ["events.ndjson", "unit/run.log"],
+          artifacts_url: "history/run-1/artifacts"
+        }
+      })
+    );
+    renderAt();
+
+    // A stage that crashed before its tests: the log is the only place the error is.
+    expect(await screen.findByRole("link", { name: "Log of unit" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/\/history\/run-1\/artifacts\/unit\/run\.log$/)
+    );
+    expect(screen.getByText(/Failed before any test result was recorded/)).toBeInTheDocument();
+    expect(screen.getByText("No tests ran")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Artifacts/ }));
+    expect(screen.getByRole("link", { name: "events.ndjson" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/\/history\/run-1\/artifacts\/events\.ndjson$/)
+    );
+  });
+
   it("names a stage that died of a stack overflow", async () => {
     const detail = "Stack overflow (Go): runtime: goroutine stack exceeds 1000000000-byte limit";
     stubApi(
