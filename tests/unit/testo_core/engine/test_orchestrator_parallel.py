@@ -17,7 +17,7 @@ from testo_core.config.schema import Plan, Stage
 from testo_core.engine import orchestrator
 from testo_core.engine.events import EngineEvent, StageFinished, StageStarted
 from testo_core.engine.result import StageResult
-from testo_core.reporting.paths import plan_artifacts_dir
+from testo_core.paths import plan_artifacts_dir
 
 pytestmark = [pytest.mark.unit, pytest.mark.tier_fast]
 

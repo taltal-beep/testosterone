@@ -34,7 +34,7 @@ from testo_core.engine.events import (
 from testo_core.engine.executor import run_stage
 from testo_core.engine.exit_codes import EngineExitCode, classify_exit_code
 from testo_core.engine.result import PlanResult, StageResult
-from testo_core.reporting.paths import plan_artifacts_dir
+from testo_core.paths import plan_artifacts_dir
 
 logger = logging.getLogger(__name__)
 
