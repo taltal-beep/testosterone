@@ -284,7 +284,7 @@ job, commit and branch. Inputs and outputs: [integrations/github-action/README.m
   `testo.reporters` entry point groups, with no change to Testosterone; `testo plugins` lists and
   checks them. [examples/plugin/](examples/plugin/) adds a `unittest` runner and a
   `json-summary` reporter.
-- **AI failure summaries:** opt in on the AI settings page with an OpenAI or Anthropic key, or point it at any OpenAI-compatible endpoint (a free tier such as Groq or Gemini, or a local Ollama).
+- **AI failure summaries:** opt in on the AI settings page with an OpenAI or Anthropic key, or point it at any OpenAI-compatible endpoint (a free tier such as Groq or Gemini, or a local Ollama). Running locally with Claude Code installed? Pick "Claude Code on this machine" and it uses your existing `claude` login, no key.
   Failed runs store their failing cases, first traceback and log tail (redacted), which is
   what the summary is built from.
 

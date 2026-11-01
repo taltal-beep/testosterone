@@ -917,7 +917,7 @@ export interface components {
              * Provider
              * @enum {string}
              */
-            provider: "openai" | "anthropic" | "openai_compatible";
+            provider: "openai" | "anthropic" | "openai_compatible" | "claude_code";
             /** Retry Count */
             retry_count: number;
             /** Timeout S */
@@ -962,7 +962,7 @@ export interface components {
              * @default openai
              * @enum {string}
              */
-            provider?: "openai" | "anthropic" | "openai_compatible";
+            provider?: "openai" | "anthropic" | "openai_compatible" | "claude_code";
             /**
              * Retry Count
              * @default 1
