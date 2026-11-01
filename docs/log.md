@@ -156,3 +156,7 @@ Added [Importer and Integration Bug Hunt - 2026-10-31](Specs%20&%20ADRs/Importer
 ## 2026-10-31: paid features to offer free
 
 Added [Paid Features to Offer Free - 2026-10-31](Roadmap%20&%20Strategy/Paid%20Features%20to%20Offer%20Free%20-%202026-10-31.md) to Roadmap & Strategy (competitor paywalls, twelve ranked ideas, licence and trademark rules), linked from the Index, the Product Roadmap and the docs site menu.
+
+## 2026-11-01: engine fixes
+
+Added [Engine Fixes - 2026-11-01](Specs%20&%20ADRs/Engine%20Fixes%20-%202026-11-01.md) to Specs & ADRs (what each approved bug-hunt proposal changed), linked from its README and the docs site menu.

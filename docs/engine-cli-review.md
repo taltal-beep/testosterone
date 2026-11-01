@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Engine and CLI bug hunt, 2026-10-31
@@ -29,7 +29,7 @@ Severity: **High** loses data or gives a wrong verdict silently, **Med** mislead
 
 ## Open: proposals, not built
 
-Ranked by impact. Each is bigger than a safe one-line fix or changes behaviour people may rely on, so it waits for a yes.
+Ranked by impact. Each is bigger than a safe one-line fix or changes behaviour people may rely on, so it waited for a yes. Taltal approved them all on 2026-11-01; what each change does is in [Engine Fixes - 2026-11-01](Specs%20&%20ADRs/Engine%20Fixes%20-%202026-11-01.md).
 
 | # | Sev | Problem (repro) | Proposal |
 |---|---|---|---|
