@@ -3,8 +3,8 @@ services:
     image: postgres:15-alpine
     container_name: testo-postgres
     ports:
-      # PostgreSQL (DB) exposed on host for local tools
-      - "5432:5432"
+      # PostgreSQL on this machine only (its password is the default below)
+      - "127.0.0.1:5432:5432"
     environment:
       # Default DB credentials (change for production)
       POSTGRES_USER: testo_admin

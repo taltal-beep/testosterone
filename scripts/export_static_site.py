@@ -143,7 +143,7 @@ class Exporter:
         self.run_limit = run_limit
         self.delta_pairs = delta_pairs
         self.demo_resources = demo_resources
-        self.client = TestClient(create_app())
+        self.client = TestClient(create_app(), base_url="http://localhost")
         self.written: list[str] = []
         self.skipped: list[str] = []
         self.ai_summaries = 0

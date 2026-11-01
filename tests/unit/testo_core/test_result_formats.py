@@ -320,7 +320,37 @@ def test_allure_results_folder(tmp_path: Path) -> None:
     assert (imported.tests, imported.failed, imported.attachments) == (1, 1, 1)
     stored = results["shop.CartTest.addsTax"]
     assert _label(stored, "framework") == "junit5"
-    assert (results_dir / "s1-attachment.png").read_bytes() == b"PNG"
+    source = stored["steps"][0]["attachments"][0]["source"]
+    assert source.endswith("-attachment.png")
+    assert (results_dir / source).read_bytes() == b"PNG"
+
+
+def test_allure_attachment_names_are_replaced(tmp_path: Path) -> None:
+    """An attachment called ``page.html`` is stored under a ``-attachment`` name, which
+    the API serves sandboxed, so it can't run script on the API's origin."""
+    result = {
+        "uuid": "u1",
+        "name": "t",
+        "fullName": "t",
+        "status": "failed",
+        "attachments": [
+            {"name": "page", "source": "page.html", "type": "text/html"},
+            {"name": "again", "source": "page.html", "type": "text/html"},
+        ],
+    }
+    files = {
+        "allure-results/u1-result.json": json.dumps(result),
+        "allure-results/page.html": b"<script>alert(1)</script>",
+    }
+    imported, results, results_dir = _import(tmp_path, files, pattern="allure-results/*")
+
+    assert imported.attachments == 1
+    stored = results["t"]
+    first, second = (a["source"] for a in stored["attachments"])
+    assert first == second
+    assert first.endswith("-attachment.html")
+    assert not (results_dir / "page.html").exists()
+    assert (results_dir / first).read_bytes() == b"<script>alert(1)</script>"
 
 
 def test_unknown_files_are_reported_not_fatal(tmp_path: Path) -> None:

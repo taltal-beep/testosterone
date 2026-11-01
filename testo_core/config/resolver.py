@@ -11,11 +11,29 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import re
 from collections.abc import Mapping
 
 from testo_core.config import if_expr
 from testo_core.config.errors import UNSPECIFIED_PLAN, PlanNotFoundError
 from testo_core.config.schema import Plan, Stage, TestosteroneConfig
+
+# With TESTO_RUNNER=container a stage runs in a throwaway container that must never
+# see the server's own credentials, so ``${env:...}`` can't copy them in either.
+_SERVER_SECRET_NAME = re.compile(
+    r"^(TESTO_.*|DATABASE_URL|POSTGRES_.*|.*(_API_KEY|_TOKEN|_SECRET|_PASSWORD|_DB_URL))$",
+    re.IGNORECASE,
+)
+
+
+def interpolation_env() -> Mapping[str, str]:
+    """The variables ``${env:...}`` reads: this process's, minus the server's
+    secrets when stages run in containers (``TESTO_RUNNER=container``)."""
+    # Read directly (not engine.backends.runner_kind): config sits below the engine.
+    if (os.environ.get("TESTO_RUNNER") or "host").strip().lower() != "container":
+        return os.environ
+    return {k: v for k, v in os.environ.items() if not _SERVER_SECRET_NAME.match(k)}
+
 
 _ENV_PATTERN = if_expr.ENV_PATTERN
 
@@ -42,7 +60,7 @@ def resolve_stages_for_plan(
     env: Mapping[str, str] | None = None,
 ) -> tuple[Stage, ...]:
     """Return only the stages that survive ``${env:...}`` interpolation and ``if`` filtering."""
-    env_map = env if env is not None else os.environ
+    env_map = env if env is not None else interpolation_env()
     out: list[Stage] = []
     for stage in plan.stages:
         if not _eval_if(stage.if_expr, env=env_map):
