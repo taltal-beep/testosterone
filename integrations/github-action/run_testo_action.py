@@ -1,6 +1,6 @@
 """GitHub Actions wrapper around ``testo run --ci``.
 
-Runs one cycle, echoes the NDJSON event stream, and turns the final
+Runs one cycle (or every cycle, for ``all``), echoes the NDJSON event stream, and turns the final
 ``plan_finished`` event into step outputs (``exit_code``, ``status``,
 ``summary_json``, ``summary_path``).
 
@@ -76,6 +76,21 @@ def _extract_summary(stdout: str, *, fallback_exit_code: int) -> dict[str, Any]:
         "error": "Unable to parse a plan_finished event from testo output.",
         "exit_code": int(fallback_exit_code),
     }
+
+
+def finished_cycles(stdout: str) -> list[str]:
+    """The cycles a ``plan_finished`` event was printed for, in order (several for ``all``)."""
+    cycles: list[str] = []
+    for line in stdout.splitlines():
+        try:
+            payload = json.loads(line.strip())
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict) and payload.get("event") == "plan_finished":
+            plan = str(payload.get("plan") or "")
+            if plan and plan not in cycles:
+                cycles.append(plan)
+    return cycles
 
 
 def _status_from_exit_code(exit_code: int) -> str:
@@ -349,16 +364,21 @@ def main(argv: list[str] | None = None) -> int:
         )
     if persist and finished:
         env = os.environ.copy()
-        publish_summary(
-            cycle=str(args.cycle or "").strip(),
-            job_summary=_parse_bool(args.job_summary, default=True),
-            comment=_parse_bool(args.comment_on_pr, default=False),
-            env=env,
-        )
-        cycle = str(args.cycle or "").strip()
-        if not cycle or cycle == "all":
-            cycle = str(summary.get("plan") or "")
-        if cycle:
+        requested = str(args.cycle or "").strip()
+        # ``all`` runs every cycle: each gets its own summary, comment, annotations and alert.
+        if requested == "all":
+            cycles = finished_cycles(proc.stdout or "")
+        else:
+            cycles = [requested or str(summary.get("plan") or "")]
+        for cycle in cycles:
+            publish_summary(
+                cycle=cycle,
+                job_summary=_parse_bool(args.job_summary, default=True),
+                comment=_parse_bool(args.comment_on_pr, default=False),
+                env=env,
+            )
+            if not cycle:
+                continue
             if _parse_bool(args.annotations, default=True):
                 annotate(cycle=cycle, config_path=str(args.config_path or "").strip(), env=env)
             notify(cycle=cycle, when=str(args.notify_when or "").strip(), env=env)

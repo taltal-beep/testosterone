@@ -1278,6 +1278,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#decision-on-duplicate-attempts-2026-11-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision on duplicate attempts (2026-11-01)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#consequences" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2733,6 +2744,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#decision-on-duplicate-attempts-2026-11-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision on duplicate attempts (2026-11-01)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#consequences" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2959,37 +2981,37 @@
 <td>L7</td>
 <td>pytest JUnit</td>
 <td>A test that passes and then errors in teardown is written as <strong>two</strong> <code>&lt;testcase&gt;</code> entries with the same name, so it counts as 2 tests (1 passed, 1 broken).</td>
-<td>proposal P3</td>
+<td>fixed (P3)</td>
 </tr>
 <tr>
 <td>L8</td>
 <td>Go</td>
 <td>With <code>-count=2</code>, or reruns in one file, attempts of the same test overwrite each other, so a fail-then-pass test isn't flagged flaky.</td>
-<td>proposal P3</td>
+<td>fixed (P3)</td>
 </tr>
 <tr>
 <td>L9</td>
 <td>Action</td>
 <td><code>cycle: all</code> publishes the summary, annotations and alert of the last cycle only.</td>
-<td>proposal P4</td>
+<td>fixed (P4)</td>
 </tr>
 <tr>
 <td>L10</td>
 <td>Action</td>
 <td><code>${{ inputs.* }}</code> are pasted into the composite step's bash, so a <code>"</code> or <code>$(…)</code> in an input (<code>cycle: ${{ github.head_ref }}</code>) runs as shell.</td>
-<td>proposal P5</td>
+<td>fixed (P5)</td>
 </tr>
 <tr>
 <td>L11</td>
 <td>OTel</td>
 <td><code>test.case.name</code> is the same for every parametrized case, and an endpoint with no scheme exits 3 instead of 2.</td>
-<td>proposal P6</td>
+<td>fixed (P6)</td>
 </tr>
 <tr>
 <td>L12</td>
 <td>JUnit</td>
 <td>A suite's <code>tests="5"</code> with only 1 <code>&lt;testcase&gt;</code> gives no warning, and a naive <code>timestamp</code> is read as local time.</td>
-<td>proposal P2</td>
+<td>count warning added (P2); naive timestamps stay local time, which is what pytest and Surefire write</td>
 </tr>
 </tbody>
 </table>
@@ -3011,13 +3033,22 @@
 - A fork's read-only token only warns.</p>
 <h2 id="proposals">Proposals<a class="headerlink" href="#proposals" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>P1. Prefer runners' own formats over jest-junit.</strong> In real output, jest-junit (default config) <strong>dropped a test file that failed to compile</strong> and named every suite <code>undefined</code>. The <a href="../../getting-started/">Getting Started</a> and setup prompts could say "use <code>jest --json</code>" first. Docs only.</li>
+<li><strong>P1. Prefer runners' own formats over jest-junit.</strong> In real output, jest-junit (default config) <strong>dropped a test file that failed to compile</strong> and named every suite <code>undefined</code>. The <a href="../../getting-started/">Getting Started</a> and setup prompts could say "use <code>jest --json</code>" first. Docs only. <strong>Done 2026-11-01:</strong> README, Getting Started, Team Server and Command Reference now show <code>jest --json</code>.</li>
 <li><strong>P2. Cross-check suite counts.</strong> When a <code>&lt;testsuite tests="N"&gt;</code> claims more cases than it holds, log a warning like the Playwright report notes. This is cheap, but some tools write wrong counts, so warn rather than fail.</li>
-<li><strong>P3. Merge duplicate attempts.</strong> Fold same-name <code>&lt;testcase&gt;</code> entries in one suite (the pytest teardown error) and repeated Go runs into one result: worst status wins, and a fail followed by a pass is flaky. This changes counts users already have, so it needs a decision.</li>
+<li><strong>P3. Merge duplicate attempts.</strong> Fold same-name <code>&lt;testcase&gt;</code> entries in one suite (the pytest teardown error) and repeated Go runs into one result: worst status wins, and a fail followed by a pass is flaky. This changes counts users already have, so it needed a decision. <strong>Decided 2026-11-01 (Taltal: go with the recommendation), built:</strong> see <a href="#decision-on-duplicate-attempts-2026-11-01">Decision on duplicate attempts</a>.</li>
 <li><strong>P4. <code>cycle: all</code> in the Action.</strong> Publish one summary and alert per <code>plan_finished</code> event.</li>
 <li><strong>P5. Action inputs through <code>env:</code>.</strong> Read inputs as environment variables in the composite steps instead of <code>${{ }}</code> in bash. Also split <code>package</code> on spaces so <code>testo-core pytest-xdist</code> works.</li>
 <li><strong>P6. OTel naming.</strong> Use the test's parametrized <code>name</code> in <code>test.case.name</code>, and treat an endpoint with no scheme as bad input (exit 2).</li>
 </ul>
+<h2 id="decision-on-duplicate-attempts-2026-11-01">Decision on duplicate attempts (2026-11-01)<a class="headerlink" href="#decision-on-duplicate-attempts-2026-11-01" title="Permanent link">&para;</a></h2>
+<p>Taltal approved P3 as recommended. A test listed more than once <strong>in one JUnit <code>&lt;testsuite&gt;</code></strong>, or run more than once in <strong>one <code>go test -json</code> file</strong> (<code>-count=N</code>), is now one result:</p>
+<ul>
+<li>a failure followed by a final pass is <code>passed</code> and flaky, with the first failure's message ("Passed on rerun. …");</li>
+<li>otherwise the worst attempt wins: failed, then broken, then passed, then skipped (a pass followed by a teardown error is <code>broken</code>).</li>
+</ul>
+<p>The merge is by the test's history id (tool plus full name), only inside one suite or one Go file. The same name in two suites, two files or two Playwright projects stays separate. The other importers already report one result per test (Playwright and Jest keep retries inside the test).</p>
+<p>What changes for users: totals for affected reports go down (pytest before 8 with teardown errors, <code>go test -count</code>), and a few tests that were counted as failed are now flaky passes. Old runs keep their stored counts. The shared helper is <code>fold_attempts</code> in <code>testo_core/reporting/imported_results.py</code>.</p>
+<p>P2 shipped with it: a leaf <code>&lt;testsuite tests="N"&gt;</code> listing fewer than N cases adds a note to the import log ("the runner may have stopped while writing it"). It never fails the stage, because some tools write wrong counts.</p>
 <h2 id="consequences">Consequences<a class="headerlink" href="#consequences" title="Permanent link">&para;</a></h2>
 <ul>
 <li>A red build outside any single test now becomes a <code>broken</code> result and a red <code>testo ingest</code>. This adds results named <code>(test file failed)</code>, <code>(failed to load)</code>, <code>(test run error)</code>, <code>(suite failed)</code> and <code>(package failed)</code>, so totals can be one higher than the runner's own test count.</li>

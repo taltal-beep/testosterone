@@ -135,4 +135,6 @@ def _to_recent_run_item(item: DashboardRecentRun) -> DashboardRecentRunItem:
         duration_ms=item.duration_ms,
         run_detail_url=item.run_detail_url,
         compare_url=item.compare_url,
+        branch=item.branch,
+        commit=item.commit,
     )

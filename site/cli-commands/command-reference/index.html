@@ -3610,7 +3610,7 @@ testo<span class="w"> </span>ingest<span class="w"> </span><span class="s1">'rep
 <tr>
 <td>Jest</td>
 <td><code>npx jest --json --outputFile=jest.json</code> (or <code>equipment: jest</code>)</td>
-<td>Jest JSON: <code>describe</code> blocks, retried tests flagged flaky, test files that failed to load</td>
+<td>Jest JSON: <code>describe</code> blocks, retried tests flagged flaky, test files that failed to load. Prefer it to <code>jest-junit</code>, which drops a test file that fails to compile</td>
 </tr>
 <tr>
 <td>Vitest</td>
@@ -4073,7 +4073,7 @@ testo<span class="w"> </span>otel<span class="w"> </span>--cycle<span class="w">
 </tr>
 </tbody>
 </table>
-<p>Headers come only from <code>OTEL_EXPORTER_OTLP_HEADERS</code> (or <code>OTEL_EXPORTER_OTLP_TRACES_HEADERS</code>). Exit <code>0</code> when sent, <code>2</code> for no recorded run, a bad <code>--protocol</code> or a missing <code>[otel]</code> extra, <code>3</code> when the endpoint refuses the spans or can't be reached. The <code>otel</code> <a href="#reporter-types-reporters----reporter">reporter</a> sends the same trace right after <code>testo run</code>. Span names and attributes: <a href="../../specs-and-adrs/opentelemetry-export-2026-10-30/">OpenTelemetry Export - 2026-10-30</a>.</p>
+<p>Headers come only from <code>OTEL_EXPORTER_OTLP_HEADERS</code> (or <code>OTEL_EXPORTER_OTLP_TRACES_HEADERS</code>). Exit <code>0</code> when sent, <code>2</code> for no recorded run, a bad <code>--protocol</code>, an HTTP endpoint without <code>http://</code> or <code>https://</code>, or a missing <code>[otel]</code> extra, <code>3</code> when the endpoint refuses the spans or can't be reached. The <code>otel</code> <a href="#reporter-types-reporters----reporter">reporter</a> sends the same trace right after <code>testo run</code>. Span names and attributes: <a href="../../specs-and-adrs/opentelemetry-export-2026-10-30/">OpenTelemetry Export - 2026-10-30</a>.</p>
 <hr />
 <h2 id="testo-badge"><code>testo badge</code><a class="headerlink" href="#testo-badge" title="Permanent link">&para;</a></h2>
 <p>A README badge for a cycle's latest run: <strong>tests | 412 passed · 2 flaky</strong>. Green when everything passed, yellow when the cycle has flaky tests (<code>testo flaky</code>'s window), red when a test failed or broke, grey with no run.</p>

@@ -1009,6 +1009,114 @@
         "title": "CycleHealthItem",
         "type": "object"
       },
+      "CycleLatestRun": {
+        "description": "The newest recorded run of a cycle: enough for a list card to show its result.",
+        "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "failed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed"
+          },
+          "health_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Pct"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "returncode": {
+            "title": "Returncode",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "total_tests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Tests"
+          }
+        },
+        "required": [
+          "run_id",
+          "created_at",
+          "status",
+          "returncode",
+          "health_pct",
+          "total_tests",
+          "passed",
+          "failed",
+          "branch",
+          "commit"
+        ],
+        "title": "CycleLatestRun",
+        "type": "object"
+      },
       "CycleListResponse": {
         "properties": {
           "config_path": {
@@ -1057,6 +1165,16 @@
             "title": "Equipment",
             "type": "array"
           },
+          "latest_run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CycleLatestRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -1080,7 +1198,8 @@
           "description",
           "stage_count",
           "equipment",
-          "source"
+          "source",
+          "latest_run"
         ],
         "title": "CycleSummary",
         "type": "object"
@@ -1370,6 +1489,28 @@
       },
       "DashboardRecentRunItem": {
         "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit"
+          },
           "compare_url": {
             "anyOf": [
               {
@@ -1451,7 +1592,9 @@
           "health_pct",
           "duration_ms",
           "run_detail_url",
-          "compare_url"
+          "compare_url",
+          "branch",
+          "commit"
         ],
         "title": "DashboardRecentRunItem",
         "type": "object"
@@ -4001,6 +4144,17 @@
             ],
             "title": "Broken"
           },
+          "commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit"
+          },
           "created_at": {
             "title": "Created At",
             "type": "number"
@@ -4111,7 +4265,8 @@
           "skipped",
           "broken",
           "links_under_static",
-          "branch"
+          "branch",
+          "commit"
         ],
         "title": "RunListItem",
         "type": "object"

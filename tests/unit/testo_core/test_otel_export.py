@@ -235,3 +235,50 @@ def test_otel_cli_dry_run_and_errors(snapshot: Path, monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(otel_export, "send", refuse)
     refused = CliRunner().invoke(app, ["otel", "--cycle", "api"])
     assert refused.exit_code == 3
+
+
+def _case(name: str, full_name: str) -> Any:
+    return otel_export._Case(
+        name=name,
+        full_name=full_name,
+        status="passed",
+        stage="unit",
+        framework="pytest",
+        start_ms=None,
+        stop_ms=None,
+        message=None,
+    )
+
+
+@pytest.mark.parametrize(
+    ("name", "full_name", "expected"),
+    [
+        # pytest: every parametrized case shares the full name; the name has the params.
+        ("test_add[1-2]", "tests.test_math#test_add", "tests.test_math#test_add[1-2]"),
+        ("test_add", "tests.test_math#test_add", "tests.test_math#test_add"),
+        ("ok", "s.ok", "s.ok"),
+        ("A nicer title", "s.test_x", "s.test_x"),  # a display title: keep the stable full name
+        ("only_name", "", "only_name"),
+    ],
+)
+def test_test_case_name_keeps_parameters(name: str, full_name: str, expected: str) -> None:
+    assert otel_export._case_name(_case(name, full_name)) == expected
+
+
+def test_endpoint_without_scheme_is_bad_input(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", raising=False)
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
+    with pytest.raises(otel_export.OtelSetupError, match="http://collector:4318"):
+        otel_export._exporter("http/protobuf", "collector:4318", None, 5)
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "collector:4318")
+    with pytest.raises(otel_export.OtelSetupError):
+        otel_export._exporter("http/protobuf", None, None, 5)
+
+
+def test_cli_endpoint_without_scheme_exits_2(
+    snapshot: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(otel_export, "list_recent_runs", lambda *, limit: [_run()])
+    result = CliRunner().invoke(app, ["otel", "--cycle", "api", "--endpoint", "collector:4318"])
+    assert result.exit_code == 2
+    assert "must be a URL" in result.output

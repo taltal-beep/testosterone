@@ -1220,6 +1220,32 @@ export interface components {
             /** Tests */
             tests: number;
         };
+        /**
+         * CycleLatestRun
+         * @description The newest recorded run of a cycle: enough for a list card to show its result.
+         */
+        CycleLatestRun: {
+            /** Branch */
+            branch: string | null;
+            /** Commit */
+            commit: string | null;
+            /** Created At */
+            created_at: number;
+            /** Failed */
+            failed: number | null;
+            /** Health Pct */
+            health_pct: number | null;
+            /** Passed */
+            passed: number | null;
+            /** Returncode */
+            returncode: number;
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string | null;
+            /** Total Tests */
+            total_tests: number | null;
+        };
         /** CycleListResponse */
         CycleListResponse: {
             /** Config Path */
@@ -1233,6 +1259,7 @@ export interface components {
             description: string | null;
             /** Equipment */
             equipment: string[];
+            latest_run: components["schemas"]["CycleLatestRun"] | null;
             /** Name */
             name: string;
             /**
@@ -1322,6 +1349,10 @@ export interface components {
         };
         /** DashboardRecentRunItem */
         DashboardRecentRunItem: {
+            /** Branch */
+            branch: string | null;
+            /** Commit */
+            commit: string | null;
             /** Compare Url */
             compare_url: string | null;
             /** Created At */
@@ -2220,6 +2251,8 @@ export interface components {
             branch: string | null;
             /** Broken */
             broken: number | null;
+            /** Commit */
+            commit: string | null;
             /** Created At */
             created_at: number;
             /** Cycle */

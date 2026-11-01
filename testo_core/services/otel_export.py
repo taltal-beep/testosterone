@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -162,13 +163,31 @@ def _run_attributes(run: CompletedRunView) -> dict[str, AttrValue]:
     return attrs
 
 
+def _case_name(case: _Case) -> str:
+    """The test's full name, with its parameters when the name has them and the full name doesn't.
+
+    pytest gives every case of a parametrized test the same full name
+    (``tests.test_math#test_add``) and the parameters only in the name
+    (``test_add[1-2]``); the span name alone can't tell the cases apart.
+    """
+    full, name = case.full_name, case.name
+    if not full:
+        return name
+    if not name or name in full:
+        return full
+    leaf = re.split(r"[#.:/ ]", full)[-1]
+    if leaf and name.startswith(leaf) and len(name) > len(leaf):
+        return full + name[len(leaf) :]
+    return full
+
+
 def _test_span(case: _Case, index: int, parent: str, fallback_ns: int) -> SpanData:
     if case.start_ms is not None and case.stop_ms is not None:
         start, end = case.start_ms * 1_000_000, case.stop_ms * 1_000_000
     else:
         start = end = fallback_ns
     attrs: dict[str, AttrValue] = {
-        "test.case.name": case.full_name or case.name,
+        "test.case.name": _case_name(case),
         "testo.test.status": case.status,
     }
     if case.status == "passed":
@@ -316,6 +335,16 @@ def _exporter(
         )
     except ImportError as exc:
         raise OtelSetupError(f"OpenTelemetry export needs: {INSTALL_HINT}") from exc
+    given = (
+        endpoint
+        or os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+        or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+    )
+    if given and "://" not in given:
+        # The HTTP exporter would fail later with "No connection adapters" (infra, exit 3).
+        raise OtelSetupError(
+            f"the OTLP endpoint must be a URL like http://{given.strip('/')}, not {given!r}"
+        )
     if endpoint and not endpoint.rstrip("/").endswith("/v1/traces"):
         # A base URL (like OTEL_EXPORTER_OTLP_ENDPOINT) gets the traces path appended.
         endpoint = endpoint.rstrip("/") + "/v1/traces"

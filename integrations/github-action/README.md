@@ -10,12 +10,14 @@ job log, and exposes the final `plan_finished` event as step outputs.
 ## Inputs
 
 - `config-path` (optional, default empty): path to `testosterone.yaml`; empty means discovery
-- `cycle` (optional, default empty): cycle name; empty runs the only cycle, `all` runs every cycle
+- `cycle` (optional, default empty): cycle name; empty runs the only cycle, `all` runs every
+  cycle and publishes a summary, comment, annotations and alert for each
 - `ci-mode` (optional, default `true`): NDJSON on stdout
 - `persist` (optional, default `true`): write `plan_result.json` and the run history record
 - `python-version` (optional, default `3.11`)
-- `package` (optional, default `testo-core`): what to pip install, e.g. `testo-core==1.2.0`, or
-  `testo-core[bdd]` when the cycle has `behave` or `behavex` stages
+- `package` (optional, default `testo-core`): what to pip install, e.g. `testo-core==1.2.0`,
+  `testo-core[bdd]` when the cycle has `behave` or `behavex` stages, or several requirements
+  separated by spaces (`testo-core pytest-xdist`)
 - `job-summary` (optional, default `true`): write the run to the job summary
 - `comment-on-pr` (optional, default `false`): on `pull_request` events, keep one comment per
   cycle on the pull request with the same summary (edited on later pushes, not re-posted).
@@ -77,3 +79,6 @@ it read the old summary JSON, which `testo run` does not emit.
 - Publish immutable tags for every patch release: `v1.0.0`, `v1.0.1`, ...
 - Keep moving major tag `v1` pointing to latest stable `v1.x`.
 - For strict supply-chain policies, pin consumers to a commit SHA.
+
+Inputs reach the action's shell steps as environment variables, never pasted into the script,
+so an input such as `cycle: ${{ github.head_ref }}` can't run commands.

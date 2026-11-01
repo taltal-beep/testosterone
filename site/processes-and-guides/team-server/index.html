@@ -2961,11 +2961,11 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
 testo<span class="w"> </span>ingest<span class="w"> </span><span class="s1">'reports/**/*.xml'</span><span class="w"> </span>--cycle<span class="w"> </span>web-unit<span class="w"> </span>--server<span class="w"> </span><span class="s2">"</span><span class="nv">$TESTO_SERVER_URL</span><span class="s2">"</span><span class="w"> </span>--token<span class="w"> </span><span class="s2">"</span><span class="nv">$TESTO_API_TOKEN</span><span class="s2">"</span>
 </code></pre></div>
 <p>GitHub Actions:</p>
-<div class="highlight"><pre><span></span><code><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">npx jest --ci --reporters=default --reporters=jest-junit</span><span class="w">   </span><span class="c1"># your tests, unchanged</span>
+<div class="highlight"><pre><span></span><code><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">npx jest --ci --json --outputFile=jest.json</span><span class="w">   </span><span class="c1"># your tests, plus Jest's own report</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">always()</span><span class="w">            </span><span class="c1"># record failing runs too</span>
 <span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
 <span class="w">          </span><span class="no">pip install testo-core</span>
-<span class="w">          </span><span class="no">testo ingest 'junit*.xml' --cycle web-unit</span>
+<span class="w">          </span><span class="no">testo ingest jest.json --cycle web-unit</span>
 <span class="w">        </span><span class="nt">env</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">TESTO_SERVER_URL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://testo.example.com</span>
 <span class="w">          </span><span class="nt">TESTO_API_TOKEN</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.TESTO_API_TOKEN }}</span>
