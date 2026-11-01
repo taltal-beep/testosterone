@@ -21,7 +21,7 @@ Teams should adopt Testo without migrating to a mandated database. Run history a
 | Service locator | `testo_core/repository/db.py` — `get_repository()`, `get_report_archive_repository()` |
 | Protocol | `testo_core/repository/base.py` — `BaseRunRepository` |
 | Adapters | `testo_core/repository/adapters.py`, `factory.py` |
-| Models | `testo_core/repository/models.py` — dialect-portable JSON columns |
+| Models | `testo_core/repository/models.py` — `RunRecord` with its promoted, indexed columns plus a JSON `metadata` blob for the long tail |
 | Schema migrations | `testo_core/repository/migrations/` — Alembic revisions, run in-process by `create_db_and_tables()` |
 
 Configure via `database.url` in [testosterone.yaml](../../testosterone.yaml) or `DATABASE_URL`. See [Command Reference § Environment variables (common)](../CLI%20Commands/Command%20Reference.md#environment-variables-common) and [Architecture Overview § Configuration as the single source of truth](../Architecture/Architecture%20Overview.md#configuration-as-the-single-source-of-truth).
@@ -34,6 +34,14 @@ Until 1.5.0 the schema came from `SQLModel.metadata.create_all()` at startup, an
 - A database from 1.5.0 or earlier (tables but no `alembic_version`) is adopted on first open: missing tables and columns are added with the models' defaults, then it is stamped at `0001` and upgraded. Nothing is dropped and nobody runs a command by hand; the team server's Postgres upgrades in place when the image restarts.
 - A model change ships with a revision in the same pull request. `python scripts/db_revision.py "what changed"` writes it from the model diff (read it: autogenerate cannot see renames). `tests/unit/testo_core/repository/test_migrations.py` compares the models with the migrated schema and fails on any difference.
 - `alembic` is a core dependency, like `sqlmodel`, because `testo run` always saves history.
+
+## Promoted run columns (2026-11-01)
+
+`RunRecord` kept everything but `id`, `status` and the two timestamps inside its JSON `metadata`, so listing one cycle's runs meant loading the newest 500 rows and filtering in Python, and five analytics modules carried a `_SCAN_LIMIT = 500` ceiling. Recommendation 2 of the [Architecture Review](Architecture%20Review%20-%202026-10-31.md), revision `0002`:
+
+- Real columns, filled on every write from the JSON by `models.promoted_columns()` with the same precedence the views use: `cycle` (from `plan`), `health_pct`, `exit_code`, `branch` (`ci_ref_name`, else `git_branch`), `commit_sha` (`ci_commit_sha`, else `git_commit`), `source`, `snapshot_dir`. Indexes on `start_time`, `cycle` and `(cycle, start_time)`. The migration backfills existing rows; the JSON stays the full record and the views fall back to it.
+- Repository queries that use them: `list_runs(cycle=, before=, limit=)` and `latest_run_per_cycle()` (one `GROUP BY`, every cycle). The read side exposes them as `history.read_model.list_cycle_runs(cycle, limit=, before_run_id=)` and `latest_run_per_cycle()`; flaky detection, per-test history, failures, project health, the PR comment, attention and OTel export all read through them. `CYCLE_HISTORY_LIMIT` (500) bounds one cycle's history, not the whole table, so a busy cycle no longer hides a quiet one.
+- Per-test data (`flaky`, per-test page, "got slower") still comes from each run's artifact snapshot on disk; a `test_result` table is recommendation 3.
 
 ## Release verification
 

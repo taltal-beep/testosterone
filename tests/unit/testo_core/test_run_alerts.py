@@ -20,6 +20,7 @@ from testo_core.services import flaky_service, run_alerts
 from testo_core.services import run_summary_markdown as md
 from testo_core.services.flaky_service import FlakyTest
 from testo_core.services.report_archive_diff import CaseChange
+from tests._history_fakes import cycle_runs_from
 
 URL = "https://hooks.example/secret-token"
 
@@ -203,7 +204,7 @@ def recorded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> list[tuple[str,
             )
     for module in (md, flaky_service):
         monkeypatch.setattr(module.paths, "ORCHESTRATOR_ROOT", tmp_path)
-        monkeypatch.setattr(module, "list_recent_runs", lambda *, limit: runs)
+        monkeypatch.setattr(module, "list_cycle_runs", cycle_runs_from(runs))
     monkeypatch.setattr(
         md, "get_run", lambda *, run_id: next(r for r in runs if r.run_id == run_id)
     )

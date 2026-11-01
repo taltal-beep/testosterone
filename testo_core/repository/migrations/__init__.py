@@ -12,12 +12,11 @@ Rules:
   ``tests/unit/testo_core/repository/test_migrations.py`` compares the two and
   fails when they differ.
 - Databases created by ``create_all()`` before revision ``0001`` existed (every
-  install up to 1.5.0) have the tables but no ``alembic_version`` row.
-  :func:`upgrade_to_head` recognises them by any of our tables, brings
-  them to the baseline shape (tables and columns an older install never got,
-  the way the stores used to patch themselves at startup), stamps them at the
-  baseline and upgrades from there, so nothing is lost and nobody runs a
-  command by hand.
+  install up to 1.5.0) have the tables but no ``alembic_version`` row. Revision
+  ``0001`` adopts them: it creates only the tables and columns that are missing
+  (with defaults, so old rows stay valid) instead of failing on the ones that
+  exist, and the later revisions apply as usual. Nothing is lost and nobody
+  runs a command by hand.
 - Several processes may start on one database at once (parallel CI workers
   leasing keys, ``testo run`` next to ``testo-api``). The first one upgrades;
   the others see a database error, find the schema already at head and go on.
@@ -37,7 +36,7 @@ from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import DatabaseError
 from sqlmodel import SQLModel
@@ -45,7 +44,6 @@ from sqlmodel import SQLModel
 logger = logging.getLogger(__name__)
 
 SCRIPT_LOCATION = Path(__file__).resolve().parent
-BASELINE_REVISION = "0001"
 _VERSION_TABLE = "alembic_version"
 
 # Alembic's own state is per Config, so running two upgrades at once in one
@@ -91,54 +89,9 @@ def is_legacy_schema(connection: Connection) -> bool:
     return any(name in tables for name in SQLModel.metadata.tables)
 
 
-def _sql_default(column) -> str:  # noqa: ANN001 - sqlalchemy Column
-    """A literal for ``ADD COLUMN ... NOT NULL DEFAULT`` matching the model's Python default."""
-    default = column.default.arg if column.default is not None else None
-    if isinstance(default, bool):
-        return "true" if default else "false"
-    if isinstance(default, (int, float)):
-        return repr(default)
-    if column.nullable:
-        return "NULL"
-    return "''"
-
-
-def reconcile_legacy_schema(connection: Connection) -> None:
-    """Give a ``create_all()``-era database every table and column of the baseline.
-
-    Older installs lack whole tables (resource pools arrived in 1.4) or columns
-    (``reportarchive`` counters, ``resource_item.clean``). ``create_all`` adds the
-    missing tables; missing columns are added with the model's default, which is
-    what :mod:`testo_core.resources.store` used to do for its own tables.
-    """
-    import testo_core.repository.models  # noqa: F401  (registers every table)
-
-    SQLModel.metadata.create_all(connection)
-    inspector = inspect(connection)
-    for table in SQLModel.metadata.sorted_tables:
-        have = {c["name"] for c in inspector.get_columns(table.name)}
-        for column in table.columns:
-            if column.name in have:
-                continue
-            kind = column.type.compile(dialect=connection.dialect)
-            null = "NULL" if column.nullable else "NOT NULL"
-            default = _sql_default(column)
-            connection.execute(
-                text(
-                    f"ALTER TABLE {table.name} ADD COLUMN {column.name} {kind} {null} "
-                    f"DEFAULT {default}"
-                )
-            )
-            logger.info("added %s.%s to a pre-migration database", table.name, column.name)
-
-
 def _upgrade(connection: Connection) -> str:
     if is_legacy_schema(connection):
-        logger.info(
-            "run history database predates migrations; stamping it at %s", BASELINE_REVISION
-        )
-        reconcile_legacy_schema(connection)
-        command.stamp(alembic_config(connection), BASELINE_REVISION)
+        logger.info("run history database predates migrations; adopting it (revision 0001)")
     before = current_revision(connection)
     head = head_revision()
     if before != head:
@@ -156,17 +109,20 @@ def upgrade_to_head(engine: Engine, *, wait_s: float = 30.0) -> str:
     then waits up to ``wait_s`` for the other to finish and goes on.
     """
     deadline = time.monotonic() + wait_s
+    first_error: DatabaseError | None = None
     with _UPGRADE_LOCK:
         while True:
             try:
                 with engine.begin() as connection:
                     return _upgrade(connection)
             except DatabaseError as exc:
+                first_error = first_error or exc
                 with engine.connect() as connection:
                     if _at_head(connection):
                         return head_revision()
                 if time.monotonic() >= deadline:
-                    raise
+                    # Not a race after all: the first failure says what is wrong.
+                    raise first_error from None
                 logger.debug("schema upgrade lost a race (%s); waiting for the winner", exc)
                 time.sleep(0.2)
 

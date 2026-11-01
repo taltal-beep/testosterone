@@ -15,12 +15,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from testo_core import paths
-from testo_core.history.read_model import get_run, list_recent_runs
+from testo_core.history.read_model import get_run, list_cycle_runs, list_recent_runs
 from testo_core.history.views import CompletedRunView
 from testo_core.services.report_archive_diff import CaseChange, _load_cases, diff_case_maps
 
 MAX_ROWS = 20
-_SCAN_LIMIT = 500
 _FAILED = frozenset({"failed", "broken"})
 _CHANGE_ORDER = {"regression": 0, "added": 1, "fix": 2, "removed": 3, "status_change": 4}
 _CHANGE_TALLY = {
@@ -71,8 +70,8 @@ def _cases(run: CompletedRunView | None) -> dict[str, dict[str, Any]]:
     return _load_cases(paths.ORCHESTRATOR_ROOT / run.snapshot_dir)
 
 
-def _cycle_runs(cycle: str) -> list[CompletedRunView]:
-    return [r for r in list_recent_runs(limit=_SCAN_LIMIT) if r.cycle == cycle]
+def _cycle_runs(cycle: str, *, before_run_id: str | None = None) -> list[CompletedRunView]:
+    return list_cycle_runs(cycle, before_run_id=before_run_id)
 
 
 def pick_baseline(
@@ -107,11 +106,7 @@ def load_run_summary(
         run = get_run(run_id=run_id)
         if run is None:
             return None
-        older = (
-            [r for r in _cycle_runs(run.cycle) if r.created_at < run.created_at]
-            if run.cycle
-            else []
-        )
+        older = _cycle_runs(run.cycle, before_run_id=run.run_id) if run.cycle else []
     elif cycle:
         runs = _cycle_runs(cycle)
         if not runs:

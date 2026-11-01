@@ -7,11 +7,12 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy import and_, func
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, col, select
 
 from .base import BaseRunRepository
-from .models import RunRecord, RunStatus
+from .models import RunRecord, RunStatus, sync_promoted_columns
 
 
 def _utcnow() -> datetime:
@@ -45,6 +46,7 @@ class SQLModelRunRepository(BaseRunRepository):
         if metadata:
             base_md.update(metadata)
         rr.metadata_ = base_md
+        sync_promoted_columns(rr)
         with Session(self._engine) as session:
             session.add(rr)
             session.commit()
@@ -80,6 +82,7 @@ class SQLModelRunRepository(BaseRunRepository):
                     end_time=now if status in {RunStatus.COMPLETED, RunStatus.FAILED} else None,
                     metadata_=(metadata or {}),
                 )
+                sync_promoted_columns(existing)
                 session.add(existing)
                 session.commit()
                 session.refresh(existing)
@@ -95,6 +98,7 @@ class SQLModelRunRepository(BaseRunRepository):
                 merged = dict(existing.metadata_ or {})
                 merged.update(metadata)
                 existing.metadata_ = merged
+            sync_promoted_columns(existing)
             session.add(existing)
             session.commit()
             session.refresh(existing)
@@ -107,6 +111,7 @@ class SQLModelRunRepository(BaseRunRepository):
             if existing is None:
                 return False
             existing.metadata_ = {**(existing.metadata_ or {}), **patch}
+            sync_promoted_columns(existing)
             session.add(existing)
             session.commit()
             return True
@@ -118,6 +123,55 @@ class SQLModelRunRepository(BaseRunRepository):
             for r in rows:
                 session.expunge(r)
             return rows
+
+    def list_runs(
+        self,
+        *,
+        cycle: str | None = None,
+        before: datetime | None = None,
+        limit: int = 30,
+    ) -> list[RunRecord]:
+        stmt = select(RunRecord)
+        if cycle is not None:
+            stmt = stmt.where(RunRecord.cycle == cycle)
+        if before is not None:
+            stmt = stmt.where(col(RunRecord.start_time) < before)
+        stmt = stmt.order_by(col(RunRecord.start_time).desc()).limit(max(0, int(limit)))
+        with Session(self._engine) as session:
+            rows = list(session.exec(stmt).all())
+            for r in rows:
+                session.expunge(r)
+            return rows
+
+    def latest_run_per_cycle(self) -> list[RunRecord]:
+        newest = (
+            select(RunRecord.cycle, func.max(RunRecord.start_time).label("start_time"))
+            .where(col(RunRecord.cycle).is_not(None))
+            .group_by(RunRecord.cycle)
+            .subquery()
+        )
+        stmt = (
+            select(RunRecord)
+            .join(
+                newest,
+                and_(
+                    col(RunRecord.cycle) == newest.c.cycle,
+                    col(RunRecord.start_time) == newest.c.start_time,
+                ),
+            )
+            .order_by(col(RunRecord.start_time).desc())
+        )
+        with Session(self._engine) as session:
+            rows = list(session.exec(stmt).all())
+            seen: set[str] = set()
+            out: list[RunRecord] = []
+            for r in rows:  # two runs of a cycle in the same microsecond: keep one
+                if r.cycle in seen:
+                    continue
+                seen.add(r.cycle or "")
+                session.expunge(r)
+                out.append(r)
+            return out
 
     def list_runs_by_status(self, status: RunStatus) -> list[RunRecord]:
         stmt = select(RunRecord).where(RunRecord.status == status)
@@ -132,6 +186,7 @@ class SQLModelRunRepository(BaseRunRepository):
             return 0
         with Session(self._engine) as session:
             for r in records:
+                sync_promoted_columns(r)
                 session.merge(r)
             session.commit()
             return len(records)
