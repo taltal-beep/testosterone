@@ -81,3 +81,39 @@ def test_from_github_needs_the_gh_cli(project: Path, monkeypatch: pytest.MonkeyP
     result = CliRunner().invoke(app, ["try", "--repo", str(project), "--from-github"])
     assert result.exit_code == 2
     assert "GitHub CLI" in result.output
+
+
+def test_run_flag_runs_the_detected_tests_first(
+    project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import shlex
+    import sys
+
+    from testo_core.services import ci_templates
+
+    (project / "tests").mkdir()
+    (project / "tests" / "test_a.py").write_text("def test_a():\n    assert True\n")
+    (project / "pyproject.toml").write_text('[project]\nname = "shop"\n')
+    out = project / "test-results" / "junit.xml"
+    writer = (
+        "import pathlib; p = pathlib.Path({!r}); p.parent.mkdir(parents=True, exist_ok=True); "
+        "p.write_text({!r})".format(str(out), _junit(["test_a"], ["test_b"]))
+    )
+    monkeypatch.setattr(
+        ci_templates,
+        "ci_test_command",
+        lambda stack: f"{shlex.quote(sys.executable)} -c {shlex.quote(writer)}",
+    )
+
+    result = CliRunner().invoke(app, ["try", "--run", "--repo", str(project)])
+
+    assert result.exit_code == 0, result.output
+    assert "Running pytest" in result.output
+    assert "test_b" in result.stdout
+    assert not (project / "testo_history.db").exists() or _runs(project / "testo_history.db") == 0
+
+
+def test_run_flag_refuses_result_files(project: Path) -> None:
+    result = CliRunner().invoke(app, ["try", "--run", "x.xml", "--repo", str(project)])
+
+    assert result.exit_code == 2  # a usage error; the message is drawn in a Rich panel

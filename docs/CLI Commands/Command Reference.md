@@ -329,6 +329,7 @@ pytest --junitxml=test-results/junit.xml; testo try    # the files your last run
 testo try reports/junit.xml --cycle api                # these files, compared with cycle `api`
 testo try --from-github                                # the latest GitHub Actions run's artifacts
 testo try --from-github --run-id 123456 --out comment.md
+testo try --run                                        # run the tests first, the way CI would
 ```
 
 | Flag | Default | Meaning |
@@ -340,6 +341,7 @@ testo try --from-github --run-id 123456 --out comment.md
 | `--run-id` | latest | With `--from-github`: this run |
 | `--baseline-branch` | default branch | Compare with this branch's latest run, as a pull request into it would |
 | `--out`, `-o` | stdout | Write the comment to a file |
+| `--run` | off | Run the project's tests first with the command `testo init` puts in CI (its result-file flag included; output on stderr), then preview what they wrote. Not with `--from-github` or `REPORTS` |
 
 Nothing is recorded: the run goes into a new temporary folder with its own SQLite file and `.testo/` (deleted afterwards). When your history is a local SQLite file (`DATABASE_URL` or `database.url`, else `./testo_history.db`), it is copied in first, so the preview shows what changed since your earlier runs; otherwise it is a first run's comment. No config is read, so reporters and alerts don't fire. Exit `0` with a preview, even when tests failed; `2` when there are no result files or `--from-github` can't download them.
 

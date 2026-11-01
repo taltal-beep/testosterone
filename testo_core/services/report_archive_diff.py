@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -32,6 +33,53 @@ class CaseChange:
     duration_delta_ms: int | None
 
 
+def case_identity(case: dict[str, Any]) -> str:
+    """A test's name with the separators runners disagree on folded to ``.``.
+
+    pytest's own results name a test ``tests.test_a#test_a`` and its JUnit XML
+    ``tests.test_a.test_a``; Jest, Go and others use ``/``, `` > `` or ``::``.
+    """
+    raw = str(case.get("full_name") or case.get("name") or "").strip()
+    return re.sub(r"\s*(?:#|::|/|\s>\s)\s*", ".", raw)
+
+
+def align_case_keys(
+    base_cases: dict[str, dict[str, Any]], cur_cases: dict[str, dict[str, Any]]
+) -> dict[str, dict[str, Any]]:
+    """*base_cases* re-keyed so a test recorded two different ways matches itself.
+
+    The key is the source's own id (Allure's ``historyId`` for ``testo run``, a
+    hash of tool and name for ``testo ingest``), so the same suite recorded by
+    ``testo run``, ``pytest --testo`` and ``testo ingest`` gets different keys
+    and would read as every test removed and added again. A key found on only
+    one side is paired with one on the other side that has the same
+    :func:`case_identity`, when exactly one test on each side has it.
+    """
+    only_base = [k for k in base_cases if k not in cur_cases]
+    only_cur = [k for k in cur_cases if k not in base_cases]
+    if not only_base or not only_cur:
+        return base_cases
+
+    def by_identity(cases: dict[str, dict[str, Any]], keys: list[str]) -> dict[str, list[str]]:
+        out: dict[str, list[str]] = {}
+        for key in keys:
+            ident = case_identity(cases[key])
+            if ident:
+                out.setdefault(ident, []).append(key)
+        return out
+
+    base_ids = by_identity(base_cases, only_base)
+    cur_ids = by_identity(cur_cases, only_cur)
+    renames = {
+        base_keys[0]: cur_ids[ident][0]
+        for ident, base_keys in base_ids.items()
+        if len(base_keys) == 1 and len(cur_ids.get(ident, ())) == 1
+    }
+    if not renames:
+        return base_cases
+    return {renames.get(k, k): v for k, v in base_cases.items()}
+
+
 def diff_case_maps(
     base_cases: dict[str, dict[str, Any]], cur_cases: dict[str, dict[str, Any]]
 ) -> list[CaseChange]:
@@ -39,7 +87,10 @@ def diff_case_maps(
 
     Shared by both ``diff_archives`` (ReportArchive zips, ``testo diff``) and
     ``run_snapshot_diff.diff_run_snapshots`` (live run snapshot dirs, the API).
+    Keys that differ only because the runs were recorded different ways are
+    matched first (:func:`align_case_keys`).
     """
+    base_cases = align_case_keys(base_cases, cur_cases)
     changes: list[CaseChange] = []
     all_keys = sorted(set(base_cases) | set(cur_cases))
     for key in all_keys:

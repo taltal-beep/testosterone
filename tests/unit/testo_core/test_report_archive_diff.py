@@ -8,7 +8,13 @@ from pathlib import Path
 
 from testo_core.repository.models import ReportArchive
 from testo_core.services.report_archive import build_cycle_zip_bytes
-from testo_core.services.report_archive_diff import diff_archives, parse_archive_uuid
+from testo_core.services.report_archive_diff import (
+    align_case_keys,
+    case_identity,
+    diff_archives,
+    diff_case_maps,
+    parse_archive_uuid,
+)
 
 
 def _plan_with_results(root: Path, plan: str, result_payloads: list[dict]) -> bytes:
@@ -217,3 +223,42 @@ def test_diff_archives_classifies_added_removed_and_status_changes(tmp_path: Pat
     assert by_kind["status_change"].current_status == "broken"
     assert by_kind["status_change"].group == "api \u203a flow"
     assert by_kind["status_change"].duration_delta_ms == 110
+
+
+def _case(full_name: str, status: str = "passed", name: str | None = None) -> dict:
+    return {"name": name or full_name.rsplit(".", 1)[-1], "full_name": full_name, "status": status}
+
+
+def test_same_test_recorded_two_ways_is_not_added_and_removed() -> None:
+    """`testo run` (Allure historyId) then `testo ingest` of pytest's JUnit XML (hash of tool + name)."""
+    base = {"49250cb3": _case("tests.test_a#test_a")}
+    cur = {"sha-of-junit": _case("tests.test_a.test_a", "failed")}
+
+    changes = diff_case_maps(base, cur)
+
+    assert [(c.kind, c.baseline_status, c.current_status) for c in changes] == [
+        ("regression", "passed", "failed")
+    ]
+
+
+def test_alignment_folds_runner_separators() -> None:
+    assert case_identity({"full_name": "suite > adds numbers"}) == "suite.adds numbers"
+    assert case_identity({"full_name": "pkg/TestAdd"}) == "pkg.TestAdd"
+    assert case_identity({"full_name": "tests/test_a.py::test_a"}) == "tests.test_a.py.test_a"
+
+
+def test_ambiguous_names_stay_unmatched() -> None:
+    """Two parametrized cases share a name without their ids: don't guess which is which."""
+    base = {"k1": _case("t#test_p"), "k2": _case("t#test_p")}
+    cur = {"j1": _case("t.test_p")}
+
+    kinds = sorted(c.kind for c in diff_case_maps(base, cur))
+
+    assert kinds == ["added", "removed", "removed"]
+
+
+def test_matching_keys_are_left_alone() -> None:
+    base = {"k": _case("a.b"), "gone": _case("old.test")}
+    cur = {"k": _case("a.b"), "new": _case("new.test")}
+
+    assert align_case_keys(base, cur) is base
