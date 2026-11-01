@@ -101,6 +101,12 @@ otel = [
     "opentelemetry-sdk>=1.27.0",
     "opentelemetry-exporter-otlp-proto-http>=1.27.0",
 ]
+# `testo mcp`: the run history as an MCP server for coding agents (stdio).
+# Works with the SDK's 1.x FastMCP and 2.x MCPServer. Not in `dev`: mcp 2.x pulls in
+# httpx2, which starlette's TestClient then uses instead of httpx for every API test.
+mcp = [
+    "mcp>=1.23.0",
+]
 # The docs site (mkdocs.yml). Material 9.x pins MkDocs below 2.0.
 docs = [
     "mkdocs-material>=9.7.7,<10",

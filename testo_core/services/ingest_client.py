@@ -11,9 +11,12 @@ import os
 from collections.abc import Mapping
 from contextlib import ExitStack
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from testo_core.services.ci_provenance import ci_repository, detect_ci_provenance
+
+if TYPE_CHECKING:
+    from testo_core.config.schema import QuarantineRule
 
 UPLOAD_TIMEOUT_S = 120.0
 
@@ -85,3 +88,42 @@ def _error_message(resp: Any) -> str:
     if isinstance(error, dict) and isinstance(error.get("message"), str):
         return error["message"]
     return str(body)[:300]
+
+
+QUARANTINE_TIMEOUT_S = 15.0
+
+
+def fetch_quarantine_rules(
+    *, server: str, token: str | None, cycle: str
+) -> tuple[QuarantineRule, ...]:
+    """*cycle*'s quarantine list kept on *server* (``GET /api/v1/quarantine``), as rules.
+
+    Raises :class:`IngestUploadError` when the server can't be reached or refuses.
+    """
+    import requests
+
+    from testo_core.config.schema import QuarantineRule
+
+    url = f"{server.rstrip('/')}/api/v1/quarantine"
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    try:
+        resp = requests.get(
+            url, params={"cycle": cycle}, headers=headers, timeout=QUARANTINE_TIMEOUT_S
+        )
+    except requests.RequestException as exc:
+        raise IngestUploadError(f"could not reach {url}: {exc}") from exc
+    if resp.status_code != 200:
+        raise IngestUploadError(f"{url} answered {resp.status_code}: {_error_message(resp)}")
+    try:
+        items = resp.json().get("items", [])
+    except (ValueError, AttributeError) as exc:
+        raise IngestUploadError(f"{url} answered with unexpected JSON.") from exc
+    return tuple(
+        QuarantineRule(
+            test=str(item["test"]),
+            reason=item.get("reason") or None,
+            owner=item.get("owner") or None,
+        )
+        for item in items
+        if isinstance(item, dict) and item.get("test")
+    )

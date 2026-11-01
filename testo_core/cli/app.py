@@ -61,12 +61,15 @@ def _register_commands() -> None:
     from testo_core.cli.commands import flaky as flaky_mod
     from testo_core.cli.commands import ingest as ingest_mod
     from testo_core.cli.commands import init_cmd as init_cmd_mod
+    from testo_core.cli.commands import issues as issues_mod
     from testo_core.cli.commands import lease as lease_mod
+    from testo_core.cli.commands import mcp_cmd as mcp_mod
     from testo_core.cli.commands import notify as notify_mod
     from testo_core.cli.commands import otel as otel_mod
     from testo_core.cli.commands import plans as cycles_cmd
     from testo_core.cli.commands import plugins as plugins_mod
     from testo_core.cli.commands import pool as pool_mod
+    from testo_core.cli.commands import quarantine as quarantine_mod
     from testo_core.cli.commands import report as report_cmd
     from testo_core.cli.commands import run as run_cmd
     from testo_core.cli.commands import split as split_mod
@@ -90,6 +93,11 @@ def _register_commands() -> None:
         help="Open the web UI on this machine's run history (http://127.0.0.1:8000).",
         rich_help_panel="Run and report",
     )(ui_cmd.ui)
+    app.command(
+        name="mcp",
+        help="Serve the run history to coding agents over MCP (stdio); --allow-writes for triage.",
+        rich_help_panel="Run and report",
+    )(mcp_mod.mcp)
     app.command(
         name="demo",
         help="Record eight sample runs (a flaky test, a new failure, a slower test) and open the UI.",
@@ -115,6 +123,12 @@ def _register_commands() -> None:
         help="Send a recorded run to Slack or Teams (webhook URLs from the environment).",
         rich_help_panel="Run and report",
     )(notify_mod.notify)
+    app.add_typer(
+        issues_mod.app,
+        name="issues",
+        help="Open a GitHub issue per flaky test and close it once the test is stable.",
+        rich_help_panel="Run and report",
+    )
     app.command(
         name="otel",
         help="Send a recorded run to an OpenTelemetry collector as a trace (OTLP).",
@@ -145,6 +159,12 @@ def _register_commands() -> None:
         help="Tests whose outcome keeps flipping across a cycle's recent runs (--cycle).",
         rich_help_panel="Diagnostics",
     )(flaky_mod.flaky)
+    app.add_typer(
+        quarantine_mod.app,
+        name="quarantine",
+        help="Quarantine tests without a config change (list, add, remove), here or on a server.",
+        rich_help_panel="Diagnostics",
+    )
     app.command(
         name="plugins",
         help="List built-in and installed framework and reporter plugins (--check imports them).",

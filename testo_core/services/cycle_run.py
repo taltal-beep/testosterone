@@ -9,6 +9,10 @@ the engine streams events to the *renderer* they pass in, and the few
 non-engine moments (trigger verdict, archive result) go to an optional
 :class:`CycleRunListener`.
 
+Quarantine rules are settled here too (:func:`quarantine_for_run`): the
+config's and the list stored in the history database, so every one of those
+entry points mutes the same tests.
+
 Nothing here prints on its own except the configured reporters, which take a
 Rich console for their progress lines.
 """
@@ -137,6 +141,7 @@ class CycleRunService:
             self._listener.trigger_bypassed(plan)
 
         effective_plan = apply_workers_override(plan, stages, opts.workers_override)
+        effective_plan = quarantine_for_run(cfg=cfg, plan=effective_plan, stored=opts.persist)
         artifacts_root = opts.artifacts_root or cfg.defaults.artifacts_root
 
         from testo_core.engine.cycle_lock import cycle_lock
@@ -178,6 +183,17 @@ class CycleRunService:
                     exit_code=exit_code,
                     background=opts.async_report_db,
                 )
+
+        if opts.persist and run_id:
+            # Outside the cycle lock: it talks to GitHub. Off unless TESTO_ISSUES=github;
+            # best-effort, never changes the exit code.
+            from testo_core.services.flaky_issues import sync_after_run
+
+            sync_after_run(cycle=effective_plan.name, run_id=run_id)
+            # TESTO_QUARANTINE_RELEASE_AFTER clean runs release a stored entry; best-effort.
+            from testo_core.services.quarantine_store import release_after_run
+
+            release_after_run(cycle=effective_plan.name, run_id=run_id)
 
         if (
             trigger is not None
@@ -306,6 +322,24 @@ def junit_ingest_plan(
         junit_xml=patterns,
     )
     return Plan(name=cycle, description="JUnit results recorded by testo ingest", stages=(stage,))
+
+
+def quarantine_for_run(*, cfg: TestosteroneConfig, plan: Plan, stored: bool = True) -> Plan:
+    """*plan* with every quarantine rule that applies to its cycle.
+
+    Its own rules, then the config cycle's of the same name (an ingest plan is
+    built without them), then, when *stored* (the run uses the history
+    database), the list kept there (:mod:`testo_core.services.quarantine_store`).
+    Reading that list is best-effort: on a database error the run keeps the rest.
+    """
+    from testo_core.services.quarantine_store import merge_rules, with_stored_rules
+
+    configured = cfg.cycles.get(plan.name)
+    config_rules = configured.quarantine if configured is not None else ()
+    if stored:
+        return with_stored_rules(plan, config_rules=config_rules)
+    merged = merge_rules(plan.quarantine, config_rules)
+    return plan if merged == plan.quarantine else dataclasses.replace(plan, quarantine=merged)
 
 
 def apply_workers_override(

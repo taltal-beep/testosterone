@@ -865,6 +865,41 @@
         "title": "Body_ingest_reports_api_v1_ingest_post",
         "type": "object"
       },
+      "BrokenTestItem": {
+        "description": "Failed each of its last runs: a real failure, kept apart from flaky tests.",
+        "properties": {
+          "failing_runs": {
+            "title": "Failing Runs",
+            "type": "integer"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "group",
+          "failing_runs",
+          "message"
+        ],
+        "title": "BrokenTestItem",
+        "type": "object"
+      },
       "CycleDetailResponse": {
         "properties": {
           "description": {
@@ -2599,6 +2634,34 @@
             "title": "Passed",
             "type": "integer"
           },
+          "quarantine_entry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quarantine Entry"
+          },
+          "quarantined": {
+            "default": false,
+            "title": "Quarantined",
+            "type": "boolean"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "retried": {
+            "default": 0,
+            "title": "Retried",
+            "type": "integer"
+          },
           "runs": {
             "title": "Runs",
             "type": "integer"
@@ -2616,13 +2679,24 @@
           "last_status",
           "history",
           "owners",
-          "issue_url"
+          "issue_url",
+          "reasons",
+          "retried",
+          "quarantined",
+          "quarantine_entry"
         ],
         "title": "FlakyTestItem",
         "type": "object"
       },
       "FlakyTestsResponse": {
         "properties": {
+          "broken": {
+            "items": {
+              "$ref": "#/components/schemas/BrokenTestItem"
+            },
+            "title": "Broken",
+            "type": "array"
+          },
           "cycle": {
             "title": "Cycle",
             "type": "string"
@@ -2652,7 +2726,8 @@
           "window",
           "runs_analyzed",
           "tests_analyzed",
-          "items"
+          "items",
+          "broken"
         ],
         "title": "FlakyTestsResponse",
         "type": "object"
@@ -3171,6 +3246,126 @@
           "context_stats"
         ],
         "title": "ProjectReviewResponse",
+        "type": "object"
+      },
+      "QuarantineItem": {
+        "description": "A test (or glob) whose failures don't fail its cycle's runs, kept on the server.",
+        "properties": {
+          "added_at": {
+            "title": "Added At",
+            "type": "number"
+          },
+          "added_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added By"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "is_glob": {
+            "title": "Is Glob",
+            "type": "boolean"
+          },
+          "owner": {
+            "default": "",
+            "title": "Owner",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "test": {
+            "title": "Test",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "test",
+          "is_glob",
+          "reason",
+          "owner",
+          "added_by",
+          "added_at"
+        ],
+        "title": "QuarantineItem",
+        "type": "object"
+      },
+      "QuarantineListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QuarantineItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "release_after": {
+            "title": "Release After",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "release_after"
+        ],
+        "title": "QuarantineListResponse",
+        "type": "object"
+      },
+      "QuarantineRequest": {
+        "properties": {
+          "cycle": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Cycle",
+            "type": "string"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "test": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Test",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "test"
+        ],
+        "title": "QuarantineRequest",
         "type": "object"
       },
       "ReadinessCheck": {
@@ -5461,7 +5656,7 @@
     },
     "/api/v1/analytics/flaky": {
       "get": {
-        "description": "Tests that both passed and failed, flipping at least twice, in a cycle's last runs.\n\nUI parity with ``testo flaky --cycle``; see ``testo_core/services/flaky_service.py``.",
+        "description": "Flaky tests in a cycle's last runs (retries, same-commit results, flips per branch).\n\nTests that failed every one of their last runs come back as ``broken`` instead.\n\nUI parity with ``testo flaky --cycle``; see ``testo_core/services/flaky_service.py``.",
         "operationId": "get_flaky_tests_api_v1_analytics_flaky_get",
         "parameters": [
           {
@@ -6480,6 +6675,139 @@
         "summary": "List Review Skills",
         "tags": [
           "project-health"
+        ]
+      }
+    },
+    "/api/v1/quarantine": {
+      "delete": {
+        "description": "Release a test: its failures fail runs again.",
+        "operationId": "remove_quarantine_api_v1_quarantine_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": true,
+            "schema": {
+              "title": "Cycle",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "test",
+            "required": true,
+            "schema": {
+              "title": "Test",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Quarantine",
+        "tags": [
+          "quarantine"
+        ]
+      },
+      "get": {
+        "description": "Every quarantined test kept on the server, newest first, optionally one cycle's.\n\n``testosterone.yaml`` rules aren't listed here; runs apply both.",
+        "operationId": "list_quarantine_api_v1_quarantine_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuarantineListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Quarantine",
+        "tags": [
+          "quarantine"
+        ]
+      },
+      "put": {
+        "description": "Quarantine a test (exact name or glob) in a cycle; replaces an earlier entry for it.",
+        "operationId": "add_quarantine_api_v1_quarantine_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuarantineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuarantineItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Quarantine",
+        "tags": [
+          "quarantine"
         ]
       }
     },

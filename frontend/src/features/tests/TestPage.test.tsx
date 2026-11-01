@@ -47,6 +47,11 @@ describe("TestPage", () => {
   it("shows the pass rate, last failure and every run", async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/v1/quarantine") {
+        expect(url.searchParams.get("cycle")).toBe("smoke");
+        const items = [{ cycle: "smoke", test: "tests.api.*", is_glob: true, reason: "", owner: "", added_by: "ada", added_at: 1 }];
+        return Promise.resolve(new Response(JSON.stringify({ items, release_after: 10 }), { status: 200 }));
+      }
       expect(url.pathname).toBe("/api/v1/analytics/test-history");
       expect(url.searchParams.get("key")).toBe("tests/api.py::test_login");
       const failure = point("run-4abcdef0", "failed", 4, "AssertionError: 1 != 2");
@@ -103,6 +108,25 @@ describe("TestPage", () => {
       "href",
       "https://github.com/acme/shop/issues/new?title=Flaky+test"
     );
+    // Quarantined by a glob on its full name: the badge, and no Release for one test of it.
+    expect(await screen.findByText("Quarantined")).toHaveAttribute("title", "matched by tests.api.* · by ada");
+    expect(screen.queryByRole("button", { name: /Release/ })).not.toBeInTheDocument();
+  });
+
+  it("offers to quarantine a test the server's list doesn't have", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = new URL(String(input), "http://localhost");
+        const body =
+          url.pathname === "/api/v1/quarantine"
+            ? { items: [], release_after: 10 }
+            : { cycle: "smoke", test: TEST, points: [], last_failure: null, owners: [], issue_url: null };
+        return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+      })
+    );
+    renderAt(`/cycles/smoke/test?${new URLSearchParams({ key: TEST.key }).toString()}`);
+    expect(await screen.findByRole("button", { name: "Quarantine test_login" })).toBeInTheDocument();
   });
 
   it("shows how flaky the test has been over time", async () => {

@@ -229,6 +229,7 @@ schema and every flag are in [Command Reference](https://taltal-beep.github.io/t
 | `testo flaky --cycle <name>` | Tests that keep flipping between pass and fail across recent runs (`--fail-on-flaky` for CI) |
 | `testo plugins` | Built-in and installed frameworks and reporters (`--check` imports them, `--json`) |
 | `testo ui` | API and web UI on `http://127.0.0.1:8000` (needs the `api` extra) |
+| `testo mcp` | The run history as an MCP server for coding agents over stdio (needs the `mcp` extra; `--allow-writes` for triage) |
 | `testo demo` | Record eight sample runs with a flaky test, a new failure and a slower test, then open the UI on them |
 | `testo badge --cycle <name>` | A README badge for a cycle's latest run (SVG or shields.io endpoint JSON) |
 | `testo lease …` | Resource pools: give each parallel worker its own VM, device or test account |

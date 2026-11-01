@@ -2,7 +2,7 @@
 type: spec
 status: current
 created: 2026-10-22
-updated: 2026-10-22
+updated: 2026-11-01
 related: "Deep Dive - Execution Logic, QA Strategies, Command Reference"
 ---
 
@@ -24,12 +24,12 @@ related: "Deep Dive - Execution Logic, QA Strategies, Command Reference"
 
 - **Deselect quarantined tests** (`--deselect`, `-k "not ..."`). Rejected: the test stops running, so there's no signal for when it's fixed, and every runner needs its own syntax.
 - **Waive any exit code when all failures are quarantined.** Rejected: pytest exits `2` for collection errors and `124`/`127` mean timeout and missing binary. Those failures have no per-test result to match, so only exit `1` ("tests ran, some failed") can be waived.
-- **A separate `quarantine.yaml` or a database list edited from the UI.** Deferred: the list belongs in code review next to the cycle it affects. A UI or API to add entries can come later and write the same YAML.
+- **A separate `quarantine.yaml` or a database list edited from the UI.** Deferred here; built on 2026-11-01 as a list in the run-history database next to these rules, not a writer of the YAML: see [Quarantine From the UI - 2026-11-01](Quarantine%20From%20the%20UI%20-%202026-11-01.md).
 - **Rewrite quarantined results to `skipped`.** Rejected: it would hide the failure from history, Compare and flaky detection.
 
 ## Consequences
 
 - A quarantined test can fail forever without anyone noticing unless they read the reports. `reason` and `owner` exist so the list documents who is fixing what; an expiry date is a possible follow-up.
 - A stage whose runner exits `1` without writing per-test results (no Allure output, no `junit_xml`) can't be waived: no failed tests are found, so the stage still fails.
-- The API and UI don't show quarantine yet (the stage metadata has it, but `StageHealth` in the OpenAPI schema doesn't expose it).
+- `StageHealth` in the OpenAPI schema doesn't expose a stage's quarantined tests (the stage metadata has them). The flaky list and the test page show whether a test is quarantined since [Quarantine From the UI - 2026-11-01](Quarantine%20From%20the%20UI%20-%202026-11-01.md).
 - Tests: `tests/unit/testo_core/test_quarantine.py` (config, matching, the gate through a real `command` stage and `run_plan`), `test_cli_flaky.py` and `test_run_summary_markdown.py`.

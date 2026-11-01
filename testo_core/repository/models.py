@@ -132,6 +132,8 @@ class TestResult(SQLModel, table=True):
     message: str = Field(default="", max_length=300)
     # "stack_overflow" | "crash" for a failure that shows one (engine/crash_signatures.py).
     crash: str = Field(default="", max_length=16)
+    # Failed, then passed on a retry inside this run (JUnit reruns, Surefire flakyFailure).
+    retried: bool = Field(default=False)
 
 
 class ReportArchive(SQLModel, table=True):
@@ -246,6 +248,27 @@ class FailureTriage(SQLModel, table=True):
     test_key: str = Field(default="", max_length=200)
     marked_by: str | None = Field(default=None, max_length=64)
     marked_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))
+
+
+class QuarantinedTest(SQLModel, table=True):
+    """A test whose failures don't fail its cycle's runs, set from the UI, API or CLI.
+
+    Added to the cycle's ``quarantine:`` rules from ``testosterone.yaml`` at run
+    time; see :mod:`testo_core.services.quarantine_store`.
+    """
+
+    __tablename__ = "quarantined_test"
+    __table_args__ = {"extend_existing": True}
+
+    # sha256 of "<cycle>\n<test>", so a cycle lists a test (or glob) once.
+    id: str = Field(primary_key=True, max_length=64)
+    cycle: str = Field(index=True, max_length=512)
+    # An exact test name (or full name), or an ``fnmatch`` glob.
+    test: str = Field(max_length=1024)
+    reason: str = Field(default="", max_length=500)
+    owner: str = Field(default="", max_length=200)
+    added_by: str | None = Field(default=None, max_length=64)
+    added_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))
 
 
 class ResourceItemRow(SQLModel, table=True):
