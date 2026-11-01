@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-26
-updated: 2026-10-30
+updated: 2026-11-01
 ---
 
 # Shared Resource Pools
@@ -112,6 +112,8 @@ cycles:
 | `worker` | Each pytest(-xdist) worker, once, for all the tests it runs | When the worker ends |
 | `test` | Each test (pytest only); `on_take` and `on_release` run around every test, so each test gets a freshly reset key | After the test |
 | `stage` | Testosterone, before the stage starts. The stage's process gets the variables above | When the stage ends. With no key within `wait`, the stage fails like a timeout (`testo run` exits `3`) |
+
+A `per: stage` key is taken by the process that runs the stage, so its `on_take` / `on_check` / `on_release` run there too. On a team server with `TESTO_RUNNER=container` that process is the server itself, so a `per: stage` pool with hooks is refused (the stage fails like a timeout and says why); use `per: test`, whose hooks run inside the stage's container.
 
 With `per: worker` or `per: test`, the stage passes the pool down in `TESTO_RESOURCE_SPEC` and the pytest plugin in each worker takes the key, so the pytest-xdist controller holds none. Other runners can take one per worker with `testo lease run "$TESTO_RESOURCE_POOL" -- ...`. `workers: auto` needs `per: worker` or `per: test`, and counts free keys once, when the stage starts; a worker that finds none free waits in line.
 

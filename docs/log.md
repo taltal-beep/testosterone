@@ -163,6 +163,9 @@ Added [Importer and Integration Bug Hunt - 2026-10-31](Specs%20&%20ADRs/Importer
 
 Added [Paid Features to Offer Free - 2026-10-31](Roadmap%20&%20Strategy/Paid%20Features%20to%20Offer%20Free%20-%202026-10-31.md) to Roadmap & Strategy (competitor paywalls, twelve ranked ideas, licence and trademark rules), linked from the Index, the Product Roadmap and the docs site menu.
 
+## 2026-10-31: security and install review
+
+Added [Security and Install Review - 2026-10-31](Specs%20&%20ADRs/Security%20and%20Install%20Review%20-%202026-10-31.md) to Specs & ADRs (findings R1 to R18, what was fixed, proposals P1 to P4), linked from its README and the docs site menu.
 ## 2026-11-01: UI review fixes
 
 Added [UI Review Fixes - 2026-11-01](Specs%20&%20ADRs/UI%20Review%20Fixes%20-%202026-11-01.md) to Specs & ADRs (the five proposals built from the UI design review), linked from its README, the Index and the docs site menu.

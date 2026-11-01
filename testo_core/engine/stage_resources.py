@@ -32,7 +32,7 @@ from testo_core.resources.client import (
     default_holder,
     local_lease_db_url,
 )
-from testo_core.resources.pools import StageResources
+from testo_core.resources.pools import ResourcePool, StageResources
 
 
 @dataclass
@@ -59,6 +59,26 @@ def stage_spec(resources: StageResources, *, stage: str) -> str:
     )
 
 
+def _refuse_server_side_hooks(pool: ResourcePool, *, stage: str) -> None:
+    """``per: stage`` hooks run in this process. With ``TESTO_RUNNER=container`` that
+    process is the API server, which must never run a stage's commands: refuse.
+
+    ``per: test`` keeps working, because its workers run the hooks inside the stage's
+    own container.
+    """
+    from testo_core.engine.backends import runner_kind
+    from testo_core.resources.store import LeaseError
+
+    hooks = [name for name in ("on_take", "on_check", "on_release") if getattr(pool, name)]
+    if hooks and runner_kind() == "container":
+        raise LeaseError(
+            f"stage {stage!r}: pool {pool.name!r} has {', '.join(hooks)} and `per: stage`, "
+            "whose hooks would run on the server itself, outside the stage's container "
+            "(TESTO_RUNNER=container). Use `per: test`, whose hooks run inside the "
+            "container, or remove the hooks."
+        )
+
+
 def prepare_stage_resources(
     stage: Stage,
     *,
@@ -83,6 +103,7 @@ def prepare_stage_resources(
         extra[LEASE_DB_ENV] = env.get(LEASE_DB_ENV) or local_lease_db_url()
 
     if resources.per == "stage":
+        _refuse_server_side_hooks(pool, stage=stage.name)
         last: list[tuple[int, int]] = []
 
         def on_wait(result: object) -> None:

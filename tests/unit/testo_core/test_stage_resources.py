@@ -117,6 +117,31 @@ def test_per_stage_fails_like_a_timeout_when_no_key_comes(tmp_path: Path, lease_
     assert result.error is not None and result.error.startswith("no key from resource pool")
 
 
+def test_container_mode_never_runs_per_stage_hooks_on_the_server(
+    tmp_path: Path, lease_db: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The hooks would run in this process, i.e. the API server, outside the container.
+    marker = tmp_path / "ran-on-server"
+    path = tmp_path / "testosterone.yaml"
+    path.write_text(
+        "resources:\n  vms:\n    items: [vm-1]\n"
+        f"    on_take: {json.dumps(f'touch {marker}')}\n"
+        "cycles:\n  c:\n    stages:\n"
+        "      - {name: s, framework: command, args: [true],"
+        " resources: {pool: vms, per: stage, wait: 0}}\n",
+        encoding="utf-8",
+    )
+    stage = load_config(path).cycles["c"].stages[0]
+    monkeypatch.setenv("TESTO_RUNNER", "container")
+    result = run_stage(stage, plan_name="c", artifacts_root=tmp_path / "a")
+    assert result.returncode == 124
+    assert not marker.exists()
+    assert "on_take" in (result.error or "") and "per: test" in (result.error or "")
+    # Nothing was leased either.
+    store = LeaseStore(create_engine(lease_db))
+    assert all(i.lease is None for p in store.status("vms") for i in p.items)
+
+
 def test_per_worker_hands_the_pool_down_and_auto_counts_free_keys(
     tmp_path: Path, lease_db: str
 ) -> None:
