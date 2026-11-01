@@ -130,6 +130,8 @@ class TestResult(SQLModel, table=True):
     status: str = Field(default="unknown", max_length=16)
     duration_ms: int | None = Field(default=None)
     message: str = Field(default="", max_length=300)
+    # "stack_overflow" | "crash" for a failure that shows one (engine/crash_signatures.py).
+    crash: str = Field(default="", max_length=16)
 
 
 class ReportArchive(SQLModel, table=True):
