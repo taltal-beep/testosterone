@@ -170,7 +170,9 @@ def issue_body(
     history = "".join(_MARKS.get(s, "·") for s in test.history)
     lines = [
         marker(cycle, key),
-        f"{_code(test.name)} in cycle {_code(cycle)} started flipping between passing and failing.",
+        f"{_code(test.name)} in cycle {_code(cycle)} is flaky: "
+        + ("; ".join(test.reasons) if test.reasons else "it flips between passing and failing")
+        + ".",
         "",
         f"- Last {test.runs} runs: {test.passed} passed, {test.failed} failed, "
         f"{test.flips} flips (flip rate {round(test.flip_rate * 100)}%)",
