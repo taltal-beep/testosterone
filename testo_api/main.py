@@ -17,6 +17,7 @@ from starlette.concurrency import run_in_threadpool
 from testo_api.report_origin import route_report_request
 from testo_api.routes.ai import router as ai_router
 from testo_api.routes.analytics import router as analytics_router
+from testo_api.routes.ask import router as ask_router
 from testo_api.routes.auth import router as auth_router
 from testo_api.routes.badge import router as badge_router
 from testo_api.routes.cycles import router as cycles_router
@@ -139,6 +140,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(ai_router)
+    app.include_router(ask_router)
     app.include_router(auth_router)
     app.include_router(badge_router)
     app.include_router(cycles_router)

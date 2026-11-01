@@ -6,6 +6,7 @@ Each test runs pytest in a subprocess on a two-test project, as a user would.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -88,3 +89,28 @@ def test_a_recording_problem_never_changes_the_outcome(project: Path, tmp_path: 
     result = _pytest(project, db, "--testo", "--testo-server", "http://127.0.0.1:9", "-k", "ok")
     assert result.returncode == 0, result.stdout + result.stderr
     assert "testo: could not record this session" in result.stdout
+
+
+def _verbose_lines(stdout: str) -> list[str]:
+    """``tests/x.py::test_y PASSED`` lines, in the order the tests ran."""
+    return [line for line in stdout.splitlines() if re.search(r"::test_\w+ (PASSED|FAILED)", line)]
+
+
+def test_failed_first_runs_last_runs_failures_first(project: Path, tmp_path: Path) -> None:
+    db = tmp_path / "history.db"
+    recorded = _pytest(project, db, "--testo-cycle", "shop")
+    assert recorded.returncode == 1, recorded.stdout + recorded.stderr
+
+    result = _pytest(project, db, "-vv", "--testo-failed-first", "--testo-cycle", "shop")
+    assert result.returncode == 1, result.stdout + result.stderr
+    lines = _verbose_lines(result.stdout)
+    assert "test_bad" in lines[0] and "test_ok" in lines[1], result.stdout
+    assert "testo: failed first: 1 failed last time" in result.stdout
+
+
+def test_failed_first_without_history_keeps_pytests_order(project: Path, tmp_path: Path) -> None:
+    result = _pytest(project, tmp_path / "empty.db", "-vv", "--testo-failed-first")
+    assert result.returncode == 1, result.stdout + result.stderr
+    lines = _verbose_lines(result.stdout)
+    assert "test_ok" in lines[0], result.stdout
+    assert "has no recorded runs yet; kept pytest's order" in result.stdout

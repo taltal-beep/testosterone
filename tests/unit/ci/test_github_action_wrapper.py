@@ -328,6 +328,17 @@ def test_a_run_that_did_not_finish_publishes_nothing(tmp_path: Path, monkeypatch
     assert calls == [["testo", "run", "--cycle", "smoke", "--ci"]]
 
 
+def test_coverage_input_becomes_one_flag_per_report() -> None:
+    cmd = _load_wrapper_module().build_command(
+        config_path="",
+        cycle="unit",
+        ci_mode=True,
+        persist=True,
+        coverage=" coverage.xml  lcov.info ",
+    )
+    assert cmd[-4:] == ["--coverage", "coverage.xml", "--coverage", "lcov.info"]
+
+
 def test_cycle_all_publishes_every_finished_cycle(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
     module = _load_wrapper_module()
     calls: list[list[str]] = []

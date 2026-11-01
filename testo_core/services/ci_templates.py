@@ -242,12 +242,23 @@ def ci_test_command(stack: Stack) -> str:
     if stack.key in _NATIVE_COMMANDS:
         cmd = _NATIVE_COMMANDS[stack.key].format(args=shlex.join(args)).replace("  ", " ")
     elif args[:2] == ["sh", "-c"] and len(args) == 3:
-        return args[2]
+        return in_folder(stack, args[2])
     else:
         cmd = shlex.join(args)
     # A runner that writes a file there needs the folder; `--results-directory` creates its own.
     needs_dir = "test-results/" in cmd and "--results-directory" not in cmd
-    return f"mkdir -p test-results && {cmd}" if needs_dir else cmd
+    return in_folder(stack, f"mkdir -p test-results && {cmd}" if needs_dir else cmd)
+
+
+def in_folder(stack: Stack, cmd: str) -> str:
+    """*cmd* run from the stage's ``target_repo`` (``testo init --scan``), in a subshell.
+
+    The subshell matters on GitLab, where a job's script lines share one shell.
+    """
+    import shlex
+
+    folder = str(stack.stage.get("target_repo") or ".")
+    return cmd if folder == "." else f"(cd {shlex.quote(folder)} && {cmd})"
 
 
 def _install_and_test(stack: Stack) -> list[str]:

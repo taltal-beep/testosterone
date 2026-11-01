@@ -543,7 +543,7 @@ def config_yaml(facts: ProjectFacts, *, cycle: str) -> str:
     """A ``testosterone.yaml`` with one *cycle* that runs every detected stack, in order."""
     from testo_core.config.json_schema import SCHEMA_ID
 
-    names = ", ".join(s.label for s in facts.stacks)
+    names = ", ".join(dict.fromkeys(s.label for s in facts.stacks))
     lines = [
         f"# yaml-language-server: $schema={SCHEMA_ID}",
         f"# Written by `testo init` for: {names}.",
@@ -559,6 +559,8 @@ def config_yaml(facts: ProjectFacts, *, cycle: str) -> str:
         stage = stack.stage
         lines.append(f"      - name: {json.dumps(stage['name'])}")
         lines.append(f"        equipment: {stage['equipment']}")
+        if stage.get("target_repo"):
+            lines.append(f"        target_repo: {json.dumps(str(stage['target_repo']))}")
         lines.append(f"        args: {_yaml_list(stage.get('args') or [])}")
         if stage.get("junit_xml"):
             lines.append(f"        junit_xml: {_yaml_list(stage['junit_xml'])}")
