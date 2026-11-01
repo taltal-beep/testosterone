@@ -2,7 +2,7 @@
 type: architecture
 status: current
 created: 2026-06-25
-updated: 2026-10-26
+updated: 2026-11-01
 ---
 
 # Deep Dive — Execution Logic
@@ -221,6 +221,8 @@ Steps:
    - `TESTO_SHARED_ALLURE_RESULTS_DIR` → Allure output dir
    - `TESTO_ARTIFACTS_ROOT` → artifacts root
    - `TESTO_LAST_TEST_TYPE` → framework name
+
+`extra_env` values are read like a shell would want them: YAML `true` / `false` become `true` / `false`, `null` becomes an empty string, and a list or mapping is a config error. A stage's `if:` (evaluated by `testo_core/config/if_expr.py` before the run) is `${env:VAR}` alone or one `==` / `!=` comparison; the operator is found before `${env:...}` is replaced, so a value containing `==` can't change it, and `and` / `or` / `not` / parentheses are a config error.
 
 ### Process model
 
