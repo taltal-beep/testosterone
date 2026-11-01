@@ -81,6 +81,10 @@ def copy_allure_result(
             continue
         candidate = folder / source
         target = results_dir / source
+        # A symlink pointing out of the folder (``x-attachment.txt -> /etc/hostname``) would
+        # copy that file into the run's artifacts; only files really inside it count.
+        if folder not in candidate.resolve().parents:
+            continue
         if candidate.is_file() and not target.exists():
             shutil.copyfile(candidate, target)
             copied += 1

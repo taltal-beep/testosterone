@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Any, Protocol, runtime_checkable
 
 from .models import RunRecord, RunStatus
@@ -25,8 +26,14 @@ class BaseRunRepository(Protocol):
         *,
         status: RunStatus = RunStatus.PENDING,
         metadata: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
     ) -> RunRecord:
-        """Insert a new :class:`RunRecord` and return the persisted row (with ``id`` assigned)."""
+        """Insert a new :class:`RunRecord` and return the persisted row (with ``id`` assigned).
+
+        ``start_time`` defaults to now; pass the run's real start (and end) when the run
+        already finished, so ordering by ``start_time`` means by start.
+        """
 
     def get_run(self, run_id: uuid.UUID | str) -> RunRecord | None:
         """Return the :class:`RunRecord` for the given id, or ``None`` if missing.
