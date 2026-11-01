@@ -972,6 +972,11 @@ export interface components {
             provider: "openai" | "anthropic" | "openai_compatible" | "claude_code";
             /** Retry Count */
             retry_count: number;
+            /**
+             * Share Test Source
+             * @default false
+             */
+            share_test_source: boolean;
             /** Timeout S */
             timeout_s: number;
         };
@@ -1020,6 +1025,11 @@ export interface components {
              * @default 1
              */
             retry_count?: number;
+            /**
+             * Share Test Source
+             * @default false
+             */
+            share_test_source?: boolean;
             /**
              * Timeout S
              * @default 8
