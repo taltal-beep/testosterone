@@ -4,10 +4,13 @@ name: nightly-external
 # throwaway GitHub/GitLab resources. It needs TESTO_E2E_* repository secrets
 # and the repository variable TESTO_E2E_ENABLED=true. Until both are set the
 # job shows as skipped, not as a green run that tested nothing.
+#
+# The nightly schedule is paused (2026-11-01) until the secrets exist; it can
+# still be started by hand. To re-enable it, uncomment the two schedule lines.
 
 on:
-  schedule:
-    - cron: "0 2 * * *"
+  # schedule:
+  #   - cron: "0 2 * * *"
   workflow_dispatch:
 
 concurrency:

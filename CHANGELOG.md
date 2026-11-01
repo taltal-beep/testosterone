@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Changed
+- Contributors: the nightly external suite (`nightly-external.yml`) no longer runs on a schedule; start it by hand from the Actions tab, or uncomment its `schedule:` lines to bring the nightly run back
 - README: the no-install `/try` page is the first link, the release-by-release "What's new" list is one short paragraph (the rest is in this file), and a "Who it's for" section says when another tool fits better. The package is classified `Development Status :: 5 - Production/Stable`
 - Docker images build on `python:3.13-slim-trixie` (Debian 13, was `python:3.11-slim-bookworm`), and the UI stage of the server image on `node:22-trixie-slim`. Dependabot now opens weekly PRs for the Dockerfile base images and the compose files' Postgres (minor updates; Postgres majors stay manual). The development `docker-compose.yml` uses Postgres 16 like the team server: an existing local `postgres_data` volume from Postgres 15 must be dumped and restored, or dropped with `docker compose down -v`
 - Contributors: the nightly external suite runs only when the repository variable `TESTO_E2E_ENABLED` is `true` (plus its `TESTO_E2E_*` secrets); until then GitHub shows it as skipped instead of a green run that tested nothing
