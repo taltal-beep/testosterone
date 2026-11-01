@@ -7,6 +7,7 @@ protocol instance and a listener for trigger/archive messages.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from uuid import UUID
 
@@ -25,6 +26,15 @@ from testo_core.config.resolver import resolve_plan
 from testo_core.config.schema import Plan, TestosteroneConfig
 from testo_core.config.triggers import TriggerResult
 from testo_core.engine.exit_codes import EngineExitCode
+
+
+def _print_config_warnings(warnings: tuple[str, ...], *, console: Console, ci: bool) -> None:
+    """Keys the config has that nothing reads; stderr under --ci so stdout stays NDJSON."""
+    for message in warnings:
+        if ci:
+            print(f"warning: {message}", file=sys.stderr)
+        else:
+            console.print(f"[yellow]warning:[/] {message}")
 
 
 def execute_plan_command(
@@ -46,6 +56,7 @@ def execute_plan_command(
     except (ConfigError, ConfigDiscoveryError) as exc:
         _emit_config_error(console=console, exc=exc, ci=ci)
         return int(EngineExitCode.INVALID_INPUT)
+    _print_config_warnings(cfg.warnings, console=console, ci=ci)
 
     if plan_name == "all":
         if not cfg.cycles:

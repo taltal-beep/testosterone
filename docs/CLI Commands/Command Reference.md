@@ -200,13 +200,14 @@ Config errors print `[fail]config error: …` and exit **2**.
 
 | Subcommand | Description |
 |------------|-------------|
-| `testo config validate` | Load YAML; optional `--check-executables` for pytest/behave/behavex (and `npx` for playwright, jest, vitest and cypress) on PATH |
+| `testo config validate` | Load YAML; optional `--check-executables` for pytest/behave/behavex (and `npx` for playwright, jest, vitest and cypress) on PATH. Warns about keys nothing reads (`unknown key 'cycles.web.stages[0].timout_s' is ignored; did you mean 'timeout_s'?`); `--strict` makes them an error (exit 2) |
 | `testo config init` | Write starter `testosterone.yaml` with one active `smoke-test` cycle running `pytest -q tests` and commented-out marker/BehaveX examples (`--path`, `--force`) |
 | `testo config db` | Set `database.url` (PostgreSQL prompts or `--url`) |
 
 ```bash
 testo config validate
 testo config validate --no-check-executables
+testo config validate --strict   # unknown keys fail, for CI
 testo config init --path testosterone.yaml --force
 testo config db --url sqlite:////tmp/testo-reports.db
 ```
