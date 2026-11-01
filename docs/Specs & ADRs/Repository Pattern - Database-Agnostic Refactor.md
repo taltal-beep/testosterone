@@ -53,6 +53,14 @@ Every analytic that looked at single tests (`flaky`, per-test history and the "g
 - Reader: `history/cases.py::cases_for_run(run)` returns the rows, and for a run recorded before `0003` parses its snapshot once and stores the rows, so older history migrates itself on first use and never needs its files again for analytics. `TestResultStore` (`repository/test_results.py`) is the only module that touches the table; `TestResultStore.delete_runs()` is for retention.
 - Snapshots stay for the things rows cannot hold: attachments, traces and the report copies served at `/history`.
 
+## History retention (2026-11-01)
+
+Nothing ever deleted a run: `testo clean` removed `artifacts/`, not `static/history/`, and the table only grew (review finding R1, recommendation 6). Now:
+
+- `history.retention` in `testosterone.yaml` (`days`, `runs_per_cycle`, either or both; `config/history_section.py`) says when a run expires. No section, no deletion.
+- `history/retention.py::prune_history()` selects the expired runs from the promoted columns alone (`repository.list_run_keys()`: id, cycle, start time, status; `RUNNING` runs never expire), then deletes their `test_result` rows, their `runrecord` rows (`repository.delete_runs()`, the one delete on the run table) and their `static/history/<run_id>/` folders, in that order, so a run never outlives its files. Report archives are a separate store and are not touched.
+- Callers: `testo clean --history` (with `--dry-run`, `--keep-days`, `--keep-runs`) and the API, which prunes at startup and every 6 hours on a daemon thread when the section is set (`testo_api/main.py`).
+
 ## Release verification
 
 [Release Checklist - Phase 1 Foundation](../Archive/Release%20Checklist%20-%20Phase%201%20Foundation.md) — repository contract tests and packaging gate.

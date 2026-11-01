@@ -408,6 +408,28 @@ testo clean -y --docker
 
 Without `--yes` / `-y`: refuses with exit **2**. It also refuses (exit **2**, nothing deleted) when the artifacts root or `--temp-dir` is the filesystem root, your home folder, the current folder, the config's folder, a parent of any of them, or a folder holding `.git`, `testosterone.yaml` or `pyproject.toml`, so `artifacts_root: .` can't delete the project.
 
+### `testo clean --history`
+
+Deletes expired run history instead of artifacts: each expired run's row, its `test_result` rows and its report copy under `static/history/<run_id>/`, oldest first. Runs still `RUNNING` are never touched; report archives (`testo report list`) are separate and stay.
+
+```bash
+testo clean --history --dry-run          # list what would go, delete nothing
+testo clean --history --yes              # apply history.retention from testosterone.yaml
+testo clean --history -y --keep-days 30  # override (or set) the limits for this call
+testo clean --history -y --keep-runs 200
+```
+
+The limits come from the top-level `history:` section (either or both; a run goes when it breaks any):
+
+```yaml
+history:
+  retention:
+    days: 90            # runs that started more than 90 days ago
+    runs_per_cycle: 200 # beyond each cycle's newest 200 runs
+```
+
+`--keep-days` / `--keep-runs` override the file's values. Without any limit (no `history:` section and no flag) it exits **2** and says so; without `--yes` (and not `--dry-run`) it exits **2**. A report copy that cannot be removed is listed and the command exits **5**; the rows are already gone. The API server applies the same section on its own every 6 hours while it runs ([Team Server § How it works](../Processes%20&%20Guides/Team%20Server.md#how-it-works)). Without a `history:` section nothing is ever deleted.
+
 ---
 
 ## `testo watch`

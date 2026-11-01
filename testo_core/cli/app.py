@@ -197,7 +197,7 @@ def _register_commands() -> None:
     )(doctor_mod.doctor)
     app.command(
         name="clean",
-        help="Remove artifacts/temp; optional Docker prune (--yes, --docker).",
+        help="Remove artifacts/temp (--yes, --docker) or expired run history (--history).",
         rich_help_panel="Maintenance",
     )(clean_mod.clean)
     app.command(

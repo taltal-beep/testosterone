@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import and_, func
+from sqlalchemy import and_, delete, func
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, col, select
 
@@ -184,6 +184,36 @@ class SQLModelRunRepository(BaseRunRepository):
             for r in rows:
                 session.expunge(r)
             return rows
+
+    def list_run_keys(self) -> list[tuple[str, str | None, datetime | None, RunStatus]]:
+        stmt = select(
+            RunRecord.id, RunRecord.cycle, RunRecord.start_time, RunRecord.status
+        ).order_by(col(RunRecord.start_time).desc())
+        with Session(self._engine) as session:
+            return [
+                (str(run_id), cycle, start_time, RunStatus(status))
+                for run_id, cycle, start_time, status in session.exec(stmt).all()
+            ]
+
+    def delete_runs(self, run_ids: list[str]) -> int:
+        ids: list[uuid.UUID] = []
+        for run_id in run_ids:
+            try:
+                ids.append(uuid.UUID(str(run_id)))
+            except ValueError:
+                continue  # not a run id this repository could have issued
+        if not ids:
+            return 0
+        deleted = 0
+        with Session(self._engine) as session:
+            for start in range(0, len(ids), 500):
+                chunk = ids[start : start + 500]
+                result = session.exec(  # type: ignore[call-overload]
+                    delete(RunRecord).where(col(RunRecord.id).in_(chunk))
+                )
+                deleted += int(result.rowcount or 0)
+            session.commit()
+        return deleted
 
     def bulk_update(self, records: list[RunRecord]) -> int:
         if not records:
