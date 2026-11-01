@@ -2,7 +2,7 @@
 type: roadmap
 status: current
 created: 2026-06-25
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Product Roadmap
@@ -29,7 +29,7 @@ Where Testosterone (`testo-core`, CLI `testo`) stands today and what comes next.
 
 The product-side priorities are the Now / Next / Later roadmap in the [Product Review](../product-review.md) (2026-10-24): failing tests first on the run page, the UI shipped in the wheel (`testo ui`), a main-branch baseline for diffs and the PR comment, and a per-test page. Since this note was last updated, ingest, the team server, parallel stages (`max_parallel_stages`), the API run queue and the security switches all shipped; see the [Specs & ADRs](../Specs%20&%20ADRs/README.md).
 
-The next ranked list is [Feature Gaps and Quick Wins](Feature%20Gaps%20and%20Quick%20Wins%20-%202026-10-31.md) (2026-10-31): sixteen small fixes from a new user's first ten minutes, and fourteen gaps against Trunk, Datadog, ReportPortal, Allure TestOps, Currents and others, led by a better flaky signal, quarantine from the UI, issues for flaky tests and an MCP server. [Paid Features to Offer Free](Paid%20Features%20to%20Offer%20Free%20-%202026-10-31.md) adds what competitors charge for that Testosterone could give away, led by code coverage history, a weekly digest and redaction before storing.
+The next ranked list is [Feature Gaps and Quick Wins](Feature%20Gaps%20and%20Quick%20Wins%20-%202026-10-31.md) (2026-10-31): sixteen small fixes from a new user's first ten minutes, and fourteen gaps against Trunk, Datadog, ReportPortal, Allure TestOps, Currents and others, led by a better flaky signal, quarantine from the UI, issues for flaky tests and an MCP server. [Paid Features to Offer Free](Paid%20Features%20to%20Offer%20Free%20-%202026-10-31.md) adds what competitors charge for that Testosterone could give away, led by code coverage history, a weekly digest and redaction before storing. [New User Journey Audit](New%20User%20Journey%20Audit%20-%202026-11-01.md) (2026-11-01) walks a new user's twelve steps and ranks what could be automated, led by pointing everything at `testo init`, `testo init --pr` and browsing CI history without a server.
 
 Still open from the earlier list:
 
