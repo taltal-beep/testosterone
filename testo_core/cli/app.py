@@ -50,6 +50,7 @@ def _register_commands() -> None:
     only the lightweight Typer + Rich surface is loaded here.
     """
     from testo_core.cli.commands import affected as affected_mod
+    from testo_core.cli.commands import backup as backup_mod
     from testo_core.cli.commands import badge as badge_mod
     from testo_core.cli.commands import clean as clean_mod
     from testo_core.cli.commands import config as config_cmd
@@ -200,6 +201,16 @@ def _register_commands() -> None:
         help="Remove artifacts/temp; optional Docker prune (--yes, --docker).",
         rich_help_panel="Maintenance",
     )(clean_mod.clean)
+    app.command(
+        name="backup",
+        help="Save the run history (every table, plus each run's results) to one .tar.gz.",
+        rich_help_panel="Maintenance",
+    )(backup_mod.backup)
+    app.command(
+        name="restore",
+        help="Load a testo backup into the active database (--replace to overwrite).",
+        rich_help_panel="Maintenance",
+    )(backup_mod.restore)
     app.command(
         name="watch",
         help="Watch files and re-run a cycle (--cycle required).",
