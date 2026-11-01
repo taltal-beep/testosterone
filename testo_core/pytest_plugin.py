@@ -7,7 +7,11 @@ or a temporary file when that isn't set) and recorded exactly like
 ``testo ingest`` would: same run record, same history, same reporters. With
 ``--testo-server`` (or ``TESTO_SERVER_URL``) they go to a team server instead.
 
-Recording never changes pytest's outcome: a problem is a warning line in the
+Recording never changes pytest's outcome, with one exception: when every
+failed test is quarantined (``quarantine:`` in ``testosterone.yaml``, or the
+list kept in the run history or on the team server, see
+:mod:`testo_core.services.quarantine_store`), the session exits 0 instead of 1
+and the summary names the muted tests. A problem is a warning line in the
 summary. Under pytest-xdist only the controller records. This module is
 imported by every pytest run on a machine with testo-core installed, so it
 imports nothing of testo-core until a run is actually recorded.
@@ -40,9 +44,12 @@ import shutil
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
+
+if TYPE_CHECKING:
+    from testo_core.config.schema import QuarantineRule
 
 _RECORD_ENV = "TESTO_RECORD"
 # Exit codes after which there is nothing worth recording: interrupted,
@@ -50,6 +57,7 @@ _RECORD_ENV = "TESTO_RECORD"
 _NOTHING_RAN = frozenset({2, 3, 4, 5})
 _TEMP_DIR = pytest.StashKey[Path]()
 _SUMMARY = pytest.StashKey[str]()
+_QUARANTINE_SUMMARY = pytest.StashKey[str]()
 _RESOURCE_REQUEST = pytest.StashKey["dict[str, Any] | None"]()
 _SPEC_ENV = "TESTO_RESOURCE_SPEC"
 _SHARD_ENV = "TESTO_SHARD"
@@ -219,6 +227,68 @@ def _record(config: pytest.Config, xml: Path) -> str:
     return f"testo: recorded this session as a run of cycle '{cycle}' ({where})"
 
 
+def _quarantine_rules(
+    config: pytest.Config, cycle: str, server: str | None
+) -> tuple[QuarantineRule, ...]:
+    """The cycle's quarantine: ``testosterone.yaml``'s rules, then the stored list.
+
+    The stored list is the team server's (``GET /api/v1/quarantine``) when
+    recording there, else this machine's run history. Either may be missing.
+    """
+    from testo_core.config.errors import ConfigError
+    from testo_core.config.loader import discover_and_load
+    from testo_core.services.quarantine_store import merge_rules, stored_rules
+
+    configured: tuple[QuarantineRule, ...] = ()
+    try:
+        plan = discover_and_load(cwd=config.rootpath).cycles.get(cycle)
+        configured = plan.quarantine if plan is not None else ()
+    except ConfigError:
+        pass
+    if server:
+        from testo_core.services.ingest_client import fetch_quarantine_rules
+
+        stored = fetch_quarantine_rules(
+            server=server, token=os.environ.get("TESTO_API_TOKEN") or None, cycle=cycle
+        )
+    else:
+        stored = stored_rules(cycle)
+    return merge_rules(configured, stored)
+
+
+def _waive_quarantined(session: pytest.Session, xml: Path) -> None:
+    """Exit 0 instead of 1 when every failed test is quarantined (mute, not skip).
+
+    The same gate as a ``testo run`` stage (:mod:`testo_core.engine.quarantine`),
+    on the session's JUnit XML read the way ``testo ingest`` reads it.
+    """
+    from testo_core.engine.quarantine import evaluate
+    from testo_core.reporting.junit_import import import_junit_reports
+
+    config = session.config
+    cycle = _cycle(config)
+    server = config.getoption("testo_server") or os.environ.get("TESTO_SERVER_URL") or None
+    try:
+        rules = _quarantine_rules(config, cycle, server)
+        if not rules:
+            return
+        with tempfile.TemporaryDirectory(prefix="testo-quarantine-") as tmp:
+            import_junit_reports(
+                target_repo=xml.parent, patterns=(xml.name,), results_dir=Path(tmp), tool="pytest"
+            )
+            verdict = evaluate(rules, Path(tmp))
+    except Exception as exc:  # noqa: BLE001 - the quarantine check must never break the run
+        config.stash[_QUARANTINE_SUMMARY] = f"testo: could not check the quarantine: {exc}"
+        return
+    if not verdict.waives_stage:
+        return
+    session.exitstatus = 0
+    names = ", ".join(verdict.quarantined)
+    config.stash[_QUARANTINE_SUMMARY] = (
+        f"testo: exit 0 because every failed test is quarantined in cycle '{cycle}': {names}"
+    )
+
+
 @pytest.hookimpl(trylast=True)
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     # trylast: after pytest's junitxml plugin has written the report.
@@ -233,6 +303,8 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     try:
         if int(exitstatus) in _NOTHING_RAN or not xml.is_file():
             return
+        if int(exitstatus) == 1:
+            _waive_quarantined(session, xml.resolve())
         config.stash[_SUMMARY] = _record(config, xml.resolve())
     except Exception as exc:  # noqa: BLE001 — recording must never break the test run
         config.stash[_SUMMARY] = f"testo: could not record this session: {exc}"
@@ -246,7 +318,7 @@ def pytest_terminal_summary(
 ) -> None:
     for affected_line in config.stash.get(_AFFECTED_SUMMARY, []):
         terminalreporter.write_line(affected_line)
-    for key in (_SHARD_SUMMARY, _SUMMARY):
+    for key in (_SHARD_SUMMARY, _QUARANTINE_SUMMARY, _SUMMARY):
         line = config.stash.get(key, None)
         if line:
             terminalreporter.write_line(line)

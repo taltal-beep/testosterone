@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
@@ -60,5 +60,72 @@ describe("FlakyTestsCard", () => {
   it("asks for more runs when there is too little history", async () => {
     renderCard({ ...base, runs_analyzed: 1, items: [] });
     await waitFor(() => expect(screen.getByText(/Run this cycle a few more times/)).toBeInTheDocument());
+  });
+
+  const flaky = (name: string, extra: Record<string, unknown> = {}) => ({
+    key: `k-${name}`,
+    name,
+    group: "tests.api",
+    runs: 4,
+    passed: 2,
+    failed: 2,
+    flips: 3,
+    flip_rate: 1,
+    last_status: "failed",
+    history: ["passed", "failed", "passed", "failed"],
+    owners: [],
+    issue_url: null,
+    ...extra
+  });
+
+  it("quarantines a flaky test from the card", async () => {
+    const fetchMock = renderCard({ ...base, items: [flaky("test_open")] });
+    fireEvent.click(await screen.findByRole("button", { name: "Quarantine test_open" }));
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2));
+    const [url, init] = fetchMock.mock.calls[1];
+    expect(String(url)).toContain("/api/v1/quarantine");
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(init.body as string)).toMatchObject({ cycle: "fake-api", test: "test_open" });
+    // The card reloads to show the new state.
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(3));
+    expect(String(fetchMock.mock.calls[2][0])).toContain("/api/v1/analytics/flaky");
+  });
+
+  it("shows quarantined tests with a Release button only for a stored exact entry", async () => {
+    const fetchMock = renderCard({
+      ...base,
+      items: [
+        flaky("test_stored", { quarantined: true, quarantine_entry: "test_stored" }),
+        flaky("test_by_glob", { quarantined: true, quarantine_entry: null })
+      ]
+    });
+    await waitFor(() => expect(screen.getAllByText("Quarantined")).toHaveLength(2));
+    expect(screen.queryByRole("button", { name: /^Quarantine / })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Release test_by_glob from quarantine" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Release test_stored from quarantine" }));
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2));
+    const [url, init] = fetchMock.mock.calls[1];
+    expect(String(url)).toContain("/api/v1/quarantine?cycle=fake-api&test=test_stored");
+    expect(init.method).toBe("DELETE");
+  });
+
+  it("says why a quarantine write was refused", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ...base, items: [flaky("test_open")] }) })
+      .mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: async () => ({ error: { message: "Missing or invalid API token." } })
+      });
+    vi.stubGlobal("fetch", fetchMock);
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter><FlakyTestsCard cycle="fake-api" /></MemoryRouter>
+      </QueryClientProvider>
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Quarantine test_open" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Missing or invalid API token.");
   });
 });

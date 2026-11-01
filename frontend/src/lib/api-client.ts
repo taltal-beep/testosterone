@@ -29,6 +29,9 @@ export type FailingTestItem = Schemas["FailingTestItem"];
 export type TriageItem = Schemas["TriageItem"];
 export type TriageRequest = Schemas["TriageRequest"];
 export type TriageCause = TriageItem["cause"];
+export type QuarantineItem = Schemas["QuarantineItem"];
+export type QuarantineRequest = Schemas["QuarantineRequest"];
+export type QuarantineListResponse = Schemas["QuarantineListResponse"];
 export type PyramidShape = RunPyramidResponse["shape"];
 
 export type DeltaMetricNode = Schemas["DeltaMetricNode"];
@@ -125,6 +128,16 @@ export const apiClient = {
   clearTriage(cycle: string, signature: string): Promise<void> {
     const query = new URLSearchParams({ cycle, signature });
     return api<void>(`/api/v1/triage?${query}`, { method: "DELETE" });
+  },
+  listQuarantine(cycle: string): Promise<QuarantineListResponse> {
+    return api<QuarantineListResponse>(`/api/v1/quarantine?${new URLSearchParams({ cycle })}`);
+  },
+  quarantineTest(payload: QuarantineRequest): Promise<QuarantineItem> {
+    return api<QuarantineItem>("/api/v1/quarantine", { method: "PUT", body: JSON.stringify(payload) });
+  },
+  releaseTest(cycle: string, test: string): Promise<void> {
+    const query = new URLSearchParams({ cycle, test });
+    return api<void>(`/api/v1/quarantine?${query}`, { method: "DELETE" });
   },
   createAdhocExecution(payload: AdhocExecutionRequest): Promise<CycleExecutionAccepted> {
     return api<CycleExecutionAccepted>("/api/v1/adhoc-executions", {

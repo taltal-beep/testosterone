@@ -513,6 +513,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quarantine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Quarantine
+         * @description Every quarantined test kept on the server, newest first, optionally one cycle's.
+         *
+         *     ``testosterone.yaml`` rules aren't listed here; runs apply both.
+         */
+        get: operations["list_quarantine_api_v1_quarantine_get"];
+        /**
+         * Add Quarantine
+         * @description Quarantine a test (exact name or glob) in a cycle; replaces an earlier entry for it.
+         */
+        put: operations["add_quarantine_api_v1_quarantine_put"];
+        post?: never;
+        /**
+         * Remove Quarantine
+         * @description Release a test: its failures fail runs again.
+         */
+        delete: operations["remove_quarantine_api_v1_quarantine_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/resources": {
         parameters: {
             query?: never;
@@ -1636,6 +1666,13 @@ export interface components {
             owners: string[];
             /** Passed */
             passed: number;
+            /** Quarantine Entry */
+            quarantine_entry: string | null;
+            /**
+             * Quarantined
+             * @default false
+             */
+            quarantined: boolean;
             /** Reasons */
             reasons: string[];
             /**
@@ -1823,6 +1860,50 @@ export interface components {
             status: "available" | "not_generated" | "failed";
             /** Summary */
             summary: string | null;
+        };
+        /**
+         * QuarantineItem
+         * @description A test (or glob) whose failures don't fail its cycle's runs, kept on the server.
+         */
+        QuarantineItem: {
+            /** Added At */
+            added_at: number;
+            /** Added By */
+            added_by: string | null;
+            /** Cycle */
+            cycle: string;
+            /** Is Glob */
+            is_glob: boolean;
+            /**
+             * Owner
+             * @default
+             */
+            owner: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /** Test */
+            test: string;
+        };
+        /** QuarantineListResponse */
+        QuarantineListResponse: {
+            /** Items */
+            items: components["schemas"]["QuarantineItem"][];
+            /** Release After */
+            release_after: number;
+        };
+        /** QuarantineRequest */
+        QuarantineRequest: {
+            /** Cycle */
+            cycle: string;
+            /** Owner */
+            owner?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /** Test */
+            test: string;
         };
         /** ReadinessCheck */
         ReadinessCheck: {
@@ -3340,6 +3421,100 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewSkillsResponse"];
+                };
+            };
+        };
+    };
+    list_quarantine_api_v1_quarantine_get: {
+        parameters: {
+            query?: {
+                cycle?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuarantineListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_quarantine_api_v1_quarantine_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuarantineRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuarantineItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_quarantine_api_v1_quarantine_delete: {
+        parameters: {
+            query: {
+                cycle: string;
+                test: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { apiClient, type FlakyTestItem } from "../../lib/api-client";
 import { Badge, Card, Spinner } from "../../components/ui";
 import { testPath } from "../../lib/format";
+import { QuarantineControl } from "../quarantine/QuarantineControl";
 
 const DOT: Record<string, string> = {
   passed: "bg-success-500",
@@ -69,6 +70,17 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
                   {item.flips} flips in {item.runs} runs
                 </Badge>
                 <Badge tone={item.last_status === "passed" ? "success" : "danger"}>last: {item.last_status}</Badge>
+                <QuarantineControl
+                  cycle={cycle}
+                  test={item.name}
+                  quarantined={item.quarantined ?? false}
+                  entry={item.quarantine_entry ?? null}
+                  why={
+                    item.quarantined && !item.quarantine_entry
+                      ? "Matched by a glob or a testosterone.yaml rule: change it there to release this test."
+                      : undefined
+                  }
+                />
               </div>
               <div className="mt-1 text-xs text-ink-400">
                 {item.group}

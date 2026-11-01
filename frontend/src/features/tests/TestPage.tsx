@@ -4,6 +4,8 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { apiClient, type TestPointItem } from "../../lib/api-client";
 import { Badge, Card, KeyValue, PageHeader, Spinner, StatusPill } from "../../components/ui";
 import { countLabel, formatDuration, formatRunTime, shortRunId } from "../../lib/format";
+import { IS_STATIC_BUILD } from "../../lib/static-backend";
+import { QuarantineControl, matchingEntry } from "../quarantine/QuarantineControl";
 import { Attachments } from "./Attachments";
 
 const FAILED = new Set(["failed", "broken"]);
@@ -160,6 +162,12 @@ export function TestPage() {
     queryFn: () => apiClient.getTestHistory(cycle, key),
     enabled: Boolean(cycle && key)
   });
+  // The list kept on the server; the read-only demo has none.
+  const quarantine = useQuery({
+    queryKey: ["quarantine", cycle],
+    queryFn: () => apiClient.listQuarantine(cycle),
+    enabled: Boolean(cycle) && !IS_STATIC_BUILD
+  });
 
   const back = (
     <Link to={`/cycles/${encodeURIComponent(cycle)}`} className="text-sm text-brand-300 hover:underline">
@@ -194,6 +202,9 @@ export function TestPage() {
     issue_url: issueUrl
   } = query.data;
   const passRate = test.runs > 0 ? Math.round((100 * test.passed) / test.runs) : null;
+  // An older server answers without the list: then the page shows no quarantine control.
+  const storedItems = Array.isArray(quarantine.data?.items) ? quarantine.data.items : null;
+  const stored = storedItems ? matchingEntry(storedItems, test.name, test.full_name) : null;
 
   return (
     <section className="space-y-4">
@@ -214,6 +225,21 @@ export function TestPage() {
         }
         actions={
           <span className="flex flex-wrap items-center gap-3">
+            {storedItems ? (
+              <QuarantineControl
+                cycle={cycle}
+                test={test.name}
+                quarantined={stored != null}
+                entry={stored && !stored.is_glob ? stored.test : null}
+                why={
+                  stored
+                    ? [stored.reason, stored.is_glob ? `matched by ${stored.test}` : "", stored.added_by ? `by ${stored.added_by}` : ""]
+                        .filter(Boolean)
+                        .join(" · ") || undefined
+                    : undefined
+                }
+              />
+            ) : null}
             {issueUrl ? (
               <a href={issueUrl} target="_blank" rel="noreferrer" className="text-sm text-brand-300 hover:underline">
                 Open an issue

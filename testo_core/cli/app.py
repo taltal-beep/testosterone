@@ -67,6 +67,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import plans as cycles_cmd
     from testo_core.cli.commands import plugins as plugins_mod
     from testo_core.cli.commands import pool as pool_mod
+    from testo_core.cli.commands import quarantine as quarantine_mod
     from testo_core.cli.commands import report as report_cmd
     from testo_core.cli.commands import run as run_cmd
     from testo_core.cli.commands import split as split_mod
@@ -146,6 +147,12 @@ def _register_commands() -> None:
         help="Tests whose outcome keeps flipping across a cycle's recent runs (--cycle).",
         rich_help_panel="Diagnostics",
     )(flaky_mod.flaky)
+    app.add_typer(
+        quarantine_mod.app,
+        name="quarantine",
+        help="Quarantine tests without a config change (list, add, remove), here or on a server.",
+        rich_help_panel="Diagnostics",
+    )
     app.command(
         name="plugins",
         help="List built-in and installed framework and reporter plugins (--check imports them).",

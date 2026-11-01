@@ -2428,6 +2428,22 @@
             "title": "Passed",
             "type": "integer"
           },
+          "quarantine_entry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quarantine Entry"
+          },
+          "quarantined": {
+            "default": false,
+            "title": "Quarantined",
+            "type": "boolean"
+          },
           "reasons": {
             "items": {
               "type": "string"
@@ -2459,7 +2475,9 @@
           "owners",
           "issue_url",
           "reasons",
-          "retried"
+          "retried",
+          "quarantined",
+          "quarantine_entry"
         ],
         "title": "FlakyTestItem",
         "type": "object"
@@ -3022,6 +3040,126 @@
           "context_stats"
         ],
         "title": "ProjectReviewResponse",
+        "type": "object"
+      },
+      "QuarantineItem": {
+        "description": "A test (or glob) whose failures don't fail its cycle's runs, kept on the server.",
+        "properties": {
+          "added_at": {
+            "title": "Added At",
+            "type": "number"
+          },
+          "added_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added By"
+          },
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "is_glob": {
+            "title": "Is Glob",
+            "type": "boolean"
+          },
+          "owner": {
+            "default": "",
+            "title": "Owner",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "test": {
+            "title": "Test",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "test",
+          "is_glob",
+          "reason",
+          "owner",
+          "added_by",
+          "added_at"
+        ],
+        "title": "QuarantineItem",
+        "type": "object"
+      },
+      "QuarantineListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QuarantineItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "release_after": {
+            "title": "Release After",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "release_after"
+        ],
+        "title": "QuarantineListResponse",
+        "type": "object"
+      },
+      "QuarantineRequest": {
+        "properties": {
+          "cycle": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Cycle",
+            "type": "string"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "test": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Test",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "test"
+        ],
+        "title": "QuarantineRequest",
         "type": "object"
       },
       "ReadinessCheck": {
@@ -6217,6 +6355,139 @@
         "summary": "List Review Skills",
         "tags": [
           "project-health"
+        ]
+      }
+    },
+    "/api/v1/quarantine": {
+      "delete": {
+        "description": "Release a test: its failures fail runs again.",
+        "operationId": "remove_quarantine_api_v1_quarantine_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": true,
+            "schema": {
+              "title": "Cycle",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "test",
+            "required": true,
+            "schema": {
+              "title": "Test",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Quarantine",
+        "tags": [
+          "quarantine"
+        ]
+      },
+      "get": {
+        "description": "Every quarantined test kept on the server, newest first, optionally one cycle's.\n\n``testosterone.yaml`` rules aren't listed here; runs apply both.",
+        "operationId": "list_quarantine_api_v1_quarantine_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cycle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuarantineListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Quarantine",
+        "tags": [
+          "quarantine"
+        ]
+      },
+      "put": {
+        "description": "Quarantine a test (exact name or glob) in a cycle; replaces an earlier entry for it.",
+        "operationId": "add_quarantine_api_v1_quarantine_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuarantineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuarantineItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Quarantine",
+        "tags": [
+          "quarantine"
         ]
       }
     },
