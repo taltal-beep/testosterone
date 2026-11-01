@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { apiClient, type FlakyTestItem } from "../../lib/api-client";
-import { Badge, Card, Spinner } from "../../components/ui";
+import { Badge, Button, Card, Spinner } from "../../components/ui";
 import { testPath } from "../../lib/format";
 
 const DOT: Record<string, string> = {
@@ -26,8 +27,12 @@ function History({ item }: { item: FlakyTestItem }) {
   );
 }
 
+// A big suite can have hundreds of flaky tests; the worst ones come first.
+const FIRST_SHOWN = 10;
+
 /** Tests that keep flipping between pass and fail across this cycle's recent runs. */
 export function FlakyTestsCard({ cycle }: { cycle: string }) {
+  const [showAll, setShowAll] = useState(false);
   const query = useQuery({
     queryKey: ["flaky", cycle],
     queryFn: () => apiClient.getFlakyTests(cycle)
@@ -58,10 +63,10 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
         <p className="text-sm text-ink-300">No flaky tests.</p>
       ) : (
         <ul className="space-y-2">
-          {report.items.map((item) => (
+          {(showAll ? report.items : report.items.slice(0, FIRST_SHOWN)).map((item) => (
             <li key={item.key} className="rounded-2xl border border-white/5 bg-ink-950/70 p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <Link to={testPath(cycle, item.key)} className="font-mono text-sm text-brand-300 hover:underline">
+                <Link to={testPath(cycle, item.key)} className="break-all font-mono text-sm text-brand-300 hover:underline">
                   {item.name}
                 </Link>
                 <Badge tone="warn">
@@ -85,6 +90,11 @@ export function FlakyTestsCard({ cycle }: { cycle: string }) {
           ))}
         </ul>
       )}
+      {!showAll && report.items.length > FIRST_SHOWN ? (
+        <Button variant="secondary" size="sm" className="mt-3" onClick={() => setShowAll(true)}>
+          Show all {report.items.length}
+        </Button>
+      ) : null}
     </Card>
   );
 }

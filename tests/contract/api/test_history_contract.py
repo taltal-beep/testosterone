@@ -55,8 +55,8 @@ def test_runs_and_details_contract(monkeypatch) -> None:  # noqa: ANN001
         ),
     )
     monkeypatch.setattr(
-        "testo_api.routes.history.snapshot_files_for_download",
-        lambda record: [("allure_report.html", b"x")],  # noqa: ARG005
+        "testo_api.routes.history.snapshot_file_names",
+        lambda record: ["allure_report.html"],  # noqa: ARG005
     )
 
     client = TestClient(create_app())
@@ -83,7 +83,12 @@ def test_runs_and_details_contract(monkeypatch) -> None:  # noqa: ANN001
     reports_resp = client.get("/api/v1/runs/run-1/reports")
     assert reports_resp.status_code == 200
     reports_payload = reports_resp.json()
-    assert set(reports_payload.keys()) == {"allure_server_url", "static_links", "artifact_links"}
+    assert set(reports_payload.keys()) == {
+        "allure_server_url",
+        "static_links",
+        "artifact_links",
+        "artifacts_url",
+    }
 
 
 def test_run_pyramid_contract(monkeypatch) -> None:  # noqa: ANN001
@@ -301,3 +306,48 @@ def test_runs_filtered_by_cycle_contract(monkeypatch) -> None:  # noqa: ANN001
     assert seen == {"limit": 10, "cycle": "web"}
     client.get("/api/v1/runs")
     assert seen == {"limit": 30, "cycle": None}
+
+
+def test_run_reports_for_a_run_older_than_the_recent_list(monkeypatch, tmp_path) -> None:  # noqa: ANN001
+    """The run page used to 404 for any run older than the newest 200: reports looked it up there."""
+    from testo_core import paths
+
+    history = tmp_path / "static" / "history"
+    snapshot = history / "old-run" / "artifacts"
+    (snapshot / "unit").mkdir(parents=True)
+    (snapshot / "unit" / "run.log").write_text("boom", encoding="utf-8")
+    monkeypatch.setattr(paths, "ORCHESTRATOR_ROOT", tmp_path)
+    monkeypatch.setattr(paths, "STATIC_HISTORY_ROOT", history)
+    monkeypatch.setattr("testo_api.routes.history.list_run_sessions", lambda **_: [])
+    monkeypatch.setattr("testo_api.routes.history.local_report_links", lambda run_id: {})  # noqa: ARG005
+    monkeypatch.setattr(
+        "testo_api.routes.history.get_run",
+        lambda run_id: CompletedRunView(  # noqa: ARG005
+            run_id="old-run",
+            status=RunStatus.COMPLETED,
+            created_at=1.0,
+            started_at=1.0,
+            finished_at=2.0,
+            test_kind="cycle",
+            returncode=1,
+            wall_duration_ms=1000.0,
+            metrics_duration_ms=0,
+            total_tests=0,
+            passed=0,
+            failed=0,
+            broken=0,
+            skipped=0,
+            avg_case_ms=None,
+            health_pct=0.0,
+            target_repo="/tmp/repo",
+            snapshot_dir="static/history/old-run/artifacts",
+            audit_json=None,
+        ),
+    )
+
+    resp = TestClient(create_app()).get("/api/v1/runs/old-run/reports")
+
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["artifact_links"] == ["unit/run.log"]
+    assert payload["artifacts_url"] == "history/old-run/artifacts"

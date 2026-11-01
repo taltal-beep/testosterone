@@ -11,12 +11,14 @@ out without a warning; fixtures in containers are not shown.
 
 from __future__ import annotations
 
+import copy
 import re
 import shutil
 import uuid
 from pathlib import Path
 from typing import Any
 
+_SAFE_SUFFIX = re.compile(r"\.[a-z0-9]{1,10}")
 _SIDE_FILES = frozenset({"environment.properties", "categories.json", "executor.json"})
 
 
@@ -57,7 +59,7 @@ def copy_allure_result(
     path: Path, data: dict[str, Any], *, results_dir: Path, tool: str
 ) -> tuple[dict[str, Any], int]:
     """``data`` ready to write to ``results_dir``, and how many attachments were copied there."""
-    result = dict(data)
+    result = copy.deepcopy(data)
     result["uuid"] = str(uuid.uuid4())
     start = result.get("start")
     if not isinstance(start, int):
@@ -74,18 +76,29 @@ def copy_allure_result(
 
     folder = path.parent.resolve()
     copied = 0
+    renamed: dict[str, str] = {}
     for attachment in _sources(result):
         source = str(attachment.get("source") or "")
         # Only a plain file name, in the result's own folder.
         if not source or Path(source).name != source:
             continue
+        if source in renamed:
+            attachment["source"] = renamed[source]
+            continue
         candidate = folder / source
-        target = results_dir / source
         # A symlink pointing out of the folder (``x-attachment.txt -> /etc/hostname``) would
         # copy that file into the run's artifacts; only files really inside it count.
         if folder not in candidate.resolve().parents:
             continue
-        if candidate.is_file() and not target.exists():
-            shutil.copyfile(candidate, target)
-            copied += 1
+        if not candidate.is_file():
+            continue
+        # Stored as ``<uuid>-attachment<ext>`` whatever the upload called it: the API
+        # serves files with that marker in a CSP sandbox (``testo_api.security``), so an
+        # uploaded ``page.html`` can't run script on the API's origin.
+        suffix = Path(source).suffix.lower()
+        target_name = f"{uuid.uuid4()}-attachment{suffix if _SAFE_SUFFIX.fullmatch(suffix) else ''}"
+        shutil.copyfile(candidate, results_dir / target_name)
+        renamed[source] = target_name
+        attachment["source"] = target_name
+        copied += 1
     return result, copied

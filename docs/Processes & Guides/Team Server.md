@@ -33,6 +33,7 @@ Open <http://localhost:8000> and sign in with the token on the `/login` page. Th
 | `TESTO_REPORTS_ORIGIN` | unset | e.g. `https://reports.testo.example.com`: serve report pages from that second hostname instead of the API's ([Reports on their own origin](#reports-on-their-own-origin)) |
 | `TESTO_RUNNER` | `host` | `container`: each stage of a run started on the server runs in a fresh container through the runner service ([Runs in throwaway containers](#runs-in-throwaway-containers)) |
 | `TESTO_RUN_QUEUE` | `memory` | Where `queued` runs wait. `memory`: a restart drops them. `db`: they are also rows in the database (`queued_run`) and are queued again when the server starts, so a restart or upgrade loses nothing that hadn't started. A run that was already running is not repeated; it shows as failed in the history |
+| `TESTO_ALLOWED_HOSTS` | unset | Only matters without a token: extra `Host` names a token-less API answers (it otherwise answers only `localhost`, `127.0.0.1` and `::1`, so a DNS-rebinding page can't read it). With a token, or `TESTO_ALLOW_UNAUTHENTICATED=1`, any name is answered |
 | `FORWARDED_ALLOW_IPS` | unset | Behind an HTTPS reverse proxy, the proxy's address, so the session cookie is marked `Secure` |
 | `POSTGRES_PASSWORD` | `testo` | Database password (internal to the compose network) |
 | `TESTO_SERVER_PORT` | `8000` | Port on the host |
@@ -93,7 +94,7 @@ docker compose -f docker-compose.yml -f docker-compose.runner.yml up -d    # add
 `deploy/server/docker-compose.runner.yml` sets `TESTO_RUNNER=container` on the server and adds a `runner` service, the only container with the Docker socket. For every stage it runs `docker run --rm` with:
 
 - the `testo_repos` (`/repos`) and `testo_artifacts` (`/data/artifacts`) volumes, at the same paths as in the server; put the repositories your cycles test under `/repos`,
-- only the stage's own variables (its `env:` and what Testosterone sets), never the server's token or database URL,
+- only the stage's own variables (its `env:` and what Testosterone sets), never the server's token or database URL; `${env:...}` in a stage's `args` and `env:` can't read them either (any `TESTO_*`, `DATABASE_URL`, `POSTGRES_*` or `*_API_KEY` / `*_TOKEN` / `*_SECRET` / `*_PASSWORD` / `*_DB_URL` variable of the server resolves as unset),
 - no Linux capabilities, no privilege escalation and at most 512 processes,
 - the commands in `TESTO_RUNNER_ALLOWED_COMMANDS` only.
 
@@ -109,7 +110,7 @@ docker compose -f docker-compose.yml -f docker-compose.runner.yml up -d    # add
 | `TESTO_RUNNER_USER` | `10001:10001` | User stages run as (the images' `testo`, so files stay readable by the server) |
 | `TESTO_RUNNER_MAX_RUNS` | `4` | Stages at once; more wait for a slot |
 
-A timeout stops the container the same way it stops a local process (the stage gets `124`), and if the server goes away mid-run the runner stops the container. Unset `TESTO_RUNNER` (or drop the second compose file) to go back. The runner service has no published port, but the Docker socket is root on the host, so keep it on the compose network; rootless Docker or Podman via `DOCKER_HOST` narrows that further. Why it is built this way: [Throwaway Stage Containers - 2026-10-24](../Specs%20&%20ADRs/Throwaway%20Stage%20Containers%20-%202026-10-24.md).
+A `per: stage` resource pool with `on_take` / `on_check` / `on_release` hooks is refused in this mode, because those hooks would run in the server's process; use `per: test` ([Shared Resource Pools](Shared%20Resource%20Pools.md)). A timeout stops the container the same way it stops a local process (the stage gets `124`), and if the server goes away mid-run the runner stops the container. Unset `TESTO_RUNNER` (or drop the second compose file) to go back. The runner service has no published port, but the Docker socket is root on the host, so keep it on the compose network; rootless Docker or Podman via `DOCKER_HOST` narrows that further. Why it is built this way: [Throwaway Stage Containers - 2026-10-24](../Specs%20&%20ADRs/Throwaway%20Stage%20Containers%20-%202026-10-24.md).
 
 ## Shared resource pools
 
@@ -147,7 +148,7 @@ The database schema is upgraded in place when the server starts: the API runs th
 
 With a `history:` section in the server's `testosterone.yaml` (`retention: {days: 90, runs_per_cycle: 200}`, either limit alone is fine) the server deletes expired runs, their per-test rows and their report copies at startup and every 6 hours; without it history is kept forever. The same pruning runs by hand as [`testo clean --history`](../CLI%20Commands/Command%20Reference.md#testo-clean---history).
 
-The image sets `TESTO_UI_DIR=/app/ui`, which makes the API serve the built React UI at `/` (unknown paths fall back to `index.html`, so `/runs/<id>` loads directly). With a token set, the UI may write to its own origin; without one, only the `TESTO_CORS_ORIGINS` allow-list may.
+The image sets `TESTO_UI_DIR=/app/ui`, which makes the API serve the built React UI at `/` (unknown paths fall back to `index.html`, so `/runs/<id>` loads directly). With a token set, the UI may write to its own origin; without one, only the `TESTO_CORS_ORIGINS` allow-list may, and `*` in that list counts only when a token is set.
 
 ## Limits today
 

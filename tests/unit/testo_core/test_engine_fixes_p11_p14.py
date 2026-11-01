@@ -92,8 +92,8 @@ def test_allure_attachment_symlink_out_of_the_folder_is_not_copied(tmp_path: Pat
     _, copied = copy_allure_result(results / "x-result.json", data, results_dir=out, tool="t")
 
     assert copied == 1
-    assert not (out / "a-attachment.txt").exists()
-    assert (out / "b-attachment.txt").read_text() == "fine"
+    # Copies are renamed to ``<uuid>-attachment<ext>`` (security review R-fixes).
+    assert [p.read_text() for p in out.iterdir()] == ["fine"]
 
 
 # P13 ---------------------------------------------------------------------------------

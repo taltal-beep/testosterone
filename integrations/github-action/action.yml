@@ -85,7 +85,7 @@ runs:
   using: composite
   steps:
     - name: Setup Python
-      uses: actions/setup-python@v7
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       with:
         python-version: ${{ inputs.python-version }}
     - name: Install testo
@@ -135,7 +135,7 @@ runs:
         TESTO_INPUT_NOTIFY_WHEN: ${{ inputs.notify-when }}
         TESTO_INPUT_FLAKY_ISSUES: ${{ inputs.flaky-issues }}
       run: |
-        python "${{ github.action_path }}/run_testo_action.py" \
+        python "$GITHUB_ACTION_PATH/run_testo_action.py" \
           --config-path "$TESTO_INPUT_CONFIG_PATH" \
           --cycle "$TESTO_INPUT_CYCLE" \
           --ci-mode "$TESTO_INPUT_CI_MODE" \

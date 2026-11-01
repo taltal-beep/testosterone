@@ -74,7 +74,7 @@ def test_openai_compatible_calls_the_base_url_and_key_is_optional(
         seen["auth"] = req.get_header("Authorization")
         return _Response()
 
-    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+    monkeypatch.setattr("testo_core.services.ai.provider_base.urlopen", _urlopen)
     config = AiProviderConfig(
         provider="openai_compatible",
         model="llama3.2",
@@ -95,7 +95,7 @@ def test_http_error_carries_the_providers_own_message(monkeypatch: pytest.Monkey
     def _urlopen(req, timeout):  # noqa: ANN001,ANN202
         raise urllib.error.HTTPError(req.full_url, 404, "Not Found", {}, io.BytesIO(body.encode()))
 
-    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+    monkeypatch.setattr("testo_core.services.ai.provider_base.urlopen", _urlopen)
     provider = build_ai_provider(
         config=AiProviderConfig(
             provider="openai_compatible",

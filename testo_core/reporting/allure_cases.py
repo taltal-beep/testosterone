@@ -107,6 +107,9 @@ def load_cases(plan_root: Path) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
     if not plan_root.is_dir():
         return out
+    # Thousands of results share a folder; working out its stage once per folder
+    # instead of once per file was most of the dashboard's load time.
+    stages: dict[Path, str] = {}
     for path in plan_root.rglob("*-result.json"):
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
@@ -116,6 +119,9 @@ def load_cases(plan_root: Path) -> dict[str, dict[str, Any]]:
             continue
         key = case_key(data)
         st = str(data.get("status") or "unknown").lower()
+        stage = stages.get(path.parent)
+        if stage is None:
+            stage = stages[path.parent] = case_stage(path, plan_root)
         out[key] = {
             "name": str(data.get("name") or data.get("fullName") or key)[:NAME_LIMIT],
             "full_name": str(data.get("fullName") or ""),
@@ -123,7 +129,7 @@ def load_cases(plan_root: Path) -> dict[str, dict[str, Any]]:
             "status": st,
             "duration_ms": case_duration_ms(data),
             "message": case_message(data),
-            "stage": case_stage(path, plan_root),
+            "stage": stage,
             "framework": label_value(data.get("labels"), "framework"),
             "crash": case_crash(data, st),
         }
