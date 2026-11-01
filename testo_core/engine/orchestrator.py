@@ -13,6 +13,7 @@ import dataclasses
 import json
 import logging
 import os
+import signal
 import time
 from collections import deque
 from collections.abc import Callable, Mapping
@@ -21,6 +22,7 @@ from pathlib import Path
 from typing import Protocol
 
 from testo_core.config.schema import Plan, Stage
+from testo_core.engine import interrupt
 from testo_core.engine.events import (
     EngineEvent,
     PlanFinished,
@@ -29,7 +31,7 @@ from testo_core.engine.events import (
     StageStarted,
 )
 from testo_core.engine.executor import run_stage
-from testo_core.engine.exit_codes import classify_exit_code
+from testo_core.engine.exit_codes import EngineExitCode, classify_exit_code
 from testo_core.engine.result import PlanResult, StageResult
 from testo_core.reporting.paths import plan_artifacts_dir
 
@@ -117,29 +119,38 @@ def run_plan(
             recorder.write(_stage_finished_payload(stage_result))
 
         def abort(completed: int) -> None:
+            stopped_by = interrupt.requested()
             recorder.write(
                 {
                     "event": "plan_aborted",
                     "plan": plan.name,
-                    "reason": "fail_fast",
+                    "reason": "fail_fast" if stopped_by is None else "signal",
                     "completed_stages": completed,
+                    **({} if stopped_by is None else {"signal": interrupt.signal_name(stopped_by)}),
                 }
             )
 
-        if max_parallel == 1:
-            stage_results = _run_sequential(
-                plan, start=start, execute=execute, finish=finish, abort=abort, fail_fast=fail_fast
-            )
-        else:
-            stage_results = _run_parallel(
-                plan,
-                max_parallel=max_parallel,
-                start=start,
-                execute=execute,
-                finish=finish,
-                abort=abort,
-                fail_fast=fail_fast,
-            )
+        with interrupt.stop_on_signals():
+            if max_parallel == 1:
+                stage_results = _run_sequential(
+                    plan,
+                    start=start,
+                    execute=execute,
+                    finish=finish,
+                    abort=abort,
+                    fail_fast=fail_fast,
+                )
+            else:
+                stage_results = _run_parallel(
+                    plan,
+                    max_parallel=max_parallel,
+                    start=start,
+                    execute=execute,
+                    finish=finish,
+                    abort=abort,
+                    fail_fast=fail_fast,
+                )
+        stopped_by = interrupt.requested()
 
         finished_at = time.time()
         rcs = [s.returncode for s in stage_results]
@@ -148,6 +159,15 @@ def run_plan(
             infra_error=None,
             internal_failure=any(s.internal_failure for s in stage_results),
         )
+        metadata = dict(run_metadata) if run_metadata else {}
+        if stopped_by is not None:
+            # Recorded (as failed, with the signal in its metadata), then exit 130 / 143.
+            exit_code = (
+                EngineExitCode.TERMINATED
+                if stopped_by == signal.SIGTERM
+                else EngineExitCode.INTERRUPTED
+            )
+            metadata["interrupted_by"] = interrupt.signal_name(stopped_by)
         target_repos = {s.target_repo for s in stage_results if s.target_repo is not None}
         target_repo = next(iter(target_repos)) if len(target_repos) == 1 else None
         plan_result = PlanResult(
@@ -161,7 +181,7 @@ def run_plan(
             aggregate_returncode=max(rcs, default=0),
             exit_code=exit_code,
             target_repo=target_repo,
-            extra={"run_metadata": dict(run_metadata)} if run_metadata else {},
+            extra={"run_metadata": metadata} if metadata else {},
         )
 
         recorder.write(
@@ -201,6 +221,9 @@ def _run_sequential(
     """The default: one stage at a time, in config order, on the calling thread."""
     results: list[StageResult] = []
     for idx, stage in enumerate(plan.stages, start=1):
+        if interrupt.requested() is not None:
+            abort(idx - 1)
+            break
         start(idx, stage)
         result = execute(stage)
         results.append(result)
@@ -234,6 +257,8 @@ def _run_parallel(
     aborted = False
     with ThreadPoolExecutor(max_workers=max_parallel, thread_name_prefix="testo-stage") as pool:
         while pending or running:
+            if interrupt.requested() is not None:
+                aborted = True
             while pending and not aborted and len(running) < max_parallel:
                 idx, stage = pending.popleft()
                 start(idx, stage)
