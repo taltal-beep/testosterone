@@ -838,6 +838,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{run_id}/markdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Markdown
+         * @description The run as Markdown (headline, stages, failing tests, changes since its baseline).
+         *
+         *     The same text as ``testo report markdown --run-id``, so the UI's "Copy summary"
+         *     pastes into a pull request, Confluence, Notion or Jira the way the CLI's does.
+         */
+        get: operations["get_run_markdown_api_v1_runs__run_id__markdown_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{run_id}/pyramid": {
         parameters: {
             query?: never;
@@ -2464,6 +2487,16 @@ export interface components {
             items: components["schemas"]["RunListItem"][];
             /** Next Cursor */
             next_cursor: string | null;
+        };
+        /**
+         * RunMarkdownResponse
+         * @description A run as GitHub-flavored Markdown, the same text as ``testo report markdown``.
+         */
+        RunMarkdownResponse: {
+            /** Markdown */
+            markdown: string;
+            /** Run Id */
+            run_id: string;
         };
         /** RunPyramidResponse */
         RunPyramidResponse: {
@@ -4095,6 +4128,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunFailuresResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_markdown_api_v1_runs__run_id__markdown_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunMarkdownResponse"];
                 };
             };
             /** @description Validation Error */

@@ -49,6 +49,7 @@ The layout it writes is the contract shared with ``static-backend.ts``:
     data/runs/<run_id>/pyramid.json        GET /api/v1/runs/{id}/pyramid
     data/runs/<run_id>/failures.json       GET /api/v1/runs/{id}/failures
     data/runs/<run_id>/ai-summary.json     GET /api/v1/runs/{id}/ai-summary
+    data/runs/<run_id>/markdown.json       GET /api/v1/runs/{id}/markdown
     data/dashboard/overview.json           GET /api/v1/dashboard/overview
     data/dashboard/recent-runs.json        GET /api/v1/dashboard/runs/recent
     data/dashboard/attention.json          GET /api/v1/dashboard/attention
@@ -204,6 +205,7 @@ class Exporter:
             self._dump(f"/api/v1/runs/{run_id}/pyramid", f"{base}/pyramid.json")
             self._dump(f"/api/v1/runs/{run_id}/failures", f"{base}/failures.json")
             self._dump(f"/api/v1/runs/{run_id}/ai-summary", f"{base}/ai-summary.json")
+            self._dump(f"/api/v1/runs/{run_id}/markdown", f"{base}/markdown.json")
         return items
 
     def generate_ai_summaries(self, run_ids: list[str]) -> None:

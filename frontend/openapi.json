@@ -4678,6 +4678,25 @@
         "title": "RunListResponse",
         "type": "object"
       },
+      "RunMarkdownResponse": {
+        "description": "A run as GitHub-flavored Markdown, the same text as ``testo report markdown``.",
+        "properties": {
+          "markdown": {
+            "title": "Markdown",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "markdown"
+        ],
+        "title": "RunMarkdownResponse",
+        "type": "object"
+      },
       "RunPyramidResponse": {
         "properties": {
           "e2e": {
@@ -5443,7 +5462,7 @@
   },
   "info": {
     "title": "Testosterone API",
-    "version": "1.5.0"
+    "version": "1.4.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -7467,6 +7486,49 @@
           }
         },
         "summary": "Get Run Failures",
+        "tags": [
+          "history"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/markdown": {
+      "get": {
+        "description": "The run as Markdown (headline, stages, failing tests, changes since its baseline).\n\nThe same text as ``testo report markdown --run-id``, so the UI's \"Copy summary\"\npastes into a pull request, Confluence, Notion or Jira the way the CLI's does.",
+        "operationId": "get_run_markdown_api_v1_runs__run_id__markdown_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunMarkdownResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run Markdown",
         "tags": [
           "history"
         ]

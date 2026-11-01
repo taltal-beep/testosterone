@@ -39,3 +39,9 @@ body {
   outline: 2px solid theme(colors.brand.400);
   outline-offset: 2px;
 }
+
+/* While a card is being copied as text, leave out what only makes sense on screen (controls, the menu). */
+[data-copying] [data-copy-exclude],
+[data-copying] button {
+  display: none !important;
+}

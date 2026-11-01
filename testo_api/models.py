@@ -230,6 +230,13 @@ class RunPyramidResponse(ApiModel):
     message: str
 
 
+class RunMarkdownResponse(ApiModel):
+    """A run as GitHub-flavored Markdown, the same text as ``testo report markdown``."""
+
+    run_id: str
+    markdown: str
+
+
 class TriageItem(ApiModel):
     cycle: str
     # The failure message with numbers, ids and quoted values blanked: what later failures match on.
