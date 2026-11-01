@@ -9,10 +9,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Security
+- Secrets are hidden in a run's stored results and logs before it is recorded (API keys, cloud and GitHub/GitLab/Slack tokens, JWTs, bearer tokens, `password=`, credentials in URLs, private keys), for `testo run`, `testo ingest`, uploads and `pytest --testo`. Add patterns with `TESTO_REDACT_PATTERNS` (one regular expression per line); `TESTO_REDACT=0` turns it off
 - PR comment and job summary: a backtick in a test name (which in a fork's pull request its author controls) ended the code span, so `@user` mentions and HTML after it rendered live. Names are now fenced so nothing inside can close them, and stage, runner and branch cells are plain text. A cycle name with `-->` can no longer end the comment marker
 
 ### Added
 - Python 3.14 is tested in CI and listed in the package classifiers
+- Code coverage with each run: `testo run --coverage FILE` and `testo ingest --coverage FILE` read Cobertura or JaCoCo XML, LCOV or a Go cover profile and store the run's line coverage; the run page shows it, and the job summary and PR comment show it with its change against the baseline (`coverage 81.2% (▼ 0.4)`). The GitHub Action has a `coverage` input
+- `testo notify --digest week` (or `day`): one Slack or Teams message per period with every cycle's runs, green builds, pass rate and coverage against the period before, plus tests that turned flaky, still fail, got fixed or got slower. Run it from cron or a scheduled CI job
+- `testo backup` and `testo restore`: the whole run history (every table plus each run's stored results) in one `.tar.gz` that restores into SQLite, Postgres or MySQL; restore refuses a database that already has runs unless `--replace`
+- `pytest --testo-failed-first` (or `TESTO_FAILED_FIRST=1`): tests that failed last time run first, then flaky ones, then recent failures, using the shared run history (local or `--testo-server`); works with pytest-xdist
 
 ### Fixed
 - Result importers no longer crash or silently drop results on odd files. A file with unexpected field types (Jest, Playwright, RSpec, k6) or a JUnit `time="inf"` used to crash the whole import and lose every other file's results; now that one file is skipped and logged. A `<testsuite>` nested in a root `<testsuite>` is read (it counted 0 tests), UTF-16 XML is read, XML that isn't JUnit (an HTML error page) is reported instead of counting 0 tests, a report whose name contains `-attachment` is no longer skipped as an Allure attachment, Maven Surefire reruns (`flakyFailure`, `rerunFailure`) mark the test flaky, and a JUnit failure message is capped like its trace

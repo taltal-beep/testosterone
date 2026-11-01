@@ -2,7 +2,7 @@
 type: roadmap
 status: current
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Paid features to offer free (2026-10-31)
@@ -80,6 +80,9 @@ Paid features that aren't in the gaps note. Ranked by value to a self-hosting te
 | F10 | **Attachments in S3-compatible storage** | Currents (Enterprise only) | `TESTO_ATTACHMENTS_URL=s3://…` for traces, screenshots and videos, so a busy team server doesn't fill its disk; works with MinIO, R2 or S3. Goes with G9 | M |
 | F11 | **Re-run failed tests from the UI** | BrowserStack re-run, Currents re-run failed | A button on the run page that calls GitHub's "re-run failed jobs" (or GitLab's retry) for the run's recorded CI job. Needs a CI token stored on the server, so it sits behind the `runner` role and its own switch | M |
 | F12 | **Custom name, logo and colour** | Qualflare (Enterprise only) | `TESTO_BRAND_NAME`, `TESTO_BRAND_LOGO` and an accent colour for a team server. Cheap, but few people will ask | S |
+
+> [!note] Built 2026-11-01
+> F1 (line coverage totals per run, on the PR comment, run page and digest; no per-file numbers or trend chart yet), F2, F5, F6 and F9 are built. See [Free Copies of Paid Features - 2026-11-01](../Specs%20&%20ADRs/Free%20Copies%20of%20Paid%20Features%20-%202026-11-01.md).
 
 ### Suggested order
 

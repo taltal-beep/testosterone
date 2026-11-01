@@ -37,6 +37,10 @@ CONDITIONAL_KEYS = {
     "git_branch",
     "git_commit",
     "repository",
+    # Only when the run was given --coverage (tests/unit/testo_core/test_coverage_import.py).
+    "coverage_pct",
+    "coverage_covered",
+    "coverage_total",
 }
 
 

@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-05-02
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # CI Integrations
@@ -38,7 +38,7 @@ The PR comment and `testo report markdown` compare a pull request's run with the
 
 ## GitHub Action
 
-The action is `action.yml` at the repository root, the copy the GitHub Marketplace lists (`uses: taltal-beep/testosterone@v1`, from 1.4.0); `integrations/github-action/action.yml` is the same action at its older path and keeps working, and `tests/contract/ci/test_action_copies.py` fails if the two differ. Source lives under `integrations/github-action/` (inputs: `config-path`, `cycle`, `ci-mode`, `persist`, `python-version`, `package`, `job-summary`, `comment-on-pr`, `annotations`, `slack-webhook`, `teams-webhook`, `notify-when`, `flaky-issues`, `github-token`; outputs: `exit_code`, `status`, `summary_json`, `summary_path`).
+The action is `action.yml` at the repository root, the copy the GitHub Marketplace lists (`uses: taltal-beep/testosterone@v1`, from 1.4.0); `integrations/github-action/action.yml` is the same action at its older path and keeps working, and `tests/contract/ci/test_action_copies.py` fails if the two differ. Source lives under `integrations/github-action/` (inputs: `config-path`, `cycle`, `ci-mode`, `persist`, `python-version`, `package`, `job-summary`, `comment-on-pr`, `annotations`, `slack-webhook`, `teams-webhook`, `notify-when`, `flaky-issues`, `coverage`, `github-token`; outputs: `exit_code`, `status`, `summary_json`, `summary_path`).
 
 ```yaml
 permissions:
@@ -53,7 +53,7 @@ steps:
 
 After a persisted run the action renders it with `testo report markdown` and writes it to the job summary (`job-summary`, default on). With `comment-on-pr: "true"` on `pull_request` events it keeps one comment per cycle on the pull request, found by its hidden marker and edited on later pushes. Both are best-effort: an error, such as a fork's read-only token, is a workflow warning and never changes the exit code. `package` is what gets pip-installed (`testo-core` by default; `testo-core[bdd]` for cycles with `behave` or `behavex` stages; this repository's own CI passes `.`). The GitLab template's `TESTO_PACKAGE` variable does the same. Design: [GitHub Action PR Comment - 2026-10-19](../Specs%20&%20ADRs/GitHub%20Action%20PR%20Comment%20-%202026-10-19.md).
 
-The action also prints failing tests as annotations on the diff (`annotations`, default on, no permission needed; [`testo report annotations`](../CLI%20Commands/Command%20Reference.md#subcommands)). Pass `slack-webhook: ${{ secrets.SLACK_WEBHOOK_URL }}` and/or `teams-webhook` to get a chat alert ([`testo notify`](../CLI%20Commands/Command%20Reference.md#testo-notify), `notify-when` default `failure`). `flaky-issues: "true"` opens one issue (label `flaky-test`) per test the run made flaky and needs `issues: write`. All three are best-effort like the summary. Design: [Alerts Where Developers Look - 2026-10-22](../Specs%20&%20ADRs/Alerts%20Where%20Developers%20Look%20-%202026-10-22.md).
+The action also prints failing tests as annotations on the diff (`annotations`, default on, no permission needed; [`testo report annotations`](../CLI%20Commands/Command%20Reference.md#subcommands)). Pass `slack-webhook: ${{ secrets.SLACK_WEBHOOK_URL }}` and/or `teams-webhook` to get a chat alert ([`testo notify`](../CLI%20Commands/Command%20Reference.md#testo-notify), `notify-when` default `failure`). `flaky-issues: "true"` opens one issue (label `flaky-test`) per test the run made flaky and needs `issues: write`. All three are best-effort like the summary. `coverage: coverage.xml` (space-separated; Cobertura, JaCoCo, LCOV or Go cover profiles your tests write) stores line coverage with the run, and the summary and PR comment show it with its change against the baseline ([`testo run --coverage`](../CLI%20Commands/Command%20Reference.md#options)). Design: [Alerts Where Developers Look - 2026-10-22](../Specs%20&%20ADRs/Alerts%20Where%20Developers%20Look%20-%202026-10-22.md).
 
 ## GitLab include template
 

@@ -1,0 +1,3228 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="See what broke, what's flaky and what got slower on every run. Test history, run-to-run diffs and flaky detection for any test runner.">
+      
+      
+      
+        <link rel="canonical" href="https://taltal-beep.github.io/testosterone/docs/roadmap-and-strategy/feature-gaps-and-quick-wins-2026-10-31/">
+      
+      
+        <link rel="prev" href="../product-roadmap/">
+      
+      
+        <link rel="next" href="../paid-features-to-offer-free-2026-10-31/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/logo.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Feature Gaps and Quick Wins - Testosterone</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#feature-gaps-and-quick-wins-2026-10-31" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Testosterone" class="md-header__button md-logo" aria-label="Testosterone" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Testosterone
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Feature Gaps and Quick Wins
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="amber"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-orange" data-md-color-accent="amber"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/taltal-beep/testosterone" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    taltal-beep/testosterone
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Testosterone" class="md-nav__button md-logo" aria-label="Testosterone" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    Testosterone
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/taltal-beep/testosterone" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    taltal-beep/testosterone
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../compared-with-other-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compared With Other Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using Testosterone
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Using Testosterone
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli-commands/command-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli-commands/troubleshooting-and-error-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting and Error Codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../processes-and-guides/ci-cd-pipeline-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI-CD Pipeline Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../processes-and-guides/team-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Team Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../processes-and-guides/shared-resource-pools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared Resource Pools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../prompts-and-snippets/setup-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/system-diagram/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Diagram
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/architecture-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/deep-dive-execution-logic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Dive - Execution Logic
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Testing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testing-workflows/qa-strategies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    QA Strategies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../processes-and-guides/e2e-harness-operations-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2E Harness Operations Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../processes-and-guides/gitlab-pages-demo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pages Demo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releasing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Releasing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../processes-and-guides/publishing-to-pypi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publishing to PyPI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../processes-and-guides/publishing-docker-images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publishing Docker Images
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../processes-and-guides/publishing-to-artifactory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publishing to Artifactory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog-automation-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specs & ADRs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/architecture-review-2026-10-31/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/importer-and-integration-bug-hunt-2026-10-31/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Importer and Integration Bug Hunt
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/affected-test-selection-2026-10-30/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Affected Test Selection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/resource-pools-and-leases-2026-10-26/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Resource Pools and Leases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/resource-lifecycle-hooks-2026-10-26/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Resource Lifecycle Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/human-run-resource-provider-2026-10-30/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Human-Run Resource Provider
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/scale-runs-and-stages-2026-10-24/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scale Runs and Stages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/ingest-and-team-server-2026-10-22/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingest and Team Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/ui-restyle-2026-10-19/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Restyle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/ui-design-review-2026-10-31/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Design Review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/open-source-features-2026-10-19/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Open Source Features
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/github-action-pr-comment-2026-10-19/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitHub Action PR Comment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/docs-site-2026-10-19/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docs Site
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/plugin-api-2026-10-19/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/playwright-adapter-2026-10-19/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Playwright Adapter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/playwright-json-import-2026-10-22/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Playwright JSON Import
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/runner-coverage-2026-10-26/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runner Coverage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/qualflare-follow-ups-2026-10-26/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Qualflare Follow-ups
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/behavex-reports-2026-10-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BehaveX Reports
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/config-json-schema-2026-10-22/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config JSON Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/flaky-test-quarantine-2026-10-22/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Flaky Test Quarantine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/alerts-where-developers-look-2026-10-22/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerts Where Developers Look
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/opentelemetry-export-2026-10-30/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenTelemetry Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/free-copies-of-paid-features-2026-11-01/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free Copies of Paid Features
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/docs-vault-and-wiki-sync-2026-10-07/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docs Vault and Wiki Sync
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/interview-readiness-fixes-2026-10-07/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interview Readiness Fixes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/architecture-consolidation-2026-10-06/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Consolidation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/command-adapter-and-junit-import-2026-09-25/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command Adapter and JUnit Import
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/delta-comparison-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Delta Comparison Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/library-packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Library Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/repository-pattern-database-agnostic-refactor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository Pattern
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/phase-3-delta-comparison-engine-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Phase 3 Delta Comparison Engine Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/phase-3-unified-dashboard-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Phase 3 Unified Dashboard Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/phase-4-byok-and-failure-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Phase 4 BYOK and Failure Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/phase-5-ui-redesign-cycles-first-navigation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Phase 5 UI Redesign
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs-and-adrs/product-roadmap-work-2026-10-25/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Product Roadmap Work
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../product-roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Product Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Feature Gaps and Quick Wins
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Feature Gaps and Quick Wins
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-was-checked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it was checked
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-market-treats-as-standard-in-2026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the market treats as standard in 2026
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-testosterone-already-wins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where Testosterone already wins
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-wins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick wins
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#feature-gaps-ranked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature gaps, ranked
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#out-of-scope-on-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Out of scope, on purpose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#suggested-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Suggested order
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../paid-features-to-offer-free-2026-10-31/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Paid Features to Offer Free
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testing-workflows/technical-debt-tracker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Debt Tracker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../product-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Product Review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../engine-cli-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engine and CLI Bug Hunt
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../prompts-and-snippets/agent-context-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Context Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vault-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vault Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vault Log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../archive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Archive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-was-checked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it was checked
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-market-treats-as-standard-in-2026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the market treats as standard in 2026
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-testosterone-already-wins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where Testosterone already wins
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-wins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick wins
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#feature-gaps-ranked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature gaps, ranked
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#out-of-scope-on-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Out of scope, on purpose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#suggested-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Suggested order
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/taltal-beep/testosterone/edit/main/docs/Roadmap & Strategy/Feature Gaps and Quick Wins - 2026-10-31.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="feature-gaps-and-quick-wins-2026-10-31">Feature gaps and quick wins (2026-10-31)<a class="headerlink" href="#feature-gaps-and-quick-wins-2026-10-31" title="Permanent link">&para;</a></h1>
+<p><a href="../..">Index</a> · <a href="../product-roadmap/">Product Roadmap</a> · <a href="../../product-review/">Product Review</a> · <a href="../../compared-with-other-tools/">Compared With Other Tools</a></p>
+<p>A market pass and a new-user pass, done together on 2026-10-31 against <code>testo-core</code> 1.4.0 from PyPI and <code>main</code> at <code>6f40902</code>. It asks two questions: <strong>what do teams get from the paid tools that Testosterone doesn't do yet</strong>, and <strong>what goes wrong in the first ten minutes</strong>. Nothing here is built yet except where a pull request is named. Big items are proposals that wait on the maintainer's go-ahead.</p>
+<p>Effort is for one person who knows the code: <strong>S</strong> is under a day, <strong>M</strong> is one to three days, <strong>L</strong> is one to two weeks, <strong>XL</strong> is more.</p>
+<h2 id="how-it-was-checked">How it was checked<a class="headerlink" href="#how-it-was-checked" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Competitors</strong>, from their own docs, pricing pages and changelogs, plus user complaints where they could be found (GitHub issues, G2, Capterra, Ministry of Testing, GitHub community discussions): ReportPortal, Allure TestOps and Allure Report 3, Currents, Testmo, Trunk Flaky Tests, BuildPulse, Datadog Test Optimization, CloudBees Smart Tests (Launchable), Qualflare, Buildkite Test Engine, Develocity, and the test reports built into GitLab and GitHub. Reddit couldn't be read and independent reviews were thin, so most complaints come from issue trackers. Pages written by a competitor were treated as one-sided. Prices change often; treat them as rough.</li>
+<li><strong>A brand new user's first ten minutes:</strong> a fresh Python 3.13 virtualenv, <code>pip install testo-core pytest</code> (1.4.0, about 10 s), <code>pytest --testo</code> six times on a project with a flaky test and a slow test, <code>testo summary</code>, <code>testo flaky</code>, <code>testo config init</code>, <code>testo run</code>, <code>testo report</code>, <code>pip install 'testo-core[api]'</code>, <code>testo ui</code>, then every page of the UI opened in a headless browser. Plus <code>testo ingest</code> of hand-written JUnit files: Surefire's <code>&lt;flakyFailure&gt;</code>, a retried test written twice (the Gradle test-retry plugin's shape), nested <code>&lt;testsuite&gt;</code> elements, and a 1.1 MB file with 20,000 tests.</li>
+</ul>
+<h2 id="what-the-market-treats-as-standard-in-2026">What the market treats as standard in 2026<a class="headerlink" href="#what-the-market-treats-as-standard-in-2026" title="Permanent link">&para;</a></h2>
+<p>Every paid flaky-test tool now does most of these. The left column is what users have come to expect; the right column is where Testosterone stands.</p>
+<table>
+<thead>
+<tr>
+<th>Expected</th>
+<th>Who does it</th>
+<th>Testosterone today</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A test that fails and then passes <strong>on a retry in the same run</strong> is flaky</td>
+<td>All of them (Datadog, Trunk, Develocity, Buildkite, Currents)</td>
+<td>Only for Playwright JSON, Jest, and Xcode results. JUnit retries are counted as failures (Q2) or dropped (Q3)</td>
+</tr>
+<tr>
+<td>Flakiness judged on the default branch or the same commit, not across feature branches</td>
+<td>Datadog, Trunk, GitLab ("failed n times in main")</td>
+<td>Flips are counted across every branch of a cycle (G1)</td>
+</tr>
+<tr>
+<td><strong>Flaky</strong> kept apart from <strong>broken</strong> (fails nearly every time)</td>
+<td>Trunk</td>
+<td>Not separated</td>
+</tr>
+<tr>
+<td>Quarantine enforced at run time, set from the UI with no code change, "mute" (runs, doesn't fail the build) rather than skip</td>
+<td>Trunk, Buildkite, Datadog, Currents, Allure TestOps</td>
+<td><code>quarantine:</code> rules in <code>testosterone.yaml</code> only; no UI, no server-side list (G2)</td>
+</tr>
+<tr>
+<td>A ticket opened when a test turns flaky or is quarantined, assigned to its CODEOWNERS owner, closed when fixed</td>
+<td>Trunk, BuildPulse, Datadog, Allure TestOps</td>
+<td>A prefilled GitHub issue link (G3)</td>
+</tr>
+<tr>
+<td>An MCP server that lets coding agents read failures and act (quarantine, retry)</td>
+<td>Datadog, Trunk, BuildPulse, Currents, Allure TestOps, Buildkite</td>
+<td>None (G4)</td>
+</tr>
+<tr>
+<td>Failures grouped by error signature, with a root-cause category</td>
+<td>ReportPortal, Allure TestOps, Trunk, Datadog, Launchable, Qualflare</td>
+<td>Shared causes grouped on one run; triage memory matches the same message. No cross-run clusters or categories (G5, G6)</td>
+</tr>
+<tr>
+<td>Flaky tests ranked by cost (CI time wasted, PRs blocked)</td>
+<td>BuildPulse, Trunk</td>
+<td>Ranked by flip rate (G7)</td>
+</tr>
+<tr>
+<td>Quality gates that set the exit code (pass rate, new failures, new tests, duration)</td>
+<td>Allure Report 3, ReportPortal (paid)</td>
+<td><code>--fail-on-flaky</code> only (G8)</td>
+</tr>
+<tr>
+<td>A retention policy, with a "keep this run" pin</td>
+<td>ReportPortal, Currents, Buildkite</td>
+<td>History grows forever (G9)</td>
+</tr>
+<tr>
+<td>Sharded CI jobs merged into one run</td>
+<td>ReportPortal (launch merge), Currents</td>
+<td>Each <code>testo ingest</code> is its own run (G10)</td>
+</tr>
+<tr>
+<td>SSO (OIDC or SAML) and per-project roles</td>
+<td>ReportPortal, Currents (paid), Testmo (paid), Allure TestOps</td>
+<td>Tokens, or local accounts with roles (G11)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="where-testosterone-already-wins">Where Testosterone already wins<a class="headerlink" href="#where-testosterone-already-wins" title="Permanent link">&para;</a></h2>
+<p>Worth saying in the README and on the comparison page, because the complaints about the others are mostly here:</p>
+<ul>
+<li><strong>Self-hosted and free.</strong> Of the tools above only ReportPortal (free, but heavy) and Develocity (paid, build-tool only) self-host; Trunk's on-prem is a private preview, Currents self-hosts only on Enterprise, and Testmo is cloud only.</li>
+<li><strong>Light.</strong> One container and Postgres, against ReportPortal's documented minimum of 4 CPU, 8 GB of RAM and 300 GB of disk, with OpenSearch and RabbitMQ. ReportPortal's issue tracker has upgrades that lose projects or fail to migrate.</li>
+<li><strong>Long history at no extra cost.</strong> Buildkite keeps 7 days of history on Pro and 28 on Enterprise; Currents keeps results for 90 days; GitLab's "failed recently" counts 14 days.</li>
+<li><strong>No per-test or per-committer bill.</strong> Users complain that Buildkite's per-test pricing discourages writing tests; Launchable lists $15,000 per suite per year.</li>
+<li><strong>Robust import.</strong> ReportPortal has open issues for a 1.3 MB JUnit file timing out and for nested <code>&lt;testsuite&gt;</code> elements failing. Here a 1.1 MB file with 20,000 tests ingested in 8 s and nested suites worked.</li>
+<li><strong>No tracer.</strong> Datadog's tracer-based collection has bugs where it patches the HTTP client under test (dd-trace-py #20584) or ignores quarantine (dd-trace-js #10647); Testosterone only reads result files.</li>
+<li><strong>GitHub has no tests tab.</strong> A June 2025 request for one has 39 votes and no answer from GitHub (<a href="https://github.com/orgs/community/discussions/163123">community discussion #163123</a>); the Action's job summary and pull request comment fill that gap today.</li>
+</ul>
+<h2 id="quick-wins">Quick wins<a class="headerlink" href="#quick-wins" title="Permanent link">&para;</a></h2>
+<p>Small, mostly found in the first ten minutes. Ordered by how many new users hit them.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Found</th>
+<th style="text-align: center;">Effort</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Q1</td>
+<td><strong><code>testo</code> with no arguments, <code>testo runn</code> or <code>testo run --bogus</code> prints a Python traceback</strong> with Typer 0.2x, which a fresh install gets. The first thing many people type</td>
+<td style="text-align: center;">S</td>
+<td><strong>Fixed in #213</strong>: the error and a hint (or the help), exit <code>2</code></td>
+</tr>
+<tr>
+<td>Q2</td>
+<td><strong>A test retried in the same JUnit file (Gradle's test-retry plugin writes it twice, failed then passed) fails the run</strong> and counts as two tests: <code>testo ingest</code> exits <code>1</code> for a build the CI called green</td>
+<td style="text-align: center;">S–M</td>
+<td>Collapse duplicate test cases to the last outcome; one that failed and then passed is "passed, flaky"</td>
+</tr>
+<tr>
+<td>Q3</td>
+<td>Maven Surefire's <code>&lt;flakyFailure&gt;</code> and <code>&lt;rerunFailure&gt;</code> are ignored: the test passes and the retry is lost</td>
+<td style="text-align: center;">S</td>
+<td>Count them as flaky like Playwright's retries</td>
+</tr>
+<tr>
+<td>Q4</td>
+<td><strong>Run pages say "health 100%"</strong> for a run's pass rate (Runs list, the stage bar's screen-reader label, Compare's "Per-stage health", the pull request comment), while the dashboard's "Project health" is a different 0–100 score</td>
+<td style="text-align: center;">S</td>
+<td>"100% passed" / "pass rate" everywhere a run is meant</td>
+</tr>
+<tr>
+<td>Q5</td>
+<td>Compare shows "0 regressions · 0 improvements · <strong>9 unchanged</strong>" for a 4-test run: the 9 are metrics, not tests</td>
+<td style="text-align: center;">S</td>
+<td>Count tests, or label it "9 metrics unchanged"</td>
+</tr>
+<tr>
+<td>Q6</td>
+<td>The stage name and its equipment run together: "pytestjunit" on the run page and in Compare</td>
+<td style="text-align: center;">S</td>
+<td>A separator or a second line</td>
+</tr>
+<tr>
+<td>Q7</td>
+<td><strong>"Not a clean pyramid: each tier should be smaller than the one below it"</strong> for a project with 4 unit tests and no others</td>
+<td style="text-align: center;">S</td>
+<td>Ignore empty tiers; say nothing when there's only one</td>
+</tr>
+<tr>
+<td>Q8</td>
+<td><code>testo flaky</code> on a <code>pytest --testo</code> or <code>testo ingest</code> cycle says to paste a <code>quarantine:</code> snippet into <code>testosterone.yaml</code>, which those users don't have</td>
+<td style="text-align: center;">S</td>
+<td>Say where the file goes (<code>testo config init</code>) or point at G2</td>
+</tr>
+<tr>
+<td>Q9</td>
+<td><code>testo report</code> without the Allure CLI: "Post-Workout Review … see your gains", and an error with reStructuredText backticks (<code>``allure generate``</code>)</td>
+<td style="text-align: center;">S</td>
+<td>Plain words, single backticks</td>
+</tr>
+<tr>
+<td>Q10</td>
+<td>Internal words in CLI output: "Archived cycle report &lt;uuid&gt;" after every run, "(Allure Σ (per-test))" and "No per-test differences detected (or no *-result.json in archives)" in <code>testo summary</code></td>
+<td style="text-align: center;">S</td>
+<td>"Recorded run 6c8e2369 (testo ui to see it)"; drop the Allure wording</td>
+</tr>
+<tr>
+<td>Q11</td>
+<td>Dashboard: "All 1 cycle passed their latest run."</td>
+<td style="text-align: center;">S</td>
+<td>"Your cycle passed its latest run."</td>
+</tr>
+<tr>
+<td>Q12</td>
+<td>A <code>pytest --testo</code> cycle shows its equipment as "junit" on Cycles and the run page</td>
+<td style="text-align: center;">S</td>
+<td>Record the runner as <code>pytest</code></td>
+</tr>
+<tr>
+<td>Q13</td>
+<td>Getting Started says it was tested with 1.1.1 and that <code>testo ui</code> needs "releases after 1.2.0; before that it runs from a checkout"</td>
+<td style="text-align: center;">S</td>
+<td>Say 1.4.0; drop the old caveat</td>
+</tr>
+<tr>
+<td>Q14</td>
+<td>The README's Quickstart starts at line 96, after a long "What's new". A visitor scrolls past three releases of changes before seeing <code>pip install</code></td>
+<td style="text-align: center;">S</td>
+<td>Three commands right under the screenshots; "What's new" lower or in the changelog</td>
+</tr>
+<tr>
+<td>Q15</td>
+<td>Flaky detection scans the newest 500 runs of <strong>all</strong> cycles and then filters to one, so on a busy server a nightly cycle can show fewer runs than its window</td>
+<td style="text-align: center;">S</td>
+<td>Ask the history for that cycle's runs</td>
+</tr>
+<tr>
+<td>Q16</td>
+<td><code>testo run</code> prints two summary tables that say nearly the same thing (stage status and duration, then stage counts)</td>
+<td style="text-align: center;">S</td>
+<td>One table with both</td>
+</tr>
+</tbody>
+</table>
+<h2 id="feature-gaps-ranked">Feature gaps, ranked<a class="headerlink" href="#feature-gaps-ranked" title="Permanent link">&para;</a></h2>
+<p>Ranked by how much each moves adoption, against what it costs. Each is a proposal; the maintainer picks.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Rank</th>
+<th>Gap</th>
+<th>Why it matters</th>
+<th style="text-align: center;">Effort</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">G1</td>
+<td><strong>Better flaky signal.</strong> Retries in one run count as flaky (Q2, Q3, and pytest-rerunfailures' output); flakiness counted on the target branch, or as "different outcomes on the same commit", not across feature branches; flaky kept apart from broken</td>
+<td>Flaky detection is the reason most teams look at these tools, and a false "flaky" costs trust fast. On a team server today a test a pull request broke and then fixed reads as flaky</td>
+<td style="text-align: center;">M</td>
+</tr>
+<tr>
+<td style="text-align: center;">G2</td>
+<td><strong>Quarantine from the UI, enforced without a config change.</strong> A "Quarantine" button on the test page; the server keeps the list; <code>testo ingest</code>, <code>pytest --testo</code> and the Action read it, so a quarantined failure doesn't fail the job. Mute, not skip, so recovery shows; un-quarantine on its own after N green days</td>
+<td>Trunk, Buildkite and Datadog all sell exactly this. The config-file route doesn't reach ingest or pytest users</td>
+<td style="text-align: center;">M–L</td>
+</tr>
+<tr>
+<td style="text-align: center;">G3</td>
+<td><strong>Issues for flaky and quarantined tests.</strong> Open a GitHub issue (then Jira and Linear through plugins) when a test turns flaky or is quarantined, assigned from CODEOWNERS (already read), closed when the test is fixed, with no duplicates</td>
+<td>The step from "we know it's flaky" to "someone owns it". Every paid tool has it; GitHub users ask for it in the tests-tab discussion</td>
+<td style="text-align: center;">M</td>
+</tr>
+<tr>
+<td style="text-align: center;">G4</td>
+<td><strong>MCP server.</strong> Read tools first (latest failures, a test's history, flaky list, compare), then write tools behind the same roles (quarantine, mark cause). <code>testo mcp</code> over stdio, plus the API over HTTP</td>
+<td>Became standard in 2026 (Datadog, Trunk, Currents, Allure TestOps, Buildkite). Cheap here because the API already has every read</td>
+<td style="text-align: center;">S–M (read), M (write)</td>
+</tr>
+<tr>
+<td style="text-align: center;">G5</td>
+<td><strong>Failure clusters across runs.</strong> Fingerprint each failure (message with numbers, paths and ids stripped, plus the top stack frame); show "this error, 14 tests, 6 runs, first seen …" on the dashboard and the cycle page. Triage memory then keys on the fingerprint</td>
+<td>"One cause, many red tests" is the core of ReportPortal's and Datadog's analysis, and the deterministic version is easy to explain</td>
+<td style="text-align: center;">M</td>
+</tr>
+<tr>
+<td style="text-align: center;">G6</td>
+<td><strong>Cause categories.</strong> Product bug, test bug, environment, flaky, or your own, on top of triage memory; filters and counts by category</td>
+<td>ReportPortal's defect types are its most-used feature; it gives managers one chart</td>
+<td style="text-align: center;">S–M</td>
+</tr>
+<tr>
+<td style="text-align: center;">G7</td>
+<td><strong>Rank flaky tests by cost.</strong> CI minutes lost (reruns times duration), runs and pull requests it made red</td>
+<td>BuildPulse and Trunk lead with this; it decides what to fix first</td>
+<td style="text-align: center;">S</td>
+</tr>
+<tr>
+<td style="text-align: center;">G8</td>
+<td><strong>Quality gates.</strong> <code>gates:</code> per cycle (minimum pass rate, no new failures against the target branch, maximum duration growth, minimum test count) that set the exit code and show in the pull request comment</td>
+<td>Allure Report 3 has a whole rule set; teams use it to block merges</td>
+<td style="text-align: center;">M</td>
+</tr>
+<tr>
+<td style="text-align: center;">G9</td>
+<td><strong>Retention.</strong> <code>TESTO_RETENTION_DAYS</code> or a per-cycle <code>keep:</code>, a pin to keep a run forever, and <code>testo prune</code></td>
+<td>Without it a busy team server fills its disk; every hosted tool has it</td>
+<td style="text-align: center;">S–M</td>
+</tr>
+<tr>
+<td style="text-align: center;">G10</td>
+<td><strong>Merge sharded jobs into one run.</strong> <code>testo ingest --run-group "$GITHUB_RUN_ID"</code> (or the CI provenance already sent) so eight shards make one run in history</td>
+<td>Sharded CI is common, and eight runs per pipeline also confuses flaky counts and Compare</td>
+<td style="text-align: center;">M</td>
+</tr>
+<tr>
+<td style="text-align: center;">G11</td>
+<td><strong>Sign-in with GitHub or any OIDC provider</strong> for the team server, mapping groups to the existing viewer, runner and admin roles</td>
+<td>The usual blocker for a team server inside a company. Currents and Testmo keep SSO behind their top plans</td>
+<td style="text-align: center;">M–L</td>
+</tr>
+<tr>
+<td style="text-align: center;">G12</td>
+<td><strong>Early flake detection for new tests.</strong> In a pull request, run tests that are new since the target branch several times and flag the ones that don't agree</td>
+<td>Datadog's version stops flaky tests from ever reaching <code>main</code></td>
+<td style="text-align: center;">M</td>
+</tr>
+<tr>
+<td style="text-align: center;">G13</td>
+<td><strong>Generic webhooks</strong> (<code>run.completed</code>, <code>test.flaky</code>, <code>test.fixed</code>, <code>test.quarantined</code>) next to Slack and Teams</td>
+<td>Lets people wire Testosterone into anything without a plugin</td>
+<td style="text-align: center;">S</td>
+</tr>
+<tr>
+<td style="text-align: center;">G14</td>
+<td><strong>A GitHub check run with annotations</strong> on the failing test lines, from the Action</td>
+<td>Puts failures in the "Files changed" view. Mind GitHub's limits (50 annotations per step, 64 KB summary)</td>
+<td style="text-align: center;">M</td>
+</tr>
+</tbody>
+</table>
+<h2 id="out-of-scope-on-purpose">Out of scope, on purpose<a class="headerlink" href="#out-of-scope-on-purpose" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Test case management and manual testing</strong> (Allure TestOps, Testmo, and ReportPortal from 26.1). A different product, as the <a href="../../compared-with-other-tools/">comparison page</a> already says.</li>
+<li><strong>ML auto-analysis.</strong> ReportPortal's version needs OpenSearch and a model per project. G5 and G6 get most of the value and stay predictable.</li>
+<li><strong>CI load balancing</strong> (Currents). <code>testo split</code> covers the static half.</li>
+<li><strong>AI fix pull requests</strong> (Trunk with Cursor, Datadog's Bits AI). Watch it; G4 lets users' own agents do it first.</li>
+</ul>
+<h2 id="suggested-order">Suggested order<a class="headerlink" href="#suggested-order" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Quick wins Q2 to Q16 in one or two small pull requests (about two days in all). Q2 and Q3 change what a run's result is, so they get a CHANGELOG line.</li>
+<li>G1 and G7: make "flaky" right before building on it.</li>
+<li>G2 and G3 together: quarantine and ownership are one workflow.</li>
+<li>G4 (read-only MCP), then G5 and G6.</li>
+<li>G9 and G10 before anyone runs a busy team server; G8, G11 to G14 as users ask.</li>
+</ol>
+<h2 id="sources">Sources<a class="headerlink" href="#sources" title="Permanent link">&para;</a></h2>
+<p>Competitor docs and pricing, read 2026-10-31:
+<a href="https://docs.trunk.io/flaky-tests/overview">Trunk Flaky Tests</a> and its <a href="https://docs.trunk.io/setup-and-administration/billing">billing</a> ·
+<a href="https://buildpulse.io/">BuildPulse</a> ·
+Datadog <a href="https://docs.datadoghq.com/tests/test_health/">Test Health</a> and <a href="https://docs.datadoghq.com/tests/flaky_management/">flaky management</a> ·
+<a href="https://aws.amazon.com/marketplace/pp/prodview-mi3tgu7krlo5a">CloudBees Smart Tests on AWS Marketplace</a> ·
+Buildkite <a href="https://buildkite.com/docs/test-engine/quarantine">quarantine</a> and <a href="https://buildkite.com/pricing/">pricing</a> ·
+<a href="https://docs.develocity.ai/2026.3/guides/flaky-test-detection-guide/">Develocity flaky test guide</a> ·
+GitLab <a href="https://gitlab.com/groups/gitlab-org/-/work_items/9183">epic 9183</a> ·
+ReportPortal <a href="https://reportportal.io/features/">features</a>, <a href="https://reportportal.io/docs/analysis/AutoAnalysisOfLaunches/">auto-analysis</a>, <a href="https://reportportal.io/docs/configuration/LaunchesRetentionPolicy/">retention</a>, <a href="https://www.reportportal.io/docs/installation-steps/HardwareRequirements/">hardware</a> and <a href="https://reportportal.io/pricing/saas/">SaaS pricing</a> ·
+Allure TestOps <a href="https://docs.qameta.io/use-testops/results-and-analytics/defects/">defects</a>, <a href="https://allurereport.org/docs/v3/">Allure 3</a> and its <a href="https://allurereport.org/docs/quality-gate/">quality gate</a> ·
+<a href="https://currents.dev/pricing">Currents pricing</a> and <a href="https://currents.dev/changelog/discoverability-for-currents-actions">Actions</a> ·
+<a href="https://www.testmo.com/pricing/">Testmo pricing</a>.</p>
+<p>User complaints:
+<a href="https://forum.buildkite.community/t/unhappy-with-test-suite-pricing/4572">Buildkite forum on per-test pricing</a> ·
+<a href="https://github.com/DataDog/dd-trace-py/issues/20584">dd-trace-py #20584</a> ·
+<a href="https://github.com/DataDog/dd-trace-js/issues/10647">dd-trace-js #10647</a> ·
+<a href="https://issues.ecosyste.ms/hosts/GitHub/repositories/reportportal%2Freportportal/issues?page=1">ReportPortal issues</a> (#2474 import timeout, #2434 nested suites, #2451 upgrade) ·
+<a href="https://www.capterra.com/p/227555/Allure-TestOps/reviews/">Allure TestOps reviews on Capterra</a> ·
+<a href="https://currents.featurebase.app/">Currents feature board</a> ·
+<a href="https://github.com/orgs/community/discussions/163123">GitHub tests tab request</a>.</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../product-roadmap/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Product Roadmap">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Product Roadmap
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../paid-features-to-offer-free-2026-10-31/" class="md-footer__link md-footer__link--next" aria-label="Next: Paid Features to Offer Free">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Paid Features to Offer Free
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/taltal-beep/testosterone" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/testo-core/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>

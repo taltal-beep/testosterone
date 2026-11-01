@@ -156,3 +156,7 @@ Added [Importer and Integration Bug Hunt - 2026-10-31](Specs%20&%20ADRs/Importer
 ## 2026-10-31: paid features to offer free
 
 Added [Paid Features to Offer Free - 2026-10-31](Roadmap%20&%20Strategy/Paid%20Features%20to%20Offer%20Free%20-%202026-10-31.md) to Roadmap & Strategy (competitor paywalls, twelve ranked ideas, licence and trademark rules), linked from the Index, the Product Roadmap and the docs site menu.
+
+## 2026-11-01: free copies of paid features
+
+Added [Free Copies of Paid Features - 2026-11-01](Specs%20&%20ADRs/Free%20Copies%20of%20Paid%20Features%20-%202026-11-01.md) to Specs & ADRs (coverage on the PR comment, weekly digest, redaction before storing, backup and restore, failed-first ordering), linked from its README and the docs site menu.

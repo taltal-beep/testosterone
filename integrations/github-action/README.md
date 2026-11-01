@@ -29,6 +29,9 @@ job log, and exposes the final `plan_finished` event as step outputs.
   `change` (differs from the previous run) or `always`
 - `flaky-issues` (optional, default `false`): open one issue (label `flaky-test`) for each test
   this run made flaky, unless an open issue already has its title. Needs `permissions: issues: write`
+- `coverage` (optional): coverage report(s) your tests write, space-separated (Cobertura or
+  JaCoCo XML, LCOV, Go cover profile). Line coverage is stored with the run, and the summary and
+  PR comment show it and how much it moved against the baseline
 - `github-token` (optional, default `${{ github.token }}`): token for the comment and issues
 
 The summary is `testo report markdown`: pass/fail counts, a per-stage table, failing tests and
