@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -79,8 +79,15 @@ describe("TestPage", () => {
     expect(screen.getByRole("link", { name: "Run run-4abc" })).toHaveAttribute("href", "/runs/run-4abcdef0");
     expect(screen.getByText(/Median 120 ms, and 280 ms slower over the last runs \(\+233.3%\)/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Runs (4)" })).toBeInTheDocument();
-    // The duration chart reads as text, too.
-    expect(screen.getByRole("img", { name: /^Duration per run, oldest first: 100 ms passed, .*, 100 ms failed$/ })).toBeInTheDocument();
+    // The duration chart reads as text, too, and every bar opens its run.
+    const bars = screen.getByRole("list", { name: /^Duration per run, oldest first: 100 ms passed, .*, 100 ms failed$/ });
+    expect(within(bars).getAllByRole("link")).toHaveLength(4);
+    expect(within(bars).getByRole("link", { name: /100 ms, failed, open run run-4abc/ })).toHaveAttribute("href", "/runs/run-4abcdef0");
+    // Outcomes use the same pill as runs do, with the run's short id beside its time.
+    expect(screen.getByText("Last run:")).toBeInTheDocument();
+    expect(screen.getAllByText("Failed")).toHaveLength(2);
+    expect(screen.getAllByText("Passed")).toHaveLength(3);
+    expect(screen.getByText("run-3")).toBeInTheDocument();
     expect(screen.getByText("@org/api")).toBeInTheDocument();
     // What the failing run kept: the screenshot in place, the trace to download.
     expect(screen.getByRole("img", { name: "screenshot from the failing run" })).toHaveAttribute(

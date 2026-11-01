@@ -13,6 +13,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - PR comment and job summary: a backtick in a test name (which in a fork's pull request its author controls) ended the code span, so `@user` mentions and HTML after it rendered live. Names are now fenced so nothing inside can close them, and stage, runner and branch cells are plain text. A cycle name with `-->` can no longer end the comment marker
 
 ### Added
+- Web UI: Compare lists which tests regressed, were fixed, added or removed right under the summary (open by default; the regression and improvement counts open the matching filter, each test links to its history, and the duplicate "Test time (sum)" row is dropped for single-stage runs); the test page's duration bars fill the card and open their run, flakiness is a line of flip rate over time, and outcomes use the same pills as runs; Test mix is shown only for runs with two or more tiers, an empty Reports card is a row in Details, and a recorded-only cycle has no Stages card
 - Web UI: each card on the Cycles page shows the cycle's latest result (status, pass rate, failing count, branch and commit, and a link to the run), and run labels on the Dashboard and Runs pages say when the run happened ("3 h ago") and which branch and commit it ran from; `GET /api/v1/cycles` items carry `latest_run`, and run items carry `commit`
 - Python 3.14 is tested in CI and listed in the package classifiers
 

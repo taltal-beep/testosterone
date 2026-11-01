@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 
 import {
   CaseChangeKind,
+  DeltaCaseChange,
+  DeltaCaseChangesResponse,
   DeltaClassification,
   DeltaComparisonResponse,
   DeltaMetricNode,
@@ -29,6 +31,23 @@ const CASE_KIND_TEXT: Record<CaseChangeKind, string> = {
   added: "Added",
   removed: "Removed",
   status_change: "Status change"
+};
+
+const CASE_KIND_COUNT_TONE: Record<CaseChangeKind, "danger" | "success" | "neutral"> = {
+  regression: "danger",
+  fix: "success",
+  added: "neutral",
+  removed: "neutral",
+  status_change: "neutral"
+};
+
+/** Singular noun for "N regressions", "N fixes", "N added"; countLabel adds the s. */
+const CASE_KIND_COUNT_WORD: Record<CaseChangeKind, string> = {
+  regression: "regression",
+  fix: "fix",
+  added: "added test",
+  removed: "removed test",
+  status_change: "status change"
 };
 
 const CLASSIFICATION_TONE: Record<DeltaClassification, string> = {
@@ -86,6 +105,8 @@ export function ComparePage() {
   const [pickedCycle, setPickedCycle] = useState(ALL_CYCLES);
   // Until someone picks, a bare /compare shows the latest run against the one before it.
   const [pristine, setPristine] = useState(!pickedCurrent && !pickedBaseline);
+  const [kindFilter, setKindFilter] = useState<CaseChangeKind | "all">("all");
+  const changesRef = useRef<HTMLElement>(null);
   const runsQuery = useQuery({
     queryKey: ["runs"],
     queryFn: () => apiClient.listRuns()
@@ -102,6 +123,19 @@ export function ComparePage() {
     queryFn: () => apiClient.getDeltaComparison(currentRunId, baselineRunId),
     enabled: Boolean(currentRunId && baselineRunId && currentRunId !== baselineRunId)
   });
+
+  // The per-test diff, fetched with the comparison: the summary counts it and the list under the summary shows it.
+  const casesQuery = useQuery({
+    queryKey: ["delta-case-changes", currentRunId, baselineRunId],
+    queryFn: () => apiClient.getDeltaCaseChanges(currentRunId, baselineRunId),
+    enabled: Boolean(compareQuery.data)
+  });
+  const changes = useMemo(() => casesQuery.data?.changes ?? [], [casesQuery.data?.changes]);
+  const changeCounts = useMemo(() => {
+    const byKind = new Map<CaseChangeKind, number>();
+    for (const change of changes) byKind.set(change.kind, (byKind.get(change.kind) ?? 0) + 1);
+    return byKind;
+  }, [changes]);
 
   const runsById = useMemo(() => new Map(options.map((run) => [run.run_id, run])), [options]);
   const cycles = useMemo(() => [...new Set(options.map(runCycle))], [options]);
@@ -138,6 +172,12 @@ export function ComparePage() {
       .filter((run) => runCycle(run) === cycle)
       .sort((a, b) => b.created_at - a.created_at);
     pick({ cycle, current: latest?.run_id ?? "", baseline: previous?.run_id ?? "" });
+  };
+
+  // A count in the summary is a question ("which ones?"); the answer is the filtered list right under it.
+  const showChanges = (kind: CaseChangeKind) => {
+    setKindFilter(kind);
+    changesRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   };
 
   const comparisonReady = Boolean(currentRunId && baselineRunId && currentRunId !== baselineRunId);
@@ -195,7 +235,8 @@ export function ComparePage() {
                 <RunRef runId={payload.comparison.current_run_id} run={currentRun} />
               </div>
             </div>
-            <div className="mt-3 flex flex-wrap gap-1.5" data-testid="status-summary">
+            <div className="mt-3 flex flex-wrap items-center gap-1.5" data-testid="status-summary">
+              <span className="mr-1 text-xs text-ink-400">Metrics</span>
               <Badge tone={payload.status_summary.regressions.length > 0 ? "danger" : "neutral"}>
                 {countLabel(payload.status_summary.regressions.length, "metric")} worse
               </Badge>
@@ -207,7 +248,33 @@ export function ComparePage() {
                 <Badge>{payload.status_summary.unknown.length} not comparable</Badge>
               ) : null}
             </div>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5" data-testid="test-change-counts">
+              <span className="mr-1 text-xs text-ink-400">Tests</span>
+              {casesQuery.isLoading ? <span className="text-xs text-ink-400">counting…</span> : null}
+              {casesQuery.isError ? <span className="text-xs text-ink-400">per-test changes unavailable</span> : null}
+              {casesQuery.data && changes.length === 0 ? (
+                <span className="text-xs text-ink-300">same outcome for every test</span>
+              ) : null}
+              {CASE_KIND_LABELS.filter((kind) => (changeCounts.get(kind) ?? 0) > 0).map((kind) => (
+                <CountButton
+                  key={kind}
+                  tone={CASE_KIND_COUNT_TONE[kind]}
+                  label={countLabel(changeCounts.get(kind) ?? 0, CASE_KIND_COUNT_WORD[kind])}
+                  onClick={() => showChanges(kind)}
+                />
+              ))}
+            </div>
           </Card>
+
+          <TestLevelChanges
+            ref={changesRef}
+            query={casesQuery}
+            changes={changes}
+            counts={changeCounts}
+            cycle={currentRun ? runCycle(currentRun) : null}
+            kindFilter={kindFilter}
+            onKindFilter={setKindFilter}
+          />
 
           <Card title="Outcome mix">
             <div className="space-y-3">
@@ -224,7 +291,7 @@ export function ComparePage() {
 
           <div className="grid gap-4 lg:grid-cols-2">
             <MetricTable title="Reliability" rows={RELIABILITY_ORDER} metrics={payload.metrics.reliability} />
-            <MetricTable title="Performance" rows={PERFORMANCE_ORDER} metrics={payload.metrics.performance} />
+            <MetricTable title="Performance" rows={performanceRows(payload.metrics.performance)} metrics={payload.metrics.performance} />
           </div>
 
           {(payload.stage_deltas ?? []).length > 0 && (
@@ -263,8 +330,6 @@ export function ComparePage() {
             </Card>
           )}
 
-          <TestLevelChanges currentRunId={payload.comparison.current_run_id} baselineRunId={payload.comparison.baseline_run_id} />
-
           <Card title="Highlights">
             {payload.highlights.length === 0 ? (
               <p className="text-sm text-ink-400">No major changes detected.</p>
@@ -279,6 +344,36 @@ export function ComparePage() {
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * "Test time (sum)" is the wall duration again for a single-stage run (every stage sums to the run):
+ * a row that repeats the one above it is dropped.
+ */
+function performanceRows(metrics: PerformanceMetrics): typeof PERFORMANCE_ORDER {
+  const wall = metrics.wall_duration_ms;
+  const sum = metrics.metrics_duration_ms;
+  const duplicate = sum.baseline_value === wall.baseline_value && sum.current_value === wall.current_value;
+  return duplicate ? PERFORMANCE_ORDER.filter((row) => row.key !== "metrics_duration_ms") : PERFORMANCE_ORDER;
+}
+
+const COUNT_TONE = {
+  danger: "border-danger-500/40 bg-danger-500/15 text-danger-300 hover:bg-danger-500/25",
+  success: "border-success-500/40 bg-success-500/15 text-success-300 hover:bg-success-500/25",
+  neutral: "border-ink-700 bg-ink-800/60 text-ink-300 hover:bg-ink-800"
+};
+
+/** A summary count that opens the matching test-level list. */
+function CountButton({ tone, label, onClick }: { tone: keyof typeof COUNT_TONE; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${COUNT_TONE[tone]}`}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -458,18 +553,25 @@ function outcomeSegments(reliability: ReliabilityMetrics, field: "current_value"
   ];
 }
 
-function TestLevelChanges({ currentRunId, baselineRunId }: { currentRunId: string; baselineRunId: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const [kindFilter, setKindFilter] = useState<CaseChangeKind | "all">("all");
+interface TestLevelChangesProps {
+  query: { isLoading: boolean; isError: boolean; data: DeltaCaseChangesResponse | undefined };
+  changes: DeltaCaseChange[];
+  counts: Map<CaseChangeKind, number>;
+  /** The current run's cycle, so each test can link to its history page. */
+  cycle: string | null;
+  kindFilter: CaseChangeKind | "all";
+  onKindFilter: (kind: CaseChangeKind | "all") => void;
+  ref?: React.Ref<HTMLElement>;
+}
 
-  const casesQuery = useQuery({
-    queryKey: ["delta-case-changes", currentRunId, baselineRunId],
-    queryFn: () => apiClient.getDeltaCaseChanges(currentRunId, baselineRunId),
-    enabled: expanded
-  });
+/** Which tests changed between the two runs: open by default, right under the summary that counts them. */
+function TestLevelChanges({ query: casesQuery, changes, counts, cycle, kindFilter, onKindFilter, ref }: TestLevelChangesProps) {
+  const [expanded, setExpanded] = useState(true);
 
-  const changes = casesQuery.data?.changes ?? [];
-  const filtered = kindFilter === "all" ? changes : changes.filter((c) => c.kind === kindFilter);
+  const filtered = useMemo(
+    () => (kindFilter === "all" ? changes : changes.filter((c) => c.kind === kindFilter)),
+    [changes, kindFilter]
+  );
   const grouped = useMemo(() => {
     const byGroup = new Map<string, typeof filtered>();
     for (const change of filtered) {
@@ -480,8 +582,11 @@ function TestLevelChanges({ currentRunId, baselineRunId }: { currentRunId: strin
     return [...byGroup.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [filtered]);
 
+  const testLink = (key: string) =>
+    cycle ? `/cycles/${encodeURIComponent(cycle)}/test?${new URLSearchParams({ key }).toString()}` : null;
+
   return (
-    <section className="glass-card p-4">
+    <section ref={ref} className="glass-card scroll-mt-4 p-4">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -490,40 +595,58 @@ function TestLevelChanges({ currentRunId, baselineRunId }: { currentRunId: strin
       >
         <span className={`transition-transform ${expanded ? "rotate-90" : ""}`}>&#9656;</span>
         Test-level changes
+        {casesQuery.data ? <span className="font-normal text-ink-400">({changes.length})</span> : null}
       </button>
       <p className="mt-1 text-xs text-ink-400">
-        Computed on demand from each run&apos;s artifact snapshot (per-test added/removed/regression/fix), same as{" "}
-        <code>testo diff</code>.
+        Per test: which ones regressed, were fixed, added or removed between the two runs, same as <code>testo diff</code>.
       </p>
 
       {expanded && (
         <div className="mt-3 space-y-3">
           <div className="flex flex-wrap gap-2">
-            <FilterButton label="All" active={kindFilter === "all"} onClick={() => setKindFilter("all")} />
+            <FilterButton label="All" count={changes.length} active={kindFilter === "all"} onClick={() => onKindFilter("all")} />
             {CASE_KIND_LABELS.map((kind) => (
-              <FilterButton key={kind} label={CASE_KIND_TEXT[kind]} active={kindFilter === kind} onClick={() => setKindFilter(kind)} />
+              <FilterButton
+                key={kind}
+                label={CASE_KIND_TEXT[kind]}
+                count={counts.get(kind) ?? 0}
+                active={kindFilter === kind}
+                onClick={() => onKindFilter(kind)}
+              />
             ))}
           </div>
 
           {casesQuery.isLoading && <p className="text-sm text-ink-300">Loading test-level changes...</p>}
           {casesQuery.isError && <p className="text-sm text-danger-400">Couldn't load the test-level changes.</p>}
-          {casesQuery.data && filtered.length === 0 && (
+          {casesQuery.data && changes.length === 0 && (
+            <p className="text-sm text-ink-400">Every test has the same outcome in both runs.</p>
+          )}
+          {casesQuery.data && changes.length > 0 && filtered.length === 0 && (
             <p className="text-sm text-ink-400">No matching test changes.</p>
           )}
           {grouped.map(([group, groupChanges]) => (
             <div key={group}>
               <p className="mb-1 font-mono text-xs text-ink-400">{group}</p>
               <ul className="space-y-1 border-l border-white/5 pl-3">
-                {groupChanges.map((change) => (
-                  <li key={change.key} className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className={`text-xs font-semibold uppercase ${CASE_KIND_TONE[change.kind]}`}>{change.kind}</span>
-                    <span className="text-ink-100">{change.name}</span>
-                    <span className="font-mono text-xs text-ink-400">
-                      {change.baseline_status ?? "—"} → {change.current_status ?? "—"}
-                      {change.duration_delta_ms != null ? ` (${change.duration_delta_ms >= 0 ? "+" : ""}${change.duration_delta_ms}ms)` : ""}
-                    </span>
-                  </li>
-                ))}
+                {groupChanges.map((change) => {
+                  const href = testLink(change.key);
+                  return (
+                    <li key={change.key} className="flex flex-wrap items-center gap-2 text-sm">
+                      <span className={`text-xs font-semibold ${CASE_KIND_TONE[change.kind]}`}>{CASE_KIND_TEXT[change.kind]}</span>
+                      {href ? (
+                        <Link to={href} className="text-ink-100 hover:text-brand-300 hover:underline">
+                          {change.name}
+                        </Link>
+                      ) : (
+                        <span className="text-ink-100">{change.name}</span>
+                      )}
+                      <span className="font-mono text-xs text-ink-400">
+                        {change.baseline_status ?? "—"} → {change.current_status ?? "—"}
+                        {change.duration_delta_ms != null ? ` (${change.duration_delta_ms >= 0 ? "+" : ""}${change.duration_delta_ms}ms)` : ""}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}
@@ -533,16 +656,17 @@ function TestLevelChanges({ currentRunId, baselineRunId }: { currentRunId: strin
   );
 }
 
-function FilterButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function FilterButton({ label, count, active, onClick }: { label: string; count: number; active: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={`rounded-full border px-3 py-1 text-xs font-medium ${
         active ? "border-brand-400 bg-brand-500/20 text-brand-200" : "border-ink-700 text-ink-300 hover:border-ink-600"
       }`}
     >
-      {label}
+      {label} <span className="font-mono opacity-70">{count}</span>
     </button>
   );
 }
