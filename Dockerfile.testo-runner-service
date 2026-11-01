@@ -2,12 +2,10 @@
 # fresh, throwaway container (TESTO_RUNNER=container on the server).
 # It is the only container that talks to Docker; the API never gets the socket.
 # Run it with deploy/server/docker-compose.runner.yml.
-ARG TESTO_RUNNER_SERVICE_BASE=python:3.11-slim-bookworm
-ARG DOCKER_CLI_IMAGE=docker:29-cli
 
-FROM ${DOCKER_CLI_IMAGE} AS docker-cli
+FROM docker:29-cli AS docker-cli
 
-FROM ${TESTO_RUNNER_SERVICE_BASE} AS runtime
+FROM python:3.13-slim-trixie AS runtime
 
 ARG TESTO_VERSION=dev
 ARG TESTO_COMMIT_SHA=unknown
