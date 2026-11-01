@@ -11,7 +11,7 @@ Add Testosterone to a project you already have, in about five minutes: install i
 
 You need Python 3.11 or newer and a project with tests. The examples use pytest; other runners are at [step 6](#6-add-other-test-runners).
 
-**In a hurry?** `pip install testo-core && testo init` does steps 2, 3 and 5 for you: it detects your test runners (pytest, Jest, Vitest, Playwright, Go, .NET, Maven, Gradle, RSpec, PHPUnit), writes `testosterone.yaml` and `.github/workflows/testosterone.yml`, and records a first run. `testo init --dry-run` shows the files first. Tests in several folders (a monorepo)? `testo init --scan --check` finds each one and checks it with its runner. Details: [Command Reference § testo init](CLI%20Commands/Command%20Reference.md#testo-init).
+**Start here:** `pip install testo-core && testo init` does steps 2, 3 and 5 for you: it detects your test runners (pytest, Jest, Vitest, Playwright, Go, .NET, Maven, Gradle, RSpec, PHPUnit), writes `testosterone.yaml` and `.github/workflows/testosterone.yml`, and records a first run. `testo init --dry-run` shows the files first. Tests in several folders (a monorepo)? `testo init --scan --check` finds each one and checks it with its runner. Details: [Command Reference § testo init](CLI%20Commands/Command%20Reference.md#testo-init).
 
 ## 1. Install
 
@@ -20,6 +20,8 @@ python -m venv .venv && source .venv/bin/activate
 pip install testo-core pytest
 testo --version          # testo 1.x.y
 ```
+
+Not a Python project? Run it without a virtualenv: `uvx --from testo-core testo init` (or `pipx run --spec testo-core testo init`). The UI needs the `api` extra: `uvx --from 'testo-core[api]' testo ui`.
 
 `testo-core` is the `testo` CLI. It doesn't install your test runner, so keep installing pytest (or Behave, Jest...) the way your project already does.
 
@@ -99,9 +101,10 @@ jobs:
         with:
           cycle: unit
           python-version: "3.11"         # same Python as above, so it sees your dependencies
+          comment-on-pr: "true"          # the results as a pull request comment
 ```
 
-The action installs `testo-core`, runs `testo run --ci` (one JSON event per line in the log), writes the results to the job summary and fails the job when the cycle fails. Add `comment-on-pr: "true"` (and `pull-requests: write` permission) to get the same summary as a comment on each pull request. Its inputs and outputs, and the GitLab CI template, are in [CI-CD Pipeline Setup](Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md).
+The action installs `testo-core`, runs `testo run --ci` (one JSON event per line in the log), writes the results to the job summary and fails the job when the cycle fails. With `comment-on-pr: "true"` it also keeps the same summary as one comment on each pull request; a hand-written workflow needs `permissions: pull-requests: write` for that (the one `testo init` writes has it). Its inputs and outputs, and the GitLab CI template, are in [CI-CD Pipeline Setup](Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md).
 
 ## 6. Add other test runners
 
@@ -150,6 +153,14 @@ pytest --testo                       # or --testo-cycle api-unit to name the cyc
 ```
 
 Every run is recorded like `testo ingest` would record it (the cycle defaults to the project folder's name), with the checkout's branch and commit, so `testo ui` shows what broke since the last run on your branch. Without the flag the plugin does nothing. Details: [Command Reference § pytest --testo](CLI%20Commands/Command%20Reference.md#pytest---testo).
+
+## Upgrading
+
+```bash
+pip install -U testo-core          # or 'testo-core[api]' with the extras you use
+```
+
+The run history upgrades itself the first time a newer `testo` opens it, and keeps every run. `uses: taltal-beep/testosterone@v1` moves to each new 1.x release on its own; pin `@v1.5.0` (any release tag) to hold one. Team server images follow the `1` tag; pull and restart (see [Team Server](Processes%20&%20Guides/Team%20Server.md#how-it-works)). What changed, and anything you need to do, is in the [changelog](https://github.com/taltal-beep/testosterone/blob/main/CHANGELOG.md).
 
 ## Next
 

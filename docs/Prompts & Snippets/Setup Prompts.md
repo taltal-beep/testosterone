@@ -2,7 +2,7 @@
 type: guide
 status: current
 created: 2026-10-19
-updated: 2026-10-30
+updated: 2026-11-01
 ---
 
 # Setup Prompts
@@ -18,6 +18,26 @@ Working on Testosterone itself instead? Use the [Agent Context Guide](Agent%20Co
 - **Requirements:** Python 3.11+. Node.js only for HTML reports (`testo report`) and the web UI.
 
 Run order for a new project: 1, 2, then whichever of 3 to 7 you need.
+
+## 0. Let `testo init` do it
+
+Most projects need only this one. `testo init` detects the test runners, writes `testosterone.yaml` and the CI file, and records a first run ([Command Reference § testo init](../CLI%20Commands/Command%20Reference.md#testo-init)); prompts 1 to 7 are for what it doesn't cover.
+
+```text
+Add Testosterone (Python package testo-core, CLI `testo`) to this project.
+
+- Install it: `pip install testo-core` in the project's dev environment, or, in a
+  project without Python, run it as `uvx --from testo-core testo` (or
+  `pipx run --spec testo-core testo`) instead of `testo` below.
+- Run `testo init --dry-run` and show me what it would write. If the install line
+  in the workflow doesn't match how this project installs its test dependencies,
+  say so.
+- When I say yes, run `testo init`, show me the summary it prints, and commit the
+  files it wrote on a new branch.
+- For GitLab, Jenkins or CircleCI, add `--ci gitlab|jenkins|circleci`.
+
+Reference: https://taltal-beep.github.io/testosterone/docs/getting-started/
+```
 
 ## 1. Install and smoke-check
 

@@ -148,6 +148,7 @@ describe("DashboardPage", () => {
     await waitFor(() => expect(screen.getByTestId("first-run-guide")).toBeInTheDocument());
     expect(screen.getByText("Welcome to Testo")).toBeInTheDocument();
     expect(screen.getByText(/testo ingest/)).toBeInTheDocument();
+    expect(within(screen.getByTestId("first-run-guide")).getByText("testo init")).toBeInTheDocument();
     expect(within(screen.getByTestId("first-run-guide")).getByRole("link", { name: "Try a file" })).toHaveAttribute(
       "href",
       "/try"

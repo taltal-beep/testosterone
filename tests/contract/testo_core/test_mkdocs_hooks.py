@@ -62,3 +62,37 @@ def test_links_outside_docs_point_at_github() -> None:
     assert "![pic](../../docs/assets/logo.png)" in out
     assert "[web](https://example.com)" in out
     assert "`[code](../../x.md)`" in out
+
+
+_DOCS_SITE = "https://taltal-beep.github.io/testosterone/docs/"
+# Code that prints or writes docs-site links for users to follow.
+_LINKING_MODULES = [
+    "testo_core/services/project_setup.py",
+    "testo_core/services/ci_templates.py",
+    "testo_core/cli/commands/init_cmd.py",
+    "testo_core/cli/commands/try_cmd.py",
+]
+
+
+@pytest.mark.contract
+def test_docs_site_links_in_generated_files_resolve() -> None:
+    """Every docs-site URL that `testo init` and friends write is a page the site builds."""
+    import re
+
+    hooks = _load()
+    root = _SCRIPT.parents[1]
+    docs = root / "docs"
+    pages = {
+        "",
+        *(
+            hooks.page_dest(p.relative_to(docs).as_posix()).removesuffix("index.html")
+            for p in docs.rglob("*.md")
+        ),
+    }
+    seen = 0
+    for rel in _LINKING_MODULES:
+        source = (root / rel).read_text(encoding="utf-8")
+        for match in re.finditer(re.escape(_DOCS_SITE) + r"([^\s\"'`)#]*)", source):
+            seen += 1
+            assert match.group(1) in pages, f"{rel}: {match.group(0)} is not a docs site page"
+    assert seen, "no docs-site links found; update _LINKING_MODULES"
