@@ -32,7 +32,12 @@ def classify_shape(m: PyramidModel) -> tuple[PyramidShape, str]:
         return PyramidShape.TOP_HEAVY, "More end-to-end tests than unit tests: slow and brittle."
     if i > u and i > e:
         return PyramidShape.MID_BULGE, "More integration tests than unit or end-to-end tests."
-    if u > i > e:
+    if u == total:
+        return (
+            PyramidShape.HEALTHY,
+            "Every test counts as a unit test. Set `tier:` on a stage to sort integration and end-to-end tests.",
+        )
+    if u > i >= e:
         return PyramidShape.HEALTHY, "Mostly unit tests, fewest end-to-end: a healthy pyramid."
     if u == i == e:
         return PyramidShape.IRREGULAR, "As many end-to-end tests as unit tests."

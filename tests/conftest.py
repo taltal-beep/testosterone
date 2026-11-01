@@ -432,3 +432,20 @@ def no_bundled_ui(
     except ModuleNotFoundError:  # the [api] extra isn't installed
         return
     monkeypatch.setattr(ui_mod, "BUNDLED_UI_DIR", tmp_path_factory.getbasetemp() / "no-ui-bundle")
+
+
+@pytest.fixture(autouse=True)
+def isolated_history_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Every test gets its own empty run-history database unless it sets ``DATABASE_URL``.
+
+    Without this the default URL comes from ``testosterone.yaml`` and tests share one
+    file, so rows stored by one test (``test_result``, runs) leak into the next.
+    """
+    from testo_core.repository import db, db_config
+
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'testo-history.db'}")
+    db_config.reset_engine_cache()
+    db.reset_repository_cache()
+    yield
+    db.reset_repository_cache()
+    db_config.reset_engine_cache()

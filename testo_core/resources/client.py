@@ -205,6 +205,14 @@ class HeldLease:
         if self._thread is not None:
             self._thread.join(timeout=5.0)
         clean = False
+        if self.pool.on_release and not self.lost.is_set() and not self._still_ours():
+            logger.warning(
+                "skipping on_release for %s/%s: the lease expired, so the key may be someone "
+                "else's now",
+                self.lease.pool,
+                self.lease.item,
+            )
+            self.lost.set()
         if self.pool.on_release and not self.lost.is_set():
             problem = run_hook(self.pool.on_release, self.lease, timeout_s=self.pool.hook_timeout_s)
             if problem:
@@ -214,6 +222,15 @@ class HeldLease:
             self.backend.release(self.lease.lease_id, clean=clean)
         except Exception:  # noqa: BLE001 — the TTL frees it anyway
             logger.warning("could not release %s; it frees itself after its TTL", self.lease.item)
+
+    def _still_ours(self) -> bool:
+        """One heartbeat right before ``on_release``: the background beat only checks every
+        ttl/3, so a lease can expire (and the key be taken) between two beats."""
+        try:
+            return self.backend.heartbeat(self.lease.lease_id) is not None
+        except Exception:  # noqa: BLE001 — can't tell; resetting someone else's key is worse
+            logger.warning("could not check the lease on %s", self.lease.item, exc_info=True)
+            return False
 
     def __enter__(self) -> HeldLease:
         return self

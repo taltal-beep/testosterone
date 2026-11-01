@@ -24,8 +24,10 @@ on a CI machine gets the same test ids as one made locally.
 from __future__ import annotations
 
 import json
+import ntpath
 import os
-from pathlib import Path, PurePath
+import re
+from pathlib import Path, PurePath, PureWindowsPath
 from typing import Any
 
 from testo_core.reporting.imported_results import make_result
@@ -59,9 +61,14 @@ def _framework(report: dict, tool: str) -> str:
     return "jest"
 
 
+# ``C:\\ci\\repo\\a.test.js``, ``C:/ci/...`` or ``\\\\server\\share\\...``: absolute on Windows.
+_WINDOWS_ABSOLUTE = re.compile(r"^(?:[A-Za-z]:[\\/]|\\\\)")
+
+
 def _relative_paths(names: list[str], root: Path | None) -> dict[str, str]:
     out: dict[str, str] = {}
     outside: list[str] = []
+    windows: list[str] = []
     for name in names:
         path = Path(name)
         if root is not None and path.is_absolute():
@@ -72,12 +79,23 @@ def _relative_paths(names: list[str], root: Path | None) -> dict[str, str]:
                 pass
         if path.is_absolute():
             outside.append(name)
+        elif _WINDOWS_ABSOLUTE.match(name):
+            # A report made on Windows read here: not absolute to this OS, but it is.
+            windows.append(name)
         else:
             out[name] = PurePath(name).as_posix()
     if outside:
         common = os.path.commonpath([str(PurePath(n).parent) for n in outside])
         for name in outside:
             out[name] = PurePath(os.path.relpath(name, common)).as_posix()
+    if windows:
+        try:
+            common = ntpath.commonpath([ntpath.dirname(n) for n in windows])
+        except ValueError:  # different drives
+            common = ""
+        for name in windows:
+            rel = ntpath.relpath(name, common) if common else ntpath.splitdrive(name)[1]
+            out[name] = PureWindowsPath(rel).as_posix().lstrip("/")
     return out
 
 

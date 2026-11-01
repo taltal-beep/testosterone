@@ -137,39 +137,44 @@ class CycleRunService:
         effective_plan = apply_workers_override(plan, stages, opts.workers_override)
         artifacts_root = opts.artifacts_root or cfg.defaults.artifacts_root
 
+        from testo_core.engine.cycle_lock import cycle_lock
         from testo_core.engine.orchestrator import run_plan
 
-        result = run_plan(
-            plan=effective_plan,
-            renderer=renderer,
-            artifacts_root=artifacts_root,
-            parent_env=opts.parent_env,
-            persist=opts.persist,
-            fail_fast=opts.fail_fast,
-            run_metadata=opts.run_metadata,
-        )
-        exit_code = int(result.exit_code)
-        raw_run_id = result.extra.get("run_id")
-        run_id = raw_run_id if isinstance(raw_run_id, str) else None
-
-        run_configured_reporters_for_cycle(
-            cfg=cfg,
-            plan=effective_plan,
-            artifacts_root=artifacts_root,
-            run_id=run_id,
-            console=self._console,
-            ci=opts.ci,
-            reporter_override=opts.reporter_override,
-        )
-        snapshot_native_reports(plan=effective_plan, artifacts_root=artifacts_root, run_id=run_id)
-        push_metrics(plan=effective_plan, artifacts_root=artifacts_root, run_id=run_id)
-        if opts.persist and opts.report_db:
-            self._archive_cycle_report(
+        # One run of a cycle at a time per artifacts folder: they share its stage folders.
+        with cycle_lock(artifacts_root, effective_plan.name, on_wait=self._say_waiting):
+            result = run_plan(
+                plan=effective_plan,
+                renderer=renderer,
                 artifacts_root=artifacts_root,
-                plan_name=effective_plan.name,
-                exit_code=exit_code,
-                background=opts.async_report_db,
+                parent_env=opts.parent_env,
+                persist=opts.persist,
+                fail_fast=opts.fail_fast,
+                run_metadata=opts.run_metadata,
             )
+            exit_code = int(result.exit_code)
+            raw_run_id = result.extra.get("run_id")
+            run_id = raw_run_id if isinstance(raw_run_id, str) else None
+
+            run_configured_reporters_for_cycle(
+                cfg=cfg,
+                plan=effective_plan,
+                artifacts_root=artifacts_root,
+                run_id=run_id,
+                console=self._console,
+                ci=opts.ci,
+                reporter_override=opts.reporter_override,
+            )
+            snapshot_native_reports(
+                plan=effective_plan, artifacts_root=artifacts_root, run_id=run_id
+            )
+            push_metrics(plan=effective_plan, artifacts_root=artifacts_root, run_id=run_id)
+            if opts.persist and opts.report_db:
+                self._archive_cycle_report(
+                    artifacts_root=artifacts_root,
+                    plan_name=effective_plan.name,
+                    exit_code=exit_code,
+                    background=opts.async_report_db,
+                )
 
         if (
             trigger is not None
@@ -187,6 +192,12 @@ class CycleRunService:
         return CycleRunOutcome(
             exit_code=exit_code, plan=effective_plan, run_id=run_id, trigger=trigger
         )
+
+    def _say_waiting(self, message: str) -> None:
+        if self._console is not None:
+            self._console.print(f"[yellow]{message}[/yellow]")
+        else:
+            logger.warning(message)
 
     def _archive_cycle_report(
         self, *, artifacts_root: Path, plan_name: str, exit_code: int, background: bool
@@ -360,8 +371,8 @@ def run_configured_reporters_for_cycle(
 
 def push_metrics(*, plan: Plan, artifacts_root: Path, run_id: str | None) -> None:
     """Push the cycle's test KPIs to InfluxDB / Prometheus when configured (best-effort, logged)."""
+    from testo_core.paths import plan_artifacts_dir
     from testo_core.reporting.integrations import push_run_metrics_if_configured
-    from testo_core.reporting.paths import plan_artifacts_dir
 
     results_root = plan_artifacts_dir(artifacts_root, plan.name)
     for target, ok, message in push_run_metrics_if_configured(
@@ -384,7 +395,7 @@ def snapshot_native_reports(*, plan: Plan, artifacts_root: Path, run_id: str | N
 
     from testo_core import paths
     from testo_core.frameworks.base import get_adapter
-    from testo_core.reporting.paths import plan_artifacts_dir
+    from testo_core.paths import plan_artifacts_dir
 
     plan_dir = plan_artifacts_dir(artifacts_root, plan.name)
     for stage in plan.stages:

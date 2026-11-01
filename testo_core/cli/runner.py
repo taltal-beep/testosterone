@@ -7,6 +7,7 @@ protocol instance and a listener for trigger/archive messages.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from uuid import UUID
 
@@ -25,6 +26,15 @@ from testo_core.config.resolver import resolve_plan
 from testo_core.config.schema import Plan, TestosteroneConfig
 from testo_core.config.triggers import TriggerResult
 from testo_core.engine.exit_codes import EngineExitCode
+
+
+def _print_config_warnings(warnings: tuple[str, ...], *, console: Console, ci: bool) -> None:
+    """Keys the config has that nothing reads; stderr under --ci so stdout stays NDJSON."""
+    for message in warnings:
+        if ci:
+            print(f"warning: {message}", file=sys.stderr)
+        else:
+            console.print(f"[yellow]warning:[/] {message}")
 
 
 def execute_plan_command(
@@ -46,6 +56,7 @@ def execute_plan_command(
     except (ConfigError, ConfigDiscoveryError) as exc:
         _emit_config_error(console=console, exc=exc, ci=ci)
         return int(EngineExitCode.INVALID_INPUT)
+    _print_config_warnings(cfg.warnings, console=console, ci=ci)
 
     if plan_name == "all":
         if not cfg.cycles:
@@ -70,6 +81,8 @@ def execute_plan_command(
                 async_report_db=async_report_db,
             )
             worst = max(worst, ec)
+            if ec in (EngineExitCode.INTERRUPTED, EngineExitCode.TERMINATED):
+                return ec  # Ctrl-C / SIGTERM stops the remaining cycles too
         return worst
 
     try:
@@ -299,7 +312,9 @@ class _ConsoleCycleListener:
                 "(may not complete if the process exits immediately).[/]"
             )
         elif report_id is not None:
-            self._console.print(f"[muted]Archived cycle report[/] [bold]{report_id}[/]")
+            self._console.print(
+                f"[muted]Recorded run[/] [bold]{report_id}[/] [muted](see it with `testo ui`)[/]"
+            )
 
 
 def _emit_cycle_trigger_event(*, ci: bool, plan: Plan, tr: TriggerResult) -> None:

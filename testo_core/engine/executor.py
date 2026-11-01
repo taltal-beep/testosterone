@@ -32,13 +32,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from testo_core.config.schema import QuarantineRule, Stage
+from testo_core.engine import interrupt
 from testo_core.engine.backends import RunnerError, StageProcess, launch
 from testo_core.engine.log_buffer import LogBuffer, drain_stream_into_buffer, merged_env
 from testo_core.engine.quarantine import WAIVABLE_RETURNCODE, QuarantineVerdict
 from testo_core.engine.quarantine import evaluate as evaluate_quarantine
 from testo_core.engine.result import StageResult
 from testo_core.frameworks.base import FrameworkAdapter, get_adapter
-from testo_core.reporting.paths import plan_artifacts_dir, safe_child_path
+from testo_core.paths import plan_artifacts_dir, safe_child_path
 
 if TYPE_CHECKING:
     from testo_core.reporting.junit_import import JunitImportResult
@@ -392,7 +393,10 @@ def _run_process_stage(
         )
         reader.start()
 
+        interrupt.register(proc)
         try:
+            if interrupt.requested() is not None:  # the signal came while it was starting
+                proc.terminate()
             returncode = proc.wait(timeout=stage.timeout_s)
         except subprocess.TimeoutExpired:
             timed_out = True
@@ -401,6 +405,16 @@ def _run_process_stage(
             # Timeout contract: rc 124 regardless of the signal the process
             # died from (docs/CLI Commands/Troubleshooting and Error Codes.md).
             returncode = 124
+        finally:
+            interrupt.unregister(proc)
+        stopped_by = interrupt.requested()
+        if stopped_by is not None and not timed_out:
+            error = f"stopped by {interrupt.signal_name(stopped_by)}"
+            returncode = 128 + stopped_by  # 130 for Ctrl-C, 143 for SIGTERM, like a shell
+        if timed_out or stopped_by is not None:
+            # Only when Testosterone stopped the stage: a stage may leave a server
+            # running on purpose for the next one.
+            _sweep_group(proc)
 
         reader.join(timeout=2.0)
         finished_at = time.time()
@@ -538,6 +552,14 @@ def _record_junit_stage(
         quarantined=quarantined,
         waived_returncode=waived_returncode,
     )
+
+
+def _sweep_group(proc: StageProcess) -> None:
+    """Kill whatever the stage left running in its process group after it exited."""
+    try:
+        proc.kill()
+    except (ProcessLookupError, OSError):
+        pass
 
 
 def _terminate(proc: StageProcess) -> int:

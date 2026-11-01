@@ -85,8 +85,8 @@ describe("ComparePage", () => {
     expect(screen.getByLabelText("Current run")).toHaveValue("run-2");
     expect(screen.getByLabelText("Baseline run")).toHaveValue("run-1");
 
-    await waitFor(() => expect(screen.getByTestId("status-summary")).toHaveTextContent("4 regressions"));
-    expect(screen.getByTestId("status-summary")).toHaveTextContent("2 improvements");
+    await waitFor(() => expect(screen.getByTestId("status-summary")).toHaveTextContent("4 metrics worse"));
+    expect(screen.getByTestId("status-summary")).toHaveTextContent("2 better");
 
     const failedRow = screen.getByTestId("metric-failed");
     expect(failedRow).toHaveTextContent("Failed");

@@ -3,7 +3,7 @@ name: ci
 # Unified CI/CD pipeline: format and test in parallel -> deploy
 #
 # Stages:
-#   format               ruff lint + ruff format check + mypy on testo_core and testo_api (all blocking)
+#   format               ruff lint + ruff format check + mypy + import-linter layer contracts (all blocking)
 #   test                 fast required pytest suite with the coverage gate, then the
 #                        heavy (local, mocked) tier; uploads coverage.xml
 #   test_python_versions the same suite on Python 3.12, 3.13 and 3.14, the other versions
@@ -69,6 +69,8 @@ jobs:
         run: ruff format --check --diff .
       - name: mypy
         run: mypy testo_core testo_api
+      - name: Layer check (import-linter)
+        run: lint-imports
 
   # No `needs: format`: lint and tests run side by side, so a red lint no
   # longer hides a red test for another minute.

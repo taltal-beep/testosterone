@@ -86,6 +86,10 @@ def copy_allure_result(
             attachment["source"] = renamed[source]
             continue
         candidate = folder / source
+        # A symlink pointing out of the folder (``x-attachment.txt -> /etc/hostname``) would
+        # copy that file into the run's artifacts; only files really inside it count.
+        if folder not in candidate.resolve().parents:
+            continue
         if not candidate.is_file():
             continue
         # Stored as ``<uuid>-attachment<ext>`` whatever the upload called it: the API

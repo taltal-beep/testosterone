@@ -12,7 +12,7 @@ inputs:
     required: false
     default: ""
   cycle:
-    description: Cycle to run (empty = the only cycle in the config; `all` = every cycle).
+    description: Cycle to run (empty = the only cycle in the config; `all` = every cycle, each with its own summary, comment and alert).
     required: false
     default: ""
   ci-mode:
@@ -28,7 +28,7 @@ inputs:
     required: false
     default: "3.11"
   package:
-    description: What to pip install for testo, e.g. `testo-core==1.2.0`, or `.` for a checkout of this repository.
+    description: What to pip install for testo, e.g. `testo-core==1.2.0`, `.` for a checkout of this repository, or several requirements separated by spaces (`testo-core pytest-xdist`).
     required: false
     default: testo-core
   job-summary:
@@ -85,13 +85,15 @@ runs:
         python-version: ${{ inputs.python-version }}
     - name: Install testo
       shell: bash
-      # Inputs reach the shell as variables, never pasted into the script: a value
-      # built from a branch name or PR title can't run commands.
       env:
-        TESTO_PACKAGE: ${{ inputs.package }}
+        # Inputs reach the shell as variables, never pasted into the script,
+        # so a quote or $(...) in an input is data, not a command.
+        TESTO_INPUT_PACKAGE: ${{ inputs.package }}
       run: |
         python -m pip install --upgrade pip
-        python -m pip install "$TESTO_PACKAGE"
+        # One or more requirements, space separated: "testo-core pytest-xdist".
+        read -r -a packages <<< "$TESTO_INPUT_PACKAGE"
+        python -m pip install "${packages[@]}"
     - name: Run testo
       id: run_testo
       shell: bash

@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Command Reference
@@ -49,6 +49,8 @@ testo run --cycle sample-pytests --workers 8 --force
 
 > [!warning] Roadmap flags — not implemented yet
 > `--tag`, `--fail-fast`, `--dry-run` and `--reporter` were previously listed here but are **not present in `testo_core/cli/commands/run.py`**. The API layer already accepts `fail_fast` and `reporter_override` on `POST /api/v1/cycles/{cycle}/executions` (surfaced in the React Run panel); the CLI flags remain roadmap items. (Doc corrected 2026-07-04 during the Phase 5 UI redesign.)
+
+Only one run of a cycle uses its artifacts folder at a time. A second `testo run` of the same cycle (another terminal, another CI job on the runner, the API) waits and says `another run of cycle 'x' is using ... (pid N); waiting for it to finish`; see [Engine Fixes - 2026-11-01](../Specs%20&%20ADRs/Engine%20Fixes%20-%202026-11-01.md).
 
 ### Expected terminal output
 
@@ -103,7 +105,7 @@ Files it reads, with the command that writes each one (no extra package needed e
 | Runner | Write results with | Read as |
 |--------|--------------------|---------|
 | pytest | `pytest --junitxml=junit.xml` (or [`pytest --testo`](#pytest---testo)) | JUnit XML |
-| Jest | `npx jest --json --outputFile=jest.json` (or `equipment: jest`) | Jest JSON: `describe` blocks, retried tests flagged flaky, test files that failed to load |
+| Jest | `npx jest --json --outputFile=jest.json` (or `equipment: jest`) | Jest JSON: `describe` blocks, retried tests flagged flaky, test files that failed to load. Prefer it to `jest-junit`, which drops a test file that fails to compile |
 | Vitest | `npx vitest run --reporter=json --outputFile=vitest.json` (or `equipment: vitest`) | Jest-style JSON, labelled `vitest` |
 | Playwright | `npx playwright test --reporter=json` (`PLAYWRIGHT_JSON_OUTPUT_FILE=results.json`) | Playwright JSON: retries, flaky tests, traces |
 | Cypress | `npx cypress run --reporter junit` (or `equipment: cypress`) | JUnit XML |
@@ -200,13 +202,14 @@ Config errors print `[fail]config error: …` and exit **2**.
 
 | Subcommand | Description |
 |------------|-------------|
-| `testo config validate` | Load YAML; optional `--check-executables` for pytest/behave/behavex (and `npx` for playwright, jest, vitest and cypress) on PATH |
+| `testo config validate` | Load YAML; optional `--check-executables` for pytest/behave/behavex (and `npx` for playwright, jest, vitest and cypress) on PATH. Warns about keys nothing reads (`unknown key 'cycles.web.stages[0].timout_s' is ignored; did you mean 'timeout_s'?`); `--strict` makes them an error (exit 2) |
 | `testo config init` | Write starter `testosterone.yaml` with one active `smoke-test` cycle running `pytest -q tests` and commented-out marker/BehaveX examples (`--path`, `--force`) |
 | `testo config db` | Set `database.url` (PostgreSQL prompts or `--url`) |
 
 ```bash
 testo config validate
 testo config validate --no-check-executables
+testo config validate --strict   # unknown keys fail, for CI
 testo config init --path testosterone.yaml --force
 testo config db --url sqlite:////tmp/testo-reports.db
 ```
@@ -293,6 +296,27 @@ It starts `testo-api` bound to `127.0.0.1` only (for a shared server use the [Te
 
 ---
 
+## `testo demo`
+
+See the UI with something in it before you have results of your own. Writes eight JUnit XML files for a small made-up shop app into a new folder, records them with `testo ingest` as eight runs of the `demo-shop` cycle, then starts [`testo ui`](#testo-ui) on that history.
+
+```bash
+pip install 'testo-core[api]'
+testo demo                          # temporary folder, opens http://127.0.0.1:8000
+testo demo --dir ./testo-demo --no-ui
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--dir` | a new temporary folder | Where the demo history goes; must be new or empty |
+| `--ui` / `--no-ui` | `--ui` | Start the UI once the runs are recorded |
+| `--port`, `-p` | `8000` | Port for the UI |
+| `--open` / `--no-open` | `--open` | Open the default browser |
+
+The runs show a flaky test (`test_apply_coupon`), a new failure in the latest run (`test_redirect_after_login`), a test that got slower (`test_results_are_ranked`) and one that was fixed (`test_badge_count`). The demo has its own SQLite file and `.testo/` folder inside `--dir` (it sets `DATABASE_URL` and `TESTO_HOME` for the commands it starts), so your real history is never touched. Exit `2` when `--dir` is not empty; otherwise the exit code of the failing `testo ingest` or `testo ui`.
+
+---
+
 ## `testo notify`
 
 Send a recorded run to Slack and/or Microsoft Teams: pass/fail counts, then new regressions, newly flaky tests, failing tests and fixed tests (10 names per list).
@@ -337,7 +361,7 @@ testo otel --cycle nightly --dry-run                     # print the spans as JS
 | `--service-name` | `$OTEL_SERVICE_NAME`, else `testosterone` | The trace's `service.name` |
 | `--dry-run` | off | Print the spans as JSON instead of sending (no extra needed) |
 
-Headers come only from `OTEL_EXPORTER_OTLP_HEADERS` (or `OTEL_EXPORTER_OTLP_TRACES_HEADERS`). Exit `0` when sent, `2` for no recorded run, a bad `--protocol` or a missing `[otel]` extra, `3` when the endpoint refuses the spans or can't be reached. The `otel` [reporter](#reporter-types-reporters----reporter) sends the same trace right after `testo run`. Span names and attributes: [OpenTelemetry Export - 2026-10-30](../Specs%20&%20ADRs/OpenTelemetry%20Export%20-%202026-10-30.md).
+Headers come only from `OTEL_EXPORTER_OTLP_HEADERS` (or `OTEL_EXPORTER_OTLP_TRACES_HEADERS`). Exit `0` when sent, `2` for no recorded run, a bad `--protocol`, an HTTP endpoint without `http://` or `https://`, or a missing `[otel]` extra, `3` when the endpoint refuses the spans or can't be reached. The `otel` [reporter](#reporter-types-reporters----reporter) sends the same trace right after `testo run`. Span names and attributes: [OpenTelemetry Export - 2026-10-30](../Specs%20&%20ADRs/OpenTelemetry%20Export%20-%202026-10-30.md).
 
 ---
 
@@ -357,7 +381,7 @@ testo badge --cycle web --format json --out public/testo-badge.json   # a shield
 | `--format` | `svg` | `svg`: the image. `json`: what `https://img.shields.io/endpoint?url=<its URL>` reads, for shields.io's styles and logos |
 | `--label` | `tests` | Left-hand text |
 
-Exit `0`, or `2` for a bad `--format`. A [team server](../Processes%20&%20Guides/Team%20Server.md) serves the same badge live at `GET /api/v1/badge.svg?cycle=web` and `GET /api/v1/badge.json?cycle=web` (cached 5 minutes). Those are reads like any other: with `TESTO_PROTECT_READS` on, a public README can't load them, so publish the file `testo badge` writes instead. Put it in a README with:
+Exit `0`, or `2` for a bad `--format`. With no run of `--cycle`, the grey badge is still written and a warning names the closest recorded cycle (`testo flaky` does the same). A [team server](../Processes%20&%20Guides/Team%20Server.md) serves the same badge live at `GET /api/v1/badge.svg?cycle=web` and `GET /api/v1/badge.json?cycle=web` (cached 5 minutes). Those are reads like any other: with `TESTO_PROTECT_READS` on, a public README can't load them, so publish the file `testo badge` writes instead. Put it in a README with:
 
 ```markdown
 [![tests](https://you.github.io/project/testo-badge.svg)](https://you.github.io/project/)
@@ -404,6 +428,28 @@ testo clean -y --docker
 ```
 
 Without `--yes` / `-y`: refuses with exit **2**. It also refuses (exit **2**, nothing deleted) when the artifacts root or `--temp-dir` is the filesystem root, your home folder, the current folder, the config's folder, a parent of any of them, or a folder holding `.git`, `testosterone.yaml` or `pyproject.toml`, so `artifacts_root: .` can't delete the project.
+
+### `testo clean --history`
+
+Deletes expired run history instead of artifacts: each expired run's row, its `test_result` rows and its report copy under `static/history/<run_id>/`, oldest first. Runs still `RUNNING` are never touched; report archives (`testo report list`) are separate and stay.
+
+```bash
+testo clean --history --dry-run          # list what would go, delete nothing
+testo clean --history --yes              # apply history.retention from testosterone.yaml
+testo clean --history -y --keep-days 30  # override (or set) the limits for this call
+testo clean --history -y --keep-runs 200
+```
+
+The limits come from the top-level `history:` section (either or both; a run goes when it breaks any):
+
+```yaml
+history:
+  retention:
+    days: 90            # runs that started more than 90 days ago
+    runs_per_cycle: 200 # beyond each cycle's newest 200 runs
+```
+
+`--keep-days` / `--keep-runs` override the file's values. Without any limit (no `history:` section and no flag) it exits **2** and says so; without `--yes` (and not `--dry-run`) it exits **2**. A report copy that cannot be removed is listed and the command exits **5**; the rows are already gone. The API server applies the same section on its own every 6 hours while it runs ([Team Server § How it works](../Processes%20&%20Guides/Team%20Server.md#how-it-works)). Without a `history:` section nothing is ever deleted.
 
 ---
 
@@ -518,8 +564,9 @@ testo split --cycle flows --shards 4 --json                # every shard, with i
 | `--stage` | all | Only this stage's tests |
 | `--server` | `$TESTO_SERVER_URL` | Read the times from a team server (token from `$TESTO_API_TOKEN`) |
 | `--window` | `20` | Recent runs to take the times from |
+| `--allow-empty` | off | With `--index`, exit `0` and print nothing when the shard has no tests (fewer tests than shards) |
 
-Tests with no recorded time count as a typical (median) test; with no history at all the split is round robin. The split depends only on which tests there are and their times, not their order, so every shard that sees the same history picks the same tests. Exit codes: `2` for a bad `--index` or unreadable `--tests`, `3` when the server can't be reached, `1` when there is nothing to split.
+Tests with no recorded time count as a typical (median) test; with no history at all the split is round robin. The split depends only on which tests there are and their times, not their order, so every shard that sees the same history picks the same tests. Exit codes: `2` for a bad `--index` or unreadable `--tests`, `3` when the server can't be reached, `1` when there is nothing to split or (without `--allow-empty`) the `--index` shard is empty, since an empty `pytest $(testo split ...)` would run every test. A `--server` (or `$TESTO_SERVER_URL`) that isn't an `http(s)://host` URL exits `2` here and in `testo ingest` and `testo lease`.
 
 ---
 
@@ -574,7 +621,7 @@ testo -v
 
 ## `pytest --testo`
 
-testo-core installs a pytest plugin (entry point `pytest11`, `testo_core/pytest_plugin.py`). It does nothing unless asked:
+testo-core installs a pytest plugin (entry point `pytest11`, `testo_core/pytest_plugin.py`). The `pytest-testo` package ([`integrations/pytest-testo/`](https://github.com/taltal-beep/testosterone/tree/main/integrations/pytest-testo)) installs the same thing under a `pytest-*` name. It does nothing unless asked:
 
 | Option | Effect |
 |--------|--------|
