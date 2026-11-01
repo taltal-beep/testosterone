@@ -54,6 +54,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import clean as clean_mod
     from testo_core.cli.commands import config as config_cmd
     from testo_core.cli.commands import config_db as config_db_cmd
+    from testo_core.cli.commands import demo as demo_mod
     from testo_core.cli.commands import diff_cli as diff_cli_mod
     from testo_core.cli.commands import doctor as doctor_mod
     from testo_core.cli.commands import flaky as flaky_mod
@@ -88,6 +89,11 @@ def _register_commands() -> None:
         help="Open the web UI on this machine's run history (http://127.0.0.1:8000).",
         rich_help_panel="Run and report",
     )(ui_cmd.ui)
+    app.command(
+        name="demo",
+        help="Record eight sample runs (a flaky test, a new failure, a slower test) and open the UI.",
+        rich_help_panel="Run and report",
+    )(demo_mod.demo)
     app.command(
         name="split",
         help="Split a cycle's tests into shards of about equal time (CI matrix, pool keys).",

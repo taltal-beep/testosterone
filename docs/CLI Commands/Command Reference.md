@@ -296,6 +296,27 @@ It starts `testo-api` bound to `127.0.0.1` only (for a shared server use the [Te
 
 ---
 
+## `testo demo`
+
+See the UI with something in it before you have results of your own. Writes eight JUnit XML files for a small made-up shop app into a new folder, records them with `testo ingest` as eight runs of the `demo-shop` cycle, then starts [`testo ui`](#testo-ui) on that history.
+
+```bash
+pip install 'testo-core[api]'
+testo demo                          # temporary folder, opens http://127.0.0.1:8000
+testo demo --dir ./testo-demo --no-ui
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--dir` | a new temporary folder | Where the demo history goes; must be new or empty |
+| `--ui` / `--no-ui` | `--ui` | Start the UI once the runs are recorded |
+| `--port`, `-p` | `8000` | Port for the UI |
+| `--open` / `--no-open` | `--open` | Open the default browser |
+
+The runs show a flaky test (`test_apply_coupon`), a new failure in the latest run (`test_redirect_after_login`), a test that got slower (`test_results_are_ranked`) and one that was fixed (`test_badge_count`). The demo has its own SQLite file and `.testo/` folder inside `--dir` (it sets `DATABASE_URL` and `TESTO_HOME` for the commands it starts), so your real history is never touched. Exit `2` when `--dir` is not empty; otherwise the exit code of the failing `testo ingest` or `testo ui`.
+
+---
+
 ## `testo notify`
 
 Send a recorded run to Slack and/or Microsoft Teams: pass/fail counts, then new regressions, newly flaky tests, failing tests and fixed tests (10 names per list).
