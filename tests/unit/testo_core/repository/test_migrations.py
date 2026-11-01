@@ -150,3 +150,47 @@ def test_two_processes_upgrading_at_once_both_succeed(tmp_path: Path) -> None:
         assert migrations.upgrade_to_head(engine) == migrations.head_revision()
     finally:
         migrations._upgrade = original  # type: ignore[assignment]
+
+
+def test_revision_0002_fills_the_promoted_columns_from_metadata(tmp_path: Path) -> None:
+    """Rows written before the columns existed query like new ones after the upgrade."""
+    from alembic import command
+
+    engine = _engine(tmp_path)
+    with engine.begin() as connection:
+        command.upgrade(migrations.alembic_config(connection), "0001")
+        connection.execute(
+            text(
+                "insert into runrecord (id, status, start_time, metadata) values "
+                "('00000000000000000000000000000003', 'COMPLETED', '2026-01-01 00:00:00', "
+                '\'{"plan": "smoke", "health_pct": 87.5, "exit_code": 1, '
+                '"ci_ref_name": "main", "git_branch": "local", "git_commit": "abc123", '
+                '"source": "engine", "snapshot_dir": "static/history/x/artifacts"}\')'
+            )
+        )
+        connection.execute(
+            text(
+                "insert into runrecord (id, status, start_time, metadata) values "
+                "('00000000000000000000000000000004', 'FAILED', '2026-01-02 00:00:00', '{}')"
+            )
+        )
+
+    migrations.upgrade_to_head(engine)
+
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text(
+                "select cycle, health_pct, exit_code, branch, commit_sha, source, snapshot_dir "
+                "from runrecord order by start_time"
+            )
+        ).fetchall()
+    assert tuple(rows[0]) == (
+        "smoke",
+        87.5,
+        1,
+        "main",
+        "abc123",
+        "engine",
+        "static/history/x/artifacts",
+    )
+    assert tuple(rows[1]) == (None, None, None, None, None, None, None)

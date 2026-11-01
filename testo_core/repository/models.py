@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-from sqlalchemy import JSON, Column, LargeBinary
+from sqlalchemy import JSON, Column, Index, LargeBinary
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -32,20 +32,77 @@ class RunRecord(SQLModel, table=True):
       without relying on a separate unique column.
     - ``metadata`` is stored as JSON (JSONB on PostgreSQL); Python attribute is ``metadata_`` to
       avoid clashing with SQLAlchemy's ``.metadata``.
+    - The fields every list and rollup filters or sorts on (``cycle``, ``health_pct``,
+      ``exit_code``, ``branch``, ``commit_sha``, ``source``, ``snapshot_dir``) are also real,
+      indexed columns, copied from the JSON by :func:`promoted_columns` on every write. The
+      JSON stays the full record; the columns are what SQL can search without decoding it.
     """
 
     # A reloader (``testo-api`` with TESTO_API_RELOAD=1) can import this module twice in one process,
     # reusing the same SQLAlchemy MetaData instance. Allow redefining the table safely.
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = (
+        Index("ix_runrecord_cycle_start_time", "cycle", "start_time"),
+        {"extend_existing": True},
+    )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
     status: RunStatus = Field(default=RunStatus.PENDING, index=True)
-    start_time: datetime | None = Field(default=None)
+    start_time: datetime | None = Field(default=None, index=True)
     end_time: datetime | None = Field(default=None)
     metadata_: dict[str, Any] = Field(
         default_factory=dict,
         sa_column=Column("metadata", _METADATA_JSON_COL, nullable=False),
     )
+    # Promoted from ``metadata`` (see promoted_columns); None on rows older than revision 0002
+    # that the migration could not fill.
+    cycle: str | None = Field(default=None, index=True, max_length=512)
+    health_pct: float | None = Field(default=None)
+    exit_code: int | None = Field(default=None)
+    branch: str | None = Field(default=None, max_length=255)
+    # ``commit`` is a reserved word in SQL, hence the suffix.
+    commit_sha: str | None = Field(default=None, max_length=64)
+    source: str | None = Field(default=None, max_length=32)
+    snapshot_dir: str | None = Field(default=None, max_length=1024)
+
+
+PROMOTED_COLUMNS = (
+    "cycle",
+    "health_pct",
+    "exit_code",
+    "branch",
+    "commit",
+    "source",
+    "snapshot_dir",
+)
+
+
+def _text(value: Any, limit: int) -> str | None:
+    return str(value)[:limit] if value else None
+
+
+def promoted_columns(metadata: dict[str, Any]) -> dict[str, Any]:
+    """The column values that ``metadata`` implies, with the same precedence the views use.
+
+    Shared by the repository (on every write) and by migration 0002 (backfill), so
+    a run looks the same whether it was recorded before or after the columns existed.
+    """
+    health = metadata.get("health_pct")
+    exit_code = metadata.get("exit_code")
+    return {
+        "cycle": _text(metadata.get("plan"), 512),
+        "health_pct": float(health) if health is not None else None,
+        "exit_code": int(exit_code) if exit_code is not None else None,
+        "branch": _text(metadata.get("ci_ref_name") or metadata.get("git_branch"), 255),
+        "commit_sha": _text(metadata.get("ci_commit_sha") or metadata.get("git_commit"), 64),
+        "source": _text(metadata.get("source"), 32),
+        "snapshot_dir": _text(metadata.get("snapshot_dir"), 1024),
+    }
+
+
+def sync_promoted_columns(record: RunRecord) -> None:
+    """Copy the promoted values out of ``record.metadata_`` onto its columns."""
+    for name, value in promoted_columns(record.metadata_ or {}).items():
+        setattr(record, name, value)
 
 
 class ReportArchive(SQLModel, table=True):

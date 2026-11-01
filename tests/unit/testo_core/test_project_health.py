@@ -10,6 +10,7 @@ from testo_core.history.views import CompletedRunView
 from testo_core.repository.models import RunStatus
 from testo_core.services import project_health
 from testo_core.services.test_history import CycleTests, TestSummary
+from tests._history_fakes import cycle_runs_from
 
 
 def _run(run_id: str, cycle: str, created_at: float, *, failed: int = 0) -> CompletedRunView:
@@ -68,9 +69,9 @@ def history(monkeypatch):  # noqa: ANN001, ANN201
         ],
     )
     runs = [web, _run("api-2", "api", 3), _run("web-1", "web", 2), _run("api-1", "api", 1)]
-    monkeypatch.setattr(project_health, "list_recent_runs", lambda *, limit: runs)
+    monkeypatch.setattr(project_health, "list_cycle_runs", cycle_runs_from(runs))
     monkeypatch.setattr(
-        project_health, "latest_run_per_cycle", lambda *, limit: {"web": runs[0], "api": runs[1]}
+        project_health, "latest_run_per_cycle", lambda: {"web": runs[0], "api": runs[1]}
     )
     tests = {
         "web": [_test("w-flaky", flaky=True), _test("w-slow", slowdown_ms=40)]

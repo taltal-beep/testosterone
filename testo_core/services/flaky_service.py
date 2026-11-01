@@ -18,14 +18,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from testo_core import paths
-from testo_core.history.read_model import list_recent_runs
+from testo_core.history.read_model import list_cycle_runs
 from testo_core.history.views import CompletedRunView
 from testo_core.services.report_archive_diff import _load_cases
 
 DEFAULT_WINDOW = 20
 MIN_FLIPS = 2
 # How many recent runs (any cycle) to scan when looking for one cycle's window.
-_SCAN_LIMIT = 500
 
 _PASS = "passed"
 _FAIL = frozenset({"failed", "broken"})
@@ -95,9 +94,9 @@ def _cases_for_run(run: CompletedRunView) -> dict[str, dict[str, Any]]:
     return _load_cases(paths.ORCHESTRATOR_ROOT / run.snapshot_dir)
 
 
-def _cycle_runs(cycle: str) -> list[CompletedRunView]:
-    """``cycle``'s recorded runs, newest first."""
-    return [r for r in list_recent_runs(limit=_SCAN_LIMIT) if r.cycle == cycle]
+def _cycle_runs(cycle: str, *, limit: int | None = None) -> list[CompletedRunView]:
+    """``cycle``'s recorded runs, newest first (at most ``limit``)."""
+    return list_cycle_runs(cycle) if limit is None else list_cycle_runs(cycle, limit=limit)
 
 
 def _report(cycle: str, runs: list[CompletedRunView], window: int) -> FlakyReport:
@@ -126,7 +125,7 @@ def _report(cycle: str, runs: list[CompletedRunView], window: int) -> FlakyRepor
 def find_flaky_tests(*, cycle: str, window: int = DEFAULT_WINDOW) -> FlakyReport:
     """Flaky tests across the last ``window`` runs of ``cycle``, most flips first."""
     window = max(2, int(window))
-    return _report(cycle, _cycle_runs(cycle)[:window], window)
+    return _report(cycle, _cycle_runs(cycle, limit=window), window)
 
 
 def newly_flaky_tests(

@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Changed
+- Run history has real, indexed columns for the fields every list filters on (cycle, health, exit code, branch, commit, source, snapshot), filled from the stored JSON for existing runs by the migration. One cycle's runs are a SQL query instead of a scan of the newest 500 runs across all cycles, so a busy cycle no longer hides a quiet one's history on the cycle page, in flaky detection, per-test history, the PR comment and the dashboard
 - The run history database schema is now owned by Alembic migrations (`testo_core/repository/migrations/`), run automatically when the CLI, the API or a store first opens the database. A database from 1.5.0 or earlier is adopted in place: missing tables and columns are added, nothing is dropped, no command to run. `alembic` becomes a core dependency. Contributors: a model change ships with a revision (`python scripts/db_revision.py "what changed"`); a test fails when models and migrations differ
 
 ### Security

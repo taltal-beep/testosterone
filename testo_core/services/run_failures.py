@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from testo_core import paths
-from testo_core.history.read_model import get_run, list_recent_runs
+from testo_core.history.read_model import get_run, list_cycle_runs
 from testo_core.history.views import CompletedRunView
 from testo_core.services import flaky_service
 from testo_core.services.report_archive_diff import _load_cases
@@ -37,7 +37,6 @@ logger = logging.getLogger(__name__)
 
 # Runs of the cycle (this one included) looked at for "failing since" and flakiness.
 DEFAULT_WINDOW = flaky_service.DEFAULT_WINDOW
-_SCAN_LIMIT = 500
 _FAILED = frozenset({"failed", "broken"})
 # Numbers, hex ids and quoted values vary between otherwise identical failures.
 _VOLATILE = re.compile(r"0x[0-9a-fA-F]+|\d+(?:\.\d+)?|'[^']*'|\"[^\"]*\"")
@@ -103,11 +102,7 @@ def _earlier_runs(run: CompletedRunView) -> list[CompletedRunView]:
     """``run``'s cycle's runs before it, on any branch, newest first."""
     if not run.cycle:
         return []
-    return [
-        r
-        for r in list_recent_runs(limit=_SCAN_LIMIT)
-        if r.cycle == run.cycle and r.created_at < run.created_at and r.run_id != run.run_id
-    ]
+    return list_cycle_runs(run.cycle, before_run_id=run.run_id)
 
 
 def _baseline(
