@@ -563,6 +563,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Report
+         * @description How testing went over the last ``period``, against the period before, for every cycle or ``cycle``.
+         */
+        get: operations["get_report_api_v1_report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/resources": {
         parameters: {
             query?: never;
@@ -1890,6 +1910,46 @@ export interface components {
             tests: number;
         };
         /**
+         * ManagerReportResponse
+         * @description How testing went over a period: the ``/report`` page and every ``testo export`` format.
+         */
+        ManagerReportResponse: {
+            /** Cycles */
+            cycles: components["schemas"]["ReportCycleRow"][];
+            /** Days */
+            days: number;
+            /** End */
+            end: number;
+            /** Findings */
+            findings: components["schemas"]["ReportFinding"][];
+            /** Fixed */
+            fixed: components["schemas"]["ReportTest"][];
+            /** Generated At */
+            generated_at: number;
+            kpis: components["schemas"]["ReportKpis"];
+            /** Newly Flaky */
+            newly_flaky: components["schemas"]["ReportTest"][];
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "day" | "week" | "month" | "quarter";
+            /** Scope */
+            scope: string[];
+            /** Slower */
+            slower: components["schemas"]["ReportTest"][];
+            /** Start */
+            start: number;
+            /** Still Failing */
+            still_failing: components["schemas"]["ReportTest"][];
+            /** Summary */
+            summary: string[];
+            /** Title */
+            title: string;
+            /** Trend */
+            trend: components["schemas"]["ReportTrendPoint"][];
+        };
+        /**
          * ProjectHealthResponse
          * @description A repeatable 0-100 score of the project under test, from its recorded runs.
          */
@@ -2010,6 +2070,92 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "degraded";
+        };
+        /** ReportCycleRow */
+        ReportCycleRow: {
+            /** Cycle */
+            cycle: string;
+            /** Failing */
+            failing: number;
+            /** Fixed */
+            fixed: number;
+            /** Green */
+            green: number;
+            /** Health Score */
+            health_score: number | null;
+            /** Newly Flaky */
+            newly_flaky: number;
+            /** Pass Rate */
+            pass_rate: number | null;
+            /** Prev Pass Rate */
+            prev_pass_rate: number | null;
+            /** Runs */
+            runs: number;
+            /** Slower */
+            slower: number;
+        };
+        /** ReportFinding */
+        ReportFinding: {
+            /** Cycle */
+            cycle: string;
+            /** Detail */
+            detail: string;
+            /** Title */
+            title: string;
+        };
+        /** ReportKpis */
+        ReportKpis: {
+            /** Coverage Pct */
+            coverage_pct: number | null;
+            /** Cycles */
+            cycles: number;
+            /** Failing Tests */
+            failing_tests: number;
+            /** Fixed */
+            fixed: number;
+            /** Green */
+            green: number;
+            /** Health Grade */
+            health_grade: string | null;
+            /** Health Score */
+            health_score: number | null;
+            /** Newly Flaky */
+            newly_flaky: number;
+            /** Pass Rate */
+            pass_rate: number | null;
+            /** Prev Coverage Pct */
+            prev_coverage_pct: number | null;
+            /** Prev Green */
+            prev_green: number;
+            /** Prev Pass Rate */
+            prev_pass_rate: number | null;
+            /** Prev Runs */
+            prev_runs: number;
+            /** Runs */
+            runs: number;
+        };
+        /** ReportTest */
+        ReportTest: {
+            /** Cycle */
+            cycle: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Name */
+            name: string;
+        };
+        /** ReportTrendPoint */
+        ReportTrendPoint: {
+            /** Day */
+            day: string;
+            /** Green */
+            green: number;
+            /** Pass Rate */
+            pass_rate: number | null;
+            /** Runs */
+            runs: number;
         };
         /** ResourceActionItem */
         ResourceActionItem: {
@@ -3658,6 +3804,40 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_report_api_v1_report_get: {
+        parameters: {
+            query?: {
+                period?: "day" | "week" | "month" | "quarter";
+                /** @description Cycles to include; repeat. All when left out. */
+                cycle?: string[] | null;
+                title?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagerReportResponse"];
+                };
             };
             /** @description Validation Error */
             422: {

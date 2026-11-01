@@ -63,6 +63,11 @@ export function resolveStaticPath(pathname: string, search: URLSearchParams): st
   if (path === "/dashboard/runs/recent") return "dashboard/recent-runs.json";
   if (path === "/dashboard/attention") return "dashboard/attention.json";
   if (path === "/resources") return "resources.json";
+  if (path === "/report") {
+    const period = search.get("period") ?? "week";
+    const name = search.get("cycle");
+    return name ? `report/${period}/${name}.json` : `report/${period}.json`;
+  }
   if (path === "/project-health/skills") return "project-health/skills.json";
   if (path === "/project-health") {
     const name = search.get("cycle");

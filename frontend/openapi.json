@@ -2991,6 +2991,127 @@
         "title": "IngestResponse",
         "type": "object"
       },
+      "ManagerReportResponse": {
+        "description": "How testing went over a period: the ``/report`` page and every ``testo export`` format.",
+        "properties": {
+          "cycles": {
+            "items": {
+              "$ref": "#/components/schemas/ReportCycleRow"
+            },
+            "title": "Cycles",
+            "type": "array"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "end": {
+            "title": "End",
+            "type": "number"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/ReportFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "fixed": {
+            "items": {
+              "$ref": "#/components/schemas/ReportTest"
+            },
+            "title": "Fixed",
+            "type": "array"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "number"
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/ReportKpis"
+          },
+          "newly_flaky": {
+            "items": {
+              "$ref": "#/components/schemas/ReportTest"
+            },
+            "title": "Newly Flaky",
+            "type": "array"
+          },
+          "period": {
+            "enum": [
+              "day",
+              "week",
+              "month",
+              "quarter"
+            ],
+            "title": "Period",
+            "type": "string"
+          },
+          "scope": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scope",
+            "type": "array"
+          },
+          "slower": {
+            "items": {
+              "$ref": "#/components/schemas/ReportTest"
+            },
+            "title": "Slower",
+            "type": "array"
+          },
+          "start": {
+            "title": "Start",
+            "type": "number"
+          },
+          "still_failing": {
+            "items": {
+              "$ref": "#/components/schemas/ReportTest"
+            },
+            "title": "Still Failing",
+            "type": "array"
+          },
+          "summary": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Summary",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "trend": {
+            "items": {
+              "$ref": "#/components/schemas/ReportTrendPoint"
+            },
+            "title": "Trend",
+            "type": "array"
+          }
+        },
+        "required": [
+          "title",
+          "period",
+          "days",
+          "start",
+          "end",
+          "generated_at",
+          "scope",
+          "summary",
+          "kpis",
+          "trend",
+          "cycles",
+          "still_failing",
+          "newly_flaky",
+          "fixed",
+          "slower",
+          "findings"
+        ],
+        "title": "ManagerReportResponse",
+        "type": "object"
+      },
       "ProjectHealthResponse": {
         "description": "A repeatable 0-100 score of the project under test, from its recorded runs.",
         "properties": {
@@ -3395,6 +3516,287 @@
           "detail"
         ],
         "title": "ReadinessCheck",
+        "type": "object"
+      },
+      "ReportCycleRow": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "failing": {
+            "title": "Failing",
+            "type": "integer"
+          },
+          "fixed": {
+            "title": "Fixed",
+            "type": "integer"
+          },
+          "green": {
+            "title": "Green",
+            "type": "integer"
+          },
+          "health_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Score"
+          },
+          "newly_flaky": {
+            "title": "Newly Flaky",
+            "type": "integer"
+          },
+          "pass_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass Rate"
+          },
+          "prev_pass_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Pass Rate"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "slower": {
+            "title": "Slower",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cycle",
+          "runs",
+          "green",
+          "pass_rate",
+          "prev_pass_rate",
+          "failing",
+          "newly_flaky",
+          "fixed",
+          "slower",
+          "health_score"
+        ],
+        "title": "ReportCycleRow",
+        "type": "object"
+      },
+      "ReportFinding": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "title",
+          "detail"
+        ],
+        "title": "ReportFinding",
+        "type": "object"
+      },
+      "ReportKpis": {
+        "properties": {
+          "coverage_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Pct"
+          },
+          "cycles": {
+            "title": "Cycles",
+            "type": "integer"
+          },
+          "failing_tests": {
+            "title": "Failing Tests",
+            "type": "integer"
+          },
+          "fixed": {
+            "title": "Fixed",
+            "type": "integer"
+          },
+          "green": {
+            "title": "Green",
+            "type": "integer"
+          },
+          "health_grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Grade"
+          },
+          "health_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Score"
+          },
+          "newly_flaky": {
+            "title": "Newly Flaky",
+            "type": "integer"
+          },
+          "pass_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass Rate"
+          },
+          "prev_coverage_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Coverage Pct"
+          },
+          "prev_green": {
+            "title": "Prev Green",
+            "type": "integer"
+          },
+          "prev_pass_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Pass Rate"
+          },
+          "prev_runs": {
+            "title": "Prev Runs",
+            "type": "integer"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "health_score",
+          "health_grade",
+          "pass_rate",
+          "prev_pass_rate",
+          "runs",
+          "prev_runs",
+          "green",
+          "prev_green",
+          "coverage_pct",
+          "prev_coverage_pct",
+          "cycles",
+          "failing_tests",
+          "newly_flaky",
+          "fixed"
+        ],
+        "title": "ReportKpis",
+        "type": "object"
+      },
+      "ReportTest": {
+        "properties": {
+          "cycle": {
+            "title": "Cycle",
+            "type": "string"
+          },
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle",
+          "name",
+          "detail"
+        ],
+        "title": "ReportTest",
+        "type": "object"
+      },
+      "ReportTrendPoint": {
+        "properties": {
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "green": {
+            "title": "Green",
+            "type": "integer"
+          },
+          "pass_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass Rate"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "runs",
+          "green",
+          "pass_rate"
+        ],
+        "title": "ReportTrendPoint",
         "type": "object"
       },
       "ResourceActionItem": {
@@ -6827,6 +7229,94 @@
         "summary": "Add Quarantine",
         "tags": [
           "quarantine"
+        ]
+      }
+    },
+    "/api/v1/report": {
+      "get": {
+        "description": "How testing went over the last ``period``, against the period before, for every cycle or ``cycle``.",
+        "operationId": "get_report_api_v1_report_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "week",
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "quarter"
+              ],
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Cycles to include; repeat. All when left out.",
+            "in": "query",
+            "name": "cycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cycles to include; repeat. All when left out.",
+              "title": "Cycle"
+            }
+          },
+          {
+            "in": "query",
+            "name": "title",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Title"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Report",
+        "tags": [
+          "report"
         ]
       }
     },

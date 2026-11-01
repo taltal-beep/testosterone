@@ -25,6 +25,8 @@ export type RunDetailResponse = Schemas["RunDetailResponse"];
 export type RunReportsResponse = Schemas["RunReportsResponse"];
 export type RunPyramidResponse = Schemas["RunPyramidResponse"];
 export type RunMarkdownResponse = Schemas["RunMarkdownResponse"];
+export type ManagerReport = Schemas["ManagerReportResponse"];
+export type ReportPeriod = ManagerReport["period"];
 export type RunFailuresResponse = Schemas["RunFailuresResponse"];
 export type FailingTestItem = Schemas["FailingTestItem"];
 export type TriageItem = Schemas["TriageItem"];
@@ -201,6 +203,10 @@ export const apiClient = {
   },
   getRunFailures(runId: string): Promise<RunFailuresResponse> {
     return api<RunFailuresResponse>(`/api/v1/runs/${encodeURIComponent(runId)}/failures`);
+  },
+  getReport(period: ReportPeriod, cycle?: string): Promise<ManagerReport> {
+    const params = new URLSearchParams({ period, ...(cycle ? { cycle } : {}) });
+    return api<ManagerReport>(`/api/v1/report?${params}`);
   },
   getRunMarkdown(runId: string): Promise<RunMarkdownResponse> {
     return api<RunMarkdownResponse>(`/api/v1/runs/${encodeURIComponent(runId)}/markdown`);

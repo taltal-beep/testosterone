@@ -27,6 +27,7 @@ from testo_api.routes.history import router as history_router
 from testo_api.routes.ingest import router as ingest_router
 from testo_api.routes.project_health import router as project_health_router
 from testo_api.routes.quarantine import router as quarantine_router
+from testo_api.routes.report import router as report_router
 from testo_api.routes.resources import router as resources_router
 from testo_api.routes.triage import router as triage_router
 from testo_api.security import (
@@ -153,6 +154,7 @@ def create_app() -> FastAPI:
     app.include_router(project_health_router)
     app.include_router(triage_router)
     app.include_router(quarantine_router)
+    app.include_router(report_router)
     app.include_router(resources_router)
 
     STATIC_HISTORY_ROOT.mkdir(parents=True, exist_ok=True)

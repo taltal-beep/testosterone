@@ -45,3 +45,34 @@ body {
 [data-copying] button {
   display: none !important;
 }
+
+/*
+ * Printing (the Report page's "Save as PDF", or Ctrl+P on any page): white
+ * paper, no app chrome, cards kept whole where they fit.
+ */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+    background-image: none !important;
+    height: auto;
+  }
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .report-paper {
+    max-width: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+  .report-section,
+  .glass-card {
+    break-inside: avoid;
+  }
+}
