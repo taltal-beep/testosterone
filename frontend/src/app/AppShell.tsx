@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType, type RefObject } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { Link, NavLink, Outlet, useLocation, useSearchParams } from "react-router-dom";
+import { useIsFetching, useIsMutating, useQuery } from "@tanstack/react-query";
 
 import { apiClient } from "../lib/api-client";
-import { MuscleLogo } from "../components/mascot";
+import { EYE_BRAND_BLUE, EyeLogo } from "../components/mascot";
+import { scoreTone } from "../features/health/score";
 import { BackgroundArt } from "../components/BackgroundArt";
 import { DemoBadge } from "../components/StaticBuildBanner";
 import { Icons } from "../components/ui";
@@ -46,6 +47,30 @@ function breadcrumbs(pathname: string): { label: string; to?: string }[] {
   return crumbs;
 }
 
+// Iris colours for the health page, the same green/amber/red scale as the score ring.
+const IRIS_BY_TONE = { success: "#34d399", warn: "#fbbf24", danger: "#f87171", neutral: EYE_BRAND_BLUE } as const;
+
+/**
+ * The eye logo. On the Project health page its iris takes the colour of the
+ * health score; everywhere else it stays brand blue. The pupil spins while
+ * any request is in flight.
+ */
+function BrandEye() {
+  const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
+  const onHealthPage = pathname === "/health" || pathname.startsWith("/health/");
+  const cycle = searchParams.get("cycle") ?? "";
+  // Same key as ProjectHealthPage, so this reads its cached result instead of fetching twice.
+  const health = useQuery({
+    queryKey: ["project-health", cycle],
+    queryFn: () => apiClient.getProjectHealth(cycle || undefined),
+    enabled: onHealthPage
+  });
+  const loading = useIsFetching() + useIsMutating() > 0;
+  const iris = onHealthPage && health.data ? IRIS_BY_TONE[scoreTone(health.data.score)] : EYE_BRAND_BLUE;
+  return <EyeLogo size={30} irisColor={iris} spinning={loading} />;
+}
+
 /**
  * Desktop: a floating glass sidebar (nav, Tools section, docs link) beside
  * the page. Below `lg` the sidebar is hidden and a top bar with a disclosure
@@ -67,7 +92,7 @@ export function AppShell() {
       <BackgroundArt />
       <aside className="glass-panel print:hidden fixed inset-y-4 left-4 z-20 hidden w-64 flex-col overflow-y-auto px-4 py-6 lg:flex">
         <Link to="/" className="flex items-center justify-center gap-2.5 pb-6" aria-label="Testo home">
-          <MuscleLogo size={26} />
+          <BrandEye />
           <span className="text-sm font-bold uppercase tracking-[0.3em] text-white">Testo</span>
         </Link>
         <div className="mb-5 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" aria-hidden />
@@ -87,7 +112,7 @@ export function AppShell() {
       <header className="sticky top-0 z-30 print:hidden border-b border-white/5 bg-ink-950/80 backdrop-blur-xl lg:hidden">
         <div className="relative flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link to="/" className="flex items-center gap-2" aria-label="Testo home">
-            <MuscleLogo size={26} />
+            <BrandEye />
             <span className="text-sm font-bold uppercase tracking-[0.2em] text-white">Testo</span>
           </Link>
           <div className="flex items-center gap-3">

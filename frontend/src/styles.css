@@ -82,3 +82,33 @@ body.report-standalone {
   background: #e9ecf2;
   background-image: none;
 }
+/* Eye logo: blink on hover, pupil spins while the app loads. */
+.eye-logo__ball {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.eye-logo__pupil {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.eye-logo:hover .eye-logo__ball,
+a:hover > .eye-logo .eye-logo__ball {
+  animation: eye-blink 380ms ease-in-out;
+}
+.eye-logo[data-spinning="true"] .eye-logo__pupil {
+  animation: eye-pupil-spin 900ms linear infinite;
+}
+@keyframes eye-blink {
+  0%, 100% { transform: scaleY(1); }
+  45%, 55% { transform: scaleY(0.08); }
+}
+@keyframes eye-pupil-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eye-logo:hover .eye-logo__ball,
+  a:hover > .eye-logo .eye-logo__ball,
+  .eye-logo[data-spinning="true"] .eye-logo__pupil {
+    animation: none;
+  }
+}
