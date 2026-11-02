@@ -59,6 +59,7 @@ def _register_commands() -> None:
     from testo_core.cli.commands import demo as demo_mod
     from testo_core.cli.commands import diff_cli as diff_cli_mod
     from testo_core.cli.commands import doctor as doctor_mod
+    from testo_core.cli.commands import export_site as export_site_mod
     from testo_core.cli.commands import flaky as flaky_mod
     from testo_core.cli.commands import ingest as ingest_mod
     from testo_core.cli.commands import init_cmd as init_cmd_mod
@@ -95,6 +96,11 @@ def _register_commands() -> None:
         help="Open the web UI on this machine's run history (http://127.0.0.1:8000).",
         rich_help_panel="Run and report",
     )(ui_cmd.ui)
+    app.command(
+        name="export-site",
+        help="Write the UI and recent runs as a read-only static site (GitHub Pages, any file host).",
+        rich_help_panel="Run and report",
+    )(export_site_mod.export_site)
     app.add_typer(
         mcp_mod.app,
         name="mcp",

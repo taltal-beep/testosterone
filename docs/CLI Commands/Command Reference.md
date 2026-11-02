@@ -2,7 +2,7 @@
 type: reference
 status: current
 created: 2026-06-25
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 # Command Reference
@@ -301,6 +301,30 @@ testo ui --from-github       # the history the GitHub Action keeps, via the gh C
 | `--run-id ID` | newest | With `--from-github`: the history saved by that workflow run |
 
 Without the `[api]` extra, in a terminal it offers to install it into the running Python (`python -m pip install 'testo-core[api]==<this version>'`) and goes on; elsewhere it prints the command. It starts `testo-api` bound to `127.0.0.1` only (for a shared server use the [Team Server](../Processes%20&%20Guides/Team%20Server.md)) and serves the UI that ships inside the wheel, or the build `TESTO_UI_DIR` points at. The UI's own origin (`http://127.0.0.1:<port>`, `http://localhost:<port>`) is added to `TESTO_CORS_ORIGINS` for this process so it can start runs; every other origin is still refused. Exit `2` when the `[api]` extra is missing or no built UI is found (a source checkout builds one with `scripts/build_ui_bundle.sh`, which needs Node 22).
+
+---
+
+## `testo export-site`
+
+Write the UI and the recent runs as a read-only static site, for GitHub Pages, GitLab Pages or any file host. The pages are the ones `testo ui` shows; starting runs and saving settings are switched off and a notice says it is a snapshot.
+
+```bash
+pip install 'testo-core[api]'
+testo export-site --out public --base-path /my-repo/   # GitHub Pages of owner/my-repo
+testo export-site --from-github --out public           # from the history the Action keeps
+python -m http.server -d public 8080                   # preview (with --base-path /)
+```
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--out`, `-o` | `testo-site` | Folder to write (replaced) |
+| `--base-path` | path of `--site-url`, else `/` | Path the site is served under: `/<repo>/` for a project's GitHub Pages, `/` for `<owner>.github.io` or a custom domain |
+| `--site-url` | none | Public URL of the site; its path is the default base path |
+| `--runs` | `10` | Recent runs to include |
+| `--compare-pairs` | `20` | Run comparisons to include (each run against the previous run of its cycle) |
+| `--from-github` / `--repo` | off | Export CI's history (see [`testo ui`](#testo-ui)) instead of this machine's |
+
+The folder holds the UI bundled in the wheel with its `<base href>` set to the base path and a `testo-static-data` meta tag that makes it answer API calls from `data/` (one JSON file per read-only endpoint, written in-process by `testo_api/static_site.py`), the runs' HTML reports under `history/`, a copy of `index.html` as `404.html` so deep links survive a refresh on GitHub Pages, and `.nojekyll`. Failed runs get a frozen AI summary when `ANTHROPIC_API_KEY` is set. The [GitHub Action](../Processes%20&%20Guides/CI-CD%20Pipeline%20Setup.md#github-action)'s `static-site` input runs it and uploads the folder for Pages. Exit `2` without the `[api]` extra, without a bundled UI (a source checkout needs `scripts/build_ui_bundle.sh`), or with no recorded run.
 
 ---
 

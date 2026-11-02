@@ -83,6 +83,8 @@ api = [
     "uvicorn[standard]>=0.30.0",
     "python-multipart>=0.0.9",
     "pyjwt>=2.9.0",
+    # `testo export-site` calls the API in-process through starlette's TestClient.
+    "httpx>=0.27.0",
 ]
 db = [
     "psycopg[binary]>=3.2.0",
@@ -215,11 +217,14 @@ root_packages = ["testo_core", "testo_api"]
 exclude_type_checking_imports = true
 
 [[tool.importlinter.contracts]]
-name = "testo_core does not import testo_api (the CLI's `testo ui` starts the server lazily)"
+name = "testo_core does not import testo_api (the CLI's `testo ui` and `testo export-site` load it lazily)"
 type = "forbidden"
 source_modules = ["testo_core"]
 forbidden_modules = ["testo_api"]
-ignore_imports = ["testo_core.cli.commands.ui_cmd -> testo_api.*"]
+ignore_imports = [
+    "testo_core.cli.commands.ui_cmd -> testo_api.*",
+    "testo_core.cli.commands.export_site -> testo_api.*",
+]
 
 [[tool.importlinter.contracts]]
 name = "testo_api does not import the CLI"
