@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Changed
+- Web UI: the logo is now an eye instead of the flexed arm. On the Project health page its iris takes the health score colour (green, amber or red), it blinks when you hover it, and its pupil spins while the UI is loading data (no motion with reduced-motion settings)
 - Compare, `testo diff`, `testo try` and the pull request comment match a test recorded two different ways (`testo run`, then `pytest --testo` or `testo ingest` of the same suite) by its name, instead of listing it as removed and added. The comment also says when the cycle's stages changed since the run it is compared with
 - `testo init` is now the first thing the README, Getting Started, the Setup Prompts (new prompt 0), the dashboard's first-run guide and the `/try` page suggest; they also show how to run it without a virtualenv (`uvx --from testo-core testo init`). Getting Started has an Upgrading section
 - Docs: [New User Journey Audit](docs/Roadmap%20&%20Strategy/New%20User%20Journey%20Audit%20-%202026-11-01.md) lists what a new user still does by hand at each step, from finding Testosterone to a team server, with ranked proposals to automate it
